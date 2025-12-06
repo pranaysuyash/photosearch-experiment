@@ -503,27 +503,10 @@ Examples:
                 print("Error: Specify --directory or --format with --extract")
                 return
             
-            print(f"Found {len(results)} matching files\n")
-            
-            for i, result in enumerate(results[:10], 1):  # Show first 10
-                print(f"{i}. {result['file_path']}")
-                # Show key metadata
-                metadata = result['metadata']
-                if 'image' in metadata:
-                    img = metadata['image']
-                    print(f"   Resolution: {img.get('width')}x{img.get('height')}")
-                if 'filesystem' in metadata:
-                    fs = metadata['filesystem']
-                    print(f"   Size: {fs.get('size_human')}")
-                print()
-            
-            if len(results) > 10:
-                print(f"... and {len(results) - 10} more results\n")
-            
-            # Export if requested
-            if args.export:
-                query_engine.export_results(results, args.export, args.export_format)
-                print(f"Results exported to: {args.export}\n")
+            print(f"\nExtraction complete:")
+            print(f"  Processed: {stats['processed']}")
+            print(f"  Updated:   {stats['updated']}")
+            print(f"  Errors:    {stats['errors']}\n")
         
         else:
             parser.print_help()
