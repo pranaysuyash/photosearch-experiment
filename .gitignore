@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+.env
+*.log
+test_catalog.json
+*_metadata.json
+
+# Test files
+image1.png
+movie1.mp4
+movie2.mov
+data/
+
+# Temporary files
+task3_readme_section.md

@@ -1,0 +1,18 @@
+# Core dependencies
+tqdm>=4.66.0
+
+# Task 3 - Comprehensive metadata extraction
+Pillow>=10.0.0          # Image processing and basic EXIF
+exifread>=3.0.0         # Detailed EXIF extraction (ALL tags including MakerNote)
+ffmpeg-python>=0.2.0    # Video metadata via ffprobe (ALL fields)
+python-magic>=0.4.27    # MIME type detection via libmagic
+xattr>=1.3.0            # Extended attributes (macOS/Linux)
+
+# Future dependencies (will be added as needed)
+# numpy>=1.24.0
+# requests>=2.31.0
+# openai>=1.0.0
+# transformers>=4.30.0
+# sentence-transformers>=2.2.0
+# faiss-cpu>=1.7.4
+# python-dotenv>=1.0.0
