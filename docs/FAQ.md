@@ -171,3 +171,30 @@ Task 3 will be a comprehensive metadata extraction system that reads ALL metadat
 2. The answer and any resulting decisions will be documented
 3. This serves as a living record of our development discussions
 4. Can be referenced later to understand why certain decisions were made
+
+---
+
+## Q6: Task 4 - Metadata Search System Requirements
+
+**Asked:** 2025-12-06  
+**Context:** Planning Task 4 implementation
+
+**User's Vision:**
+"Searchable by metadata - every field of metadata becomes a search parameter. Should be able to extract for all, file wise, directory wise, file type wise and then searchable using each metadata parameter."
+
+**Key Decisions:**
+1. **Storage:** Separate SQLite database (not in catalog JSON)
+2. **Search Syntax:** Comprehensive query language (prepare for future NLP)
+3. **Scale:** Optimize for 10,000+ files (production-ready)
+4. **History:** Keep all metadata versions, track changes over time
+5. **Updates:** Daily auto-trigger + monthly reindex
+6. **Deletions:** Keep deleted file metadata (never lose data)
+
+**Update Strategy:**
+- Daily lightweight scan (check file changes via mtime/hash)
+- Extract only changed files (smart detection)
+- Weekly deep verification
+- Monthly index optimization
+- Keep deleted file metadata in separate table
+
+**See:** `.gemini/antigravity/brain/.../planning_qa.md` for complete Q&A documentation
