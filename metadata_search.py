@@ -445,6 +445,13 @@ Examples:
     parser.add_argument('--stats', action='store_true', help='Show database statistics')
     parser.add_argument('--history', help='Show version history for file')
     
+    # Search arguments
+    parser.add_argument('--search', help='Search query (e.g., "camera=Canon AND resolution>1920")')
+    parser.add_argument('--limit', type=int, default=100, help='Maximum search results')
+    parser.add_argument('--sort-by', help='Sort results by field')
+    parser.add_argument('--export', help='Export results to file (JSON or CSV)')
+    parser.add_argument('--export-format', choices=['json', 'csv'], default='json', help='Export format')
+    
     args = parser.parse_args()
     
     # Initialize database
@@ -496,10 +503,27 @@ Examples:
                 print("Error: Specify --directory or --format with --extract")
                 return
             
-            print(f"\nExtraction complete:")
-            print(f"  Processed: {stats['processed']}")
-            print(f"  Updated:   {stats['updated']}")
-            print(f"  Errors:    {stats['errors']}\n")
+            print(f"Found {len(results)} matching files\n")
+            
+            for i, result in enumerate(results[:10], 1):  # Show first 10
+                print(f"{i}. {result['file_path']}")
+                # Show key metadata
+                metadata = result['metadata']
+                if 'image' in metadata:
+                    img = metadata['image']
+                    print(f"   Resolution: {img.get('width')}x{img.get('height')}")
+                if 'filesystem' in metadata:
+                    fs = metadata['filesystem']
+                    print(f"   Size: {fs.get('size_human')}")
+                print()
+            
+            if len(results) > 10:
+                print(f"... and {len(results) - 10} more results\n")
+            
+            # Export if requested
+            if args.export:
+                query_engine.export_results(results, args.export, args.export_format)
+                print(f"Results exported to: {args.export}\n")
         
         else:
             parser.print_help()
@@ -510,3 +534,282 @@ Examples:
 
 if __name__ == "__main__":
     main()
+
+
+class QueryEngine:
+    """Parse and execute metadata search queries."""
+    
+    def __init__(self, db: MetadataDatabase):
+        """
+        Initialize query engine.
+        
+        Args:
+            db: MetadataDatabase instance
+        """
+        self.db = db
+    
+    def _parse_value(self, value: str) -> Any:
+        """Parse query value to appropriate type."""
+        # Remove quotes
+        value = value.strip().strip('"').strip("'")
+        
+        # Try to parse as number
+        try:
+            if '.' in value:
+                return float(value)
+            return int(value)
+        except ValueError:
+            pass
+        
+        # Try to parse as boolean
+        if value.lower() in ('true', 'yes'):
+            return True
+        if value.lower() in ('false', 'no'):
+            return False
+        
+        # Return as string
+        return value
+    
+    def _extract_nested_value(self, metadata: dict, field_path: str) -> Any:
+        """
+        Extract value from nested metadata using dot notation.
+        
+        Example: 'exif.image.Make' -> metadata['exif']['image']['Make']
+        """
+        try:
+            parts = field_path.split('.')
+            value = metadata
+            for part in parts:
+                if isinstance(value, dict):
+                    value = value.get(part)
+                else:
+                    return None
+            return value
+        except (KeyError, TypeError):
+            return None
+    
+    def _compare_values(self, actual: Any, operator: str, expected: Any) -> bool:
+        """Compare two values using operator."""
+        if actual is None:
+            return False
+        
+        try:
+            if operator == '=':
+                return str(actual).lower() == str(expected).lower()
+            elif operator == '!=':
+                return str(actual).lower() != str(expected).lower()
+            elif operator == '>':
+                return float(actual) > float(expected)
+            elif operator == '<':
+                return float(actual) < float(expected)
+            elif operator == '>=':
+                return float(actual) >= float(expected)
+            elif operator == '<=':
+                return float(actual) <= float(expected)
+            elif operator == 'LIKE':
+                return str(expected).lower() in str(actual).lower()
+            elif operator == 'CONTAINS':
+                return str(expected).lower() in str(actual).lower()
+        except (ValueError, TypeError):
+            return False
+        
+        return False
+    
+    def _parse_simple_query(self, query: str) -> List[Tuple[str, str, Any]]:
+        """
+        Parse simple query into conditions.
+        
+        Supports:
+        - field=value
+        - field>value
+        - field<value
+        - field>=value
+        - field<=value
+        - field!=value
+        - field LIKE value
+        - field CONTAINS value
+        
+        Returns list of (field, operator, value) tuples
+        """
+        conditions = []
+        
+        # Split by AND/OR
+        parts = query.split(' AND ')
+        
+        for part in parts:
+            part = part.strip()
+            
+            # Check for operators
+            for op in ['>=', '<=', '!=', '>', '<', '=', ' LIKE ', ' CONTAINS ']:
+                if op in part:
+                    field, value = part.split(op, 1)
+                    field = field.strip()
+                    value = value.strip()
+                    operator = op.strip()
+                    conditions.append((field, operator, self._parse_value(value)))
+                    break
+        
+        return conditions
+    
+    def search(self, query: str, limit: int = 100, sort_by: str = None) -> List[Dict[str, Any]]:
+        """
+        Search metadata using query string.
+        
+        Query Examples:
+            "camera=Canon"
+            "resolution>1920"
+            "size>5000000"
+            "created>2024-01-01"
+            "format=jpg"
+            
+        Args:
+            query: Search query string
+            limit: Maximum results
+            sort_by: Field to sort by
+            
+        Returns:
+            List of matching files with metadata
+        """
+        # Parse query
+        conditions = self._parse_simple_query(query)
+        
+        if not conditions:
+            logger.warning(f"No valid conditions in query: {query}")
+            return []
+        
+        # Get all metadata from database
+        cursor = self.db.conn.cursor()
+        cursor.execute("SELECT file_path, metadata_json FROM metadata")
+        
+        results = []
+        for row in cursor.fetchall():
+            file_path = row['file_path']
+            metadata = json.loads(row['metadata_json'])
+            
+            # Check all conditions
+            match = True
+            for field, operator, expected in conditions:
+                actual = self._extract_nested_value(metadata, field)
+                if not self._compare_values(actual, operator, expected):
+                    match = False
+                    break
+            
+            if match:
+                results.append({
+                    'file_path': file_path,
+                    'metadata': metadata
+                })
+                
+                if len(results) >= limit:
+                    break
+        
+        # Sort if requested
+        if sort_by and results:
+            results.sort(key=lambda x: self._extract_nested_value(x['metadata'], sort_by) or '')
+        
+        return results
+    
+    def search_by_field(self, field: str, value: Any, operator: str = '=') -> List[Dict[str, Any]]:
+        """
+        Search by specific field.
+        
+        Args:
+            field: Field path (e.g., 'exif.image.Make', 'image.width')
+            value: Value to search for
+            operator: Comparison operator
+            
+        Returns:
+            List of matching files
+        """
+        query = f"{field}{operator}{value}"
+        return self.search(query)
+    
+    def search_by_size(self, min_size: int = None, max_size: int = None) -> List[Dict[str, Any]]:
+        """Search files by size range."""
+        conditions = []
+        if min_size:
+            conditions.append(f"filesystem.size_bytes>={min_size}")
+        if max_size:
+            conditions.append(f"filesystem.size_bytes<={max_size}")
+        
+        query = " AND ".join(conditions) if conditions else "filesystem.size_bytes>0"
+        return self.search(query)
+    
+    def search_by_resolution(self, min_width: int = None, min_height: int = None) -> List[Dict[str, Any]]:
+        """Search images by resolution."""
+        conditions = []
+        if min_width:
+            conditions.append(f"image.width>={min_width}")
+        if min_height:
+            conditions.append(f"image.height>={min_height}")
+        
+        query = " AND ".join(conditions) if conditions else "image.width>0"
+        return self.search(query)
+    
+    def search_by_camera(self, camera: str) -> List[Dict[str, Any]]:
+        """Search by camera make/model."""
+        return self.search(f"exif.image.Make LIKE {camera}")
+    
+    def search_by_format(self, file_format: str) -> List[Dict[str, Any]]:
+        """Search by file format."""
+        return self.search(f"image.format={file_format}")
+    
+    def export_results(self, results: List[Dict[str, Any]], output_path: str, format: str = 'json'):
+        """
+        Export search results to file.
+        
+        Args:
+            results: Search results
+            output_path: Output file path
+            format: 'json' or 'csv'
+        """
+        if format == 'json':
+            with open(output_path, 'w') as f:
+                json.dump(results, f, indent=2, default=str)
+            logger.info(f"Exported {len(results)} results to {output_path}")
+        
+        elif format == 'csv':
+            import csv
+            
+            if not results:
+                logger.warning("No results to export")
+                return
+            
+            # Flatten metadata for CSV
+            with open(output_path, 'w', newline='') as f:
+                # Get all unique fields
+                all_fields = set(['file_path'])
+                for result in results:
+                    metadata = result['metadata']
+                    # Add top-level fields
+                    for key in metadata.keys():
+                        all_fields.add(key)
+                
+                writer = csv.DictWriter(f, fieldnames=sorted(all_fields))
+                writer.writeheader()
+                
+                for result in results:
+                    row = {'file_path': result['file_path']}
+                    # Add metadata fields (simplified)
+                    for key, value in result['metadata'].items():
+                        if isinstance(value, (str, int, float, bool)):
+                            row[key] = value
+                        else:
+                            row[key] = json.dumps(value, default=str)
+                    writer.writerow(row)
+            
+            logger.info(f"Exported {len(results)} results to {output_path}")
+    
+    def get_field_values(self, field: str) -> List[Any]:
+        """Get all unique values for a field (useful for faceted search)."""
+        cursor = self.db.conn.cursor()
+        cursor.execute("SELECT metadata_json FROM metadata")
+        
+        values = set()
+        for row in cursor.fetchall():
+            metadata = json.loads(row['metadata_json'])
+            value = self._extract_nested_value(metadata, field)
+            if value is not None:
+                values.add(str(value))
+        
+        return sorted(list(values))
