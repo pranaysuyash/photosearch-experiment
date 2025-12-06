@@ -45,6 +45,58 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def create_catalog(files_by_dir: Dict[str, List], scan_root: str) -> Dict[str, Any]:
+    """
+    Create comprehensive catalog from scan results.
+    
+    Args:
+        files_by_dir: Dictionary of {directory: [file_info_dicts]}
+        scan_root: Root directory that was scanned
+        
+    Returns:
+        Comprehensive catalog with metadata and statistics
+    """
+    # Count files by type
+    total_files = 0
+    total_images = 0
+    total_videos = 0
+    total_animated = 0
+    
+    for directory, files in files_by_dir.items():
+        for file_info in files:
+            total_files += 1
+            file_type = file_info.get('type', '')
+            if file_type == 'image':
+                total_images += 1
+            elif file_type == 'video':
+                total_videos += 1
+            elif file_type == 'animated':
+                total_animated += 1
+    
+    # Build catalog structure
+    catalog = {
+        'metadata': {
+            'first_scan_date': datetime.now().isoformat(),
+            'last_update_date': datetime.now().isoformat(),
+            'scan_root': scan_root,
+            'total_files': total_files,
+            'total_images': total_images,
+            'total_videos': total_videos,
+            'total_animated': total_animated,
+            'last_changes': {
+                'files_added': 0,
+                'files_removed': 0,
+                'folders_added': 0,
+                'folders_removed': 0
+            }
+        },
+        'catalog': files_by_dir
+    }
+    
+    return catalog
+
+
+
 class PhotoSearch:
     """Unified photo search system."""
     
@@ -80,19 +132,25 @@ class PhotoSearch:
         # Stage 1: Discover files
         print("Stage 1/3: Discovering files...")
         
-        # Scan directories - returns dict of {directory: [files]}
-        catalog = scan_directories(path)
+        # Scan directories - returns dict of {directory: [file_info_dicts]}
+        files_by_dir = scan_directories(path)
         
-        if not catalog:
+        if not files_by_dir:
             logger.error("No files found")
             return {}
+        
+        # Create comprehensive catalog
+        catalog = create_catalog(files_by_dir, path)
         
         # Save catalog
         save_catalog(catalog, self.catalog_path)
         
-        # Count total files
-        file_count = sum(len(files) for files in catalog.values())
-        print(f"  ✓ Found {file_count} files\n")
+        # Get file count from metadata
+        file_count = catalog['metadata']['total_files']
+        print(f"  ✓ Found {file_count} files")
+        print(f"    - Images: {catalog['metadata']['total_images']}")
+        print(f"    - Videos: {catalog['metadata']['total_videos']}")
+        print(f"    - Animated: {catalog['metadata']['total_animated']}\n")
         
         # Stage 2: Extract metadata
         print("Stage 2/3: Extracting metadata...")
