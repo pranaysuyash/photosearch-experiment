@@ -33,12 +33,7 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 # Import from previous tasks
-from file_discovery import (
-    scan_directories, 
-    create_catalog, 
-    save_catalog as save_file_catalog,
-    load_catalog
-)
+from file_discovery import scan_directories, save_catalog, load_catalog
 from metadata_extractor import extract_all_metadata
 from metadata_search import MetadataDatabase, BatchExtractor, QueryEngine
 
@@ -85,21 +80,18 @@ class PhotoSearch:
         # Stage 1: Discover files
         print("Stage 1/3: Discovering files...")
         
-        # Scan directories
-        files_by_dir = scan_directories(path)
+        # Scan directories - returns dict of {directory: [files]}
+        catalog = scan_directories(path)
         
-        # Create catalog
-        catalog = create_catalog(files_by_dir, path)
-        
-        if not catalog or not catalog.get('metadata'):
+        if not catalog:
             logger.error("No files found")
             return {}
         
         # Save catalog
-        save_file_catalog(catalog, self.catalog_path)
+        save_catalog(catalog, self.catalog_path)
         
-        # Count files
-        file_count = catalog['metadata']['total_files']
+        # Count total files
+        file_count = sum(len(files) for files in catalog.values())
         print(f"  ✓ Found {file_count} files\n")
         
         # Stage 2: Extract metadata
