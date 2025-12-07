@@ -18,6 +18,7 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetError
 
 function App() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchMode, setSearchMode] = useState<'semantic' | 'metadata'>('semantic')
   const debouncedSearch = useDebounce(searchQuery, 500);
 
   // If search is active (debounced input has value), show Grid.
@@ -33,27 +34,45 @@ function App() {
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent">
           Living Museum
         </h1>
-        <div className="relative">
-             <input 
-                type="text" 
-                placeholder="Search memories..." 
-                className="bg-secondary/50 border-none rounded-full px-4 py-1.5 text-sm focus:ring-1 focus:ring-primary outline-none w-64"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-             />
-             <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">⌘K</div>
+        <div className="flex flex-col items-end gap-2">
+            <div className="relative">
+                <input 
+                    type="text" 
+                    placeholder="Search memories..." 
+                    className="bg-secondary/50 border-none rounded-full px-4 py-1.5 text-sm focus:ring-1 focus:ring-primary outline-none w-64"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">⌘K</div>
+            </div>
+            
+            {/* Search Mode Toggle */}
+            <div className="flex gap-2 text-xs bg-secondary/30 p-1 rounded-full">
+              <button 
+                onClick={() => setSearchMode('semantic')}
+                className={`px-2 py-0.5 rounded-full transition-colors ${searchMode === 'semantic' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                🧠 Semantic
+              </button>
+              <button 
+                onClick={() => setSearchMode('metadata')}
+                className={`px-2 py-0.5 rounded-full transition-colors ${searchMode === 'metadata' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              >
+                📋 Metadata
+              </button>
+            </div>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 pt-20 pb-24">
+      <main className="flex-1 pt-24 pb-24">
         <ErrorBoundary FallbackComponent={ErrorFallback}>
             {isSearching ? (
                 <div key="search-results">
-                     <div className="container px-4 py-2 text-sm text-muted-foreground">
-                        Searching for "{debouncedSearch}"...
+                     <div className="container px-4 py-2 text-sm text-muted-foreground flex items-center justify-between">
+                        <span>Searching for "{debouncedSearch}" ({searchMode})...</span>
                      </div>
-                     <PhotoGrid query={debouncedSearch} />
+                     <PhotoGrid query={debouncedSearch} mode={searchMode} />
                 </div>
             ) : (
                 <StoryMode key="story-mode" />

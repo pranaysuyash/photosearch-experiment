@@ -24,6 +24,13 @@ export const api = {
     const res = await axios.get(`${API_BASE}/search`, { params: { query } });
     return res.data;
   },
+
+  searchSemantic: async (query: string, limit: number = 50) => {
+    const res = await axios.get(`${API_BASE}/search/semantic`, { 
+      params: { query, limit } 
+    });
+    return res.data;
+  },
   
   getTimeline: async () => {
     const res = await axios.get(`${API_BASE}/timeline`);

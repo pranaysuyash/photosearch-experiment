@@ -3,10 +3,11 @@ import { api } from '../api';
 import { motion } from 'framer-motion';
 import { usePhotoSearch } from '../hooks/usePhotoSearch';
 
-export function PhotoGrid({ query = "" }: { query?: string }) {
+export function PhotoGrid({ query = "", mode = 'metadata' }: { query?: string, mode?: 'semantic' | 'metadata' }) {
   const { results: photos, loading, error, setQuery } = usePhotoSearch({ 
     initialQuery: query,
-    debounceMs: 0 // Debounce handled by parent App.tsx
+    debounceMs: 0, // Debounce handled by parent App.tsx
+    mode: mode
   });
 
   // Sync prop query to hook
