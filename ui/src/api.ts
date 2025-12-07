@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export interface Photo {
   path: string;
@@ -30,8 +30,8 @@ export const api = {
     return res.data.timeline as TimelineData[];
   },
   
-  getImageUrl: (path: string) => {
-    // We need to encode the path to safely pass it in URL
-    return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}`;
+  getImageUrl: (path: string, size?: number) => {
+    const encodedPath = encodeURIComponent(path);
+    return `${API_BASE}/image/thumbnail?path=${encodedPath}${size ? `&size=${size}` : ''}`;
   }
 };

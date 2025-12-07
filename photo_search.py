@@ -177,6 +177,8 @@ class PhotoSearch:
         return {
             'files_found': file_count,
             'files_indexed': db_stats['active_files'],
+            'catalog': catalog['catalog'], # Include raw catalog for API integration
+            'metadata': catalog['metadata'],
             **stats
         }
     

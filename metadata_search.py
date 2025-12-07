@@ -326,7 +326,23 @@ class BatchExtractor:
         }
         
         # Get all files from catalog
-        all_files = catalog.get('files', [])
+        # Catalog structure is {'catalog': {dir: [files]}, 'metadata': ...}
+        # We need to flatten this to a list of full paths
+        all_files = []
+        catalog_data = catalog.get('catalog', {})
+        
+        # Handle both flat list (legacy) and hierarchical dict
+        if isinstance(catalog_data, list):
+            all_files = catalog_data
+        elif isinstance(catalog_data, dict):
+            for dir_path, files in catalog_data.items():
+                for f in files:
+                    if isinstance(f, dict) and 'name' in f:
+                        all_files.append(os.path.join(dir_path, f['name']))
+        
+        # Fallback to direct 'files' key if checking legacy format
+        if not all_files:
+            all_files = catalog.get('files', [])
         
         logger.info(f"Extracting metadata for {len(all_files)} files...")
         

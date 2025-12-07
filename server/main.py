@@ -38,7 +38,7 @@ async def root():
     return {"status": "ok", "message": "PhotoSearch API is running"}
 
 @app.post("/scan")
-async def scan_directory(request: ScanRequest):
+async def scan_directory(request: ScanRequest, force: bool = False):
     """
     Trigger a scan of a directory.
     This is a blocking operation for now.
@@ -49,17 +49,34 @@ async def scan_directory(request: ScanRequest):
             
         # We can reuse the scan logic from PhotoSearch
         # Note: This runs directly. For large libraries, we might need a background task later.
-        catalog = photo_search_engine.scan(request.path)
-        return {"status": "success", "message": f"Scanned {len(catalog.get('catalog', {}).get('files', []))} files", "stats": catalog.get('metadata', {})}
+        catalog = photo_search_engine.scan(request.path, force=force)
+        
+        # Calculate true file count from nested catalog structure
+        # Catalog structure is {'catalog': {'folder_path': [files]}, 'metadata': ...}
+        file_count = 0
+        if 'catalog' in catalog:
+            for files in catalog['catalog'].values():
+                file_count += len(files)
+                
+        return {"status": "success", "message": f"Scanned {file_count} files", "stats": catalog.get('metadata', {})}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
-async def search_photos(query: str, option: int = 14): 
+async def search_photos(query: str = "", option: int = 14): 
     """
     Search for photos using the CLI query engine.
     """
     try:
+        # Handle empty query -> return all recent
+        if not query:
+            # We construct a "match all" query or simply return recent files from DB
+            # For now, let's use a broad term or specific wildcard if supported.
+            # Assuming our engine handles "date" or similar broad terms.
+            # Better approach: Direct DB query for recent.
+            # Use "type:image" to get all images.
+            query = "type:image"
+
         results = photo_search_engine.query_engine.search(query)
         
         # Format results for API
@@ -77,12 +94,61 @@ async def search_photos(query: str, option: int = 14):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/image/thumbnail")
-async def get_thumbnail(path: str):
+async def get_thumbnail(path: str, size: int = 300):
     """
-    Serve a thumbnail or the full image for now.
+    Serve a thumbnail or the full image.
+    Args:
+        path: Path to the image file
+        size: Max dimension for thumbnail (default 300)
     """
+    # Security check: Ensure path is within allowed directory
+    allowed_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    abs_path = os.path.abspath(path)
+    
+    if not abs_path.startswith(allowed_root):
+         raise HTTPException(status_code=403, detail="Access denied")
+
     if os.path.exists(path):
+        try:
+            from PIL import Image
+            import io
+            from fastapi.responses import Response
+            
+            # For 3D textures we want small files (size=300 is good)
+            # For Detail Modal we want larger (size=1200)
+            
+            # Open image
+            with Image.open(path) as img:
+                # Convert to RGB if needed (e.g. RGBA or P)
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                    
+                # Calculate new aspect ratio
+                # thumbnail() modifies in-place and preserves aspect ratio
+                img.thumbnail((size, size))
+                
+                # Save to buffer
+                img_io = io.BytesIO()
+                img.save(img_io, 'JPEG', quality=70)
+                img_io.seek(0)
+                
+                # Return in-memory bytes with caching headers
+                return Response(
+                    content=img_io.getvalue(), 
+                    media_type="image/jpeg", 
+                    headers={"Cache-Control": "public, max-age=31536000"}
+                )
+                
+        except ImportError:
+            # Fallback if Pillow not working
+            pass # fall through to local file
+        except Exception as e:
+            print(f"Thumbnail error: {e}")
+            pass # fall through to local file
+
+        # Fallback to serving original file
         return FileResponse(path)
+
     raise HTTPException(status_code=404, detail="Image not found")
 
 @app.get("/stats")
@@ -115,10 +181,11 @@ async def get_timeline():
         
         # Query: Count photos per month
         # SQLite: strftime('%Y-%m', created_at)
+        # Fix: Use COALESCE to ensure safety against nulls
         query = """
-            SELECT strftime('%Y-%m', date) as month, COUNT(*) as count
+            SELECT strftime('%Y-%m', json_extract(metadata_json, '$.filesystem.created')) as month, COUNT(*) as count
             FROM metadata
-            WHERE date IS NOT NULL
+            WHERE json_extract(metadata_json, '$.filesystem.created') IS NOT NULL
             GROUP BY month
             ORDER BY month ASC
         """

@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "first_scan_date": "2025-12-07T17:33:43.434867",
+    "last_update_date": "2025-12-07T17:33:43.434872",
+    "scan_root": "/Users/pranay/Projects/photosearch_experiment/ui/public",
+    "total_files": 2,
+    "total_images": 2,
+    "total_videos": 0,
+    "total_animated": 0,
+    "last_changes": {
+      "files_added": 0,
+      "files_removed": 0,
+      "folders_added": 0,
+      "folders_removed": 0
+    }
+  },
+  "catalog": {
+    "/Users/pranay/Projects/photosearch_experiment/ui/public": [
+      {
+        "name": "vite.svg",
+        "type": "image",
+        "size": 1497,
+        "mtime": 1765108471.17135
+      },
+      {
+        "name": "test.png",
+        "type": "image",
+        "size": 680912,
+        "mtime": 1765108988.55139
+      }
+    ]
+  }
+}

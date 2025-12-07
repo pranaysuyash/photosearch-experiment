@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-06T21:12:36.404267",
-    "last_update_date": "2025-12-06T21:12:36.404270",
-    "scan_root": ".",
-    "total_files": 3,
-    "total_images": 1,
+    "first_scan_date": "2025-12-07T19:44:43.754044",
+    "last_update_date": "2025-12-07T19:44:43.754048",
+    "scan_root": "/Users/pranay/Projects/photosearch_experiment",
+    "total_files": 6,
+    "total_images": 4,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -15,7 +15,7 @@
     }
   },
   "catalog": {
-    ".": [
+    "/Users/pranay/Projects/photosearch_experiment": [
       {
         "name": "movie2.mov",
         "type": "video",
@@ -33,6 +33,28 @@
         "type": "image",
         "size": 487485,
         "mtime": 1765015076.8066604
+      }
+    ],
+    "/Users/pranay/Projects/photosearch_experiment/ui/public": [
+      {
+        "name": "vite.svg",
+        "type": "image",
+        "size": 1497,
+        "mtime": 1765108471.17135
+      },
+      {
+        "name": "test.png",
+        "type": "image",
+        "size": 680912,
+        "mtime": 1765108988.55139
+      }
+    ],
+    "/Users/pranay/Projects/photosearch_experiment/ui/src/assets": [
+      {
+        "name": "react.svg",
+        "type": "image",
+        "size": 4126,
+        "mtime": 1765108471.1733744
       }
     ]
   }

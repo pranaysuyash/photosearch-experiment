@@ -1,29 +1,45 @@
-import { useEffect, useState } from 'react';
-import { api, Photo } from '../api';
+import { useEffect } from 'react';
+import { api } from '../api';
 import { motion } from 'framer-motion';
+import { usePhotoSearch } from '../hooks/usePhotoSearch';
 
 export function PhotoGrid({ query = "" }: { query?: string }) {
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { results: photos, loading, error, setQuery } = usePhotoSearch({ 
+    initialQuery: query,
+    debounceMs: 0 // Debounce handled by parent App.tsx
+  });
 
+  // Sync prop query to hook
   useEffect(() => {
-    setLoading(true);
-    // If no query, we might want to "browse all" or just typical "recent"
-    // Since our backend search defaults to "recent" or "all" if empty, let's use search with empty string or specific default.
-    // Actually our backend search implementation might require a query. 
-    // Let's assume sending "camera" or just "*" gets us something for now, or improve backend.
-    // For now, let's allow "all" via empty string if API supports it, or handle in API.
-    
-    api.search(query || "date") // Default to date search to get something?
-        // Note: Our photo_search.py logic depends on query type.
-        // If we want "all", we might need a specific endpoint or query handling. 
-        // Let's rely on api search for now.
-      .then(res => setPhotos(res.results))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [query]);
+    setQuery(query.trim());
+  }, [query, setQuery]);
 
-  if (loading) return <div className="p-8 text-center">Loading photos...</div>;
+  if (error) {
+    return (
+        <div className="flex flex-col items-center justify-center p-12 text-destructive">
+            <p>Failed to load photos.</p>
+            <button onClick={() => window.location.reload()} className="mt-2 text-xs underline">Retry</button>
+        </div>
+    );
+  }
+
+  if (loading) {
+      return (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
+            {[...Array(10)].map((_, i) => (
+                <div key={i} className="aspect-square bg-secondary/30 animate-pulse rounded-lg" />
+            ))}
+        </div>
+      );
+  }
+
+  if (photos.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+            <p>No photos found</p>
+        </div>
+      );
+  }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 pb-32">
