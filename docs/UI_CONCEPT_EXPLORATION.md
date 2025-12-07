@@ -410,6 +410,79 @@ Integrate **The Sonic Timeline** as the universal scrubber/navigation bar at the
 
 ---
 
+## Concept 13: The Memory Vortex (React Three Fiber)
+**Contributed by:** Gemini 3 Pro High
+
+### The Idea
+A **3D spiral helix** of photos that ascends into the infinite. You stand in the center or float alongside the spiral.
+
+### How It Works (R3F Implementation)
+- **Geometry:** A procedural spiral mesh where each face is a `PlaneGeometry` holding a photo texture.
+- **Navigation:** Scroll wheel moves you up/down the Y-axis. The helix rotates around you.
+- **Performance:** Use `InstancedMesh` for rendering thousands of photos cheaply. Distance-based LOD (Level of Detail) fades far photos into particles.
+- **Depth:** Older photos are at the bottom (sepia-toned mist), newer ones at top (bright/vibrant).
+
+### Why It Stands Out
+Immersive and infinite. Uses the Z-axis effectively. Great for "doom scrolling" but in a visually stunning 3D way.
+
+### Challenges
+- Texture management is heavy (needs efficient texture atlasing or lazy loading).
+- Controls can cause motion sickness if too fast.
+
+---
+
+## Concept 14: The Immersive Globe (Three.js)
+**Contributed by:** Gemini 3 Pro High
+
+### The Idea
+A true **3D Earth** floating in space. Photos are pillars or "pins" sticking out of the surface.
+
+### How It Works (R3F Implementation)
+- **The Globe:** A lush 3D sphere with topography. `react-three-drei` for easy globe controls.
+- **The Stacks:** Photos pile up as 3D cylinders (stacks) on locations. Height of stack = number of photos.
+- **Interactions:** Spin the earth. Zoom in to ground level (Google Earth style).
+- **Transitions:** Clicking a stack flies the camera down to "street view" where photos form a surrounding wall.
+
+### Why It Stands Out
+The ultimate travelogue interface. Far superior to 2D maps for visualizing global travel history.
+
+### Challenges
+- WebGL performance on lower-end devices.
+- Need high-res earth textures.
+
+---
+
+## Concept 15: The Time Tunnel
+**Contributed by:** Gemini 3 Pro High
+
+### The Idea
+You fly *forward* through a rectangular or circular **tunnel**. Photos paper the walls of the tunnel.
+
+### How It Works (R3F Implementation)
+- **Movement:** Constant forward velocity (autopilot) or controlled speed.
+- **Structure:** The tunnel walls are made of photo grids.
+- **Search:** A search term causes non-matching photos to fall away or turn transparent, leaving only the matches floating in 3D space.
+- **Speed:** Fast travel blurs the photos (motion blur shader) until you stop.
+
+### Why It Stands Out
+Visceral sense of speed and volume. Makes searching through 10 years of photos feel like time travel.
+
+### Challenges
+- Hard to inspect individual images detailedly without stopping.
+
+---
+
+# META DISCUSSION
+
+## Gemini 3 Pro High Thoughts (3D Edition)
+**Most Innovative:** The Memory Vortex (Concept 13) - R3F makes this performant via instancing.
+**Most Impactful:** The Immersive Globe (Concept 14) - This is a "killer feature" for travelers.
+
+**My Recommendation:**
+Use **React Three Fiber** for a specific "Explore Mode". Don't force the main library into 3D (usability risk), but offer a "3D View" switch that smooth-transitions the grid into the Vortex or Globe.
+
+---
+
 # ADD YOUR IDEAS BELOW
 
 ## Concept N: [Your Title]
