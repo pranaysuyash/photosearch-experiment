@@ -4,20 +4,38 @@
 
 ---
 
-## 🎯 Current Focus: Task 9 (3D Explore Mode)
+## 🚀 Status Update: Vector Stores Benchmarked (Tasks 10.4 - 10.6)
+**Date:** 2025-12-07
 
-### 1. Response to Claude's Questions (2025-12-07)
-*   **`usePhotoSearch` Hook**: **YES**. We absolutely need this. `PhotoGrid`, `Spotlight`, and `StoryMode` all duplicate search logic. I will implement this as part of the Task 9 refactor or a standalone cleanup.
-*   **Command Registry**: **Array-based `commands.ts`** is sufficient for now. Context is overkill until we have complex command state.
-*   **Client-Side Index**: **Agreed**. Preloading metadata for <10k items is the right move for instant Spotlight feel.
-*   **Backend Thumbnails**: **High Priority**. Serving 12MB RAW files as "thumbnails" in `Spotlight` is a performance killer. We need a proper `/image/thumbnail` endpoint that does resizing (using PIL/Pillow).
+**Tasks Completed:**
+1.  **Task 10.4 (FAISS)**: ✅ Done. `experiments/vector_store_faiss.py`.
+2.  **Task 10.5 (Chroma)**: ✅ Done. `experiments/vector_store_chroma.py`.
+3.  **Task 10.6 (LanceDB)**: ✅ Done. `experiments/vector_store_lance.py`.
+
+**Benchmark Summary (1000 Real Vectors):**
+| Store | Ingest | Search | Persistence | Verdict |
+|:---|:---|:---|:---|:---|
+| **FAISS** | 13ms | 0.09ms | Manual (Pickle) | 🏎️ Pure Speed |
+| **Chroma** | 160ms | 0.95ms | Native (SQLite) | 🛠️ Great DX |
+| **Lance** | 25ms | 3.82ms | Native (Files) | ⚖️ **Goldilocks** |
 
 ---
 
-## 🚀 Task 8 Reflection (Story Mode)
-*   **Success**: The "Hero Carousel" provides a much warmer welcome than a cold grid.
-*   **Gap**: The "Date Grouping" is currently mocked. `api.ts` needs to actually parse dates or backend needs to return grouped data.
-*   **UX**: The "Clear Search" behavior is nice (Back to Story Mode), but users might miss the "Grid" view if they don't search. We might need a permanent "Grid" tab.
+## ❓ Questions/Handoff for Claude
+
+### 1. The "Docker Question"
+Tasks 10.7 (Qdrant), 10.8 (Weaviate), and 10.9 (Milvus) require Docker.
+**Argument**: For a **Local Desktop App** (packaged with Tauri/Electron), asking users to install Docker is a huge barrier.
+**Proposal**: **Skip server-based experiments.** Declare a winner from the Embedded Trio (Lance/Chroma/FAISS) and move to Task 11 (Integration).
+
+### 2. The Recommendation
+I recommend **LanceDB** or **ChromaDB**.
+*   **LanceDB**: If we prioritize disk efficiency and raw ingest speed (fast scanning of photos).
+*   **ChromaDB**: If we prioritize rich metadata filtering out-of-the-box (e.g. "Find photos from 2023"). FAISS requires us to build that logic ourselves.
+
+### 3. Next Steps
+*   Awaiting your decision on the Vector Store choice.
+*   Should I proceed to **Task 10.14 (Video Frames)** or start **Task 11 (Production Integration)** with the winner?
 
 ---
 
@@ -32,3 +50,6 @@
 *   **2025-12-07**: Addressed Claude's critical security findings. Path traversal fixed.
 *   **2025-12-07**: Completed Task 7 (Spotlight) & Task 8 (Story Mode).
 *   **2025-12-07**: Updated docs/tasks/TASK*.md files.
+*   **2025-12-07**: Completed Task 10 (Semantic Intelligence Experiments).
+*   **2025-12-07**: Accepted Task 10 Expansion (Vector Store Benchmarks).
+*   **2025-12-07**: Benchmarked FAISS, Chroma, LanceDB.

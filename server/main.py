@@ -11,12 +11,14 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from photo_search import PhotoSearch
 
-app = FastAPI(title="PhotoSearch API", description="Backend for the Living Museum Interface")
+from server.config import settings
+
+app = FastAPI(title=settings.APP_NAME, description="Backend for the Living Museum Interface", debug=settings.DEBUG)
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=settings.CORS_ORIGINS, 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,16 +28,113 @@ app.add_middleware(
 # We prefer a persistent instance
 photo_search_engine = PhotoSearch()
 
+# Initialize Semantic Search Components
+from server.lancedb_store import LanceDBStore
+from server.embedding_generator import EmbeddingGenerator
+from server.image_loader import load_image
+
+# Lazily loaded or initialized here
+# Note: EmbeddingGenerator loads a model (~500MB), so it might take a moment on first request or startup
+vector_store = LanceDBStore()
+embedding_generator = None # Load lazily or on startup
+
+@app.on_event("startup")
+async def startup_event():
+    global embedding_generator
+    print("Initializing Embedding Model...")
+    # Initialize in background or here? For now, simple synchronous load.
+    try:
+        embedding_generator = EmbeddingGenerator()
+        print("Embedding Model Loaded.")
+    except Exception as e:
+        print(f"Failed to load embedding model: {e}")
+
 class ScanRequest(BaseModel):
     path: str
 
 class SearchRequest(BaseModel):
     query: str
-    option: int = 14 # Default to custom/quick search
+    limit: int = 50
 
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "PhotoSearch API is running"}
+
+def process_semantic_indexing(files_to_index: List[str]):
+    """
+    Helper to generate embeddings for a list of file paths.
+    """
+    global embedding_generator
+    if not embedding_generator:
+        embedding_generator = EmbeddingGenerator()
+        
+    print(f"Indexing {len(files_to_index)} files for semantic search...")
+    
+    # 1. Deduplication: Filter out files that are already indexed
+    # Using Full Path as ID to avoid collisions
+    try:
+        existing_ids = vector_store.get_all_ids()
+        files_to_process = [f for f in files_to_index if f not in existing_ids]
+    except Exception as e:
+        print(f"Error checking existing IDs: {e}")
+        files_to_process = files_to_index
+
+    if not files_to_process:
+        print("All files already indexed. Skipping.")
+        return
+
+    print(f"Processing {len(files_to_process)} new files (skipped {len(files_to_index) - len(files_to_process)} existing)...")
+    
+    ids = []
+    vectors = []
+    metadatas = []
+    
+    for i, file_path in enumerate(files_to_process):
+        if i % 10 == 0:
+            print(f"  Processed {i}/{len(files_to_process)}...")
+            
+        try:
+            # Check for valid image or video extensions
+            valid_img_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif', '.heic', '.tiff', '.tif']
+            valid_vid_exts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']
+            
+            is_video = False
+            if any(file_path.lower().endswith(ext) for ext in valid_vid_exts):
+                 is_video = True
+            elif not any(file_path.lower().endswith(ext) for ext in valid_img_exts):
+                continue
+            
+            img = None
+            if is_video:
+                from server.image_loader import extract_video_frame
+                # Extract frame
+                try:
+                    img = extract_video_frame(file_path)
+                except Exception as ve:
+                    print(f"Skipping video {os.path.basename(file_path)}: {ve}")
+                    continue
+            else:
+                img = load_image(file_path)
+
+            if img:
+                vec = embedding_generator.generate_image_embedding(img)
+                if vec:
+                    # FIX: Use full path as ID to ensure uniqueness
+                    ids.append(file_path) 
+                    vectors.append(vec)
+                    # Store minimalist metadata, relies on main DB for details
+                    metadatas.append({
+                        "path": file_path, 
+                        "filename": os.path.basename(file_path),
+                        "type": "video" if is_video else "image"
+                    })
+        except Exception as e:
+            print(f"Failed to embed {file_path}: {e}")
+            
+    if ids:
+        time_start = __import__("time").time()
+        vector_store.add_batch(ids, vectors, metadatas)
+        print(f"Added {len(ids)} vectors to LanceDB in {__import__('time').time() - time_start:.2f}s.")
 
 @app.post("/scan")
 async def scan_directory(request: ScanRequest, force: bool = False):
@@ -47,39 +146,61 @@ async def scan_directory(request: ScanRequest, force: bool = False):
         if not os.path.exists(request.path):
             raise HTTPException(status_code=404, detail="Directory not found")
             
-        # We can reuse the scan logic from PhotoSearch
-        # Note: This runs directly. For large libraries, we might need a background task later.
+        # 1. Metadata Scan
         catalog = photo_search_engine.scan(request.path, force=force)
         
-        # Calculate true file count from nested catalog structure
-        # Catalog structure is {'catalog': {'folder_path': [files]}, 'metadata': ...}
         file_count = 0
+        all_files = []
         if 'catalog' in catalog:
-            for files in catalog['catalog'].values():
+            for folder, files in catalog['catalog'].items():
+                for f in files:
+                    full_path = os.path.join(folder, f['name'])
+                    all_files.append(full_path)
                 file_count += len(files)
+        
+        # 2. Semantic Indexing (Synchronous for now, MVP)
+        if all_files:
+             process_semantic_indexing(all_files)
                 
-        return {"status": "success", "message": f"Scanned {file_count} files", "stats": catalog.get('metadata', {})}
+        return {
+            "status": "success", 
+            "message": f"Scanned {file_count} files", 
+            "extracted_vectors": len(all_files),
+            "stats": catalog.get('metadata', {})
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/index")
+async def force_indexing(request: ScanRequest):
+    """
+    Force semantic indexing of a directory (without re-scanning metadata).
+    """
+    try:
+        # Just walk and index
+        files_to_index = []
+        for root, dirs, files in os.walk(request.path):
+             for file in files:
+                 files_to_index.append(os.path.join(root, file))
+        
+        if files_to_index:
+            process_semantic_indexing(files_to_index)
+            
+        return {"status": "success", "indexed": len(files_to_index)}
+    except Exception as e:
+         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
 async def search_photos(query: str = "", option: int = 14): 
     """
-    Search for photos using the CLI query engine.
+    Metadata Search (Legacy/Fast).
     """
     try:
-        # Handle empty query -> return all recent
         if not query:
-            # We construct a "match all" query or simply return recent files from DB
-            # For now, let's use a broad term or specific wildcard if supported.
-            # Assuming our engine handles "date" or similar broad terms.
-            # Better approach: Direct DB query for recent.
-            # Use "type:image" to get all images.
             query = "type:image"
 
         results = photo_search_engine.query_engine.search(query)
         
-        # Format results for API
         formatted_results = []
         for res in results:
             formatted_results.append({
@@ -90,6 +211,36 @@ async def search_photos(query: str = "", option: int = 14):
             })
             
         return {"count": len(formatted_results), "results": formatted_results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/search/semantic")
+async def search_semantic(query: str, limit: int = 50):
+    """
+    Semantic Search using text-to-image embeddings.
+    """
+    global embedding_generator
+    try:
+        if not embedding_generator:
+            embedding_generator = EmbeddingGenerator()
+            
+        # 1. Generate text embedding
+        text_vec = embedding_generator.generate_text_embedding(query)
+        
+        # 2. Search LanceDB
+        results = vector_store.search(text_vec, limit=limit)
+        
+        # 3. Format
+        formatted = []
+        for r in results:
+            formatted.append({
+                "path": r['metadata']['path'],
+                "filename": r['metadata']['filename'],
+                "score": r['score'],
+                "metadata": r['metadata'] # Pass through extra metadata
+            })
+            
+        return {"count": len(formatted), "results": formatted}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

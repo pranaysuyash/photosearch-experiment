@@ -1,4 +1,10 @@
 fastapi
 uvicorn
 python-multipart
+pillow
+python-dotenv
+pydantic-settings
+python-multipart
 pydantic
+requests
+sentence-transformers

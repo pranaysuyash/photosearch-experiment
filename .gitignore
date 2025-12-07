@@ -31,5 +31,9 @@ movie1.mp4
 movie2.mov
 data/
 
-# Temporary files
+# Vector Store Data
+data/vector_store/
+data/*_benchmark/
+
+# Byte-compiled / optimized / DLL files
 task3_readme_section.md

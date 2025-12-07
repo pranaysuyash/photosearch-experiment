@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-07T19:44:43.754044",
-    "last_update_date": "2025-12-07T19:44:43.754048",
-    "scan_root": "/Users/pranay/Projects/photosearch_experiment",
-    "total_files": 6,
-    "total_images": 4,
+    "first_scan_date": "2025-12-08T00:46:21.966966",
+    "last_update_date": "2025-12-08T00:46:21.966969",
+    "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
+    "total_files": 4,
+    "total_images": 2,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -15,46 +15,30 @@
     }
   },
   "catalog": {
-    "/Users/pranay/Projects/photosearch_experiment": [
+    "/Users/pranay/Projects/photosearch_experiment/media": [
       {
         "name": "movie2.mov",
         "type": "video",
         "size": 48708665,
-        "mtime": 1765015076.7976522
+        "mtime": 1765122650.374705
+      },
+      {
+        "name": "sample1.jpg",
+        "type": "image",
+        "size": 52346,
+        "mtime": 1765121244.9280517
       },
       {
         "name": "movie1.mp4",
         "type": "video",
         "size": 48154162,
-        "mtime": 1765015076.7319157
+        "mtime": 1765122650.374507
       },
       {
         "name": "image1.png",
         "type": "image",
         "size": 487485,
-        "mtime": 1765015076.8066604
-      }
-    ],
-    "/Users/pranay/Projects/photosearch_experiment/ui/public": [
-      {
-        "name": "vite.svg",
-        "type": "image",
-        "size": 1497,
-        "mtime": 1765108471.17135
-      },
-      {
-        "name": "test.png",
-        "type": "image",
-        "size": 680912,
-        "mtime": 1765108988.55139
-      }
-    ],
-    "/Users/pranay/Projects/photosearch_experiment/ui/src/assets": [
-      {
-        "name": "react.svg",
-        "type": "image",
-        "size": 4126,
-        "mtime": 1765108471.1733744
+        "mtime": 1765122650.37408
       }
     ]
   }

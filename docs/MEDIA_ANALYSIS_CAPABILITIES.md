@@ -422,6 +422,7 @@
 - OpenCV, PIL/Pillow, scikit-image
 - PyTorch, TensorFlow, JAX
 - Transformers (Hugging Face)
+- **sentence-transformers** ← Used for CLIP embeddings
 - ultralytics (YOLO)
 - MediaPipe
 - face_recognition
@@ -440,6 +441,7 @@
 
 ### Open Source Models
 - CLIP, BLIP, LLaVA
+- **SigLIP** ← Google's 2024 CLIP successor (planned for testing)
 - Stable Diffusion, SDXL
 - Whisper
 - YOLO v8/v9/v10
@@ -454,6 +456,13 @@
 - Weaviate
 - Qdrant
 - FAISS
+- **LanceDB** ← Added 2025-12-07 (disk-native, fast ingest)
+
+> **📊 Benchmark Notes (2025-12-07):**
+> Tested FAISS, ChromaDB, LanceDB with 1000 real images.
+> - FAISS: Fastest search (0.09ms), but no metadata support
+> - ChromaDB: Best DX, built-in metadata filtering
+> - LanceDB: Best balance (25ms ingest, 4ms search, disk-native)
 
 ---
 
@@ -461,9 +470,12 @@
 
 _Add new ideas here as we discover them!_
 
-- [ ] 
-- [ ] 
-- [ ] 
+- [x] **Vector store benchmarking** - Compare FAISS/Chroma/Lance (Done 2025-12-07)
+- [ ] **Hybrid search** - Combine semantic + metadata filtering
+- [ ] **Incremental indexing** - Only re-embed changed files
+- [ ] **Embedding caching** - Pre-compute and store embeddings to avoid re-generation
+- [ ] **Multi-frame video embedding** - Average or concatenate frame embeddings
+- [ ] **Face clustering** - Group photos by detected faces (InsightFace + HDBSCAN) 
 
 ---
 
