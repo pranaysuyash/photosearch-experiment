@@ -466,7 +466,43 @@
 
 ---
 
-## 💡 IDEAS TO ADD
+## � SEARCH MODES ROADMAP
+
+### Currently Implemented ✅
+| Mode | Description | Status |
+|:-----|:------------|:-------|
+| **Text → Image (Semantic)** | Natural language query: "sunset at beach" | ✅ `/search/semantic` |
+| **Metadata Search** | Filename, date, type filters | ✅ `/search` |
+
+### Ready to Implement 🔧
+| Mode | Description | Effort | Notes |
+|:-----|:------------|:-------|:------|
+| **Image → Image** | Upload/paste image, find similar | Low | Same embedding model, compare vectors |
+| **Sketch → Image** | Draw rough sketch, find matches | Medium | CLIP handles rough drawings surprisingly well |
+| **Color Palette Search** | Find images by dominant colors | Low | Extract color histogram, filter by similarity |
+| **Object Filter** | "Show only photos with dogs" | Medium | CLIP or YOLO for object detection |
+
+### Experimental Ideas 🧪
+| Mode | Description | Tech Stack | Wow Factor |
+|:-----|:------------|:-----------|:-----------|
+| **Camera → Image** | Point phone camera at object, find photos of it | WebRTC + CLIP | ⭐⭐⭐⭐⭐ |
+| **Voice → Image** | "Hey, find my vacation photos" | Whisper + CLIP | ⭐⭐⭐⭐ |
+| **Draw on Canvas** | Use Apple Pencil/touch to sketch | Canvas API + CLIP | ⭐⭐⭐⭐⭐ |
+| **Face Recognition** | "Show photos of John" | InsightFace + Clustering | ⭐⭐⭐⭐ |
+| **Scene/Mood** | "Cozy", "Adventurous", "Romantic" | Fine-tuned CLIP | ⭐⭐⭐ |
+
+### Futuristic / AR-VR 🚀
+| Idea | Description | Tech | Complexity |
+|:-----|:------------|:-----|:-----------|
+| **3D Memory Museum** | Walk through your photos in VR | React Three Fiber / WebXR | Already have `MemoryMuseum.tsx`! |
+| **AR Photo Frames** | Place virtual frames on walls | ARKit/ARCore + WebXR | High |
+| **Spatial Photo Gallery** | Photos float around you in 3D space | Quest 3 / Vision Pro | Very High |
+| **Time Travel Mode** | Scrub timeline, see photos spatially arranged by location | Mapbox + Three.js | Medium |
+| **AI Photo Curator** | "Create a slideshow of my best memories" | GPT-4V + CLIP scoring | Medium |
+
+---
+
+## �💡 IDEAS TO ADD
 
 _Add new ideas here as we discover them!_
 
@@ -475,7 +511,11 @@ _Add new ideas here as we discover them!_
 - [ ] **Incremental indexing** - Only re-embed changed files
 - [ ] **Embedding caching** - Pre-compute and store embeddings to avoid re-generation
 - [ ] **Multi-frame video embedding** - Average or concatenate frame embeddings
-- [ ] **Face clustering** - Group photos by detected faces (InsightFace + HDBSCAN) 
+- [ ] **Face clustering** - Group photos by detected faces (InsightFace + HDBSCAN)
+- [ ] **Image → Image search** - Find similar photos by uploading one
+- [ ] **Sketch to search** - Draw rough shape, find matching photos
+- [ ] **Camera live search** - Point camera, find photos in real-time
+- [ ] **AR gallery overlay** - View photos as floating holograms
 
 ---
 
@@ -488,4 +528,4 @@ _Add new ideas here as we discover them!_
 
 ---
 
-**Last Updated:** 2025-12-07
+**Last Updated:** 2025-12-08
