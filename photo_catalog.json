@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "first_scan_date": "2025-12-06T21:12:36.404267",
+    "last_update_date": "2025-12-06T21:12:36.404270",
+    "scan_root": ".",
+    "total_files": 3,
+    "total_images": 1,
+    "total_videos": 2,
+    "total_animated": 0,
+    "last_changes": {
+      "files_added": 0,
+      "files_removed": 0,
+      "folders_added": 0,
+      "folders_removed": 0
+    }
+  },
+  "catalog": {
+    ".": [
+      {
+        "name": "movie2.mov",
+        "type": "video",
+        "size": 48708665,
+        "mtime": 1765015076.7976522
+      },
+      {
+        "name": "movie1.mp4",
+        "type": "video",
+        "size": 48154162,
+        "mtime": 1765015076.7319157
+      },
+      {
+        "name": "image1.png",
+        "type": "image",
+        "size": 487485,
+        "mtime": 1765015076.8066604
+      }
+    ]
+  }
+}
