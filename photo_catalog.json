@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-08T00:46:21.966966",
-    "last_update_date": "2025-12-08T00:46:21.966969",
+    "first_scan_date": "2025-12-08T08:32:41.704439",
+    "last_update_date": "2025-12-08T08:32:41.704477",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 4,
-    "total_images": 2,
+    "total_files": 54,
+    "total_images": 52,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -17,10 +17,202 @@
   "catalog": {
     "/Users/pranay/Projects/photosearch_experiment/media": [
       {
+        "name": "food_14.jpg",
+        "type": "image",
+        "size": 102750,
+        "mtime": 1765162952.8780987
+      },
+      {
+        "name": "people_17.jpg",
+        "type": "image",
+        "size": 75336,
+        "mtime": 1765162952.3073006
+      },
+      {
+        "name": "food_4.jpg",
+        "type": "image",
+        "size": 61011,
+        "mtime": 1765162952.6795344
+      },
+      {
+        "name": "architecture_46.jpg",
+        "type": "image",
+        "size": 78660,
+        "mtime": 1765162951.412246
+      },
+      {
+        "name": "food_29.jpg",
+        "type": "image",
+        "size": 90013,
+        "mtime": 1765162952.7027395
+      },
+      {
+        "name": "technology_33.jpg",
+        "type": "image",
+        "size": 114835,
+        "mtime": 1765162952.877795
+      },
+      {
+        "name": "technology_18.jpg",
+        "type": "image",
+        "size": 53941,
+        "mtime": 1765162952.3164406
+      },
+      {
+        "name": "architecture_41.jpg",
+        "type": "image",
+        "size": 41315,
+        "mtime": 1765162952.4879434
+      },
+      {
+        "name": "food_39.jpg",
+        "type": "image",
+        "size": 18671,
+        "mtime": 1765162952.3588119
+      },
+      {
+        "name": "technology_23.jpg",
+        "type": "image",
+        "size": 42165,
+        "mtime": 1765162952.3180566
+      },
+      {
+        "name": "people_12.jpg",
+        "type": "image",
+        "size": 56929,
+        "mtime": 1765162952.6115336
+      },
+      {
+        "name": "technology_8.jpg",
+        "type": "image",
+        "size": 125375,
+        "mtime": 1765162952.8502417
+      },
+      {
+        "name": "nature_15.jpg",
+        "type": "image",
+        "size": 44366,
+        "mtime": 1765162952.6702323
+      },
+      {
+        "name": "architecture_6.jpg",
+        "type": "image",
+        "size": 25815,
+        "mtime": 1765162952.367484
+      },
+      {
+        "name": "architecture_31.jpg",
+        "type": "image",
+        "size": 40369,
+        "mtime": 1765162952.531774
+      },
+      {
+        "name": "people_2.jpg",
+        "type": "image",
+        "size": 60393,
+        "mtime": 1765162952.7580216
+      },
+      {
+        "name": "architecture_26.jpg",
+        "type": "image",
+        "size": 73547,
+        "mtime": 1765162952.685162
+      },
+      {
+        "name": "food_49.jpg",
+        "type": "image",
+        "size": 67899,
+        "mtime": 1765162952.619883
+      },
+      {
+        "name": "technology_43.jpg",
+        "type": "image",
+        "size": 89653,
+        "mtime": 1765162951.3362155
+      },
+      {
+        "name": "people_7.jpg",
+        "type": "image",
+        "size": 19157,
+        "mtime": 1765162952.4705446
+      },
+      {
+        "name": "architecture_36.jpg",
+        "type": "image",
+        "size": 78871,
+        "mtime": 1765162952.592462
+      },
+      {
+        "name": "architecture_1.jpg",
+        "type": "image",
+        "size": 87247,
+        "mtime": 1765162952.614097
+      },
+      {
+        "name": "architecture_21.jpg",
+        "type": "image",
+        "size": 75671,
+        "mtime": 1765162952.4950833
+      },
+      {
+        "name": "nature_10.jpg",
+        "type": "image",
+        "size": 84585,
+        "mtime": 1765162952.6796691
+      },
+      {
+        "name": "architecture_11.jpg",
+        "type": "image",
+        "size": 61278,
+        "mtime": 1765162952.5526373
+      },
+      {
+        "name": "nature_35.jpg",
+        "type": "image",
+        "size": 143156,
+        "mtime": 1765162952.7674596
+      },
+      {
         "name": "movie2.mov",
         "type": "video",
         "size": 48708665,
         "mtime": 1765122650.374705
+      },
+      {
+        "name": "nature_20.jpg",
+        "type": "image",
+        "size": 62648,
+        "mtime": 1765162952.6740992
+      },
+      {
+        "name": "people_42.jpg",
+        "type": "image",
+        "size": 61440,
+        "mtime": 1765162952.6165023
+      },
+      {
+        "name": "nature_5.jpg",
+        "type": "image",
+        "size": 54525,
+        "mtime": 1765162952.6796064
+      },
+      {
+        "name": "people_47.jpg",
+        "type": "image",
+        "size": 110905,
+        "mtime": 1765162952.8918757
+      },
+      {
+        "name": "food_44.jpg",
+        "type": "image",
+        "size": 98097,
+        "mtime": 1765162952.6787696
+      },
+      {
+        "name": "nature_0.jpg",
+        "type": "image",
+        "size": 89793,
+        "mtime": 1765162952.4750056
       },
       {
         "name": "sample1.jpg",
@@ -29,16 +221,124 @@
         "mtime": 1765121244.9280517
       },
       {
+        "name": "architecture_16.jpg",
+        "type": "image",
+        "size": 78699,
+        "mtime": 1765162952.5291984
+      },
+      {
+        "name": "nature_30.jpg",
+        "type": "image",
+        "size": 95454,
+        "mtime": 1765162952.6136658
+      },
+      {
+        "name": "nature_25.jpg",
+        "type": "image",
+        "size": 19320,
+        "mtime": 1765162952.2769847
+      },
+      {
+        "name": "technology_48.jpg",
+        "type": "image",
+        "size": 30446,
+        "mtime": 1765162952.2322283
+      },
+      {
+        "name": "technology_13.jpg",
+        "type": "image",
+        "size": 72391,
+        "mtime": 1765162952.576539
+      },
+      {
+        "name": "people_22.jpg",
+        "type": "image",
+        "size": 127676,
+        "mtime": 1765162952.8455102
+      },
+      {
         "name": "movie1.mp4",
         "type": "video",
         "size": 48154162,
         "mtime": 1765122650.374507
       },
       {
+        "name": "people_37.jpg",
+        "type": "image",
+        "size": 64123,
+        "mtime": 1765162952.74328
+      },
+      {
+        "name": "food_34.jpg",
+        "type": "image",
+        "size": 33825,
+        "mtime": 1765162952.5289767
+      },
+      {
+        "name": "technology_38.jpg",
+        "type": "image",
+        "size": 105704,
+        "mtime": 1765162952.5848336
+      },
+      {
+        "name": "nature_40.jpg",
+        "type": "image",
+        "size": 110905,
+        "mtime": 1765162952.8915586
+      },
+      {
+        "name": "technology_3.jpg",
+        "type": "image",
+        "size": 123856,
+        "mtime": 1765162952.847037
+      },
+      {
         "name": "image1.png",
         "type": "image",
         "size": 487485,
         "mtime": 1765122650.37408
+      },
+      {
+        "name": "nature_45.jpg",
+        "type": "image",
+        "size": 99233,
+        "mtime": 1765162952.475159
+      },
+      {
+        "name": "technology_28.jpg",
+        "type": "image",
+        "size": 63709,
+        "mtime": 1765162952.6304398
+      },
+      {
+        "name": "people_27.jpg",
+        "type": "image",
+        "size": 42595,
+        "mtime": 1765162952.4752786
+      },
+      {
+        "name": "food_24.jpg",
+        "type": "image",
+        "size": 78684,
+        "mtime": 1765162952.6137424
+      },
+      {
+        "name": "food_9.jpg",
+        "type": "image",
+        "size": 105758,
+        "mtime": 1765162952.8228734
+      },
+      {
+        "name": "people_32.jpg",
+        "type": "image",
+        "size": 49175,
+        "mtime": 1765162952.5962327
+      },
+      {
+        "name": "food_19.jpg",
+        "type": "image",
+        "size": 117675,
+        "mtime": 1765162952.8804462
       }
     ]
   }

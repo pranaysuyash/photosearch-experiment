@@ -37,3 +37,14 @@ data/*_benchmark/
 
 # Byte-compiled / optimized / DLL files
 task3_readme_section.md
+
+# Media files (large demo images/videos)
+media/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.mp4
+*.mov
+*.avi
+*.webm
