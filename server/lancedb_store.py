@@ -81,9 +81,9 @@ class LanceDBStore:
             return []
             
         try:
-            # Search using LanceDB
-            # metric="L2" (Euclidean) is default. For normalized vectors, this ranks same as Cosine.
-            results = self.table.search(query_embedding).limit(limit).to_list()
+            # Search using LanceDB with cosine metric
+            # Using metric="cosine" gives us cosine distance (1 - cosine_similarity)
+            results = self.table.search(query_embedding, vector_column_name="vector").metric("cosine").limit(limit).to_list()
             
             out = []
             for r in results:
@@ -91,9 +91,13 @@ class LanceDBStore:
                 reserved = {'vector', '_distance', 'id'}
                 meta = {k: v for k, v in r.items() if k not in reserved}
                 
+                # _distance is cosine distance (1 - similarity) for metric="cosine"
+                # So similarity = 1 - distance
+                cosine_similarity = 1.0 - r['_distance']
+                
                 out.append({
                     'id': r['id'],
-                    'score': 1.0 - (r['_distance'] ** 2) / 2, # Correct Cosine conversion from L2
+                    'score': max(0, cosine_similarity),  # Clamp to non-negative
                     'metadata': meta
                 })
             return out
