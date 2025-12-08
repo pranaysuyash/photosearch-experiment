@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, MapPin, Calendar, HardDrive, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Camera, MapPin, Calendar, HardDrive, Image as ImageIcon, ChevronLeft, ChevronRight, Music, FileText, Code } from "lucide-react";
 import { type Photo, api } from "../api";
 
 interface PhotoDetailProps {
@@ -127,13 +127,22 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             </button>
                         )}
                         
-                        {/* Image */}
+                        {/* Image or Video */}
                         <div className="flex-1 flex items-center justify-center rounded-xl overflow-hidden bg-black/50">
-                             <img 
-                                src={api.getImageUrl(photo.path, 1200)} // High res
-                                alt={photo.filename}
-                                className="max-h-[85vh] w-auto object-contain"
-                            />
+                            {api.isVideo(photo.path) ? (
+                                <video 
+                                    src={api.getVideoUrl(photo.path)}
+                                    controls
+                                    autoPlay
+                                    className="max-h-[85vh] w-auto object-contain"
+                                />
+                            ) : (
+                                <img 
+                                    src={api.getImageUrl(photo.path, 1200)}
+                                    alt={photo.filename}
+                                    className="max-h-[85vh] w-auto object-contain"
+                                />
+                            )}
                         </div>
                         
                         {/* Metadata Panel */}
@@ -149,15 +158,114 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                                 </div>
                             )}
                             
+                            {/* File Info */}
+                            {metadata.file && (
+                                <MetadataSection icon={HardDrive} title="File Info">
+                                    <MetadataRow label="Name" value={metadata.file.name} />
+                                    <MetadataRow label="Extension" value={metadata.file.extension} />
+                                    <MetadataRow label="MIME Type" value={metadata.file.mime_type} />
+                                </MetadataSection>
+                            )}
+                            
                             {/* Image Properties */}
-                            {(img.width || img.format) && (
+                            {img.width && (
                                 <MetadataSection icon={ImageIcon} title="Image">
-                                    <MetadataRow label="Dimensions" value={img.width && img.height ? `${img.width} × ${img.height}` : undefined} />
+                                    <MetadataRow label="Dimensions" value={`${img.width} × ${img.height}`} />
                                     <MetadataRow label="Format" value={img.format} />
                                     <MetadataRow label="Mode" value={img.mode} />
+                                    <MetadataRow label="DPI" value={img.dpi?.join(' × ')} />
+                                    <MetadataRow label="Bits/Pixel" value={img.bits_per_pixel} />
+                                    <MetadataRow label="Has Animation" value={img.animation ? 'Yes' : 'No'} />
+                                    <MetadataRow label="Frames" value={img.frames} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Video Properties */}
+                            {metadata.video?.format && (
+                                <MetadataSection icon={Camera} title="Video">
+                                    <MetadataRow label="Duration" value={calc.duration_human || `${Math.round(parseFloat(metadata.video.format.duration))}s`} />
+                                    <MetadataRow label="Resolution" value={metadata.video.streams?.[0] ? `${metadata.video.streams[0].width} × ${metadata.video.streams[0].height}` : undefined} />
+                                    <MetadataRow label="Codec" value={metadata.video.streams?.[0]?.codec_long_name} />
+                                    <MetadataRow label="Format" value={metadata.video.format.format_long_name} />
+                                    <MetadataRow label="Bitrate" value={metadata.video.format.bit_rate ? `${Math.round(parseInt(metadata.video.format.bit_rate) / 1000)} kbps` : undefined} />
+                                    <MetadataRow label="Frame Rate" value={metadata.video.streams?.[0]?.r_frame_rate} />
+                                    <MetadataRow label="Profile" value={metadata.video.streams?.[0]?.profile} />
+                                    <MetadataRow label="Pixel Format" value={metadata.video.streams?.[0]?.pix_fmt} />
+                                    <MetadataRow label="Color Space" value={metadata.video.streams?.[0]?.color_space} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Video Tags (QuickTime/MP4 metadata) */}
+                            {metadata.video?.format?.tags && (
+                                <MetadataSection icon={Camera} title="Video Tags">
+                                    <MetadataRow label="Device" value={metadata.video.format.tags['com.apple.quicktime.model'] || metadata.video.format.tags.encoder} />
+                                    <MetadataRow label="Software" value={metadata.video.format.tags['com.apple.quicktime.software']} />
+                                    <MetadataRow label="Creation Date" value={metadata.video.format.tags['com.apple.quicktime.creationdate'] || metadata.video.format.tags.creation_time?.split('T')[0]} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Audio Properties */}
+                            {metadata.audio && (
+                                <MetadataSection icon={Music} title="Audio">
+                                    <MetadataRow label="Duration" value={metadata.audio.length_human} />
+                                    <MetadataRow label="Format" value={metadata.audio.format} />
+                                    <MetadataRow label="Bitrate" value={metadata.audio.bitrate ? `${metadata.audio.bitrate} kbps` : undefined} />
+                                    <MetadataRow label="Sample Rate" value={metadata.audio.sample_rate ? `${metadata.audio.sample_rate} Hz` : undefined} />
+                                    <MetadataRow label="Channels" value={metadata.audio.channels} />
+                                    <MetadataRow label="Bits/Sample" value={metadata.audio.bits_per_sample} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Audio Tags */}
+                            {metadata.audio?.tags && (
+                                <MetadataSection icon={Music} title="Audio Tags">
+                                    <MetadataRow label="Title" value={metadata.audio.tags.title} />
+                                    <MetadataRow label="Artist" value={metadata.audio.tags.artist} />
+                                    <MetadataRow label="Album" value={metadata.audio.tags.album} />
+                                    <MetadataRow label="Year" value={metadata.audio.tags.year} />
+                                    <MetadataRow label="Genre" value={metadata.audio.tags.genre} />
+                                    <MetadataRow label="Track" value={metadata.audio.tags.track_number} />
+                                    <MetadataRow label="Composer" value={metadata.audio.tags.composer} />
+                                    <MetadataRow label="Album Art" value={metadata.audio.has_album_art ? 'Yes' : 'No'} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* PDF Properties */}
+                            {metadata.pdf && (
+                                <MetadataSection icon={FileText} title="PDF Document">
+                                    <MetadataRow label="Pages" value={metadata.pdf.page_count} />
+                                    <MetadataRow label="Title" value={metadata.pdf.title} />
+                                    <MetadataRow label="Author" value={metadata.pdf.author} />
+                                    <MetadataRow label="Creator" value={metadata.pdf.creator} />
+                                    <MetadataRow label="Producer" value={metadata.pdf.producer} />
+                                    <MetadataRow label="Subject" value={metadata.pdf.subject} />
+                                    <MetadataRow label="Keywords" value={metadata.pdf.keywords} />
+                                    <MetadataRow label="Encrypted" value={metadata.pdf.encrypted ? 'Yes' : 'No'} />
+                                    <MetadataRow label="Page Size" value={metadata.pdf.page_width && metadata.pdf.page_height ? `${Math.round(metadata.pdf.page_width)} × ${Math.round(metadata.pdf.page_height)} pt` : undefined} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* SVG Properties */}
+                            {metadata.svg && (
+                                <MetadataSection icon={Code} title="SVG Vector">
+                                    <MetadataRow label="Width" value={metadata.svg.width} />
+                                    <MetadataRow label="Height" value={metadata.svg.height} />
+                                    <MetadataRow label="ViewBox" value={metadata.svg.viewBox} />
+                                    <MetadataRow label="Version" value={metadata.svg.version} />
+                                    <MetadataRow label="Elements" value={metadata.svg.element_count} />
+                                    <MetadataRow label="Paths" value={metadata.svg.path_count} />
+                                    <MetadataRow label="Has Styles" value={metadata.svg.has_embedded_styles ? 'Yes' : 'No'} />
+                                    <MetadataRow label="Has Scripts" value={metadata.svg.has_scripts ? 'Yes ⚠️' : 'No'} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Calculated Stats */}
+                            {calc && (
+                                <MetadataSection icon={ImageIcon} title="Analysis">
                                     <MetadataRow label="Aspect Ratio" value={calc.aspect_ratio} />
                                     <MetadataRow label="Megapixels" value={calc.megapixels ? `${calc.megapixels} MP` : undefined} />
                                     <MetadataRow label="Orientation" value={calc.orientation} />
+                                    <MetadataRow label="Size/Second" value={calc.size_per_second} />
                                 </MetadataSection>
                             )}
                             
@@ -167,6 +275,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                                     <MetadataRow label="Make" value={exif.image?.Make} />
                                     <MetadataRow label="Model" value={exif.image?.Model} />
                                     <MetadataRow label="Software" value={exif.image?.Software} />
+                                    <MetadataRow label="Orientation" value={exif.image?.Orientation} />
                                 </MetadataSection>
                             )}
                             
@@ -176,6 +285,9 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                                     <MetadataRow label="Aperture" value={exif.exif?.FNumber} />
                                     <MetadataRow label="Shutter" value={exif.exif?.ExposureTime} />
                                     <MetadataRow label="Focal Length" value={exif.exif?.FocalLength} />
+                                    <MetadataRow label="Flash" value={exif.exif?.Flash} />
+                                    <MetadataRow label="Color Space" value={exif.exif?.ColorSpace} />
+                                    <MetadataRow label="User Comment" value={exif.exif?.UserComment} />
                                 </MetadataSection>
                             )}
                             
@@ -189,16 +301,37 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             )}
                             
                             {/* File System */}
-                            <MetadataSection icon={HardDrive} title="File">
+                            <MetadataSection icon={HardDrive} title="Storage">
                                 <MetadataRow label="Size" value={fs.size_human || formatBytes(fs.size_bytes)} />
                                 <MetadataRow label="Created" value={fs.created?.split('T')[0]} />
                                 <MetadataRow label="Modified" value={fs.modified?.split('T')[0]} />
+                                <MetadataRow label="Accessed" value={fs.accessed?.split('T')[0]} />
+                                <MetadataRow label="Owner" value={fs.owner} />
+                                <MetadataRow label="Permissions" value={fs.permissions_human} />
+                                <MetadataRow label="File Type" value={fs.file_type} />
                             </MetadataSection>
+                            
+                            {/* Hashes */}
+                            {metadata.hashes && (
+                                <MetadataSection icon={HardDrive} title="Hashes">
+                                    <MetadataRow label="MD5" value={metadata.hashes.md5?.substring(0, 16) + '...'} />
+                                    <MetadataRow label="SHA256" value={metadata.hashes.sha256?.substring(0, 16) + '...'} />
+                                </MetadataSection>
+                            )}
+                            
+                            {/* Thumbnail Info */}
+                            {metadata.thumbnail?.has_embedded && (
+                                <MetadataSection icon={ImageIcon} title="Thumbnail">
+                                    <MetadataRow label="Embedded" value="Yes" />
+                                    <MetadataRow label="Size" value={`${metadata.thumbnail.width} × ${metadata.thumbnail.height}`} />
+                                </MetadataSection>
+                            )}
                             
                             {/* Age */}
                             {calc.file_age && (
                                 <MetadataSection icon={Calendar} title="Age">
-                                    <MetadataRow label="Age" value={calc.file_age.human_readable} />
+                                    <MetadataRow label="File Age" value={calc.file_age.human_readable} />
+                                    <MetadataRow label="Last Modified" value={calc.time_since_modified?.human_readable} />
                                 </MetadataSection>
                             )}
                         </div>

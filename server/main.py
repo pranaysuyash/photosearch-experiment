@@ -1,7 +1,9 @@
 import sys
 import os
 from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Body
+from pathlib import Path
+from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
+from server.jobs import job_store, Job
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -137,39 +139,69 @@ def process_semantic_indexing(files_to_index: List[str]):
         print(f"Added {len(ids)} vectors to LanceDB in {__import__('time').time() - time_start:.2f}s.")
 
 @app.post("/scan")
-async def scan_directory(request: ScanRequest, force: bool = False):
+async def scan_directory(
+    background_tasks: BackgroundTasks,
+    payload: dict = Body(...)
+):
     """
-    Trigger a scan of a directory.
-    This is a blocking operation for now.
+    Scan a directory for photos.
+    Supports asynchronous scanning via background tasks.
     """
-    try:
-        if not os.path.exists(request.path):
-            raise HTTPException(status_code=404, detail="Directory not found")
-            
-        # 1. Metadata Scan
-        catalog = photo_search_engine.scan(request.path, force=force)
+    path = payload.get("path")
+    force = payload.get("force", False)
+    background = payload.get("background", True)
+
+    if not path:
+        raise HTTPException(status_code=400, detail="Path is required")
+    
+    if not os.path.exists(path):
+        raise HTTPException(status_code=400, detail="Directory does not exist")
+
+    # If background processing is requested (default)
+    if background:
+        job_id = job_store.create_job(type="scan")
         
-        file_count = 0
-        all_files = []
-        if 'catalog' in catalog:
-            for folder, files in catalog['catalog'].items():
-                for f in files:
-                    full_path = os.path.join(folder, f['name'])
-                    all_files.append(full_path)
-                file_count += len(files)
-        
-        # 2. Semantic Indexing (Synchronous for now, MVP)
-        if all_files:
-             process_semantic_indexing(all_files)
+        # Define the background task wrapper
+        def run_scan(job_id: str, path: str, force: bool):
+            try:
+                # The scan method should update the job status internally
+                # and return the list of files for semantic indexing
+                scan_results = photo_search_engine.scan(path, force=force, job_id=job_id)
                 
-        return {
-            "status": "success", 
-            "message": f"Scanned {file_count} files", 
-            "extracted_vectors": len(all_files),
-            "stats": catalog.get('metadata', {})
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+                # After scanning metadata, perform semantic indexing
+                all_files = scan_results.get("all_files", [])
+                if all_files:
+                    process_semantic_indexing(all_files)
+                
+                job_store.update_job(job_id, status="completed", message="Scan and indexing finished.")
+            except Exception as e:
+                print(f"Job {job_id} failed: {e}")
+                job_store.update_job(job_id, status="failed", message=str(e))
+
+        background_tasks.add_task(run_scan, job_id, path, force)
+        
+        return {"job_id": job_id, "status": "pending", "message": "Scan started in background"}
+    else:
+        # Synchronous (Legacy/Blocking)
+        try:
+            results = photo_search_engine.scan(path, force=force)
+            
+            # Perform semantic indexing synchronously if not in background
+            all_files = results.get("all_files", [])
+            if all_files:
+                process_semantic_indexing(all_files)
+
+            return results
+        except Exception as e:
+             raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/jobs/{job_id}", response_model=Job)
+async def get_job_status(job_id: str):
+    """Get the status of a background job."""
+    job = job_store.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 @app.post("/index")
 async def force_indexing(request: ScanRequest):
@@ -191,57 +223,174 @@ async def force_indexing(request: ScanRequest):
          raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
-async def search_photos(query: str = "", option: int = 14): 
+async def search_photos(query: str = "", limit: int = 50, mode: str = "metadata"):
     """
-    Metadata Search (Legacy/Fast).
+    Unified Search Endpoint.
+    Modes: 
+      - 'metadata' (SQL)
+      - 'semantic' (CLIP)
+      - 'hybrid' (Merge Metadata + Semantic)
     """
     try:
-        if not query:
-            # FIX: 'type' field doesn't exist in stored metadata. Use mime_type.
-            query = "file.mime_type LIKE image"
+        # 1. Semantic Search
+        if mode == "semantic":
+            return await search_semantic(query, limit)
 
-        results = photo_search_engine.query_engine.search(query)
-        
-        formatted_results = []
-        for res in results:
-            # FIX: QueryEngine returns 'file_path', not 'path'
-            path = res.get('file_path', res.get('path')) 
-            formatted_results.append({
-                "path": path,
-                "filename": os.path.basename(path),
-                "score": res.get('score', 0),
-                "metadata": res.get('metadata', {}) 
-            })
+        # 2. Metadata Search
+        if mode == "metadata":
+            if not query:
+                query = "file.mime_type LIKE 'image%'"
             
-        return {"count": len(formatted_results), "results": formatted_results}
+            results = photo_search_engine.query_engine.search(query)
+            formatted_results = [
+                {
+                    "path": r.get('file_path', r.get('path')),
+                    "filename": os.path.basename(r.get('file_path', r.get('path'))),
+                    "score": r.get('score', 0),
+                    "metadata": r.get('metadata', {})
+                }
+                for r in results
+            ]
+            return {"count": len(formatted_results), "results": formatted_results}
+
+        # 3. Hybrid Search (Metadata + Semantic with weighted scoring)
+        if mode == "hybrid":
+            # A. Get Metadata Results
+            metadata_results = []
+            try:
+                # Try exact field match first
+                if any(op in query for op in ['=', '>', '<', 'LIKE']):
+                    metadata_results = photo_search_engine.query_engine.search(query)
+                else:
+                    # Fuzzy path/filename search with proper quoting
+                    safe_query = query.replace("'", "''")  # Escape quotes
+                    metadata_results = photo_search_engine.query_engine.search(
+                        f"file.path LIKE '%{safe_query}%'"
+                    )
+            except Exception as e:
+                print(f"Metadata search error in hybrid: {e}")
+
+            # B. Get Semantic Results
+            semantic_response = await search_semantic(query, limit)
+            semantic_results = semantic_response['results']
+
+            # C. Normalize semantic scores (typically 0.15-0.35 range -> 0-1)
+            if semantic_results:
+                max_score = max(r['score'] for r in semantic_results)
+                min_score = min(r['score'] for r in semantic_results)
+                score_range = max_score - min_score if max_score != min_score else 1.0
+                
+                for r in semantic_results:
+                    # Normalize to 0-1 range
+                    r['normalized_score'] = (r['score'] - min_score) / score_range
+
+            # D. Merge with weighted scoring
+            METADATA_WEIGHT = 0.6  # Exact matches are weighted higher
+            SEMANTIC_WEIGHT = 0.4
+            
+            seen_paths = set()
+            hybrid_results = []
+            
+            # Add Metadata results first (higher base score for exact matches)
+            for r in metadata_results:
+                path = r.get('file_path', r.get('path'))
+                seen_paths.add(path)
+                
+                # Check if this file also has semantic match for combined score
+                semantic_match = next((s for s in semantic_results if s['path'] == path), None)
+                
+                if semantic_match:
+                    # Combined score: weighted average
+                    combined_score = (METADATA_WEIGHT * 1.0) + (SEMANTIC_WEIGHT * semantic_match.get('normalized_score', 0.5))
+                else:
+                    # Metadata-only match
+                    combined_score = METADATA_WEIGHT * 0.8  # Slight penalty for no semantic match
+                
+                hybrid_results.append({
+                    "path": path,
+                    "filename": os.path.basename(path),
+                    "score": round(combined_score, 3),
+                    "metadata": r.get('metadata', {}),
+                    "source": "both" if semantic_match else "metadata"
+                })
+
+            # Add Semantic-only results
+            for r in semantic_results:
+                if r['path'] not in seen_paths:
+                    seen_paths.add(r['path'])
+                    hybrid_results.append({
+                        "path": r['path'],
+                        "filename": r['filename'],
+                        "score": round(SEMANTIC_WEIGHT * r.get('normalized_score', r['score']), 3),
+                        "metadata": r.get('metadata', {}),
+                        "source": "semantic"
+                    })
+            
+            # Sort by score descending
+            hybrid_results.sort(key=lambda x: x['score'], reverse=True)
+            
+            return {"count": len(hybrid_results), "results": hybrid_results[:limit]}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search/semantic")
-async def search_semantic(query: str, limit: int = 50):
+async def search_semantic(query: str, limit: int = 50, min_score: float = 0.22):
     """
     Semantic Search using text-to-image embeddings.
+    Args:
+        min_score: Minimum similarity score threshold (default 0.18 filters out irrelevant results)
     """
     global embedding_generator
     try:
         if not embedding_generator:
             embedding_generator = EmbeddingGenerator()
+        
+        # Handle empty query - return all photos
+        if not query.strip():
+            # Return all indexed photos without semantic ranking
+            try:
+                all_records = vector_store.get_all_records(limit=limit)
+                formatted = []
+                for r in all_records:
+                    file_path = r.get('path', r.get('id', ''))
+                    # Enrich with full metadata from main database
+                    full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
+                    formatted.append({
+                        "path": file_path,
+                        "filename": r.get('filename', os.path.basename(file_path)),
+                        "score": 0,
+                        "metadata": full_metadata or {}
+                    })
+                return {"count": len(formatted), "results": formatted}
+            except Exception as e:
+                print(f"Error getting all records: {e}")
+                return {"count": 0, "results": []}
             
         # 1. Generate text embedding
         text_vec = embedding_generator.generate_text_embedding(query)
         
         # 2. Search LanceDB
-        results = vector_store.search(text_vec, limit=limit)
+        results = vector_store.search(text_vec, limit=limit * 2)  # Get more, then filter
         
-        # 3. Format
+        # 3. Format and filter by min_score, enriching with full metadata
         formatted = []
         for r in results:
-            formatted.append({
-                "path": r['metadata']['path'],
-                "filename": r['metadata']['filename'],
-                "score": r['score'],
-                "metadata": r['metadata'] # Pass through extra metadata
-            })
+            if r['score'] >= min_score:  # Only include results above threshold
+                file_path = r['metadata']['path']
+                
+                # Enrich with full metadata from main database
+                full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
+                
+                formatted.append({
+                    "path": file_path,
+                    "filename": r['metadata']['filename'],
+                    "score": r['score'],
+                    "metadata": full_metadata or r['metadata']  # Fallback to LanceDB metadata
+                })
+        
+        # Limit to requested count after filtering
+        formatted = formatted[:limit]
             
         return {"count": len(formatted), "results": formatted}
     except Exception as e:
@@ -256,17 +405,29 @@ async def get_thumbnail(path: str, size: int = 300):
         size: Max dimension for thumbnail (default 300)
     """
     # Security check: Ensure path is within allowed directory
-    # Security check: Ensure path is within allowed directory
-    # FIX: Allow access to anything in the project root
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    abs_path = os.path.abspath(path)
-    
-    # Simple check: path must start with project root
-    if not abs_path.startswith(project_root):
-         print(f"Access denied: {abs_path} not in {project_root}")
-         # raising 403 blocks legitimate demo files if path resolution is tricky
-         # For demo, let's relax this or log it.
-         # raise HTTPException(status_code=403, detail="Access denied")
+    # In production, use MEDIA_DIR for stricter sandboxing
+    # In development, allow BASE_DIR for flexibility
+    try:
+        # Use stricter MEDIA_DIR if it exists, otherwise fall back to BASE_DIR
+        if settings.MEDIA_DIR.exists():
+            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+        else:
+            allowed_paths = [settings.BASE_DIR.resolve()]
+        
+        requested_path = Path(path).resolve()
+        
+        # Check if requested path is within any allowed directory
+        is_allowed = any(
+            requested_path.is_relative_to(allowed_path) 
+            for allowed_path in allowed_paths
+        )
+        
+        if not is_allowed:
+            print(f"Access denied: {requested_path} is outside allowed directories")
+            raise HTTPException(status_code=403, detail="Access denied: File outside allowed directories")
+    except ValueError:
+        # is_relative_to raises ValueError if different drives on Windows, etc.
+        raise HTTPException(status_code=403, detail="Access denied")
 
     if os.path.exists(path):
         try:
@@ -310,6 +471,47 @@ async def get_thumbnail(path: str, size: int = 300):
         return FileResponse(path)
 
     raise HTTPException(status_code=404, detail="Image not found")
+
+@app.get("/video")
+async def get_video(path: str):
+    """
+    Serve a video file directly.
+    """
+    from fastapi.responses import FileResponse
+    
+    # Security check
+    try:
+        if settings.MEDIA_DIR.exists():
+            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+        else:
+            allowed_paths = [settings.BASE_DIR.resolve()]
+        
+        requested_path = Path(path).resolve()
+        is_allowed = any(
+            requested_path.is_relative_to(allowed_path) 
+            for allowed_path in allowed_paths
+        )
+        
+        if not is_allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+    
+    if os.path.exists(path):
+        # Get mime type
+        ext = Path(path).suffix.lower()
+        mime_types = {
+            '.mp4': 'video/mp4',
+            '.mov': 'video/quicktime',
+            '.avi': 'video/x-msvideo',
+            '.mkv': 'video/x-matroska',
+            '.webm': 'video/webm',
+            '.m4v': 'video/x-m4v'
+        }
+        media_type = mime_types.get(ext, 'video/mp4')
+        return FileResponse(path, media_type=media_type)
+    
+    raise HTTPException(status_code=404, detail="Video not found")
 
 @app.get("/stats")
 async def get_stats():

@@ -118,6 +118,28 @@ class LanceDBStore:
             print(f"Error fetching IDs: {e}")
             return set()
 
+    def get_all_records(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Return all records with their metadata (for home page display)."""
+        if self.table is None:
+            return []
+        try:
+            # Fetch records without vector column for efficiency
+            tbl = self.table.to_arrow()
+            records = []
+            for i in range(min(limit, len(tbl))):
+                record = {}
+                for col in tbl.column_names:
+                    if col != 'vector':  # Skip the embedding vector
+                        record[col] = tbl[col][i].as_py()
+                # Rename 'id' to 'path' for consistency
+                if 'id' in record:
+                    record['path'] = record.pop('id')
+                records.append(record)
+            return records
+        except Exception as e:
+            print(f"Error fetching all records: {e}")
+            return []
+
     def delete(self, ids: List[str]):
         """Delete items by ID."""
         if self.table:

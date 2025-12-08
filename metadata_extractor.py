@@ -45,6 +45,35 @@ import exifread
 # Video processing
 import ffmpeg
 
+# Audio processing
+try:
+    import mutagen
+    from mutagen.mp3 import MP3
+    from mutagen.flac import FLAC
+    from mutagen.oggvorbis import OggVorbis
+    from mutagen.wave import WAVE
+    from mutagen.aac import AAC
+    from mutagen.mp4 import MP4
+    from mutagen.id3 import ID3
+    MUTAGEN_AVAILABLE = True
+except ImportError:
+    MUTAGEN_AVAILABLE = False
+
+# HEIC/HEIF support
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+    HEIF_AVAILABLE = True
+except ImportError:
+    HEIF_AVAILABLE = False
+
+# PDF processing
+try:
+    from pypdf import PdfReader
+    PYPDF_AVAILABLE = True
+except ImportError:
+    PYPDF_AVAILABLE = False
+
 # Extended attributes (macOS/Linux)
 try:
     import xattr
@@ -382,6 +411,185 @@ def extract_video_properties(filepath: str) -> Dict[str, Any]:
         return None
 
 
+def extract_audio_properties(filepath: str) -> Dict[str, Any]:
+    """
+    Extract comprehensive audio metadata using mutagen.
+    
+    Supports: MP3, FLAC, OGG, WAV, AAC, M4A, MP4 audio
+    
+    Args:
+        filepath: Path to audio file
+        
+    Returns:
+        Dictionary with all audio metadata
+    """
+    if not MUTAGEN_AVAILABLE:
+        return {"error": "mutagen not available"}
+    
+    try:
+        audio = mutagen.File(filepath)
+        if audio is None:
+            return None
+        
+        audio_data = {
+            "format": type(audio).__name__,
+            "length_seconds": round(audio.info.length, 2) if hasattr(audio.info, 'length') else None,
+            "length_human": None,
+            "bitrate": getattr(audio.info, 'bitrate', None),
+            "sample_rate": getattr(audio.info, 'sample_rate', None),
+            "channels": getattr(audio.info, 'channels', None),
+            "bits_per_sample": getattr(audio.info, 'bits_per_sample', None),
+        }
+        
+        # Format duration
+        if audio_data["length_seconds"]:
+            mins = int(audio_data["length_seconds"] // 60)
+            secs = int(audio_data["length_seconds"] % 60)
+            audio_data["length_human"] = f"{mins}:{secs:02d}"
+        
+        # Extract tags (ID3, Vorbis Comments, etc.)
+        tags = {}
+        if hasattr(audio, 'tags') and audio.tags:
+            for key, value in audio.tags.items():
+                # Clean up tag names and values
+                tag_name = str(key).split(':')[0] if ':' in str(key) else str(key)
+                if hasattr(value, 'text'):
+                    tags[tag_name] = str(value.text[0]) if value.text else None
+                elif isinstance(value, list):
+                    tags[tag_name] = str(value[0]) if value else None
+                else:
+                    tags[tag_name] = str(value)
+        
+        # Common tag mapping
+        audio_data["tags"] = {
+            "title": tags.get('TIT2') or tags.get('TITLE') or tags.get('title'),
+            "artist": tags.get('TPE1') or tags.get('ARTIST') or tags.get('artist'),
+            "album": tags.get('TALB') or tags.get('ALBUM') or tags.get('album'),
+            "year": tags.get('TDRC') or tags.get('DATE') or tags.get('date'),
+            "genre": tags.get('TCON') or tags.get('GENRE') or tags.get('genre'),
+            "track_number": tags.get('TRCK') or tags.get('TRACKNUMBER') or tags.get('tracknumber'),
+            "composer": tags.get('TCOM') or tags.get('COMPOSER') or tags.get('composer'),
+            "album_artist": tags.get('TPE2') or tags.get('ALBUMARTIST') or tags.get('albumartist'),
+            "comment": tags.get('COMM') or tags.get('COMMENT') or tags.get('comment'),
+            "lyrics": tags.get('USLT') or tags.get('LYRICS'),
+        }
+        
+        # Check for embedded album art
+        audio_data["has_album_art"] = False
+        if hasattr(audio, 'pictures') and audio.pictures:
+            audio_data["has_album_art"] = True
+            audio_data["album_art_count"] = len(audio.pictures)
+        elif 'APIC' in tags or 'APIC:' in str(audio.tags.keys()) if audio.tags else False:
+            audio_data["has_album_art"] = True
+        
+        # Raw tags for completeness
+        audio_data["raw_tags"] = tags
+        
+        return audio_data
+    except Exception as e:
+        logger.error(f"Error extracting audio properties: {e}")
+        return None
+
+
+def extract_pdf_properties(filepath: str) -> Dict[str, Any]:
+    """
+    Extract PDF metadata using pypdf.
+    
+    Args:
+        filepath: Path to PDF file
+        
+    Returns:
+        Dictionary with PDF metadata
+    """
+    if not PYPDF_AVAILABLE:
+        return {"error": "pypdf not available"}
+    
+    try:
+        reader = PdfReader(filepath)
+        
+        # Get document info
+        info = reader.metadata or {}
+        
+        pdf_data = {
+            "page_count": len(reader.pages),
+            "encrypted": reader.is_encrypted,
+            "author": info.get('/Author'),
+            "creator": info.get('/Creator'),
+            "producer": info.get('/Producer'),
+            "subject": info.get('/Subject'),
+            "title": info.get('/Title'),
+            "creation_date": str(info.get('/CreationDate')) if info.get('/CreationDate') else None,
+            "modification_date": str(info.get('/ModDate')) if info.get('/ModDate') else None,
+            "keywords": info.get('/Keywords'),
+        }
+        
+        # Get page dimensions from first page
+        if reader.pages:
+            first_page = reader.pages[0]
+            if first_page.mediabox:
+                pdf_data["page_width"] = float(first_page.mediabox.width)
+                pdf_data["page_height"] = float(first_page.mediabox.height)
+        
+        return pdf_data
+    except Exception as e:
+        logger.error(f"Error extracting PDF properties: {e}")
+        return None
+
+
+def extract_svg_properties(filepath: str) -> Dict[str, Any]:
+    """
+    Extract SVG metadata by parsing XML.
+    
+    Args:
+        filepath: Path to SVG file
+        
+    Returns:
+        Dictionary with SVG metadata
+    """
+    try:
+        import xml.etree.ElementTree as ET
+        
+        tree = ET.parse(filepath)
+        root = tree.getroot()
+        
+        # Handle namespace
+        ns = {'svg': 'http://www.w3.org/2000/svg'}
+        
+        svg_data = {
+            "width": root.get('width'),
+            "height": root.get('height'),
+            "viewBox": root.get('viewBox'),
+            "version": root.get('version'),
+        }
+        
+        # Parse viewBox for dimensions if width/height not specified
+        if svg_data["viewBox"] and not svg_data["width"]:
+            parts = svg_data["viewBox"].split()
+            if len(parts) >= 4:
+                svg_data["viewBox_width"] = parts[2]
+                svg_data["viewBox_height"] = parts[3]
+        
+        # Count elements
+        svg_data["element_count"] = len(list(root.iter()))
+        
+        # Find specific elements
+        path_count = len(root.findall('.//{http://www.w3.org/2000/svg}path') or root.findall('.//path'))
+        svg_data["path_count"] = path_count
+        
+        # Check for embedded styles
+        style_elements = root.findall('.//{http://www.w3.org/2000/svg}style') or root.findall('.//style')
+        svg_data["has_embedded_styles"] = len(style_elements) > 0
+        
+        # Check for scripts (security concern)
+        script_elements = root.findall('.//{http://www.w3.org/2000/svg}script') or root.findall('.//script')
+        svg_data["has_scripts"] = len(script_elements) > 0
+        
+        return svg_data
+    except Exception as e:
+        logger.error(f"Error extracting SVG properties: {e}")
+        return None
+
+
 def extract_file_hashes(filepath: str) -> Dict[str, str]:
     """
     Calculate file hashes for integrity verification.
@@ -591,10 +799,16 @@ def extract_all_metadata(filepath: str) -> Dict[str, Any]:
         "exif": None,
         "gps": None,
         "video": None,
+        "audio": None,
+        "pdf": None,
+        "svg": None,
         "hashes": extract_file_hashes(filepath),
         "thumbnail": None,
         "calculated": {}
     }
+    
+    # Get file extension for additional checks
+    ext = Path(filepath).suffix.lower()
     
     # Extract image-specific metadata
     if mime_type and mime_type.startswith('image'):
@@ -606,6 +820,22 @@ def extract_all_metadata(filepath: str) -> Dict[str, Any]:
     # Extract video-specific metadata
     elif mime_type and mime_type.startswith('video'):
         metadata['video'] = extract_video_properties(filepath)
+    
+    # Extract audio-specific metadata
+    elif mime_type and mime_type.startswith('audio'):
+        metadata['audio'] = extract_audio_properties(filepath)
+    
+    # Also check by extension for audio files that may have wrong MIME type
+    elif ext in ['.mp3', '.flac', '.ogg', '.wav', '.m4a', '.aac', '.wma', '.opus']:
+        metadata['audio'] = extract_audio_properties(filepath)
+    
+    # Extract PDF metadata
+    elif mime_type == 'application/pdf' or ext == '.pdf':
+        metadata['pdf'] = extract_pdf_properties(filepath)
+    
+    # Extract SVG metadata
+    elif mime_type == 'image/svg+xml' or ext == '.svg':
+        metadata['svg'] = extract_svg_properties(filepath)
     
     # Calculate inferred metadata
     metadata['calculated'] = calculate_inferred_metadata(metadata, current_time)

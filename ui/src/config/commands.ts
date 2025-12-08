@@ -9,15 +9,22 @@ export interface CommandItem {
   keywords?: string; // Additional keywords for fuzzy search if needed
 }
 
-export const getSystemCommands = (setOpen: (open: boolean) => void): CommandItem[] => [
+export const getSystemCommands = (
+  setOpen: (open: boolean) => void,
+  onScan?: () => void
+): CommandItem[] => [
   {
     id: "scan",
     name: "Scan Library",
     icon: Zap,
     action: () => {
-      console.log("Triggering scan...");
-      // In future: call scanning API
-      setOpen(false);
+      if (onScan) {
+        onScan();
+        // Don't close immediately if we want to show feedback
+      } else {
+        console.log("No scan handler provided");
+        setOpen(false);
+      }
     }
   },
   {

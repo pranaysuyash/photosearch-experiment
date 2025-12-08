@@ -5,7 +5,7 @@ interface UsePhotoSearchOptions {
   initialQuery?: string;
   debounceMs?: number;
   initialFetch?: boolean;
-  mode?: 'semantic' | 'metadata';
+  mode?: string;
 }
 
 export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
@@ -19,8 +19,8 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
     setLoading(true);
     setError(null);
     try {
-      const fetcher = options.mode === 'semantic' ? api.searchSemantic : api.search;
-      const res = await fetcher(searchQuery);
+      const searchMode = options.mode || 'metadata';
+      const res = await api.search(searchQuery, searchMode);
       setResults(res.results);
       return res.results;
     } catch (err) {

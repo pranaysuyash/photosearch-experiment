@@ -1,5 +1,5 @@
-import { useRef, useState, useMemo, Suspense } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef, useState, useMemo, Suspense, useEffect } from "react";
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { 
   OrbitControls, 
   Stars, 
@@ -12,11 +12,11 @@ import { type Photo, api } from "../api";
 interface PhotoGlobeProps {
   photos: Photo[];
   onPhotoSelect: (photo: Photo) => void;
+  onClose?: () => void;
 }
 
 // Generate random GPS coordinates for photos without location
 function generateMockGPS(index: number): [number, number] {
-  // Distribute across interesting locations
   const locations = [
     [40.7128, -74.0060],   // New York
     [51.5074, -0.1278],    // London
@@ -34,9 +34,7 @@ function generateMockGPS(index: number): [number, number] {
     [31.2304, 121.4737],   // Shanghai
     [34.0522, -118.2437],  // Los Angeles
   ];
-  
   const base = locations[index % locations.length];
-  // Add some randomness within the city
   return [
     base[0] + (Math.random() - 0.5) * 5,
     base[1] + (Math.random() - 0.5) * 5
@@ -47,11 +45,9 @@ function generateMockGPS(index: number): [number, number] {
 function latLngToVector3(lat: number, lng: number, radius: number): THREE.Vector3 {
   const phi = (90 - lat) * (Math.PI / 180);
   const theta = (lng + 180) * (Math.PI / 180);
-  
   const x = -(radius * Math.sin(phi) * Math.cos(theta));
   const y = radius * Math.cos(phi);
   const z = radius * Math.sin(phi) * Math.sin(theta);
-  
   return new THREE.Vector3(x, y, z);
 }
 
@@ -68,53 +64,57 @@ function PhotoMarker({
   index: number;
 }) {
   const [hovered, setHovered] = useState(false);
-  const meshRef = useRef<THREE.Mesh>(null);
   
-  // Gentle floating animation
-  useFrame(() => {
+  // Floating animation handled by parent rotation mostly, 
+  // but we can add local scale pulse
+  const scale = hovered ? 1.5 : 1;
+  const meshRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
     if (meshRef.current) {
-      const scale = hovered ? 1.5 : 1;
-      meshRef.current.scale.lerp(new THREE.Vector3(scale, scale, scale), 0.1);
+        // Constantly face camera
+        meshRef.current.lookAt(state.camera.position);
     }
   });
   
-  // Stack height based on index clustering
+  // Calculate stack height to avoid Z-fighting on exact same spots
   const stackHeight = 0.1 + (index % 5) * 0.05;
-  const adjustedPosition = position.clone().multiplyScalar(1 + stackHeight);
+  const adjustedPosition = position.clone().multiplyScalar(1 + stackHeight/7); // Normalize to radius 7
   
   return (
     <group position={adjustedPosition}>
       <mesh
         ref={meshRef}
-        onPointerOver={() => { 
-          document.body.style.cursor = 'pointer'; 
-          setHovered(true); 
-        }}
-        onPointerOut={() => { 
-          document.body.style.cursor = 'auto'; 
-          setHovered(false); 
-        }}
-        onClick={() => onSelect(photo)}
+        onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; setHovered(true); }}
+        onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = 'auto'; setHovered(false); }}
+        onClick={(e) => { e.stopPropagation(); onSelect(photo); }}
       >
-        <cylinderGeometry args={[0.08, 0.08, 0.15, 8]} />
-        <meshStandardMaterial 
-          color={hovered ? "#60a5fa" : "#3b82f6"} 
-          emissive={hovered ? "#60a5fa" : "#1d4ed8"}
-          emissiveIntensity={hovered ? 0.5 : 0.2}
-        />
+        {/* Larger invisible hit target */}
+        <sphereGeometry args={[0.3, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0.0} />
+        
+        {/* Visible marker */}
+        <mesh rotation={[Math.PI/2, 0, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, 0.15, 8]} />
+            <meshStandardMaterial 
+            color={hovered ? "#60a5fa" : "#3b82f6"} 
+            emissive={hovered ? "#60a5fa" : "#1d4ed8"}
+            emissiveIntensity={hovered ? 0.8 : 0.4}
+            />
+        </mesh>
       </mesh>
       
       {/* Photo thumbnail on hover */}
       {hovered && (
         <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
-          <Html distanceFactor={10} center>
-            <div className="bg-black/90 backdrop-blur-lg rounded-xl p-2 shadow-2xl border border-white/10 transform -translate-y-8">
+          <Html distanceFactor={10} center zIndexRange={[100, 0]}>
+            <div className="bg-black/90 backdrop-blur-lg rounded-xl p-2 shadow-2xl border border-white/10 transform -translate-y-8 cursor-pointer pointer-events-none w-max">
               <img 
                 src={api.getImageUrl(photo.path, 150)} 
                 alt={photo.filename}
                 className="w-32 h-24 object-cover rounded-lg"
               />
-              <p className="text-white text-xs mt-1 text-center truncate max-w-32">
+              <p className="text-white text-xs mt-1 text-center truncate max-w-32 font-medium">
                 {photo.filename}
               </p>
             </div>
@@ -125,78 +125,55 @@ function PhotoMarker({
   );
 }
 
-// The Earth sphere
-function Earth() {
-  const meshRef = useRef<THREE.Mesh>(null);
-  
-  // Earth textures - using procedural for now (can add real textures later)
-  // For production: load actual NASA Blue Marble textures
+// The Rotating Earth Group containing Globe + Markers
+function RotatingEarth({ photos, onPhotoSelect, isRotating }: { photos: Photo[], onPhotoSelect: (p: Photo) => void, isRotating: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const colorMap = useLoader(THREE.TextureLoader, '/earth_texture.jpg');
   
   useFrame(() => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += 0.0005; // Slow rotation
+    if (groupRef.current && isRotating) {
+      groupRef.current.rotation.y += 0.0005; 
     }
   });
-  
+
+  const photoPositions = useMemo(() => {
+    return photos.map((photo, index) => {
+      // Use GPS if available, else mock
+      const [lat, lng] = (photo.metadata?.gps?.latitude && photo.metadata?.gps?.longitude) 
+        ? [photo.metadata.gps.latitude, photo.metadata.gps.longitude] 
+        : generateMockGPS(index);
+        
+      const position = latLngToVector3(lat, lng, 7); 
+      return { photo, position };
+    });
+  }, [photos]);
+
   return (
-    <mesh ref={meshRef}>
-      <sphereGeometry args={[7, 64, 64]} />
-      <meshStandardMaterial 
-        color="#1a365d" 
-        roughness={0.8}
-        metalness={0.1}
-      />
+    <group ref={groupRef}>
+      {/* Earth Sphere */}
+      <mesh>
+        <sphereGeometry args={[7, 64, 64]} />
+        <meshStandardMaterial 
+          map={colorMap} 
+          roughness={0.6}
+          metalness={0.1} 
+        />
+      </mesh>
+
       {/* Atmosphere glow */}
       <mesh scale={1.02}>
         <sphereGeometry args={[7, 32, 32]} />
         <meshBasicMaterial 
           color="#60a5fa" 
           transparent 
-          opacity={0.1} 
+          opacity={0.15} 
           side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
         />
       </mesh>
-    </mesh>
-  );
-}
 
-// Note: OrbitingCloud removed - not currently used. Can be added for photos without GPS later.
-
-// Main scene
-function GlobeScene({ photos, onPhotoSelect }: PhotoGlobeProps) {
-  // Distribute photos on globe
-  const photoPositions = useMemo(() => {
-    return photos.map((photo, index) => {
-      // Use GPS from metadata if available, otherwise mock
-      const [lat, lng] = generateMockGPS(index);
-      const position = latLngToVector3(lat, lng, 7);  // Updated radius
-      return { photo, position };
-    });
-  }, [photos]);
-  
-  return (
-    <>
-      {/* Lighting */}
-      <ambientLight intensity={0.3} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
-      <pointLight position={[-10, -10, -5]} intensity={0.5} color="#60a5fa" />
-      
-      {/* Stars background */}
-      <Stars 
-        radius={100} 
-        depth={50} 
-        count={5000} 
-        factor={4} 
-        saturation={0} 
-        fade 
-        speed={1}
-      />
-      
-      {/* The Earth */}
-      <Earth />
-      
-      {/* Photo markers */}
-      {photoPositions.slice(0, 100).map((item, i) => (
+      {/* Markers nested inside the rotating group */}
+      {photoPositions.slice(0, 150).map((item, i) => (
         <PhotoMarker
           key={item.photo.path}
           photo={item.photo}
@@ -205,17 +182,7 @@ function GlobeScene({ photos, onPhotoSelect }: PhotoGlobeProps) {
           index={i}
         />
       ))}
-      
-      {/* Controls */}
-      <OrbitControls 
-        enableDamping
-        dampingFactor={0.05}
-        minDistance={7}
-        maxDistance={20}
-        autoRotate
-        autoRotateSpeed={0.3}
-      />
-    </>
+    </group>
   );
 }
 
@@ -225,50 +192,86 @@ function LoadingFallback() {
     <Html center>
       <div className="text-white text-center">
         <div className="w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm opacity-70">Loading your memories...</p>
+        <p className="text-sm opacity-70">Loading Earth...</p>
       </div>
     </Html>
   );
 }
 
-export function PhotoGlobe({ photos, onPhotoSelect, onClose }: PhotoGlobeProps & { onClose?: () => void }) {
+export function PhotoGlobe({ photos, onPhotoSelect, onClose }: PhotoGlobeProps) {
+  const [isRotating, setIsRotating] = useState(true);
+  
+  // Space key to toggle rotation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        setIsRotating(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
   return (
-    <div className="fixed inset-0 z-40 bg-gradient-to-b from-slate-950 to-slate-900">
-      {/* Exit button */}
-      {onClose && (
+    <div className="fixed inset-0 z-40 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-900 via-[#0a0a0a] to-black">
+      {/* Exit + Controls */}
+      <div className="absolute top-6 right-6 z-50 flex gap-2">
         <button
-          onClick={onClose}
-          className="absolute top-6 right-6 z-50 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-lg border border-white/10 transition-all text-sm"
+          onClick={() => setIsRotating(!isRotating)}
+          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-lg border border-white/10 transition-all text-sm font-medium"
         >
-          Exit Globe
+          {isRotating ? 'Pause Rotation' : 'Resume Rotation'}
         </button>
-      )}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-full backdrop-blur-lg border border-white/10 transition-all text-sm font-medium"
+          >
+            Exit Globe
+          </button>
+        )}
+      </div>
       
       {/* Title overlay */}
       <div className="absolute top-6 left-6 z-10 pointer-events-none">
-        <h2 className="text-3xl font-bold text-white/90 drop-shadow-lg">
-          Your World of Memories
+        <h2 className="text-3xl font-bold text-white/90 drop-shadow-lg tracking-tight">
+          Your World
         </h2>
-        <p className="text-white/50 text-sm mt-1">
-          {photos.length} photos across the globe
+        <p className="text-white/60 text-sm mt-1 font-medium">
+          {photos.length} memories mapped
         </p>
       </div>
       
       {/* Instructions */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-        <p className="text-white/40 text-xs bg-black/20 backdrop-blur px-4 py-2 rounded-full">
-          Drag to orbit • Scroll to zoom • Click markers to view
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-60">
+        <p className="text-white text-xs bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/5">
+          Drag to orbit • Scroll to zoom • Click markers to view details
         </p>
       </div>
       
       {/* 3D Canvas - fills entire viewport */}
       <Canvas 
-        camera={{ position: [0, 5, 12], fov: 50 }}
+        camera={{ position: [0, 0, 18], fov: 45 }}
         dpr={[1, 2]}
         style={{ width: '100%', height: '100%' }}
       >
         <Suspense fallback={<LoadingFallback />}>
-          <GlobeScene photos={photos} onPhotoSelect={onPhotoSelect} />
+            <ambientLight intensity={0.2} />
+            <directionalLight position={[15, 10, 5]} intensity={1.5} color="#ffd4a3" /> {/* Sun */}
+            <pointLight position={[-10, -10, -5]} intensity={0.5} color="#60a5fa" /> {/* Ambient bounce */}
+            
+            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={0.5} />
+            
+            <RotatingEarth photos={photos} onPhotoSelect={onPhotoSelect} isRotating={isRotating} />
+            
+            <OrbitControls 
+                enableDamping
+                dampingFactor={0.05}
+                minDistance={10}
+                maxDistance={30}
+                enablePan={false}
+            />
         </Suspense>
       </Canvas>
     </div>

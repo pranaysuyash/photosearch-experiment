@@ -24,7 +24,19 @@ class Settings(BaseSettings):
 
     # Model Configuration
     EMBEDDING_MODEL: str = "clip-ViT-B-32"
-    DEVICE: str = "cpu" # 'cpu', 'cuda', 'mps'
+    
+    @computed_field
+    def DEVICE(self) -> str:
+        """Auto-detect most capable device available."""
+        try:
+            import torch
+            if torch.backends.mps.is_available():
+                return "mps"
+            elif torch.cuda.is_available():
+                return "cuda"
+        except ImportError:
+            pass
+        return "cpu"
 
     # Paths
     # Default to a 'media' folder in the project root if not specified

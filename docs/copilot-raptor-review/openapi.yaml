@@ -1,0 +1,278 @@
+openapi: 3.0.3
+info:
+  title: PhotoSearch API
+  version: 1.0.0
+  description: |
+    API for the PhotoSearch application. Implements both metadata search and semantic search.
+    Use `mode=metadata|semantic|hybrid` in `GET /search`.
+servers:
+  - url: http://localhost:8000
+
+components:
+  schemas:
+    ScanRequest:
+      type: object
+      properties:
+        path:
+          type: string
+          description: Absolute or relative path to scan
+      required:
+        - path
+    IndexResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        indexed:
+          type: integer
+        message:
+          type: string
+    JobResponse:
+      type: object
+      properties:
+        job_id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, paused, completed, failed]
+        progress:
+          type: integer
+          description: Percentage 0-100
+        errors:
+          type: array
+          items:
+            type: string
+    Photo:
+      type: object
+      properties:
+        path:
+          type: string
+        filename:
+          type: string
+        score:
+          type: number
+          format: float
+        metadata:
+          type: object
+    SearchResponse:
+      type: object
+      properties:
+        count:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Photo'
+    TimelineResponse:
+      type: object
+      properties:
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+              count:
+                type: integer
+    StatsResponse:
+      type: object
+      properties:
+        active_files:
+          type: integer
+        deleted_files:
+          type: integer
+        total_versions:
+          type: integer
+
+paths:
+  /:
+    get:
+      summary: Root status
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  message:
+                    type: string
+
+  /scan:
+    post:
+      summary: Scan a directory and index files (metadata + embeddings)
+      description: |
+        Scan the provided path for media. By default this runs synchronously.
+        If `async=true` is passed as a query param, the API returns a `job_id` and starts an async job.
+      parameters:
+        - in: query
+          name: async
+          schema:
+            type: boolean
+          description: Run the scan asynchronously and return a job ID
+        - in: query
+          name: force
+          schema:
+            type: boolean
+          description: Force re-extraction and re-indexing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+      responses:
+        '200':
+          description: Scan completed (synchronous)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexResponse'
+        '202':
+          description: Scan scheduled (async)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+  /index:
+    post:
+      summary: Index an existing path (force indexing)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScanRequest'
+      responses:
+        '200':
+          description: Indexing result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexResponse'
+
+  /search:
+    get:
+      summary: Search photos by metadata or semantic vectors
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+          required: true
+          description: Search query, natural language or metadata expression
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [metadata, semantic, hybrid]
+            default: metadata
+          description: Mode for the search
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  /search/semantic:
+    get:
+      summary: Compatibility endpoint for semantic search only
+      parameters:
+        - in: query
+          name: query
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Semantic search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+
+  /image/thumbnail:
+    get:
+      summary: Serve thumbnail for a photo (with secure path validation)
+      parameters:
+        - in: query
+          name: path
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 300
+          description: Max dimension (px)
+      responses:
+        '200':
+          description: JPEG image
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Forbidden (path outside allowed root)
+        '404':
+          description: Not found
+
+  /stats:
+    get:
+      summary: System stats for DB & indexes
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  /timeline:
+    get:
+      summary: Get timeline distribution by month
+      responses:
+        '200':
+          description: Timeline data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineResponse'
+
+  /jobs/{job_id}:
+    get:
+      summary: Get async job status
+      parameters:
+        - in: path
+          name: job_id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '404':
+          description: Job not found
+
+security: []

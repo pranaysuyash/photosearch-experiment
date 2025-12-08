@@ -114,17 +114,27 @@ class PhotoSearch:
         self.extractor = BatchExtractor(self.db)
         self.query_engine = QueryEngine(self.db)
     
-    def scan(self, path: str, force: bool = False) -> Dict[str, Any]:
+    def scan(self, path: str, force: bool = False, job_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Scan directory and index all files.
         
         Args:
             path: Directory path to scan
             force: Force re-extraction of metadata
+            job_id: Optional Job ID for progress tracking
             
         Returns:
             Summary statistics
         """
+        # Lazy import to avoid circular deps if running standalone
+        job_store = None
+        if job_id:
+            try:
+                from server.jobs import job_store
+                job_store.update_job(job_id, status="processing", message="Discovering files...", progress=10)
+            except ImportError:
+                logger.warning("Could not import job_store")
+
         print("\n" + "="*60)
         print(f"Scanning: {path}")
         print("="*60 + "\n")
@@ -136,8 +146,15 @@ class PhotoSearch:
         files_by_dir = scan_directories(path)
         
         if not files_by_dir:
-            logger.error("No files found")
+            msg = "No files found"
+            logger.error(msg)
+            if job_store and job_id:
+                job_store.update_job(job_id, status="failed", message=msg)
             return {}
+        
+        if job_store and job_id:
+            job_store.update_job(job_id, message="Creating catalog...", progress=30)
+
         
         # Create comprehensive catalog
         catalog = create_catalog(files_by_dir, path)
@@ -152,6 +169,9 @@ class PhotoSearch:
         print(f"    - Videos: {catalog['metadata']['total_videos']}")
         print(f"    - Animated: {catalog['metadata']['total_animated']}\n")
         
+        if job_store and job_id:
+            job_store.update_job(job_id, message=f"Found {file_count} files. Extracting metadata...", progress=40)
+
         # Stage 2: Extract metadata
         print("Stage 2/3: Extracting metadata...")
         stats = self.extractor.extract_all(self.catalog_path, force=force)
@@ -160,6 +180,9 @@ class PhotoSearch:
         print(f"  ✓ Skipped: {stats.get('skipped', 0)}")
         print(f"  ✓ Errors: {stats.get('errors', 0)}\n")
         
+        if job_store and job_id:
+            job_store.update_job(job_id, message="Building index...", progress=90)
+
         # Stage 3: Build search index (already done by extractor)
         print("Stage 3/3: Building search index...")
         print("  ✓ Index ready\n")
@@ -174,13 +197,25 @@ class PhotoSearch:
         print(f"Ready to search!")
         print("="*60 + "\n")
         
-        return {
+        # Collect all files for semantic indexing
+        all_files = []
+        for folder, files in catalog['catalog'].items():
+            for f in files:
+                all_files.append(os.path.join(folder, f['name']))
+
+        result = {
             'files_found': file_count,
             'files_indexed': db_stats['active_files'],
-            'catalog': catalog['catalog'], # Include raw catalog for API integration
+            'catalog': catalog['catalog'], 
             'metadata': catalog['metadata'],
+            'all_files': all_files,
             **stats
         }
+
+        if job_store and job_id:
+            job_store.update_job(job_id, status="completed", message="Scan complete", progress=100, result=result)
+            
+        return result
     
     def interactive_search(self):
         """Interactive search menu."""

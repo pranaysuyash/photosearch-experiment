@@ -1,21 +1,15 @@
-import { useEffect } from 'react';
-import { api } from '../api';
 import { motion } from 'framer-motion';
 import Masonry from 'react-masonry-css';
-import { usePhotoSearch } from '../hooks/usePhotoSearch';
+import { type Photo, api } from '../api';
 
-export function PhotoGrid({ query = "", mode = 'metadata' }: { query?: string, mode?: 'semantic' | 'metadata' }) {
-  const { results: photos, loading, error, setQuery } = usePhotoSearch({ 
-    initialQuery: query,
-    debounceMs: 0, // Debounce handled by parent App.tsx
-    mode: mode
-  });
+interface PhotoGridProps {
+  photos: Photo[];
+  loading?: boolean;
+  error?: Error | null;
+  onPhotoSelect: (photo: Photo) => void;
+}
 
-  // Sync prop query to hook
-  useEffect(() => {
-    setQuery(query.trim());
-  }, [query, setQuery]);
-
+export function PhotoGrid({ photos, loading, error, onPhotoSelect }: PhotoGridProps) {
   if (error) {
     return (
         <div className="flex flex-col items-center justify-center p-12 text-destructive">
@@ -66,7 +60,8 @@ export function PhotoGrid({ query = "", mode = 'metadata' }: { query?: string, m
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: i * 0.05, ease: "easeOut" }}
-                    className="mb-4 break-inside-avoid relative group rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 bg-card"
+                    onClick={() => onPhotoSelect(photo)}
+                    className="mb-4 break-inside-avoid relative group rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 bg-card cursor-pointer"
                 >
                     <img 
                         src={api.getImageUrl(photo.path)} 
@@ -77,7 +72,7 @@ export function PhotoGrid({ query = "", mode = 'metadata' }: { query?: string, m
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100">
                         <p className="text-white text-sm font-medium truncate">{photo.filename}</p>
-                        <p className="text-white/70 text-xs truncate mt-0.5">{mode === 'semantic' ? `Score: ${(photo.score * 100).toFixed(0)}%` : photo.path}</p>
+                        <p className="text-white/70 text-xs truncate mt-0.5">{photo.path.split('/').slice(-2).join('/')}</p>
                     </div>
                 </motion.div>
             ))}

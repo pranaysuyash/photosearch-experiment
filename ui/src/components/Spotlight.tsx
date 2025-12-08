@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import { getSystemCommands } from "../config/commands";
 export function Spotlight() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Use shared hook for photo results
   const { results, loading, setQuery: setSearchQuery } = usePhotoSearch({ 
@@ -16,8 +17,78 @@ export function Spotlight() {
     debounceMs: 300 
   });
 
-  // Get system commands
-  const systemCommands = useMemo(() => getSystemCommands(setOpen), []);
+  const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' | 'info'; details?: any } | null>(null);
+  const [scanPath, setScanPath] = useState<string>("");
+  const [showScanInput, setShowScanInput] = useState(false);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+      }
+    };
+  }, []);
+
+  const handleScan = async (pathToScan?: string) => {
+     const path = pathToScan || scanPath;
+     
+     if (!path) {
+       // Show input for path
+       setShowScanInput(true);
+       setStatus({ message: "Enter folder path to scan", type: 'info' });
+       return;
+     }
+     
+     setShowScanInput(false);
+     setStatus({ message: "Starting scan...", type: 'info' });
+     
+     try {
+       const res = await api.scan(path, true);
+       const jobId = res.job_id;
+       
+       setStatus({ message: "Scan started. Processing...", type: 'info' });
+
+       // Clear any existing poll
+       if (pollRef.current) {
+         clearInterval(pollRef.current);
+       }
+
+       // Polling with ref tracking
+       pollRef.current = setInterval(async () => {
+          try {
+             const job = await api.getJobStatus(jobId);
+             if (job.status === 'completed') {
+                if (pollRef.current) clearInterval(pollRef.current);
+                pollRef.current = null;
+                setStatus({ message: "Scan Complete!", type: 'success' });
+                setTimeout(() => {
+                  setOpen(false);
+                  setStatus(null);
+                }, 2000);
+                // Refresh results
+                setSearchQuery(query); 
+             } else if (job.status === 'failed') {
+                if (pollRef.current) clearInterval(pollRef.current);
+                pollRef.current = null;
+                setStatus({ message: `Failed: ${job.message}`, type: 'error' });
+             } else {
+                setStatus({ message: job.message || "Processing...", type: 'info' });
+             }
+          } catch (e) {
+             if (pollRef.current) clearInterval(pollRef.current);
+             pollRef.current = null;
+             setStatus({ message: "Error tracking job", type: 'error' });
+          }
+       }, 1000);
+
+     } catch (e) {
+       setStatus({ message: "Failed to start scan", type: 'error' });
+     }
+  };
+
+  // Get system commands - use callback to stabilize reference
+  const systemCommands = useMemo(() => getSystemCommands(setOpen, () => handleScan()), []);
 
   // Toggle with Cmd+K
   useEffect(() => {
@@ -70,6 +141,49 @@ export function Spotlight() {
                             {loading && <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />}
                             <div className="text-[10px] font-mono text-muted-foreground border border-border rounded px-1.5 py-0.5 ml-2">ESC</div>
                         </div>
+
+                        {status && (
+                            <div className={`px-4 py-2 text-sm border-b border-border flex items-center ${
+                                status.type === 'error' ? 'text-destructive bg-destructive/10' : 
+                                status.type === 'success' ? 'text-green-500 bg-green-500/10' : 
+                                'text-muted-foreground bg-muted/50'
+                            }`}>
+                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                    status.type === 'error' ? 'bg-destructive' : 
+                                    status.type === 'success' ? 'bg-green-500' : 
+                                    'animate-pulse bg-blue-500'
+                                }`} />
+                                {status.message}
+                            </div>
+                        )}
+
+                        {showScanInput && (
+                            <div className="px-4 py-3 border-b border-border bg-muted/30">
+                                <label className="text-xs text-muted-foreground mb-1 block">Folder path to scan:</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={scanPath}
+                                        onChange={(e) => setScanPath(e.target.value)}
+                                        placeholder="/Users/you/Pictures"
+                                        className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && scanPath) {
+                                                handleScan(scanPath);
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => handleScan(scanPath)}
+                                        disabled={!scanPath}
+                                        className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50"
+                                    >
+                                        Scan
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         <Command.List className="max-h-[60vh] overflow-y-auto p-2 scrollbar-hide">
                             <Command.Empty className="py-6 text-center text-sm text-muted-foreground">

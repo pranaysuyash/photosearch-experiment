@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { HeroCarousel } from "./HeroCarousel";
 import { type Photo, api } from "../api";
-import { usePhotoSearch } from "../hooks/usePhotoSearch";
 
 interface GroupedPhotos {
   title: string;
   photos: Photo[];
 }
 
-export function StoryMode() {
+interface StoryModeProps {
+  photos: Photo[];
+  loading?: boolean;
+  onPhotoSelect?: (photo: Photo, allPhotos: Photo[]) => void;
+}
+
+export function StoryMode({ photos, loading, onPhotoSelect }: StoryModeProps) {
   const [groups, setGroups] = useState<GroupedPhotos[]>([]);
-  const { results: photos, loading } = usePhotoSearch({ initialQuery: "", initialFetch: true });
   
   useEffect(() => {
     if (loading) return;
@@ -21,15 +25,22 @@ export function StoryMode() {
         return;
     }
 
-    // Group by mock categories (real implementation would use dates)
+    // Group photos into categories - show all photos
     const shuffled = [...photos].sort(() => Math.random() - 0.5);
-    const mockGroups: GroupedPhotos[] = [
-      { title: "Recent Memories", photos: shuffled.slice(0, 8) },
-      { title: "Highlights", photos: shuffled.slice(8, 16) },
-      { title: "Explore", photos: shuffled.slice(16, 24) },
-    ].filter(g => g.photos.length > 0);
+    const chunkSize = 15;
+    const mockGroups: GroupedPhotos[] = [];
+    
+    // Create groups of 15 photos each
+    for (let i = 0; i < shuffled.length; i += chunkSize) {
+      const groupIndex = Math.floor(i / chunkSize);
+      const titles = ["Recent Memories", "Highlights", "Explore", "More Photos", "Archive"];
+      mockGroups.push({
+        title: titles[groupIndex] || `Collection ${groupIndex + 1}`,
+        photos: shuffled.slice(i, i + chunkSize)
+      });
+    }
 
-    setGroups(mockGroups);
+    setGroups(mockGroups.filter(g => g.photos.length > 0));
   }, [photos, loading]);
 
   return (
@@ -72,6 +83,7 @@ export function StoryMode() {
                   className="aspect-square rounded-lg overflow-hidden cursor-pointer relative group"
                   whileHover={{ scale: 1.02 }}
                   transition={{ type: "spring", stiffness: 300 }}
+                  onClick={() => onPhotoSelect?.(photo, photos)}
                 >
                   <img
                     src={api.getImageUrl(photo.path, 300)}

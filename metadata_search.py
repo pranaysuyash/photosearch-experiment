@@ -67,7 +67,7 @@ class MetadataDatabase:
     
     def _init_database(self):
         """Create database tables if they don't exist."""
-        self.conn = sqlite3.connect(self.db_path)
+        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row  # Return rows as dictionaries
         
         cursor = self.conn.cursor()
@@ -288,6 +288,29 @@ class MetadataDatabase:
         """Close database connection."""
         if self.conn:
             self.conn.close()
+    
+    def get_metadata_by_path(self, filepath: str) -> Optional[Dict[str, Any]]:
+        """Get current metadata for file by path (alias for get_metadata)."""
+        return self.get_metadata(filepath)
+    
+    def get_all_photos(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Get all photos with metadata for home page display."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT file_path, metadata_json FROM metadata ORDER BY extracted_at DESC LIMIT ?",
+            (limit,)
+        )
+        
+        photos = []
+        for row in cursor.fetchall():
+            metadata = json.loads(row['metadata_json']) if row['metadata_json'] else {}
+            photos.append({
+                'path': row['file_path'],
+                'filename': os.path.basename(row['file_path']),
+                'metadata': metadata
+            })
+        
+        return photos
 
 
 class BatchExtractor:
