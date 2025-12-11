@@ -637,6 +637,90 @@ class QueryEngine:
         
         return False
     
+    def _expand_shortcut(self, query_part: str) -> str:
+        """
+        Expand user-friendly shortcuts to full metadata paths.
+        
+        Shortcuts:
+            filename:sunset -> file.path LIKE sunset
+            name:sunset -> file.path LIKE sunset
+            size:>5MB -> filesystem.size_bytes>5242880
+            date:2024 -> filesystem.created LIKE 2024
+            width:>1920 -> image.width>1920
+            height:>1080 -> image.height>1080
+            camera:Canon -> exif.image.Make LIKE Canon
+            format:jpg -> image.format=JPEG
+            type:video -> file.mime_type LIKE video
+        """
+        # Size conversion helper
+        def parse_size(size_str: str) -> int:
+            size_str = size_str.upper().strip()
+            multipliers = {'KB': 1024, 'MB': 1024**2, 'GB': 1024**3, 'B': 1}
+            for unit, mult in multipliers.items():
+                if size_str.endswith(unit):
+                    return int(float(size_str[:-len(unit)]) * mult)
+            return int(size_str)
+        
+        shortcuts = {
+            'filename:': ('file.path', 'LIKE'),
+            'name:': ('file.path', 'LIKE'),
+            'path:': ('file.path', 'LIKE'),
+            'camera:': ('exif.image.Make', 'LIKE'),
+            'make:': ('exif.image.Make', 'LIKE'),
+            'model:': ('exif.image.Model', 'LIKE'),
+            'format:': ('image.format', '='),
+            'type:': ('file.mime_type', 'LIKE'),
+            'ext:': ('file.path', 'LIKE'),
+        }
+        
+        # Check for simple shortcuts (no operator in shortcut)
+        for shortcut, (field, default_op) in shortcuts.items():
+            if query_part.lower().startswith(shortcut):
+                value = query_part[len(shortcut):].strip()
+                # Check if value has an operator
+                if value.startswith(('>', '<', '!', '=')):
+                    return f"{field}{value}"
+                return f"{field} {default_op} {value}"
+        
+        # Handle size: with unit conversion
+        if query_part.lower().startswith('size:'):
+            rest = query_part[5:].strip()
+            # Extract operator and value
+            op = '='
+            for check_op in ['>=', '<=', '>', '<', '=']:
+                if rest.startswith(check_op):
+                    op = check_op
+                    rest = rest[len(check_op):]
+                    break
+            size_bytes = parse_size(rest)
+            return f"filesystem.size_bytes{op}{size_bytes}"
+        
+        # Handle date: shortcuts
+        if query_part.lower().startswith('date:'):
+            rest = query_part[5:].strip()
+            # Support operators
+            op = 'LIKE'
+            for check_op in ['>=', '<=', '>', '<', '=']:
+                if rest.startswith(check_op):
+                    op = check_op
+                    rest = rest[len(check_op):]
+                    break
+            if op == 'LIKE':
+                return f"filesystem.created LIKE {rest}"
+            return f"filesystem.created{op}{rest}"
+        
+        # Handle width:/height: with operators
+        if query_part.lower().startswith('width:'):
+            rest = query_part[6:].strip()
+            return f"image.width{rest}" if rest[0] in '><=' else f"image.width={rest}"
+        
+        if query_part.lower().startswith('height:'):
+            rest = query_part[7:].strip()
+            return f"image.height{rest}" if rest[0] in '><=' else f"image.height={rest}"
+        
+        # No shortcut matched, return as-is
+        return query_part
+    
     def _parse_simple_query(self, query: str) -> List[Tuple[str, str, Any]]:
         """
         Parse simple query into conditions.
@@ -651,6 +735,13 @@ class QueryEngine:
         - field LIKE value
         - field CONTAINS value
         
+        User-friendly shortcuts:
+        - filename:sunset -> file.path LIKE sunset
+        - size:>5MB -> filesystem.size_bytes>5242880
+        - date:2024 -> filesystem.created LIKE 2024
+        - width:>1920 -> image.width>1920
+        - camera:Canon -> exif.image.Make LIKE Canon
+        
         Returns list of (field, operator, value) tuples
         """
         conditions = []
@@ -660,6 +751,9 @@ class QueryEngine:
         
         for part in parts:
             part = part.strip()
+            
+            # Expand shortcuts first
+            part = self._expand_shortcut(part)
             
             # Check for operators
             for op in ['>=', '<=', '!=', '>', '<', '=', ' LIKE ', ' CONTAINS ']:

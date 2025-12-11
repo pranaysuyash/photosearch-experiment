@@ -26,6 +26,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Helper functions for sorting and filtering
+VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv'}
+
+def is_video_file(path: str) -> bool:
+    """Check if a file is a video based on extension."""
+    ext = os.path.splitext(path)[1].lower()
+    return ext in VIDEO_EXTENSIONS
+
+def apply_sort(results: list, sort_by: str) -> list:
+    """Sort results by specified criteria."""
+    if not results:
+        return results
+    
+    if sort_by == "date_desc":
+        # Sort by created date descending (newest first)
+        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('created', ''), reverse=True)
+    elif sort_by == "date_asc":
+        # Sort by created date ascending (oldest first)
+        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('created', ''))
+    elif sort_by == "name":
+        # Sort by filename alphabetically
+        return sorted(results, key=lambda x: x.get('filename', '').lower())
+    elif sort_by == "size":
+        # Sort by file size descending (largest first)
+        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('size_bytes', 0), reverse=True)
+    
+    return results
+
 # Initialize Core Logic
 # We prefer a persistent instance
 photo_search_engine = PhotoSearch()
@@ -35,28 +63,72 @@ from server.lancedb_store import LanceDBStore
 from server.embedding_generator import EmbeddingGenerator
 from server.image_loader import load_image
 
+from server.watcher import start_watcher
+
 # Lazily loaded or initialized here
 # Note: EmbeddingGenerator loads a model (~500MB), so it might take a moment on first request or startup
 vector_store = LanceDBStore()
 embedding_generator = None # Load lazily or on startup
+file_watcher = None # Global observer instance
 
 @app.on_event("startup")
 async def startup_event():
-    global embedding_generator
+    global embedding_generator, file_watcher
     print("Initializing Embedding Model...")
     # Initialize in background or here? For now, simple synchronous load.
     try:
         embedding_generator = EmbeddingGenerator()
         print("Embedding Model Loaded.")
+        
+        # Auto-scan 'media' directory on startup
+        media_path = settings.BASE_DIR / "media"
+        if media_path.exists():
+            print(f"Auto-scanning {media_path}...")
+            # 1. Run full scan check
+            try:
+                photo_search_engine.scan(str(media_path), force=False)
+                print("Auto-scan complete.")
+            except Exception as e:
+                print(f"Auto-scan failed: {e}")
+
+            # 2. Start Real-time Watcher
+            def handle_new_file(filepath: str):
+                """Callback for new files detected by watcher"""
+                try:
+                    print(f"Index trigger: {filepath}")
+                    # Extract Metadata (Single file update using BatchExtractor's underlying logic)
+                    # We can use the lower-level extract function
+                    from metadata_extractor import extract_all_metadata
+                    
+                    metadata = extract_all_metadata(filepath)
+                    if metadata:
+                        photo_search_engine.db.store_metadata(filepath, metadata)
+                        print(f"Metadata indexed: {filepath}")
+                        
+                        # Trigger Semantic Indexing
+                        process_semantic_indexing([filepath])
+                except Exception as e:
+                    print(f"Real-time indexing failed for {filepath}: {e}")
+
+            print("Starting file watcher...")
+            file_watcher = start_watcher(str(media_path), handle_new_file)
+                
     except Exception as e:
-        print(f"Failed to load embedding model: {e}")
+        print(f"Startup error: {e}")
+
+@app.on_event("shutdown")
+def shutdown_event():
+    if file_watcher:
+        file_watcher.stop()
+        file_watcher.join()
 
 class ScanRequest(BaseModel):
     path: str
 
 class SearchRequest(BaseModel):
     query: str
-    limit: int = 50
+    limit: int = 1000
+    offset: int = 0
 
 @app.get("/")
 async def root():
@@ -223,25 +295,60 @@ async def force_indexing(request: ScanRequest):
          raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search")
-async def search_photos(query: str = "", limit: int = 50, mode: str = "metadata"):
+async def search_photos(
+    query: str = "", 
+    limit: int = 50, 
+    offset: int = 0, 
+    mode: str = "metadata",
+    sort_by: str = "date_desc",  # date_desc, date_asc, name, size
+    type_filter: str = "all"  # all, photos, videos
+):
     """
     Unified Search Endpoint.
     Modes: 
       - 'metadata' (SQL)
       - 'semantic' (CLIP)
       - 'hybrid' (Merge Metadata + Semantic)
+    Sort: date_desc (default), date_asc, name, size
+    Type Filter: all (default), photos, videos
     """
     try:
         # 1. Semantic Search
         if mode == "semantic":
-            return await search_semantic(query, limit)
+            results_response = await search_semantic(query, limit * 2, 0)  # Get more for filtering
+            results = results_response.get('results', [])
+            
+            # Apply type filter
+            if type_filter == "photos":
+                results = [r for r in results if not is_video_file(r.get('path', ''))]
+            elif type_filter == "videos":
+                results = [r for r in results if is_video_file(r.get('path', ''))]
+            
+            # Apply sort
+            results = apply_sort(results, sort_by)
+            
+            # Paginate
+            paginated = results[offset:offset + limit]
+            return {"count": len(results), "results": paginated}
 
         # 2. Metadata Search
         if mode == "metadata":
-            if not query:
-                query = "file.mime_type LIKE 'image%'"
+            # For empty query, directly get all files from database
+            if not query.strip():
+                cursor = photo_search_engine.db.conn.cursor()
+                cursor.execute("SELECT file_path, metadata_json FROM metadata")
+                results = []
+                for row in cursor.fetchall():
+                    import json
+                    results.append({
+                        'file_path': row['file_path'],
+                        'metadata': json.loads(row['metadata_json']) if row['metadata_json'] else {}
+                    })
+            else:
+                # Use QueryEngine for actual search queries
+                results = photo_search_engine.query_engine.search(query)
             
-            results = photo_search_engine.query_engine.search(query)
+            # Formatted list
             formatted_results = [
                 {
                     "path": r.get('file_path', r.get('path')),
@@ -251,60 +358,68 @@ async def search_photos(query: str = "", limit: int = 50, mode: str = "metadata"
                 }
                 for r in results
             ]
-            return {"count": len(formatted_results), "results": formatted_results}
+            
+            # Apply type filter
+            if type_filter == "photos":
+                formatted_results = [r for r in formatted_results if not is_video_file(r.get('path', ''))]
+            elif type_filter == "videos":
+                formatted_results = [r for r in formatted_results if is_video_file(r.get('path', ''))]
+            
+            # Apply sorting
+            formatted_results = apply_sort(formatted_results, sort_by)
+            
+            # Apply Pagination Slicing
+            count = len(formatted_results)
+            paginated = formatted_results[offset : offset + limit]
+            
+            return {"count": count, "results": paginated}
 
         # 3. Hybrid Search (Metadata + Semantic with weighted scoring)
         if mode == "hybrid":
-            # A. Get Metadata Results
+            # A. Get Metadata Results (All)
             metadata_results = []
             try:
-                # Try exact field match first
                 if any(op in query for op in ['=', '>', '<', 'LIKE']):
                     metadata_results = photo_search_engine.query_engine.search(query)
                 else:
-                    # Fuzzy path/filename search with proper quoting
-                    safe_query = query.replace("'", "''")  # Escape quotes
+                    safe_query = query.replace("'", "''")
                     metadata_results = photo_search_engine.query_engine.search(
                         f"file.path LIKE '%{safe_query}%'"
                     )
             except Exception as e:
                 print(f"Metadata search error in hybrid: {e}")
 
-            # B. Get Semantic Results
-            semantic_response = await search_semantic(query, limit)
+            # B. Get Semantic Results (Top N = limit + offset)
+            # We need deep fetch to ensure correct global ranking after merge
+            semantic_limit = limit + offset
+            semantic_response = await search_semantic(query, semantic_limit, offset=0)
             semantic_results = semantic_response['results']
 
-            # C. Normalize semantic scores (typically 0.15-0.35 range -> 0-1)
+            # C. Normalize semantic scores
             if semantic_results:
                 max_score = max(r['score'] for r in semantic_results)
                 min_score = min(r['score'] for r in semantic_results)
                 score_range = max_score - min_score if max_score != min_score else 1.0
                 
                 for r in semantic_results:
-                    # Normalize to 0-1 range
                     r['normalized_score'] = (r['score'] - min_score) / score_range
 
-            # D. Merge with weighted scoring
-            METADATA_WEIGHT = 0.6  # Exact matches are weighted higher
+            # D. Merge Logic
+            METADATA_WEIGHT = 0.6
             SEMANTIC_WEIGHT = 0.4
             
             seen_paths = set()
             hybrid_results = []
             
-            # Add Metadata results first (higher base score for exact matches)
             for r in metadata_results:
                 path = r.get('file_path', r.get('path'))
                 seen_paths.add(path)
-                
-                # Check if this file also has semantic match for combined score
                 semantic_match = next((s for s in semantic_results if s['path'] == path), None)
                 
                 if semantic_match:
-                    # Combined score: weighted average
                     combined_score = (METADATA_WEIGHT * 1.0) + (SEMANTIC_WEIGHT * semantic_match.get('normalized_score', 0.5))
                 else:
-                    # Metadata-only match
-                    combined_score = METADATA_WEIGHT * 0.8  # Slight penalty for no semantic match
+                    combined_score = METADATA_WEIGHT * 0.8
                 
                 hybrid_results.append({
                     "path": path,
@@ -314,7 +429,6 @@ async def search_photos(query: str = "", limit: int = 50, mode: str = "metadata"
                     "source": "both" if semantic_match else "metadata"
                 })
 
-            # Add Semantic-only results
             for r in semantic_results:
                 if r['path'] not in seen_paths:
                     seen_paths.add(r['path'])
@@ -329,32 +443,33 @@ async def search_photos(query: str = "", limit: int = 50, mode: str = "metadata"
             # Sort by score descending
             hybrid_results.sort(key=lambda x: x['score'], reverse=True)
             
-            return {"count": len(hybrid_results), "results": hybrid_results[:limit]}
+            # Apply Pagination Slicing
+            count = len(hybrid_results)
+            paginated = hybrid_results[offset : offset + limit]
+            
+            return {"count": count, "results": paginated}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/search/semantic")
-async def search_semantic(query: str, limit: int = 50, min_score: float = 0.22):
+async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_score: float = 0.22):
     """
     Semantic Search using text-to-image embeddings.
-    Args:
-        min_score: Minimum similarity score threshold (default 0.18 filters out irrelevant results)
     """
     global embedding_generator
     try:
         if not embedding_generator:
             embedding_generator = EmbeddingGenerator()
         
-        # Handle empty query - return all photos
+        # Handle empty query - return all photos (paginated)
         if not query.strip():
-            # Return all indexed photos without semantic ranking
             try:
-                all_records = vector_store.get_all_records(limit=limit)
+                # Pass offset to store
+                all_records = vector_store.get_all_records(limit=limit, offset=offset)
                 formatted = []
                 for r in all_records:
                     file_path = r.get('path', r.get('id', ''))
-                    # Enrich with full metadata from main database
                     full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
                     formatted.append({
                         "path": file_path,
@@ -362,6 +477,7 @@ async def search_semantic(query: str, limit: int = 50, min_score: float = 0.22):
                         "score": 0,
                         "metadata": full_metadata or {}
                     })
+                # Count is tricky here, but we return page size for now
                 return {"count": len(formatted), "results": formatted}
             except Exception as e:
                 print(f"Error getting all records: {e}")
@@ -370,28 +486,24 @@ async def search_semantic(query: str, limit: int = 50, min_score: float = 0.22):
         # 1. Generate text embedding
         text_vec = embedding_generator.generate_text_embedding(query)
         
-        # 2. Search LanceDB
-        results = vector_store.search(text_vec, limit=limit * 2)  # Get more, then filter
+        # 2. Search LanceDB with offset
+        # vector_store.search now supports offset directly
+        results = vector_store.search(text_vec, limit=limit, offset=offset)
         
-        # 3. Format and filter by min_score, enriching with full metadata
+        # 3. Format and enrich
         formatted = []
         for r in results:
-            if r['score'] >= min_score:  # Only include results above threshold
+            if r['score'] >= min_score:
                 file_path = r['metadata']['path']
-                
-                # Enrich with full metadata from main database
                 full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
                 
                 formatted.append({
                     "path": file_path,
                     "filename": r['metadata']['filename'],
                     "score": r['score'],
-                    "metadata": full_metadata or r['metadata']  # Fallback to LanceDB metadata
+                    "metadata": full_metadata or r['metadata']
                 })
         
-        # Limit to requested count after filtering
-        formatted = formatted[:limit]
-            
         return {"count": len(formatted), "results": formatted}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -561,6 +673,73 @@ async def get_timeline():
         # Fallback if table doesn't exist or other error
         print(f"Timeline error: {e}")
         return {"timeline": []}
+
+class ExportRequest(BaseModel):
+    paths: List[str]
+    format: str = "zip"  # Future: could support "json" for metadata export
+
+@app.post("/export")
+async def export_photos(request: ExportRequest):
+    """
+    Export selected photos as a ZIP file.
+    
+    Args:
+        request: ExportRequest with list of file paths
+        
+    Returns:
+        Streaming ZIP file download
+    """
+    import zipfile
+    import io
+    from fastapi.responses import StreamingResponse
+    
+    if not request.paths:
+        raise HTTPException(status_code=400, detail="No files specified")
+    
+    if len(request.paths) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 files per export")
+    
+    # Validate paths are within allowed directories
+    valid_paths = []
+    for path in request.paths:
+        try:
+            requested_path = Path(path).resolve()
+            if settings.MEDIA_DIR.exists():
+                allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+            else:
+                allowed_paths = [settings.BASE_DIR.resolve()]
+            
+            is_allowed = any(
+                requested_path.is_relative_to(allowed_path) 
+                for allowed_path in allowed_paths
+            )
+            
+            if is_allowed and os.path.exists(path):
+                valid_paths.append(path)
+        except ValueError:
+            continue
+    
+    if not valid_paths:
+        raise HTTPException(status_code=400, detail="No valid files to export")
+    
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for path in valid_paths:
+            filename = os.path.basename(path)
+            # Handle duplicate filenames by adding parent folder
+            if any(os.path.basename(p) == filename and p != path for p in valid_paths):
+                parent = os.path.basename(os.path.dirname(path))
+                filename = f"{parent}_{filename}"
+            zip_file.write(path, filename)
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=photos_export.zip"}
+    )
 
 if __name__ == "__main__":
     import uvicorn

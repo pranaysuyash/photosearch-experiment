@@ -78,6 +78,28 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
               Search by filename, date, camera model - fast and precise
             </p>
           </button>
+          
+          <div className="relative flex items-center gap-4 py-2">
+            <div className="h-px bg-border flex-1" />
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Setup</span>
+            <div className="h-px bg-border flex-1" />
+          </div>
+
+          <button
+            onClick={() => {
+                const defaultPath = window.location.hostname === 'localhost' 
+                    ? '/Users/pranay/Projects/photosearch_experiment/media' 
+                    : 'media';
+                import('../api').then(({api}) => {
+                     api.scan(defaultPath)
+                        .then(() => alert("Scan started in background!"))
+                        .catch(err => alert("Scan failed: " + err));
+                });
+            }}
+            className="w-full py-3 rounded-xl border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium text-sm flex items-center justify-center gap-2"
+          >
+            <span>⚡️</span> Scan Default Library
+          </button>
         </div>
 
         <p className="text-xs text-center text-muted-foreground mt-4">

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export interface Photo {
   path: string;
@@ -34,9 +34,16 @@ export const api = {
     return res.data as Job;
   },
   
-  search: async (query: string, mode: string = 'metadata', limit: number = 50) => {
+  search: async (
+    query: string, 
+    mode: string = 'metadata', 
+    limit: number = 50, 
+    offset: number = 0,
+    sortBy: string = 'date_desc',
+    typeFilter: string = 'all'
+  ) => {
     const res = await axios.get(`${API_BASE}/search`, { 
-      params: { query, mode, limit } 
+      params: { query, mode, limit, offset, sort_by: sortBy, type_filter: typeFilter } 
     });
     return res.data;
   },
@@ -55,6 +62,22 @@ export const api = {
   isVideo: (path: string) => {
     const videoExts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'];
     return videoExts.some(ext => path.toLowerCase().endsWith(ext));
+  },
+
+  // Export selected photos as ZIP
+  exportPhotos: async (paths: string[]) => {
+    const res = await axios.post(`${API_BASE}/export`, { paths }, {
+      responseType: 'blob'
+    });
+    // Trigger download
+    const url = window.URL.createObjectURL(new Blob([res.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'photos_export.zip');
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   },
 
   // Get video URL for direct serving

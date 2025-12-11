@@ -4,9 +4,12 @@ __pycache__/
 *$py.class
 *.so
 .Python
+.venv/
 venv/
 env/
 ENV/
+.mypy_cache/
+.pytest_cache/
 
 # IDE
 .vscode/
@@ -19,24 +22,17 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Project specific
+# Environment
 .env
+
+# Logs
 *.log
-test_catalog.json
-*_metadata.json
 
-# Test files
-image1.png
-movie1.mp4
-movie2.mov
+# Data files (databases, catalogs, temp)
 data/
-
-# Vector Store Data
-data/vector_store/
-data/*_benchmark/
-
-# Byte-compiled / optimized / DLL files
-task3_readme_section.md
+*.db
+*.sqlite
+*.sqlite3
 
 # Media files (large demo images/videos)
 media/
@@ -48,3 +44,18 @@ media/
 *.mov
 *.avi
 *.webm
+
+# Test directories
+test_scan_dir/
+
+# Documentation & Review directories (internal only)
+docs/
+codex-review/
+copilot_raptor_review/
+old_project_docs/
+experiments/
+.agent/
+
+# Keep all README files
+!README.md
+!**/README.md

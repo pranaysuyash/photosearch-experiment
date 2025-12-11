@@ -2,7 +2,26 @@ import { useEffect, useState } from 'react';
 import { api, type TimelineData } from '../api';
 import { motion } from 'framer-motion';
 
-export function SonicTimeline() {
+interface SonicTimelineProps {
+  onDateClick?: (date: string) => void;
+}
+
+// Format YYYY-MM to readable format
+function formatDate(dateStr: string): string {
+  try {
+    const [year, month] = dateStr.split('-');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthIndex = parseInt(month, 10) - 1;
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${monthNames[monthIndex]} ${year}`;
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
+export function SonicTimeline({ onDateClick }: SonicTimelineProps) {
   const [data, setData] = useState<TimelineData[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -30,6 +49,7 @@ export function SonicTimeline() {
         {data.map((item, i) => {
           const isHovered = hoveredIndex === i;
           const heightPercent = (item.count / maxCount) * 100;
+          const formattedDate = formatDate(item.date);
           
           return (
             <motion.div
@@ -39,20 +59,22 @@ export function SonicTimeline() {
               transition={{ delay: i * 0.01, type: 'spring', stiffness: 100 }}
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
+              onClick={() => onDateClick?.(item.date)}
               className={`
-                w-3 min-w-[12px] rounded-t-md cursor-pointer transition-all duration-200
+                w-3 min-w-[12px] rounded-t-md cursor-pointer transition-all duration-200 relative
                 ${isHovered 
                   ? 'bg-gradient-to-t from-blue-400 via-purple-400 to-pink-400 scale-110 shadow-lg shadow-purple-500/30' 
                   : 'bg-gradient-to-t from-white/20 to-white/5 hover:from-white/40 hover:to-white/20'
                 }
               `}
-              title={`${item.date}: ${item.count} photos`}
+              title={`${formattedDate}: ${item.count} photos`}
             >
               {/* Hover tooltip */}
               {isHovered && (
                 <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-xl text-white text-[11px] px-3 py-1.5 rounded-lg shadow-xl border border-white/10 whitespace-nowrap z-50 pointer-events-none">
-                  <div className="font-semibold">{item.date}</div>
+                  <div className="font-semibold">{formattedDate}</div>
                   <div className="text-white/60">{item.count} photos</div>
+                  {onDateClick && <div className="text-blue-300 text-[10px] mt-0.5">Click to filter</div>}
                 </div>
               )}
             </motion.div>

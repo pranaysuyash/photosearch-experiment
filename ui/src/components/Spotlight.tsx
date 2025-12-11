@@ -2,11 +2,15 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "../api";
+import { type Photo, api } from "../api";
 import { usePhotoSearch } from "../hooks/usePhotoSearch";
 import { getSystemCommands } from "../config/commands";
 
-export function Spotlight() {
+interface SpotlightProps {
+  onPhotoSelect?: (photo: Photo) => void;
+}
+
+export function Spotlight({ onPhotoSelect }: SpotlightProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -30,6 +34,7 @@ export function Spotlight() {
     };
   }, []);
 
+  // ... (keeping handleScan same) ...
   const handleScan = async (pathToScan?: string) => {
      const path = pathToScan || scanPath;
      
@@ -135,12 +140,37 @@ export function Spotlight() {
                             <Command.Input 
                                 value={query}
                                 onValueChange={setQuery}
-                                placeholder="Search photos or run commands..."
+                                placeholder="Search photos... try 'filename:sunset' or 'size:>5MB'"
                                 className="w-full h-14 bg-transparent outline-none text-lg placeholder:text-muted-foreground/50"
                             />
                             {loading && <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />}
                             <div className="text-[10px] font-mono text-muted-foreground border border-border rounded px-1.5 py-0.5 ml-2">ESC</div>
                         </div>
+
+                        {/* Search Syntax Hints */}
+                        {!query && (
+                            <div className="px-4 py-2 border-b border-border bg-muted/30">
+                                <p className="text-xs text-muted-foreground mb-1.5 font-medium">Search Shortcuts:</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                        { label: 'filename:', example: 'sunset' },
+                                        { label: 'size:', example: '>5MB' },
+                                        { label: 'date:', example: '2024' },
+                                        { label: 'camera:', example: 'Canon' },
+                                        { label: 'width:', example: '>1920' },
+                                    ].map(hint => (
+                                        <button
+                                            key={hint.label}
+                                            onClick={() => setQuery(hint.label)}
+                                            className="px-2 py-0.5 text-xs bg-background border border-border rounded-md hover:bg-accent transition-colors font-mono"
+                                        >
+                                            <span className="text-primary">{hint.label}</span>
+                                            <span className="text-muted-foreground">{hint.example}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {status && (
                             <div className={`px-4 py-2 text-sm border-b border-border flex items-center ${
@@ -213,8 +243,10 @@ export function Spotlight() {
                                         <Command.Item 
                                             key={photo.path} 
                                             onSelect={() => {
-                                                // Handle selection (e.g. open detail view)
                                                 console.log("Selected:", photo.filename);
+                                                if (onPhotoSelect) {
+                                                    onPhotoSelect(photo);
+                                                }
                                                 setOpen(false);
                                             }}
                                             className="flex items-center px-2 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground aria-selected:bg-accent aria-selected:text-accent-foreground"

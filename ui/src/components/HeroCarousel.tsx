@@ -4,20 +4,21 @@ import { api } from "../api";
 import { usePhotoSearch } from "../hooks/usePhotoSearch";
 
 export function HeroCarousel({ onEnter3D }: { onEnter3D?: () => void }) {
-  const { search } = usePhotoSearch({ initialFetch: false });
+  const { results, search } = usePhotoSearch({ initialFetch: false });
   const [photos, setPhotos] = useState<any[]>([]); // Keep local state for shuffled
   const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    // Fetch random or recent photos for the hero
-    search("").then((res) => {
-        if (res && res.length > 0) {
-            // Shuffle and pick top 5
-            const shuffled = [...res].sort(() => 0.5 - Math.random());
-            setPhotos(shuffled.slice(0, 5));
-        }
-    });
+    search("");
   }, [search]);
+
+  useEffect(() => {
+    if (results && results.length > 0) {
+        // Shuffle and pick top 5
+        const shuffled = [...results].sort(() => 0.5 - Math.random());
+        setPhotos(shuffled.slice(0, 5));
+    }
+  }, [results]);
 
   useEffect(() => {
     if (photos.length <= 1) return;

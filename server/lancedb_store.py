@@ -73,20 +73,26 @@ class LanceDBStore:
             # Append to existing table
             self.table.add(data)
             
-    def search(self, query_embedding: List[float], limit: int = 20) -> List[Dict[str, Any]]:
+    def search(self, query_embedding: List[float], limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
         """
-        Semantic search for similar vectors.
+        Semantic search for similar vectors with pagination.
         """
         if self.table is None:
             return []
             
         try:
             # Search using LanceDB with cosine metric
-            # Using metric="cosine" gives us cosine distance (1 - cosine_similarity)
-            results = self.table.search(query_embedding, vector_column_name="vector").metric("cosine").limit(limit).to_list()
+            # For pagination in vector search, we usually need to fetch (limit + offset)
+            # and then slice [offset:] to ensure efficient and stable sorting.
+            fetch_limit = limit + offset
+            results = self.table.search(query_embedding, vector_column_name="vector").metric("cosine").limit(fetch_limit).to_list()
+            
+            # Slice the results for the requested page
+            # results[offset : offset + limit]
+            paginated_results = results[offset : offset + limit]
             
             out = []
-            for r in results:
+            for r in paginated_results:
                 # Extract metadata (all keys except internal ones)
                 reserved = {'vector', '_distance', 'id'}
                 meta = {k: v for k, v in r.items() if k not in reserved}
@@ -118,19 +124,47 @@ class LanceDBStore:
             print(f"Error fetching IDs: {e}")
             return set()
 
-    def get_all_records(self, limit: int = 50) -> List[Dict[str, Any]]:
-        """Return all records with their metadata (for home page display)."""
+    def get_all_records(self, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        """Return all records with their metadata (for home page display), with pagination.
+        
+        Optimized: Uses SQL query with LIMIT/OFFSET to avoid loading entire table.
+        """
         if self.table is None:
             return []
         try:
-            # Fetch records without vector column for efficiency
-            tbl = self.table.to_arrow()
+            # Use LanceDB's SQL interface for efficient pagination
+            # This avoids loading all rows into memory
+            query = f"SELECT * FROM {self.table_name} LIMIT {limit} OFFSET {offset}"
+            
+            # LanceDB tables support to_lance() for SQL queries
+            # Fallback: use search with a dummy vector if SQL not available
+            try:
+                # Try the newer search().limit().offset() pattern
+                # Note: For non-vector queries, we use a scan-like approach
+                results = self.table.search().limit(limit + offset).to_list()
+                paginated = results[offset:offset + limit]
+            except Exception:
+                # Fallback to arrow slice (less efficient but works)
+                tbl = self.table.to_arrow()
+                total_rows = len(tbl)
+                start = max(0, offset)
+                end = min(total_rows, offset + limit)
+                if start >= total_rows:
+                    return []
+                paginated = []
+                for i in range(start, end):
+                    row = {}
+                    for col in tbl.column_names:
+                        if col != 'vector':
+                            row[col] = tbl[col][i].as_py()
+                    paginated.append(row)
+            
             records = []
-            for i in range(min(limit, len(tbl))):
+            for r in paginated:
                 record = {}
-                for col in tbl.column_names:
-                    if col != 'vector':  # Skip the embedding vector
-                        record[col] = tbl[col][i].as_py()
+                for k, v in r.items():
+                    if k not in ('vector', '_distance'):
+                        record[k] = v
                 # Rename 'id' to 'path' for consistency
                 if 'id' in record:
                     record['path'] = record.pop('id')

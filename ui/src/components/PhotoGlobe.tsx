@@ -67,7 +67,6 @@ function PhotoMarker({
   
   // Floating animation handled by parent rotation mostly, 
   // but we can add local scale pulse
-  const scale = hovered ? 1.5 : 1;
   const meshRef = useRef<THREE.Mesh>(null);
 
   useFrame((state) => {

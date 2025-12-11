@@ -1,107 +1,190 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
-import { HeroCarousel } from "./HeroCarousel";
-import { type Photo, api } from "../api";
-
-interface GroupedPhotos {
-  title: string;
-  photos: Photo[];
-}
+import { FixedSizeList as List, ListChildComponentProps } from "react-window";
+import AutoSizer from "react-virtualized-auto-sizer";
+import { type Photo } from "../api";
 
 interface StoryModeProps {
   photos: Photo[];
   loading?: boolean;
-  onPhotoSelect?: (photo: Photo, allPhotos: Photo[]) => void;
+  onPhotoSelect?: (photo: Photo) => void;
+  hasMore?: boolean;
+  loadMore?: () => void;
 }
 
-export function StoryMode({ photos, loading, onPhotoSelect }: StoryModeProps) {
-  const [groups, setGroups] = useState<GroupedPhotos[]>([]);
-  
-  useEffect(() => {
-    if (loading) return;
-    
-    if (photos.length === 0) {
-        setGroups([]);
-        return;
-    }
+// Constants for virtualization
+const ROW_HEIGHT = 320; // Height of each row including gap
+const PHOTOS_PER_ROW = 4;
 
-    // Group photos into categories - show all photos
-    const shuffled = [...photos].sort(() => Math.random() - 0.5);
-    const chunkSize = 15;
-    const mockGroups: GroupedPhotos[] = [];
-    
-    // Create groups of 15 photos each
-    for (let i = 0; i < shuffled.length; i += chunkSize) {
-      const groupIndex = Math.floor(i / chunkSize);
-      const titles = ["Recent Memories", "Highlights", "Explore", "More Photos", "Archive"];
-      mockGroups.push({
-        title: titles[groupIndex] || `Collection ${groupIndex + 1}`,
-        photos: shuffled.slice(i, i + chunkSize)
-      });
-    }
+interface RowData {
+  photos: Photo[];
+  onPhotoSelect?: (photo: Photo) => void;
+}
 
-    setGroups(mockGroups.filter(g => g.photos.length > 0));
-  }, [photos, loading]);
+// Memoized row component for virtualization
+const PhotoRow = ({ index, style, data }: { index: number; style: React.CSSProperties; data: RowData }) => {
+  const startIdx = index * PHOTOS_PER_ROW;
+  const rowPhotos = data.photos.slice(startIdx, startIdx + PHOTOS_PER_ROW);
+
+  if (rowPhotos.length === 0) return null;
 
   return (
-    <div className="flex flex-col min-h-screen bg-background relative">
-      <HeroCarousel onEnter3D={() => {}} />
-      
-      <div className="container mx-auto px-4 py-8 pb-32">
-        {loading && (
-            <div className="text-center p-24 text-muted-foreground animate-pulse">
-                <p>Curating your museum...</p>
-            </div>
-        )}
-
-        {!loading && photos.length === 0 && (
-            <div className="text-center p-24 flex flex-col items-center">
-                <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mb-4">
-                    <span className="text-2xl">📸</span>
-                </div>
-                <h3 className="text-xl font-bold mb-2">Your Museum is Empty</h3>
-                <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                    Add photos to the <code>media/</code> folder or run a scan to get started.
-                </p>
-            </div>
-        )}
-
-        {groups.map((group, i) => (
-          <motion.section
-            key={group.title}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="mb-12"
+    <div style={style} className="px-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-[300px]">
+        {rowPhotos.map((photo, i) => (
+          <motion.div
+            key={photo.path}
+            className={`relative group rounded-2xl overflow-hidden cursor-pointer bg-muted ${(startIdx + i) % 3 === 0 ? 'md:col-span-2' : ''
+              }`}
+            whileHover={{ scale: 1.02 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            onClick={() => data.onPhotoSelect?.(photo)}
           >
-            <h2 className="text-2xl font-bold mb-4 px-2">{group.title}</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {group.photos.map((photo) => (
-                <motion.div
-                  key={photo.path}
-                  layoutId={`photo-${photo.path}`}
-                  className="aspect-square rounded-lg overflow-hidden cursor-pointer relative group"
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                  onClick={() => onPhotoSelect?.(photo, photos)}
-                >
-                  <img
-                    src={api.getImageUrl(photo.path, 300)}
-                    alt={photo.filename}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="absolute bottom-2 left-2 right-2 text-white text-xs truncate">
-                      {photo.filename}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
+            <img
+              src={`http://127.0.0.1:8000/image/thumbnail?path=${encodeURIComponent(photo.path)}&size=800`}
+              alt={photo.filename}
+              className="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <p className="font-medium">{photo.filename}</p>
             </div>
-          </motion.section>
+          </motion.div>
         ))}
       </div>
+    </div>
+  );
+};
+
+export function StoryMode({ photos, loading, onPhotoSelect, hasMore, loadMore }: StoryModeProps) {
+  const observerTarget = useRef<HTMLDivElement>(null);
+  const listRef = useRef<List>(null);
+
+  // Calculate total rows needed
+  const rowCount = useMemo(() => Math.ceil(photos.length / PHOTOS_PER_ROW), [photos.length]);
+
+  // Data object for virtualized list
+  const itemData = useMemo<RowData>(() => ({
+    photos,
+    onPhotoSelect,
+  }), [photos, onPhotoSelect]);
+
+  // Handle scroll to load more
+  const handleItemsRendered = useCallback(({ visibleStopIndex }: { visibleStopIndex: number }) => {
+    // Load more when near the end
+    if (visibleStopIndex >= rowCount - 2 && hasMore && !loading && loadMore) {
+      loadMore();
+    }
+  }, [rowCount, hasMore, loading, loadMore]);
+
+  // Infinite Scroll Observer (fallback for when virtualization is disabled)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && loadMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading, loadMore]);
+
+  if (!loading && photos.length === 0) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <div className="text-center flex flex-col items-center">
+          <div className="w-20 h-20 bg-secondary/50 rounded-full flex items-center justify-center mb-6">
+            <span className="text-3xl">📸</span>
+          </div>
+          <h3 className="text-2xl font-semibold mb-3">Your Museum is Empty</h3>
+          <p className="text-muted-foreground max-w-md mx-auto mb-8">
+            Add photos to the <code className="bg-muted px-2 py-0.5 rounded">media/</code> folder and click scan to get started.
+          </p>
+          <button
+            onClick={() => {
+              const defaultPath = window.location.hostname === 'localhost'
+                ? '/Users/pranay/Projects/photosearch_experiment/media'
+                : 'media';
+
+              import('../api').then(({ api }) => {
+                api.scan(defaultPath).then(() => {
+                  window.location.reload();
+                }).catch(err => alert("Scan failed: " + err));
+              });
+            }}
+            className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-all shadow-lg shadow-primary/25 flex items-center gap-2 text-lg"
+          >
+            <span>✨</span> Scan Library
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col bg-background relative h-[calc(100vh-80px)]">
+      {/* Loading State for initial fetch */}
+      {loading && photos.length === 0 && (
+        <div className="text-center p-24 text-muted-foreground animate-pulse">
+          <p>Curating your museum...</p>
+        </div>
+      )}
+
+      {/* Virtualized Photo Grid */}
+      {photos.length > 0 && (
+        <div className="flex-1">
+          <AutoSizer>
+            {({ height, width }) => (
+              <List
+                ref={listRef}
+                height={height}
+                width={width}
+                itemCount={rowCount + 1} // +1 for loading indicator row
+                itemSize={ROW_HEIGHT}
+                itemData={itemData}
+                onItemsRendered={handleItemsRendered}
+                overscanCount={2}
+              >
+                {({ index, style, data }: ListChildComponentProps<RowData>) => {
+                  // Last row is the loading indicator
+                  if (index === rowCount) {
+                    return (
+                      <div style={style} ref={observerTarget} className="h-24 w-full flex items-center justify-center">
+                        {loading && (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-muted-foreground animate-pulse">Unearthing more stories...</span>
+                          </div>
+                        )}
+                        {!hasMore && photos.length > 0 && (
+                          <div className="text-center py-8 opacity-50">
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">The End</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return <PhotoRow index={index} style={style} data={data} />;
+                }}
+              </List>
+            )}
+          </AutoSizer>
+        </div>
+      )}
     </div>
   );
 }

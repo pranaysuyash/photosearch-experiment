@@ -22,27 +22,40 @@ function formatBytes(bytes: number): string {
     return `${bytes.toFixed(1)} ${units[i]}`;
 }
 
-// Metadata section component
-function MetadataSection({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+// Metadata section component with collapsible header
+function MetadataSection({ 
+    icon: Icon, 
+    title, 
+    children, 
+    defaultOpen = false 
+}: { 
+    icon: any; 
+    title: string; 
+    children: React.ReactNode; 
+    defaultOpen?: boolean; 
+}) {
     return (
-        <div className="mb-4">
-            <h4 className="flex items-center gap-2 text-white/70 text-xs uppercase tracking-wider mb-2">
-                <Icon size={14} />
-                {title}
-            </h4>
-            <div className="space-y-1 text-sm">
+        <details className="group mb-2 border border-white/5 bg-white/5 rounded-lg overflow-hidden" open={defaultOpen}>
+            <summary className="flex items-center gap-2 p-3 cursor-pointer hover:bg-white/5 transition-colors select-none list-none text-white/80 font-medium text-xs uppercase tracking-wider">
+                <Icon size={14} className="text-primary/70" />
+                <span>{title}</span>
+                <div className="ml-auto transition-transform group-open:rotate-180 opacity-50">
+                    <ChevronLeft size={14} className="-rotate-90" />
+                </div>
+            </summary>
+            <div className="px-3 pb-3 pt-0 space-y-1 text-sm border-t border-white/5 mt-1">
                 {children}
             </div>
-        </div>
+        </details>
     );
 }
 
 function MetadataRow({ label, value }: { label: string; value: string | number | undefined | null }) {
     if (value === undefined || value === null || value === "") return null;
     return (
-        <div className="flex justify-between items-center py-1 border-b border-white/5">
-            <span className="text-white/50">{label}</span>
-            <span className="text-white/90 font-mono text-xs">{String(value)}</span>
+        <div className="flex justify-between items-start py-1.5 border-b border-white/5 last:border-0">
+            <span className="text-white/40 text-xs mt-0.5">{label}</span>
+            <span className="text-white/90 font-mono text-xs text-right max-w-[60%] break-words select-text">{String(value)}</span>
         </div>
     );
 }
@@ -158,9 +171,19 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                                 </div>
                             )}
                             
+                            {/* Download Button */}
+                            <a
+                                href={api.getImageUrl(photo.path)}
+                                download={photo.filename}
+                                className="w-full mb-4 px-4 py-2.5 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                            >
+                                <HardDrive size={16} />
+                                Download Original
+                            </a>
+                            
                             {/* File Info */}
                             {metadata.file && (
-                                <MetadataSection icon={HardDrive} title="File Info">
+                                <MetadataSection icon={HardDrive} title="File Info" defaultOpen={true}>
                                     <MetadataRow label="Name" value={metadata.file.name} />
                                     <MetadataRow label="Extension" value={metadata.file.extension} />
                                     <MetadataRow label="MIME Type" value={metadata.file.mime_type} />
@@ -169,7 +192,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* Image Properties */}
                             {img.width && (
-                                <MetadataSection icon={ImageIcon} title="Image">
+                                <MetadataSection icon={ImageIcon} title="Image" defaultOpen={true}>
                                     <MetadataRow label="Dimensions" value={`${img.width} × ${img.height}`} />
                                     <MetadataRow label="Format" value={img.format} />
                                     <MetadataRow label="Mode" value={img.mode} />
@@ -182,7 +205,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* Video Properties */}
                             {metadata.video?.format && (
-                                <MetadataSection icon={Camera} title="Video">
+                                <MetadataSection icon={Camera} title="Video" defaultOpen={true}>
                                     <MetadataRow label="Duration" value={calc.duration_human || `${Math.round(parseFloat(metadata.video.format.duration))}s`} />
                                     <MetadataRow label="Resolution" value={metadata.video.streams?.[0] ? `${metadata.video.streams[0].width} × ${metadata.video.streams[0].height}` : undefined} />
                                     <MetadataRow label="Codec" value={metadata.video.streams?.[0]?.codec_long_name} />
@@ -206,7 +229,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* Audio Properties */}
                             {metadata.audio && (
-                                <MetadataSection icon={Music} title="Audio">
+                                <MetadataSection icon={Music} title="Audio" defaultOpen={true}>
                                     <MetadataRow label="Duration" value={metadata.audio.length_human} />
                                     <MetadataRow label="Format" value={metadata.audio.format} />
                                     <MetadataRow label="Bitrate" value={metadata.audio.bitrate ? `${metadata.audio.bitrate} kbps` : undefined} />
@@ -218,7 +241,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* Audio Tags */}
                             {metadata.audio?.tags && (
-                                <MetadataSection icon={Music} title="Audio Tags">
+                                <MetadataSection icon={Music} title="Audio Tags" defaultOpen={true}>
                                     <MetadataRow label="Title" value={metadata.audio.tags.title} />
                                     <MetadataRow label="Artist" value={metadata.audio.tags.artist} />
                                     <MetadataRow label="Album" value={metadata.audio.tags.album} />
@@ -232,7 +255,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* PDF Properties */}
                             {metadata.pdf && (
-                                <MetadataSection icon={FileText} title="PDF Document">
+                                <MetadataSection icon={FileText} title="PDF Document" defaultOpen={true}>
                                     <MetadataRow label="Pages" value={metadata.pdf.page_count} />
                                     <MetadataRow label="Title" value={metadata.pdf.title} />
                                     <MetadataRow label="Author" value={metadata.pdf.author} />
@@ -247,7 +270,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* SVG Properties */}
                             {metadata.svg && (
-                                <MetadataSection icon={Code} title="SVG Vector">
+                                <MetadataSection icon={Code} title="SVG Vector" defaultOpen={true}>
                                     <MetadataRow label="Width" value={metadata.svg.width} />
                                     <MetadataRow label="Height" value={metadata.svg.height} />
                                     <MetadataRow label="ViewBox" value={metadata.svg.viewBox} />
@@ -293,7 +316,7 @@ export function PhotoDetail({ photos, currentIndex, onNavigate, onClose }: Photo
                             
                             {/* GPS */}
                             {(gps.latitude || gps.longitude) && (
-                                <MetadataSection icon={MapPin} title="Location">
+                                <MetadataSection icon={MapPin} title="Location" defaultOpen={true}>
                                     <MetadataRow label="Latitude" value={gps.latitude?.toFixed(6)} />
                                     <MetadataRow label="Longitude" value={gps.longitude?.toFixed(6)} />
                                     <MetadataRow label="Altitude" value={gps.altitude ? `${gps.altitude}m` : undefined} />
