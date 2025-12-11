@@ -23,6 +23,26 @@ export interface Job {
   result?: any;
 }
 
+export interface PricingTier {
+  name: string;
+  image_limit: number;
+  price_monthly: number;
+  price_yearly?: number;
+  features: string[];
+  stripe_price_id?: string;
+  is_popular: boolean;
+}
+
+export interface UsageStats {
+  current_tier: string;
+  image_count: number;
+  image_limit: number;
+  usage_percentage: number;
+  billing_cycle_start: string;
+  billing_cycle_end: string | null;
+  days_remaining: number;
+}
+
 export const api = {
   scan: async (path: string, background: boolean = true) => {
     const res = await axios.post(`${API_BASE}/scan`, { path, background });
@@ -84,5 +104,36 @@ export const api = {
   getVideoUrl: (path: string) => {
     const encodedPath = encodeURIComponent(path);
     return `${API_BASE}/video?path=${encodedPath}`;
+  },
+
+  // Pricing endpoints
+  getPricingTiers: async () => {
+    const res = await axios.get(`${API_BASE}/pricing`);
+    return res.data as PricingTier[];
+  },
+  
+  getPricingTier: async (tierName: string) => {
+    const res = await axios.get(`${API_BASE}/pricing/${tierName}`);
+    return res.data as PricingTier;
+  },
+  
+  recommendPricingTier: async (imageCount: number) => {
+    const res = await axios.get(`${API_BASE}/pricing/recommend?image_count=${imageCount}`);
+    return res.data as PricingTier;
+  },
+  
+  getUsageStats: async (userId: string) => {
+    const res = await axios.get(`${API_BASE}/usage/${userId}`);
+    return res.data as UsageStats;
+  },
+  
+  checkUsageLimit: async (userId: string, additionalImages: number = 0) => {
+    const res = await axios.get(`${API_BASE}/usage/check/${userId}?additional_images=${additionalImages}`);
+    return res.data;
+  },
+  
+  upgradeUserTier: async (userId: string, newTier: string) => {
+    const res = await axios.post(`${API_BASE}/usage/upgrade/${userId}`, { new_tier: newTier });
+    return res.data;
   }
 };

@@ -4,6 +4,7 @@ from typing import List, Optional
 from pathlib import Path
 from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
 from server.jobs import job_store, Job
+from server.pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -673,6 +674,90 @@ async def get_timeline():
         # Fallback if table doesn't exist or other error
         print(f"Timeline error: {e}")
         return {"timeline": []}
+
+
+# ========== PRICING ENDPOINTS ==========
+
+@app.get("/pricing", response_model=List[PricingTier])
+async def get_pricing_tiers():
+    """
+    Get all available pricing tiers.
+    """
+    return pricing_manager.get_all_tiers()
+
+
+@app.get("/pricing/{tier_name}", response_model=PricingTier)
+async def get_pricing_tier(tier_name: str):
+    """
+    Get details for a specific pricing tier.
+    """
+    tier = pricing_manager.get_tier(tier_name)
+    if not tier:
+        raise HTTPException(status_code=404, detail="Pricing tier not found")
+    return tier
+
+
+@app.get("/pricing/recommend", response_model=PricingTier)
+async def recommend_pricing_tier(image_count: int):
+    """
+    Recommend a pricing tier based on image count.
+    """
+    if image_count < 0:
+        raise HTTPException(status_code=400, detail="Image count must be positive")
+    
+    return pricing_manager.get_tier_by_image_count(image_count)
+
+
+@app.get("/usage/{user_id}", response_model=UsageStats)
+async def get_usage_stats(user_id: str):
+    """
+    Get current usage statistics for a user.
+    """
+    # Get current image count from database
+    try:
+        cursor = photo_search_engine.db.conn.cursor()
+        cursor.execute("SELECT COUNT(*) as count FROM metadata")
+        result = cursor.fetchone()
+        image_count = result['count'] if result else 0
+    except Exception as e:
+        print(f"Error getting image count: {e}")
+        image_count = 0
+    
+    # Track usage and return stats
+    return pricing_manager.track_usage(user_id, image_count)
+
+
+@app.get("/usage/check/{user_id}")
+async def check_usage_limit(user_id: str, additional_images: int = 0):
+    """
+    Check if user can add more images without exceeding their limit.
+    """
+    if additional_images < 0:
+        raise HTTPException(status_code=400, detail="Additional images must be positive")
+    
+    can_add = pricing_manager.check_limit(user_id, additional_images)
+    
+    return {
+        "can_add": can_add,
+        "message": "User can add images" if can_add else "User would exceed their image limit"
+    }
+
+
+@app.post("/usage/upgrade/{user_id}")
+async def upgrade_user_tier(user_id: str, new_tier: str):
+    """
+    Upgrade a user to a new pricing tier.
+    """
+    success = pricing_manager.upgrade_tier(user_id, new_tier)
+    
+    if not success:
+        raise HTTPException(status_code=400, detail="Invalid tier or user not found")
+    
+    return {
+        "success": True,
+        "message": f"User {user_id} upgraded to {new_tier} tier",
+        "new_tier": new_tier
+    }
 
 class ExportRequest(BaseModel):
     paths: List[str]

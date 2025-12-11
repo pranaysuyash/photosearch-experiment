@@ -17,6 +17,7 @@ This is a modular, Python-based photo search application powered by AI. The proj
 - ✅ **Documentation-Driven** - Comprehensive docs for every task
 - ✅ **Backend-Focused** - No frontend unless necessary
 - ✅ **Open AI Models** - Leverage multiple AI providers
+- ✅ **Dual-Mode Architecture** - Supports both offline and online modes; React chosen for flexibility in handling both
 
 ---
 
