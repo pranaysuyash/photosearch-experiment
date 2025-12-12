@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { ErrorBoundary } from "react-error-boundary";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { PhotoGrid } from './components/PhotoGrid'
+import { ModernPhotoGrid } from './components/ModernPhotoGrid'
+import { ModernGalleryDemo } from './components/ModernGalleryDemo'
 import { SonicTimeline } from './components/SonicTimeline'
 import { Spotlight } from './components/Spotlight'
 import { StoryMode } from './components/StoryMode'
@@ -12,7 +14,7 @@ import { BigSearchHero } from './components/BigSearchHero'
 import { useDebounce } from './hooks/useDebounce';
 import { usePhotoSearch } from './hooks/usePhotoSearch';
 import { type Photo } from './api';
-import { Globe2, LayoutGrid, Moon, Sun, Search, ArrowUpDown, Image, Film, Layers } from 'lucide-react';
+import { Globe2, LayoutGrid, Moon, Sun, Search, ArrowUpDown, Image, Film, Layers, Sparkles, Code } from 'lucide-react';
 import { SearchToggle, type SearchMode } from './components/SearchToggle';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
@@ -32,6 +34,7 @@ function App() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [viewedPhotos, setViewedPhotos] = useState<Photo[]>([])
   const [isDark, setIsDark] = useState(true);
+  const [galleryMode, setGalleryMode] = useState<'traditional' | 'modern' | 'demo'>('traditional')
 
   // Sorting and filtering state
   const [sortBy, setSortBy] = useState<string>('date_desc');
@@ -101,7 +104,8 @@ function App() {
                 </button>
                 <button
                   onClick={() => setViewMode('globe')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${viewMode === 'globe' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
+                  title="3D Globe View"
                 >
                   <Globe2 size={14} />
                   Explore 3D
@@ -133,6 +137,34 @@ function App() {
                 </h1>
 
                 <div className="flex items-center gap-3">
+                  {/* Gallery Mode Toggle */}
+                  <div className="flex gap-1 bg-white/5 dark:bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
+                    <button
+                      onClick={() => setGalleryMode('traditional')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'traditional' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
+                      title="Traditional Grid"
+                    >
+                      <LayoutGrid size={14} />
+                      Classic
+                    </button>
+                    <button
+                      onClick={() => setGalleryMode('modern')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'modern' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
+                      title="Modern CSS Features"
+                    >
+                      <Sparkles size={14} />
+                      Modern
+                    </button>
+                    <button
+                      onClick={() => setGalleryMode('demo')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'demo' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
+                      title="CSS Features Demo"
+                    >
+                      <Code size={14} />
+                      Demo
+                    </button>
+                  </div>
+
                   {/* View Mode Toggle */}
                   <div className="flex gap-1 bg-white/5 dark:bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
                     <button
@@ -259,6 +291,13 @@ function App() {
               )}
             </AnimatePresence>
 
+            {/* Demo Gallery - Shows CSS features */}
+            {galleryMode === 'demo' && (
+              <ModernGalleryDemo 
+                onUseModern={() => setGalleryMode('modern')}
+              />
+            )}
+
             {/* Globe View */}
             {viewMode === 'globe' && (
               <PhotoGlobe
@@ -268,8 +307,8 @@ function App() {
               />
             )}
 
-            {/* Search Results */}
-            {!showBigHero && viewMode !== 'globe' && isSearching && (
+            {/* Search Results - with gallery mode selection */}
+            {!showBigHero && viewMode !== 'globe' && galleryMode !== 'demo' && isSearching && (
               <div key="search-results" className="max-w-[1920px] mx-auto">
                 <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <h2 className="text-2xl font-light text-foreground">
@@ -277,27 +316,51 @@ function App() {
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">{photos.length} photos found</p>
                 </div>
-                <PhotoGrid
-                  photos={photos}
-                  loading={loading}
-                  error={error}
-                  onPhotoSelect={handlePhotoSelect}
-                  hasMore={hasMore}
-                  loadMore={loadMore}
-                />
+                {galleryMode === 'traditional' ? (
+                  <PhotoGrid
+                    photos={photos}
+                    loading={loading}
+                    error={error}
+                    onPhotoSelect={handlePhotoSelect}
+                    hasMore={hasMore}
+                    loadMore={loadMore}
+                  />
+                ) : (
+                  <ModernPhotoGrid
+                    photos={photos}
+                    loading={loading}
+                    error={error}
+                    onPhotoSelect={handlePhotoSelect}
+                    hasMore={hasMore}
+                    loadMore={loadMore}
+                  />
+                )}
               </div>
             )}
 
             {/* Story Mode (Default Home with Photos) */}
-            {!showBigHero && viewMode !== 'globe' && !isSearching && (
-              <StoryMode
-                key="story-mode"
-                photos={photos}
-                loading={loading}
-                onPhotoSelect={(photo) => handlePhotoSelect(photo)}
-                hasMore={hasMore}
-                loadMore={loadMore}
-              />
+            {!showBigHero && viewMode !== 'globe' && galleryMode !== 'demo' && !isSearching && (
+              <div>
+                {galleryMode === 'traditional' ? (
+                  <StoryMode
+                    key="story-mode"
+                    photos={photos}
+                    loading={loading}
+                    onPhotoSelect={(photo) => handlePhotoSelect(photo)}
+                    hasMore={hasMore}
+                    loadMore={loadMore}
+                  />
+                ) : (
+                  <ModernPhotoGrid
+                    key="modern-story-mode"
+                    photos={photos}
+                    loading={loading}
+                    onPhotoSelect={handlePhotoSelect}
+                    hasMore={hasMore}
+                    loadMore={loadMore}
+                  />
+                )}
+              </div>
             )}
           </ErrorBoundary>
         </main>

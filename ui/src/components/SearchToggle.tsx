@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sparkles, Database, Layers } from 'lucide-react';
 
 export type SearchMode = 'metadata' | 'hybrid' | 'semantic';
