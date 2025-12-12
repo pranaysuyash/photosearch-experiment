@@ -1,9 +1,9 @@
 # Photo Search Application
 
-**Project Type:** Learning & Experimentation → Production-Ready AI Application  
-**Language:** Python  
-**Focus:** Modular, AI-Powered Photo Search  
-**Status:** 🟢 Task 10 Complete - Vector Architecture Validated (FAISS/Chroma/LanceDB Benchmarked)
+**Project Type:** Commercial Prototype (Closed Source)
+**Language:** Python / React
+**Focus:** Pro-Grade AI Photo Workstation ("Studio")
+**Status:** 🟢 Phase 1 Core Complete | 🟡 Phase 4 "Studio" In Progress
 
 ---
 
@@ -12,12 +12,13 @@
 This is a modular, Python-based photo search application powered by AI. The project is designed for learning and experimentation, with each feature implemented in a single, reusable Python file.
 
 ### Core Principles
+
 - ✅ **One Task = One File** - Clear separation of concerns
 - ✅ **Modular Design** - Each file can be imported and reused
 - ✅ **Documentation-Driven** - Comprehensive docs for every task
-- ✅ **Backend-Focused** - No frontend unless necessary
-- ✅ **Open AI Models** - Leverage multiple AI providers
-- ✅ **Dual-Mode Architecture** - Supports both offline and online modes; React chosen for flexibility in handling both
+- ✅ **Backend-Focused** - Robust API for the "Studio" frontend
+- ✅ **Private by Design** - Local-first AI processing (no data mining)
+- ✅ **Commercial Focus** - "Studio" feature set is a premium differentiator
 
 ---
 
@@ -65,12 +66,14 @@ photosearch_experiment/
 ## 📚 Documentation
 
 ### For Developers
+
 - **[PROJECT_ARCHITECTURE.md](docs/antigravity/PROJECT_ARCHITECTURE.md)** - Technical architecture, module breakdown, data flow
 - **[TASK_BREAKDOWN.md](docs/antigravity/TASK_BREAKDOWN.md)** - Detailed task list with dependencies and success criteria
 - **[DEVELOPMENT_GUIDE.md](docs/antigravity/DEVELOPMENT_GUIDE.md)** - Coding standards, testing, and best practices
 - **[AI_PROVIDERS.md](docs/antigravity/AI_PROVIDERS.md)** - Guide to AI services, pricing, and recommendations
 
 ### For Reference
+
 - **[FAQ.md](docs/FAQ.md)** - Questions, clarifications, and decisions log
 - **[PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md)** - High-level project goals and interpretation
 
@@ -79,12 +82,14 @@ photosearch_experiment/
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 ```bash
 # Python 3.9 or higher
 python --version
 ```
 
 ### Setup
+
 ```bash
 # Clone or navigate to project directory
 cd /Users/pranay/Projects/photosearch_experiment
@@ -124,11 +129,13 @@ Scans user directories for all image and video files, creates a searchable catal
 ### Usage
 
 #### Interactive Mode
+
 ```bash
 python file_discovery.py
 ```
 
 Then choose from menu:
+
 1. Full scan (scan all directories)
 2. Incremental update (detect changes)
 3. Search by folder name
@@ -140,6 +147,7 @@ Then choose from menu:
 #### Command Line Mode
 
 **Full Scan:**
+
 ```bash
 # Scan user home directory
 python file_discovery.py --scan
@@ -152,12 +160,14 @@ python file_discovery.py --scan --catalog my_photos.json
 ```
 
 **Incremental Update:**
+
 ```bash
 # Detect changes since last scan
 python file_discovery.py --incremental --catalog media_catalog.json
 ```
 
 **Search:**
+
 ```bash
 # Search by folder name
 python file_discovery.py --search-folder Pictures
@@ -167,6 +177,7 @@ python file_discovery.py --search-file vacation.jpg
 ```
 
 **Statistics:**
+
 ```bash
 # Display catalog statistics
 python file_discovery.py --stats
@@ -178,6 +189,7 @@ python file_discovery.py --changes
 ### Example Output
 
 **Full Scan:**
+
 ```
 Starting full scan...
 Scanning directories: 100%|████████████| 4/4 [00:00<00:00, 7876.63it/s]
@@ -200,6 +212,7 @@ Scan root: /Users/pranay/test_media_discovery
 ```
 
 **Search by Folder:**
+
 ```
 Found 3 files in folders matching 'photos':
 
@@ -209,6 +222,7 @@ Found 3 files in folders matching 'photos':
 ```
 
 **Search by Filename:**
+
 ```
 Found 'vacation' in 1 folders:
 
@@ -310,11 +324,13 @@ Extends Task 1's file discovery system with format-based analysis and search cap
 ### Usage
 
 #### Interactive Mode
+
 ```bash
 python format_analyzer.py
 ```
 
 Then choose from menu:
+
 1. Show format statistics (all directories)
 2. Show format statistics (specific directory)
 3. Search folders by format
@@ -326,6 +342,7 @@ Then choose from menu:
 #### Command Line Mode
 
 **Format Statistics:**
+
 ```bash
 # Show stats for all directories
 python format_analyzer.py --stats
@@ -335,12 +352,14 @@ python format_analyzer.py --stats --directory Photos
 ```
 
 **Search by Format:**
+
 ```bash
 # Find all folders with JPG files
 python format_analyzer.py --find-format jpg
 ```
 
 **Check Format in Directory:**
+
 ```bash
 # Check if JPG exists in Photos directory
 python format_analyzer.py --check-format jpg --directory Photos
@@ -350,6 +369,7 @@ python format_analyzer.py --check-format mp4 --directory Photos
 ```
 
 **List Files:**
+
 ```bash
 # List all MP4 files
 python format_analyzer.py --list-format mp4
@@ -359,6 +379,7 @@ python format_analyzer.py --list-format jpg --directory Photos
 ```
 
 **Format Summary:**
+
 ```bash
 # Show overall format summary
 python format_analyzer.py --summary
@@ -367,6 +388,7 @@ python format_analyzer.py --summary
 ### Example Output
 
 **Format Statistics:**
+
 ```
 ============================================================
 FORMAT STATISTICS BY DIRECTORY
@@ -384,6 +406,7 @@ FORMAT STATISTICS BY DIRECTORY
 ```
 
 **Search by Format:**
+
 ```
 Found JPG files in 1 directories:
 
@@ -391,6 +414,7 @@ Found JPG files in 1 directories:
 ```
 
 **Format Existence Check (Positive):**
+
 ```
 ✓ JPG files found in /Users/pranay/test_media_discovery/photos
 
@@ -402,11 +426,13 @@ Total: 2 files
 ```
 
 **Format Existence Check (Negative):**
+
 ```
 ✗ No MP4 files found in directories matching 'photos'
 ```
 
 **Format Summary:**
+
 ```
 ============================================================
 FORMAT SUMMARY (All Directories)
@@ -458,6 +484,7 @@ Total: 5 files across 4 formats
 The MOST comprehensive metadata extraction system that captures absolutely everything from any file:
 
 1. **Filesystem Metadata**
+
    - Size (bytes + human-readable)
    - Times: created, modified, accessed, changed
    - Permissions (octal + human-readable)
@@ -465,38 +492,45 @@ The MOST comprehensive metadata extraction system that captures absolutely every
    - Inode, device, hard links, file type
 
 2. **Extended Attributes (xattr)**
+
    - All custom user attributes
    - macOS Spotlight metadata
    - Gracefully handles Windows (not available)
 
 3. **EXIF Metadata**
+
    - ALL standard EXIF tags (IFD0, IFD1, ExifIFD, GPS, Interoperability)
    - MakerNote data (manufacturer-specific proprietary tags)
    - Organized by category for easy navigation
 
 4. **GPS Metadata**
+
    - Latitude/longitude (DMS → decimal conversion)
    - Altitude, timestamp, datestamp
    - Speed, track, image direction
    - Satellites, DOP, map datum
 
 5. **Image Properties**
+
    - Dimensions, format, mode
    - DPI, bits per pixel
    - Color palette, ICC profile
    - Animation support (frames)
 
 6. **Video Properties**
+
    - ALL ffprobe fields (format, streams, chapters)
    - Duration, bitrate, codec
    - Frame rate, resolution
    - Audio tracks, subtitles
 
 7. **File Integrity**
+
    - MD5 hash
    - SHA256 hash
 
 8. **Thumbnails**
+
    - Embedded thumbnail detection
    - Thumbnail generation
 
@@ -528,6 +562,7 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 ### Example Output
 
 **PNG Image (3374x2156, 476KB):**
+
 ```json
 {
   "file": {
@@ -576,6 +611,7 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 ```
 
 **MP4 Video (3358x1522, 45.9MB, 49 seconds):**
+
 ```json
 {
   "video": {
@@ -584,13 +620,15 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
       "bit_rate": "7851222",
       "format_name": "mov,mp4,m4a,3gp,3g2,mj2"
     },
-    "streams": [{
-      "codec_name": "h264",
-      "width": 3358,
-      "height": 1522,
-      "r_frame_rate": "60/1",
-      "nb_frames": "2932"
-    }]
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 3358,
+        "height": 1522,
+        "r_frame_rate": "60/1",
+        "nb_frames": "2932"
+      }
+    ]
   },
   "calculated": {
     "duration_human": "0:49",
@@ -601,16 +639,16 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 
 ### Test Results
 
-| Test | File Type | Result |
-|------|-----------|--------|
-| Filesystem metadata | All files | ✅ Pass |
-| Extended attributes (xattr) | macOS files | ✅ Pass |
-| File hashes (MD5, SHA256) | All files | ✅ Pass |
-| Image properties | PNG screenshot | ✅ Pass (3374x2156, 7.27MP) |
-| EXIF data | PNG screenshot | ✅ Pass (resolution, user comment) |
-| Video metadata | MP4 screen recording | ✅ Pass (H.264, 60fps, 49s) |
-| Calculated metadata | All files | ✅ Pass (aspect ratios, file age) |
-| Filename handling | Files with spaces | ✅ Pass (fixed with Path objects) |
+| Test                        | File Type            | Result                             |
+| --------------------------- | -------------------- | ---------------------------------- |
+| Filesystem metadata         | All files            | ✅ Pass                            |
+| Extended attributes (xattr) | macOS files          | ✅ Pass                            |
+| File hashes (MD5, SHA256)   | All files            | ✅ Pass                            |
+| Image properties            | PNG screenshot       | ✅ Pass (3374x2156, 7.27MP)        |
+| EXIF data                   | PNG screenshot       | ✅ Pass (resolution, user comment) |
+| Video metadata              | MP4 screen recording | ✅ Pass (H.264, 60fps, 49s)        |
+| Calculated metadata         | All files            | ✅ Pass (aspect ratios, file age)  |
+| Filename handling           | Files with spaces    | ✅ Pass (fixed with Path objects)  |
 
 ### What Worked
 
@@ -642,9 +680,11 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 6. **Error handling is critical** - Try-except blocks prevent crashes on corrupted files
 
 ---
+
 ## 🎯 Development Roadmap
 
 ### Phase 1: Foundation (Tasks 1-6)
+
 - [x] **Task 1:** File Discovery System (`file_discovery.py`) ✅
 - [x] **Task 2:** Format Analysis Extension (`format_analyzer.py`) ✅
 - [x] **Task 3:** Comprehensive Metadata Extraction (`metadata_extractor.py`) ✅
@@ -658,6 +698,7 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 ---
 
 ### Phase 2: Search Capabilities (Tasks 6-8)
+
 - [ ] **Task 6:** Basic Search Engine (`search_engine.py`)
 - [ ] **Task 7:** Metadata Extraction (`metadata_extractor.py`)
 - [ ] **Task 8:** Enhanced Search with Metadata
@@ -667,6 +708,7 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 ---
 
 ### Phase 3: Advanced Features (Tasks 9-11)
+
 - [ ] **Task 9:** Object Detection (`object_detector.py`)
 - [ ] **Task 10:** Scene Classification (`scene_classifier.py`)
 - [ ] **Task 11:** Batch Processing (`batch_processor.py`)
@@ -676,6 +718,7 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 ---
 
 ### Phase 4: Optimization (Tasks 12-13)
+
 - [ ] **Task 12:** Advanced Caching (`cache_manager.py`)
 - [ ] **Task 13:** Performance Optimization
 
@@ -687,15 +730,15 @@ python metadata_extractor.py "My Photo 2024.jpg" "Screen Recording @ 3pm.mp4"
 
 This project supports multiple AI providers for flexibility and cost optimization:
 
-| Provider | Use Case | Status |
-|----------|----------|--------|
-| **OpenAI** | High-quality embeddings & captions | Planned |
-| **HuggingFace** | Free, local models | Planned |
-| **Replicate** | Specialized AI models | Planned |
-| **Groq** | Fast LLM inference | Planned |
-| **Cerebras** | Fast inference | Planned |
-| **Fal.ai** | Image generation | Future |
-| **Roboflow** | Object detection | Future |
+| Provider        | Use Case                           | Status  |
+| --------------- | ---------------------------------- | ------- |
+| **OpenAI**      | High-quality embeddings & captions | Planned |
+| **HuggingFace** | Free, local models                 | Planned |
+| **Replicate**   | Specialized AI models              | Planned |
+| **Groq**        | Fast LLM inference                 | Planned |
+| **Cerebras**    | Fast inference                     | Planned |
+| **Fal.ai**      | Image generation                   | Future  |
+| **Roboflow**    | Object detection                   | Future  |
 
 See [AI_PROVIDERS.md](docs/antigravity/AI_PROVIDERS.md) for detailed information.
 
@@ -708,19 +751,23 @@ See [AI_PROVIDERS.md](docs/antigravity/AI_PROVIDERS.md) for detailed information
 All tests passed ✅
 
 **Test 1: Full Scan**
+
 - Created test directory with 5 media files (2 images, 2 videos, 1 GIF)
 - Scan detected all 5 files correctly
 - System directories properly excluded
 
 **Test 2: Search by Folder**
+
 - Searched for "photos" folder
 - Found 3 files correctly
 
 **Test 3: Search by Filename**
+
 - Searched for "vacation"
 - Found correct folder path
 
 **Test 4: Incremental Update**
+
 - Added 1 new file (`newphoto.jpg`)
 - Removed 1 existing file (`birthday.mp4`)
 - Incremental scan detected both changes correctly
@@ -730,24 +777,30 @@ All tests passed ✅
 All tests passed ✅
 
 **Test 1: Format Statistics**
+
 - Correctly identified 4 formats across 2 directories
 - Accurate file counts per format (JPG: 2, PNG: 1, GIF: 1, MOV: 1)
 
 **Test 2: Search by Format**
+
 - Found JPG files in 1 directory with correct count (2 files)
 
 **Test 3: Format Existence Check (Positive)**
+
 - Correctly found JPG files in photos directory
 - Listed all 2 matching files
 
 **Test 4: Format Existence Check (Negative)**
+
 - Correctly identified no MP4 files in photos directory
 
 **Test 5: Format Summary**
+
 - Correct total: 5 files across 4 formats
 - Accurate counts per format
 
 **Test 6: List Files by Format**
+
 - Listed all JPG files with full paths and sizes
 
 ---
@@ -755,6 +808,7 @@ All tests passed ✅
 ## 🤝 Development Workflow
 
 Per user requirements:
+
 1. **Work in own branch** - Create feature branches
 2. **Test thoroughly** - Ensure no breaking changes
 3. **Merge to main** - When complete and tested
@@ -770,6 +824,7 @@ Per user requirements:
 **Next Task:** Task 4 - Configuration Management
 
 ### Documentation Status
+
 - ✅ Project overview created
 - ✅ Architecture documented
 - ✅ Task breakdown defined
@@ -778,12 +833,13 @@ Per user requirements:
 - ✅ FAQ updated with all clarifications
 
 ### Implementation Status
+
 - ✅ Task 1: File Discovery System - **COMPLETE**
 - ✅ Task 2: Format Analysis Extension - **COMPLETE**
 - ✅ Task 3: Comprehensive Metadata Extraction - **COMPLETE**
 - ✅ Task 10: Semantic Experiments (Vector Store Benchmarks) - **COMPLETE**
-    - **Winner:** LanceDB (Best balance of speed/disk-usage)
-    - See `experiments/EXPERIMENT_LOG.md` for full data.
+  - **Winner:** LanceDB (Best balance of speed/disk-usage)
+  - See `experiments/EXPERIMENT_LOG.md` for full data.
 - ⏳ Task 11: Production Integration - **IN PROGRESS**
 
 ---
@@ -791,6 +847,7 @@ Per user requirements:
 ## 🎓 Learning Goals
 
 This project aims to provide hands-on experience with:
+
 - ✅ **File System Operations** - Recursive directory traversal, metadata extraction
 - ✅ **Cross-Platform Development** - Works on macOS, Linux, Windows
 - ✅ **CLI Design** - Both interactive and command-line interfaces
