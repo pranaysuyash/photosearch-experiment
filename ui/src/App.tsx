@@ -3,7 +3,7 @@ import { ErrorBoundary } from "react-error-boundary";
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { PhotoGrid } from './components/PhotoGrid'
 import { ModernPhotoGrid } from './components/ModernPhotoGrid'
-import { ModernGalleryDemo } from './components/ModernGalleryDemo'
+
 import { SonicTimeline } from './components/SonicTimeline'
 import { Spotlight } from './components/Spotlight'
 import { StoryMode } from './components/StoryMode'
@@ -11,10 +11,12 @@ import { PhotoGlobe } from './components/PhotoGlobe'
 import { PhotoDetail } from './components/PhotoDetail'
 import { FirstRunModal } from './components/FirstRunModal'
 import { BigSearchHero } from './components/BigSearchHero'
+import { OfflineBanner } from './components/OfflineBanner'
 import { PhotoSearchProvider, usePhotoSearchContext } from './contexts/PhotoSearchContext';
 import { type Photo } from './api';
-import { Globe2, LayoutGrid, Moon, Sun, Search, ArrowUpDown, Image, Film, Layers, Sparkles, Code } from 'lucide-react';
-import { SearchToggle, type SearchMode } from './components/SearchToggle';
+import { api } from './api';
+import { Globe2, LayoutGrid, Moon, Sun, Search, ArrowUpDown, Image, Film, Layers, Sparkles } from 'lucide-react';
+import { SearchToggle } from './components/SearchToggle';
 
 type ViewMode = 'story' | 'globe';
 
@@ -33,7 +35,8 @@ function AppContent() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [viewedPhotos, setViewedPhotos] = useState<Photo[]>([])
   const [isDark, setIsDark] = useState(true);
-  const [galleryMode, setGalleryMode] = useState<'traditional' | 'modern' | 'demo'>('traditional')
+  const [galleryMode, setGalleryMode] = useState<'traditional' | 'modern'>('traditional')
+  const [isOffline, setIsOffline] = useState(false);
 
   // Get shared state from context
   const {
@@ -56,8 +59,36 @@ function AppContent() {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
+  // Check backend health
+  useEffect(() => {
+    const checkHealth = async () => {
+      const online = await api.healthCheck();
+      setIsOffline(!online);
+    };
+
+    checkHealth();
+    const interval = setInterval(checkHealth, 30000); // Check every 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Remove the problematic debounced search logic that was causing circular updates
   // The context will handle search debouncing internally
+
+  const handleRetry = useCallback(async () => {
+    const online = await api.healthCheck();
+    setIsOffline(!online);
+  }, []);
+
+  const handleScan = useCallback(async () => {
+    // For now, scan a default path; in future, could open folder picker
+    try {
+      await api.scan('/Users/pranay/Pictures', true); // Example path
+      // Could show a notification or update UI
+    } catch (error) {
+      console.error('Scan failed:', error);
+    }
+  }, []);
 
   const isSearching = searchQuery.length > 0;
 
@@ -84,6 +115,7 @@ function AppContent() {
   return (
     <LayoutGroup>
       <div className="min-h-screen bg-background text-foreground grid grid-rows-[auto_1fr] overflow-hidden">
+        <OfflineBanner isOffline={isOffline} onRetry={handleRetry} onScan={handleScan} />
         <FirstRunModal
           onDismiss={() => { }}
           onSelectMode={(mode) => setSearchMode(mode)}
@@ -138,33 +170,15 @@ function AppContent() {
                 </h1>
 
                 <div className="flex items-center gap-3">
-                  {/* Gallery Mode Toggle */}
-                  <div className="flex gap-1 bg-white/5 dark:bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
-                    <button
-                      onClick={() => setGalleryMode('traditional')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'traditional' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-                      title="Traditional Grid"
-                    >
-                      <LayoutGrid size={14} />
-                      Classic
-                    </button>
-                    <button
-                      onClick={() => setGalleryMode('modern')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'modern' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-                      title="Modern CSS Features"
-                    >
-                      <Sparkles size={14} />
-                      Modern
-                    </button>
-                    <button
-                      onClick={() => setGalleryMode('demo')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${galleryMode === 'demo' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
-                      title="CSS Features Demo"
-                    >
-                      <Code size={14} />
-                      Demo
-                    </button>
-                  </div>
+                  {/* New UI Toggle */}
+                  <button
+                    onClick={() => setGalleryMode(galleryMode === 'traditional' ? 'modern' : 'traditional')}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/5 dark:bg-black/20 backdrop-blur-md border border-white/10 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground transition-all hover:bg-white/10 dark:hover:bg-black/30"
+                    title={galleryMode === 'traditional' ? 'Try New UI with Modern CSS Features' : 'Switch back to Classic UI'}
+                  >
+                    <Sparkles size={14} />
+                    {galleryMode === 'traditional' ? 'Check New UI' : 'Back to Classic'}
+                  </button>
 
                   {/* View Mode Toggle */}
                   <div className="flex gap-1 bg-white/5 dark:bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
@@ -292,12 +306,7 @@ function AppContent() {
               )}
             </AnimatePresence>
 
-            {/* Demo Gallery - Shows CSS features */}
-            {galleryMode === 'demo' && (
-              <ModernGalleryDemo 
-                onUseModern={() => setGalleryMode('modern')}
-              />
-            )}
+
 
             {/* Globe View */}
             {viewMode === 'globe' && (
@@ -309,7 +318,7 @@ function AppContent() {
             )}
 
             {/* Search Results - with gallery mode selection */}
-            {!showBigHero && viewMode !== 'globe' && galleryMode !== 'demo' && isSearching && (
+            {!showBigHero && viewMode !== 'globe' && isSearching && (
               <div key="search-results" className="max-w-[1920px] mx-auto">
                 <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <h2 className="text-2xl font-light text-foreground">
@@ -340,7 +349,7 @@ function AppContent() {
             )}
 
             {/* Story Mode (Default Home with Photos) */}
-            {!showBigHero && viewMode !== 'globe' && galleryMode !== 'demo' && !isSearching && (
+            {!showBigHero && viewMode !== 'globe' && !isSearching && (
               <div>
                 {galleryMode === 'traditional' ? (
                   <StoryMode

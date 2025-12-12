@@ -2,26 +2,20 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-// Create axios instance with connection pooling and proper configuration
+// Create axios instance with proper configuration
 const apiClient = axios.create({
   baseURL: API_BASE,
   timeout: 30000, // 30 second timeout
   headers: {
     'Content-Type': 'application/json',
-    'Connection': 'keep-alive', // Explicitly request connection reuse
   },
-  // Enable connection reuse
+  // Enable connection reuse (browser handles this automatically)
   maxRedirects: 5,
-  // Configure connection pooling (these are handled by the browser's HTTP/2 implementation)
-  httpAgent: undefined, // Let browser handle connection pooling
-  httpsAgent: undefined, // Let browser handle connection pooling
 });
 
-// Add request interceptor to ensure consistent headers
+// Add request interceptor for consistent configuration
 apiClient.interceptors.request.use(
   (config) => {
-    // Ensure keep-alive header is always set
-    config.headers['Connection'] = 'keep-alive';
     return config;
   },
   (error) => {
@@ -175,5 +169,15 @@ export const api = {
   upgradeUserTier: async (userId: string, newTier: string) => {
     const res = await apiClient.post(`/usage/upgrade/${userId}`, { new_tier: newTier });
     return res.data;
+  },
+
+  // Health check for backend connectivity
+  healthCheck: async () => {
+    try {
+      const res = await apiClient.get('/', { timeout: 5000 });
+      return res.data.status === 'ok';
+    } catch {
+      return false;
+    }
   }
 };

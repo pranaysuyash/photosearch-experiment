@@ -44,13 +44,28 @@ export function PhotoSearchProvider({ children }: { children: React.ReactNode })
   const timelineFetchedRef = useRef(false);
   const searchAbortControllerRef = useRef<AbortController | null>(null);
   
+  // Refs for search parameters to avoid dependency issues
+  const searchModeRef = useRef(searchMode);
+  const sortByRef = useRef(sortBy);
+  const typeFilterRef = useRef(typeFilter);
+  
+  // Update refs when state changes
+  searchModeRef.current = searchMode;
+  sortByRef.current = sortBy;
+  typeFilterRef.current = typeFilter;
+  
   const LIMIT = 50;
 
   const doSearch = useCallback(async (query: string, isLoadMore: boolean = false) => {
     if (loadingRef.current) return;
 
+    // Get current values from refs to avoid dependency issues
+    const currentSearchMode = searchModeRef.current;
+    const currentSortBy = sortByRef.current;
+    const currentTypeFilter = typeFilterRef.current;
+
     // Create search params signature to prevent duplicate requests
-    const searchParams = `${query}|${searchMode}|${sortBy}|${typeFilter}`;
+    const searchParams = `${query}|${currentSearchMode}|${currentSortBy}|${currentTypeFilter}`;
     if (!isLoadMore && searchParams === lastSearchParamsRef.current) {
       console.log(`[PhotoSearchContext] Skipping duplicate search: ${searchParams}`);
       return;
@@ -76,9 +91,9 @@ export function PhotoSearchProvider({ children }: { children: React.ReactNode })
 
     try {
       const effectiveOffset = isLoadMore ? offsetRef.current : 0;
-      console.log(`[PhotoSearchContext] Single API call: query="${query}" mode=${searchMode} offset=${effectiveOffset}`);
+      console.log(`[PhotoSearchContext] Single API call: query="${query}" mode=${currentSearchMode} offset=${effectiveOffset}`);
       
-      const res = await api.search(query, searchMode, LIMIT, effectiveOffset, sortBy, typeFilter, searchAbortControllerRef.current?.signal);
+      const res = await api.search(query, currentSearchMode, LIMIT, effectiveOffset, currentSortBy, currentTypeFilter, searchAbortControllerRef.current?.signal);
       
       // Check if request was aborted
       if (searchAbortControllerRef.current?.signal.aborted) {
@@ -114,7 +129,7 @@ export function PhotoSearchProvider({ children }: { children: React.ReactNode })
       setLoading(false);
       searchAbortControllerRef.current = null;
     }
-  }, [searchMode, sortBy, typeFilter]);
+  }, []); // Remove dependencies to prevent recreating the function
 
   const loadMore = useCallback(() => {
     if (!loadingRef.current && hasMoreRef.current) {
