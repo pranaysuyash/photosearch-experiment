@@ -1,16 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../api";
-import { usePhotoSearch } from "../hooks/usePhotoSearch";
+import { usePhotoSearchContext } from "../contexts/PhotoSearchContext";
 
 export function HeroCarousel({ onEnter3D }: { onEnter3D?: () => void }) {
-  const { results, search } = usePhotoSearch({ initialFetch: false });
+  const { photos: results } = usePhotoSearchContext();
   const [photos, setPhotos] = useState<any[]>([]); // Keep local state for shuffled
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  useEffect(() => {
-    search("");
-  }, [search]);
+  // Remove the search effect since context handles initial fetch
 
   useEffect(() => {
     if (results && results.length > 0) {

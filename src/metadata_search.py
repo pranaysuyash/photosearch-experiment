@@ -40,8 +40,8 @@ from typing import Dict, List, Optional, Any, Tuple
 from tqdm import tqdm
 
 # Import from previous tasks
-from file_discovery import load_catalog
-from metadata_extractor import extract_all_metadata
+from src.file_discovery import load_catalog
+from src.metadata_extractor import extract_all_metadata
 
 # Configure logging
 logging.basicConfig(
@@ -67,8 +67,20 @@ class MetadataDatabase:
     
     def _init_database(self):
         """Create database tables if they don't exist."""
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        # Use connection with proper settings for concurrent access
+        self.conn = sqlite3.connect(
+            self.db_path, 
+            check_same_thread=False,
+            timeout=30.0,  # 30 second timeout for database locks
+            isolation_level=None  # Autocommit mode for better concurrency
+        )
         self.conn.row_factory = sqlite3.Row  # Return rows as dictionaries
+        
+        # Enable WAL mode for better concurrent access
+        self.conn.execute("PRAGMA journal_mode=WAL")
+        self.conn.execute("PRAGMA synchronous=NORMAL")
+        self.conn.execute("PRAGMA cache_size=10000")
+        self.conn.execute("PRAGMA temp_store=memory")
         
         cursor = self.conn.cursor()
         

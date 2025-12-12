@@ -2,6 +2,44 @@ import axios from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
+// Create axios instance with connection pooling and proper configuration
+const apiClient = axios.create({
+  baseURL: API_BASE,
+  timeout: 30000, // 30 second timeout
+  headers: {
+    'Content-Type': 'application/json',
+    'Connection': 'keep-alive', // Explicitly request connection reuse
+  },
+  // Enable connection reuse
+  maxRedirects: 5,
+  // Configure connection pooling (these are handled by the browser's HTTP/2 implementation)
+  httpAgent: undefined, // Let browser handle connection pooling
+  httpsAgent: undefined, // Let browser handle connection pooling
+});
+
+// Add request interceptor to ensure consistent headers
+apiClient.interceptors.request.use(
+  (config) => {
+    // Ensure keep-alive header is always set
+    config.headers['Connection'] = 'keep-alive';
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    console.error('API Error:', error);
+    return Promise.reject(error);
+  }
+);
+
 export interface Photo {
   path: string;
   filename: string;
@@ -45,12 +83,12 @@ export interface UsageStats {
 
 export const api = {
   scan: async (path: string, background: boolean = true) => {
-    const res = await axios.post(`${API_BASE}/scan`, { path, background });
+    const res = await apiClient.post('/scan', { path, background });
     return res.data; // Returns { job_id, status } if background=true
   },
 
   getJobStatus: async (jobId: string) => {
-    const res = await axios.get(`${API_BASE}/jobs/${jobId}`);
+    const res = await apiClient.get(`/jobs/${jobId}`);
     return res.data as Job;
   },
   
@@ -60,16 +98,18 @@ export const api = {
     limit: number = 50, 
     offset: number = 0,
     sortBy: string = 'date_desc',
-    typeFilter: string = 'all'
+    typeFilter: string = 'all',
+    signal?: AbortSignal
   ) => {
-    const res = await axios.get(`${API_BASE}/search`, { 
-      params: { query, mode, limit, offset, sort_by: sortBy, type_filter: typeFilter } 
+    const res = await apiClient.get('/search', { 
+      params: { query, mode, limit, offset, sort_by: sortBy, type_filter: typeFilter },
+      signal
     });
     return res.data;
   },
   
   getTimeline: async () => {
-    const res = await axios.get(`${API_BASE}/timeline`);
+    const res = await apiClient.get('/timeline');
     return res.data.timeline as TimelineData[];
   },
   
@@ -86,7 +126,7 @@ export const api = {
 
   // Export selected photos as ZIP
   exportPhotos: async (paths: string[]) => {
-    const res = await axios.post(`${API_BASE}/export`, { paths }, {
+    const res = await apiClient.post('/export', { paths }, {
       responseType: 'blob'
     });
     // Trigger download
@@ -108,32 +148,32 @@ export const api = {
 
   // Pricing endpoints
   getPricingTiers: async () => {
-    const res = await axios.get(`${API_BASE}/pricing`);
+    const res = await apiClient.get('/pricing');
     return res.data as PricingTier[];
   },
   
   getPricingTier: async (tierName: string) => {
-    const res = await axios.get(`${API_BASE}/pricing/${tierName}`);
+    const res = await apiClient.get(`/pricing/${tierName}`);
     return res.data as PricingTier;
   },
   
   recommendPricingTier: async (imageCount: number) => {
-    const res = await axios.get(`${API_BASE}/pricing/recommend?image_count=${imageCount}`);
+    const res = await apiClient.get(`/pricing/recommend?image_count=${imageCount}`);
     return res.data as PricingTier;
   },
   
   getUsageStats: async (userId: string) => {
-    const res = await axios.get(`${API_BASE}/usage/${userId}`);
+    const res = await apiClient.get(`/usage/${userId}`);
     return res.data as UsageStats;
   },
   
   checkUsageLimit: async (userId: string, additionalImages: number = 0) => {
-    const res = await axios.get(`${API_BASE}/usage/check/${userId}?additional_images=${additionalImages}`);
+    const res = await apiClient.get(`/usage/check/${userId}?additional_images=${additionalImages}`);
     return res.data;
   },
   
   upgradeUserTier: async (userId: string, newTier: string) => {
-    const res = await axios.post(`${API_BASE}/usage/upgrade/${userId}`, { new_tier: newTier });
+    const res = await apiClient.post(`/usage/upgrade/${userId}`, { new_tier: newTier });
     return res.data;
   }
 };

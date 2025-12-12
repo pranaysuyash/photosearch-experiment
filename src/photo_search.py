@@ -33,9 +33,9 @@ from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 # Import from previous tasks
-from file_discovery import scan_directories, save_catalog, load_catalog
-from metadata_extractor import extract_all_metadata
-from metadata_search import MetadataDatabase, BatchExtractor, QueryEngine
+from src.file_discovery import scan_directories, save_catalog, load_catalog
+from src.metadata_extractor import extract_all_metadata
+from src.metadata_search import MetadataDatabase, BatchExtractor, QueryEngine
 
 # Configure logging
 logging.basicConfig(

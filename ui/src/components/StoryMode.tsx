@@ -1,5 +1,13 @@
 import { useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
+import { FixedSizeList as List } from "react-window";
+
+// Define the type locally since react-window 1.8.8 doesn't export it properly
+interface ListChildComponentProps<T = any> {
+  index: number;
+  style: React.CSSProperties;
+  data: T;
+}
 import AutoSizer from "react-virtualized-auto-sizer";
 import { type Photo } from "../api";
 
@@ -176,8 +184,55 @@ export function StoryMode({ photos, loading, onPhotoSelect, hasMore, loadMore }:
   }
 
   return (
-    <div className="flex-1 min-h-[60vh]">
-      {photoGrid}
+    <div className="flex flex-col bg-background relative h-full min-h-0">
+      {/* Loading State for initial fetch */}
+      {loading && photos.length === 0 && (
+        <div className="text-center p-24 text-muted-foreground animate-pulse">
+          <p>Curating your museum...</p>
+        </div>
+      )}
+
+      {/* Virtualized Photo Grid */}
+      {photos.length > 0 && (
+        <div className="flex-1 mt-6">
+          <AutoSizer>
+            {({ height, width }) => (
+              <List
+                ref={listRef}
+                height={height}
+                width={width}
+                itemCount={rowCount + 1} // +1 for loading indicator row
+                itemSize={ROW_HEIGHT}
+                itemData={itemData}
+                onItemsRendered={handleItemsRendered}
+                overscanCount={2}
+              >
+                {({ index, style, data }: ListChildComponentProps<RowData>) => {
+                  // Last row is the loading indicator
+                  if (index === rowCount) {
+                    return (
+                      <div style={style} ref={observerTarget} className="h-24 w-full flex items-center justify-center">
+                        {loading && (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            <span className="text-xs text-muted-foreground animate-pulse">Unearthing more stories...</span>
+                          </div>
+                        )}
+                        {!hasMore && photos.length > 0 && (
+                          <div className="text-center py-8 opacity-50">
+                            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">The End</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return <PhotoRow index={index} style={style} data={data} />;
+                }}
+              </List>
+            )}
+          </AutoSizer>
+        </div>
+      )}
     </div>
   );
 }

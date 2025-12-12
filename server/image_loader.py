@@ -3,11 +3,44 @@ from pathlib import Path
 from typing import Union, Tuple, Dict, Any
 from PIL import Image, UnidentifiedImageError
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from io import BytesIO
 import logging
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Create a session with connection pooling and retry strategy
+_session = None
+
+def get_http_session():
+    """Get a shared HTTP session with connection pooling."""
+    global _session
+    if _session is None:
+        _session = requests.Session()
+        
+        # Configure retry strategy
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        
+        # Configure adapter with connection pooling
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=20
+        )
+        
+        _session.mount("http://", adapter)
+        _session.mount("https://", adapter)
+        
+        # Set timeout
+        _session.timeout = 10
+        
+    return _session
 
 def load_image(source: Union[str, Path]) -> Image.Image:
     """
@@ -28,7 +61,8 @@ def load_image(source: Union[str, Path]) -> Image.Image:
     try:
         # Check if URL
         if source_str.startswith(('http://', 'https://')):
-            response = requests.get(source_str, timeout=10)
+            session = get_http_session()
+            response = session.get(source_str)
             response.raise_for_status()
             img = Image.open(BytesIO(response.content))
         else:

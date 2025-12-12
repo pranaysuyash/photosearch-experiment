@@ -3,7 +3,7 @@ import { Command } from "cmdk";
 import { Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { type Photo, api } from "../api";
-import { usePhotoSearch } from "../hooks/usePhotoSearch";
+import { usePhotoSearchContext } from "../contexts/PhotoSearchContext";
 import { getSystemCommands } from "../config/commands";
 
 interface SpotlightProps {
@@ -15,11 +15,8 @@ export function Spotlight({ onPhotoSelect }: SpotlightProps) {
   const [query, setQuery] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
-  // Use shared hook for photo results
-  const { results, loading, setQuery: setSearchQuery } = usePhotoSearch({ 
-    initialQuery: "",
-    debounceMs: 300 
-  });
+  // Use shared context for photo results
+  const { photos: results, loading, setSearchQuery } = usePhotoSearchContext();
 
   const [status, setStatus] = useState<{ message: string; type: 'success' | 'error' | 'info'; details?: any } | null>(null);
   const [scanPath, setScanPath] = useState<string>("");
@@ -107,9 +104,9 @@ export function Spotlight({ onPhotoSelect }: SpotlightProps) {
     return () => document.removeEventListener("keydown", down);
   }, []);
 
-  // Update hook query when input changes
+  // Update search query only when user is actively searching in spotlight
   useEffect(() => {
-    if (open) {
+    if (open && query.length > 0) {
         setSearchQuery(query);
     }
   }, [query, open, setSearchQuery]);

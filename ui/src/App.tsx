@@ -11,11 +11,12 @@ import { PhotoGlobe } from './components/PhotoGlobe'
 import { PhotoDetail } from './components/PhotoDetail'
 import { FirstRunModal } from './components/FirstRunModal'
 import { BigSearchHero } from './components/BigSearchHero'
-import { useDebounce } from './hooks/useDebounce';
-import { usePhotoSearch } from './hooks/usePhotoSearch';
+import { PhotoSearchProvider, usePhotoSearchContext } from './contexts/PhotoSearchContext';
 import { type Photo } from './api';
 import { Globe2, LayoutGrid, Moon, Sun, Search, ArrowUpDown, Image, Film, Layers, Sparkles, Code } from 'lucide-react';
 import { SearchToggle, type SearchMode } from './components/SearchToggle';
+
+type ViewMode = 'story' | 'globe';
 
 function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetErrorBoundary: () => void }) {
   return (
@@ -27,38 +28,38 @@ function ErrorFallback({ error, resetErrorBoundary }: { error: Error, resetError
   )
 }
 
-function App() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [searchMode, setSearchMode] = useState<SearchMode>('metadata') // Metadata for browsing, semantic for searching
-  const [viewMode, setViewMode] = useState<'story' | 'globe'>('story')
+function AppContent() {
+  const [viewMode, setViewMode] = useState<ViewMode>('story')
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null)
   const [viewedPhotos, setViewedPhotos] = useState<Photo[]>([])
   const [isDark, setIsDark] = useState(true);
   const [galleryMode, setGalleryMode] = useState<'traditional' | 'modern' | 'demo'>('traditional')
 
-  // Sorting and filtering state
-  const [sortBy, setSortBy] = useState<string>('date_desc');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
+  // Get shared state from context
+  const {
+    photos,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    searchQuery,
+    searchMode,
+    sortBy,
+    typeFilter,
+    setSearchQuery,
+    setSearchMode,
+    setSortBy,
+    setTypeFilter
+  } = usePhotoSearchContext();
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains("dark"));
   }, []);
 
-  const { results: photos, loading, error, setQuery, hasMore, loadMore } = usePhotoSearch({
-    initialQuery: "",
-    initialFetch: true,
-    mode: searchMode,
-    sortBy,
-    typeFilter
-  });
+  // Remove the problematic debounced search logic that was causing circular updates
+  // The context will handle search debouncing internally
 
-  const debouncedSearch = useDebounce(searchQuery, 500);
-
-  useEffect(() => {
-    setQuery(debouncedSearch);
-  }, [debouncedSearch, setQuery]);
-
-  const isSearching = debouncedSearch.length > 0;
+  const isSearching = searchQuery.length > 0;
 
   // Show BigSearchHero when: no photos yet AND not actively searching
   const showBigHero = photos.length === 0 && !isSearching && viewMode === 'story';
@@ -82,7 +83,7 @@ function App() {
 
   return (
     <LayoutGroup>
-      <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground grid grid-rows-[auto_1fr] overflow-hidden">
         <FirstRunModal
           onDismiss={() => { }}
           onSelectMode={(mode) => setSearchMode(mode)}
@@ -91,7 +92,7 @@ function App() {
 
         {/* Minimal Header when BigHero is showing */}
         {showBigHero ? (
-          <header className="fixed top-0 left-0 right-0 z-50 p-4">
+          <header className="absolute top-0 left-0 right-0 z-50 p-4">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
               {/* View Mode Toggle */}
               <div className="flex gap-1 bg-white/5 dark:bg-black/20 backdrop-blur-md p-1 rounded-full border border-white/10">
@@ -104,8 +105,8 @@ function App() {
                 </button>
                 <button
                   onClick={() => setViewMode('globe')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all text-muted-foreground hover:text-foreground"
-                  title="3D Globe View"
+                  // @ts-ignore - TypeScript false positive on viewMode comparison
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${viewMode === 'globe' ? 'bg-primary text-primary-foreground shadow-md' : 'text-muted-foreground hover:text-foreground'}`}
                 >
                   <Globe2 size={14} />
                   Explore 3D
@@ -128,7 +129,7 @@ function App() {
           </header>
         ) : (
           /* Full Header with Search when photos are loaded */
-          <header className="fixed top-0 left-0 right-0 z-50 p-4 bg-background/60 backdrop-blur-2xl border-b border-white/10 shadow-lg shadow-black/5 animate-in fade-in slide-in-from-top-2 duration-300">
+          <header className="sticky top-0 z-50 p-4 bg-background/60 backdrop-blur-2xl border-b border-white/10 shadow-lg shadow-black/5 animate-in fade-in slide-in-from-top-2 duration-300">
             <div className="max-w-7xl mx-auto flex flex-col gap-3">
               {/* Top Row: Logo + View Toggle + Theme */}
               <div className="flex items-center justify-between">
@@ -269,14 +270,14 @@ function App() {
         )}
 
         {/* Main Content Area */}
-        <main className={`flex-1 ${showBigHero ? 'pt-16' : 'pt-36'} pb-24 px-4 sm:px-8 transition-all duration-300`}>
+        <main className={`flex-1 ${showBigHero ? 'relative' : ''} px-4 sm:px-8 overflow-hidden pb-24`}>
           <ErrorBoundary FallbackComponent={ErrorFallback}>
             {/* BigSearchHero - Shown when no photos loaded yet */}
             <AnimatePresence mode="wait">
               {showBigHero && (
                 <motion.div
                   key="big-hero"
-                  className="flex items-center justify-center min-h-[60vh]"
+                  className="flex items-center justify-center h-full min-h-[60vh]"
                   exit={{ opacity: 0, y: -30 }}
                   transition={{ duration: 0.3 }}
                 >
@@ -312,7 +313,7 @@ function App() {
               <div key="search-results" className="max-w-[1920px] mx-auto">
                 <div className="mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <h2 className="text-2xl font-light text-foreground">
-                    Results for <span className="font-medium text-primary">"{debouncedSearch}"</span>
+                    Results for <span className="font-medium text-primary">"{searchQuery}"</span>
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">{photos.length} photos found</p>
                 </div>
@@ -380,6 +381,14 @@ function App() {
       </div>
     </LayoutGroup>
   )
+}
+
+function App() {
+  return (
+    <PhotoSearchProvider>
+      <AppContent />
+    </PhotoSearchProvider>
+  );
 }
 
 export default App

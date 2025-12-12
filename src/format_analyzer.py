@@ -37,7 +37,7 @@ from typing import Dict, List, Tuple
 from collections import defaultdict
 
 # Import catalog loading from Task 1
-from file_discovery import load_catalog
+from src.file_discovery import load_catalog
 
 # Configure logging
 logging.basicConfig(

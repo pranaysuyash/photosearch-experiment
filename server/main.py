@@ -2,9 +2,10 @@ import sys
 import os
 from typing import List, Optional
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
-from server.jobs import job_store, Job
-from server.pricing import pricing_manager, PricingTier, UsageStats
+from jobs import job_store, Job
+from pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -12,9 +13,9 @@ from pydantic import BaseModel
 # Add parent directory to path to import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from photo_search import PhotoSearch
+from src.photo_search import PhotoSearch
 
-from server.config import settings
+from config import settings
 
 app = FastAPI(title=settings.APP_NAME, description="Backend for the Living Museum Interface", debug=settings.DEBUG)
 
@@ -60,11 +61,11 @@ def apply_sort(results: list, sort_by: str) -> list:
 photo_search_engine = PhotoSearch()
 
 # Initialize Semantic Search Components
-from server.lancedb_store import LanceDBStore
-from server.embedding_generator import EmbeddingGenerator
-from server.image_loader import load_image
+from lancedb_store import LanceDBStore
+from embedding_generator import EmbeddingGenerator
+from image_loader import load_image
 
-from server.watcher import start_watcher
+from watcher import start_watcher
 
 # Lazily loaded or initialized here
 # Note: EmbeddingGenerator loads a model (~500MB), so it might take a moment on first request or startup
@@ -99,7 +100,7 @@ async def startup_event():
                     print(f"Index trigger: {filepath}")
                     # Extract Metadata (Single file update using BatchExtractor's underlying logic)
                     # We can use the lower-level extract function
-                    from metadata_extractor import extract_all_metadata
+                    from src.metadata_extractor import extract_all_metadata
                     
                     metadata = extract_all_metadata(filepath)
                     if metadata:
@@ -181,7 +182,7 @@ def process_semantic_indexing(files_to_index: List[str]):
             
             img = None
             if is_video:
-                from server.image_loader import extract_video_frame
+                from image_loader import extract_video_frame
                 # Extract frame
                 try:
                     img = extract_video_frame(file_path)
