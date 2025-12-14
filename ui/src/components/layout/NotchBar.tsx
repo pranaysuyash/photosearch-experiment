@@ -10,7 +10,7 @@
  * Automatically adapts padding & positioning to browser/device capabilities.
  */
 
-import React, { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { useNotch } from '../../hooks/useNotch';
 import { motion } from 'framer-motion';
 
@@ -27,7 +27,7 @@ export function NotchBar({
   show = true,
   compact = false,
 }: NotchBarProps) {
-  const { hasNotch, topInset, leftInset, rightInset, method } = useNotch();
+  const { topInset, leftInset, rightInset, method } = useNotch();
 
   if (!show) return null;
 
@@ -42,7 +42,7 @@ export function NotchBar({
 
   // Show a subtle indicator of which detection method is active (dev only)
   const methodIndicator =
-    process.env.NODE_ENV === 'development'
+    import.meta.env.DEV
       ? ({ '--notch-method': method } as React.CSSProperties)
       : {};
 

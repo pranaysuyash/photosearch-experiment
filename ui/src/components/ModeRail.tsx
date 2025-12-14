@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Film, Globe, Grid3x3 } from 'lucide-react';
-import { ModeSwitcher } from './ModeSwitcher';
+import { ModeSwitcher } from './layout/ModeSwitcher';
 
 type Mode = 'grid' | 'globe' | 'story';
 type Variant = 'standalone' | 'inline';
@@ -18,7 +18,7 @@ function ModeIcon({ mode }: { mode: Mode }) {
   return <Grid3x3 size={18} />;
 }
 
-export function ModeRail({ variant = 'standalone' }: { variant?: Variant }) {
+export function ModeRail({ /* variant = 'standalone' */ }: { variant?: Variant }) {
   const location = useLocation();
   const mode = getMode(location.pathname);
   const [open, setOpen] = useState(false);
@@ -67,9 +67,8 @@ export function ModeRail({ variant = 'standalone' }: { variant?: Variant }) {
       </button>
 
       <div
-        className={`transition-all duration-200 ease-out ${
-          open ? 'max-w-[420px] opacity-100' : 'max-w-0 opacity-0'
-        } overflow-hidden`}
+        className={`transition-all duration-200 ease-out ${open ? 'max-w-[420px] opacity-100' : 'max-w-0 opacity-0'
+          } overflow-hidden`}
       >
         <div className='glass-surface rounded-full p-1 pr-2'>
           <ModeSwitcher size='compact' exclude={mode} />

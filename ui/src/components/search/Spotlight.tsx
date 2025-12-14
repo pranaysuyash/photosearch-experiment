@@ -10,7 +10,7 @@ import {
 } from '../../utils/storage';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { useNavigate } from 'react-router-dom';
-// removed getSystemCommands import - commands are now inlined
+import { glass } from '../../design/glass';
 
 interface SpotlightProps {
   onPhotoSelect?: (photo: Photo) => void;
@@ -66,7 +66,6 @@ export function Spotlight({
     };
   }, []);
 
-  // ... (keeping handleScan same) ...
   const handleScan = useCallback(
     async (pathToScan?: string) => {
       const path = pathToScan || scanPath;
@@ -241,11 +240,11 @@ export function Spotlight({
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className='relative w-full max-w-2xl bg-popover border border-border rounded-xl shadow-2xl overflow-hidden'
+            className={`relative w-full max-w-2xl ${glass.surface} rounded-xl shadow-2xl overflow-hidden`}
           >
             <Command className='w-full bg-transparent'>
               <div
-                className='flex items-center border-b border-border px-4'
+                className='flex items-center border-b border-white/10 px-4'
                 cmdk-input-wrapper=''
               >
                 <Search className='w-5 h-5 text-muted-foreground mr-3' />

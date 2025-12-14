@@ -8,17 +8,6 @@ const GlobePage = () => {
     photos,
     loading,
     error,
-    searchQuery,
-    setSearchQuery,
-    searchMode,
-    setSearchMode,
-    sortBy,
-    setSortBy,
-    typeFilter,
-    setTypeFilter,
-    favoritesFilter,
-    setFavoritesFilter,
-    search,
   } = usePhotoSearchContext();
   const { openForPhoto } = usePhotoViewer();
 

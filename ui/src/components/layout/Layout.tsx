@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Search,
+  // Search,
   Settings,
   Info,
   Eye,
@@ -17,7 +17,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { ModeRail } from './ModeRail';
-// import { Spotlight } from '../search/Spotlight';
+import { Spotlight } from '../search/Spotlight';
 import { DynamicNotchSearch } from './DynamicNotchSearch';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
@@ -38,22 +38,21 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const lastScrollYRef = useRef(0);
   // const { hasNotch } = useNotchAware();
-  const {
-    photos,
-    loading,
-    resultCount,
-    searchQuery,
-    setSearchQuery,
-    searchMode,
-    setSearchMode,
-    sortBy,
-    setSortBy,
-    typeFilter,
-    setTypeFilter,
-    favoritesFilter,
-    setFavoritesFilter,
-    search,
-  } = usePhotoSearchContext();
+  const { photos, resultCount } = usePhotoSearchContext();
+  // const {
+  //   loading,
+  //   searchQuery,
+  //   setSearchQuery,
+  //   searchMode,
+  //   setSearchMode,
+  //   sortBy,
+  //   setSortBy,
+  //   typeFilter,
+  //   setTypeFilter,
+  //   favoritesFilter,
+  //   setFavoritesFilter,
+  //   search,
+  // } = usePhotoSearchContext();
   const { openForPhoto } = usePhotoViewer();
 
   const [minimalMode, setMinimalMode] = useState(false);
@@ -143,7 +142,7 @@ const Layout = ({ children }: LayoutProps) => {
   }, [minimalMode]);
 
   // Search moved to page content - don't show in header
-  const showHeaderSearch = false;
+  // const showHeaderSearch = false;
 
   const resultsNumber = resultCount ?? photos.length;
 
@@ -162,7 +161,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   const headerMotionTransition = {
     duration: 0.28,
-    ease: [0.25, 0.46, 0.45, 0.94],
+    ease: [0.25, 0.46, 0.45, 0.94] as const,
   };
 
   return (
@@ -376,11 +375,11 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Main Content Area */}
       <main className='flex-1 w-full max-w-[1600px] mx-auto pt-20 px-4 md:px-6 pb-32'>
-        {/* <Spotlight
+        <Spotlight
           open={spotlightOpen}
           onOpenChange={setSpotlightOpen}
           onPhotoSelect={(photo) => openForPhoto(photos, photo)}
-        /> */}
+        />
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 20 }}

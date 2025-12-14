@@ -3,19 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import {
   Search,
-  Mic,
+  Sparkles,
   Pin,
   PinOff,
   ChevronRight,
   Image as ImageIcon,
   FileText,
   Video,
-  Clock,
-  Cloud,
-  HardDrive,
-  Shield,
-  Sparkles,
-  X,
+  // X,
 } from 'lucide-react';
 
 export function DynamicNotchSearch() {
@@ -36,7 +31,7 @@ export function DynamicNotchSearch() {
   const [mode, setMode] = useState<'notch' | 'bubble' | 'camera'>('camera');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Handle outside clicks
   useEffect(() => {
@@ -109,16 +104,16 @@ export function DynamicNotchSearch() {
   // Animation variants
   const containerVariants = {
     collapsed: {
-      width: mode === 'camera' ? 160 : 46,
-      height: mode === 'camera' ? 44 : 46,
-      borderRadius: mode === 'camera' ? '0 0 22px 22px' : 999,
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
     },
     expanded: {
-      width: 'min(600px, 94vw)',
-      height: 54, // Slightly taller when expanded
-      borderRadius: 27, // Rounded rect
-      transition: { type: 'spring', stiffness: 300, damping: 30 },
+      width: '100%',
+      height: 400, // Large expanded state
+      borderRadius: 16,
+      transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
     },
   };
 
@@ -142,9 +137,8 @@ export function DynamicNotchSearch() {
     >
       {/* Handle / Icon (Visible when collapsed) */}
       <div
-        className={`absolute inset-0 flex items-center justify-center cursor-pointer ${
-          expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
+        className={`absolute inset-0 flex items-center justify-center cursor-pointer ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
         onClick={() => setPinned(!pinned)}
       >
         {mode === 'camera' ? (
@@ -180,9 +174,8 @@ export function DynamicNotchSearch() {
           <button
             type='button'
             onClick={() => setPinned(!pinned)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${
-              pinned ? 'text-blue-400' : 'text-gray-400'
-            }`}
+            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${pinned ? 'text-blue-400' : 'text-gray-400'
+              }`}
           >
             {pinned ? (
               <Pin className='w-4 h-4' />
@@ -199,11 +192,10 @@ export function DynamicNotchSearch() {
           {/* Type Filter Group */}
           <div className='relative group'>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${
-                activeGroup === 'type'
-                  ? 'bg-white/10 text-white'
-                  : 'text-gray-400'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${activeGroup === 'type'
+                ? 'bg-white/10 text-white'
+                : 'text-gray-400'
+                }`}
               onClick={() =>
                 setActiveGroup(activeGroup === 'type' ? null : 'type')
               }
@@ -233,11 +225,10 @@ export function DynamicNotchSearch() {
                         setTypeFilter(t.id);
                         setActiveGroup(null);
                       }}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${
-                        typeFilter === t.id
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'hover:bg-white/5 text-gray-300'
-                      }`}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${typeFilter === t.id
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'hover:bg-white/5 text-gray-300'
+                        }`}
                     >
                       <t.icon className='w-3 h-3' />
                       {t.label}
@@ -251,11 +242,10 @@ export function DynamicNotchSearch() {
           {/* Mode Filter Group */}
           <div className='relative group'>
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${
-                activeGroup === 'mode'
-                  ? 'bg-white/10 text-white'
-                  : 'text-gray-400'
-              }`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${activeGroup === 'mode'
+                ? 'bg-white/10 text-white'
+                : 'text-gray-400'
+                }`}
               onClick={() =>
                 setActiveGroup(activeGroup === 'mode' ? null : 'mode')
               }
@@ -285,11 +275,10 @@ export function DynamicNotchSearch() {
                         setSearchMode(m.id as any);
                         setActiveGroup(null);
                       }}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${
-                        searchMode === m.id
-                          ? 'bg-blue-500/20 text-blue-400'
-                          : 'hover:bg-white/5 text-gray-300'
-                      }`}
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${searchMode === m.id
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'hover:bg-white/5 text-gray-300'
+                        }`}
                     >
                       <m.icon className='w-3 h-3' />
                       {m.label}

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SearchToggle, type SearchMode } from './SearchToggle';
 import { SearchModeHelp } from './SearchModeHelp';
+import { glass } from '../../design/glass';
 
 interface EnhancedSearchUIProps {
   searchQuery: string;
@@ -127,7 +128,7 @@ export function EnhancedSearchUI({
     return (
       <div className='relative w-full max-w-3xl'>
         {/* Compact Search Bar */}
-        <div className='glass-surface flex items-center rounded-full shadow-lg p-1'>
+        <div className={`${glass.surface} flex items-center rounded-full shadow-lg p-1`}>
           <Search className='ml-4 text-muted-foreground w-5 h-5' />
           <input
             ref={inputRef}
@@ -172,11 +173,10 @@ export function EnhancedSearchUI({
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-2 mr-1 rounded-full transition-colors ${
-              showFilters
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className={`p-2 mr-1 rounded-full transition-colors ${showFilters
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
             title={showFilters ? 'Hide filters' : 'Show filters'}
             aria-label={showFilters ? 'Hide filters' : 'Show filters'}
           >
@@ -187,7 +187,7 @@ export function EnhancedSearchUI({
           </div>
           <button
             onClick={onSearch}
-            className='btn-glass btn-glass--primary text-xs sm:text-sm font-semibold px-4 py-2 mr-1'
+            className={`${glass.buttonPrimary} text-xs sm:text-sm font-semibold px-4 py-2 mr-1`}
             title='Search'
             aria-label='Search'
           >
@@ -202,7 +202,7 @@ export function EnhancedSearchUI({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className='absolute top-full mt-2 w-full glass-surface glass-surface--strong rounded-lg shadow-xl p-4 z-40'
+              className={`absolute top-full mt-2 w-full ${glass.surfaceStrong} rounded-lg shadow-xl p-4 z-40`}
             >
               <div className='text-sm font-semibold text-foreground mb-2'>
                 Search modes (quick guide)
@@ -236,7 +236,7 @@ export function EnhancedSearchUI({
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className='absolute top-full mt-2 w-full glass-surface glass-surface--strong rounded-lg shadow-xl p-4 z-50'
+              className={`absolute top-full mt-2 w-full ${glass.surfaceStrong} rounded-lg shadow-xl p-4 z-50`}
             >
               <div className='space-y-4'>
                 {/* Search Mode */}
@@ -259,11 +259,10 @@ export function EnhancedSearchUI({
                         <button
                           key={option.value}
                           onClick={() => setSortBy(option.value)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
-                            sortBy === option.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                          }`}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${sortBy === option.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                            }`}
                           title={`Sort by ${option.label}`}
                           aria-label={`Sort by ${option.label}`}
                         >
@@ -287,11 +286,10 @@ export function EnhancedSearchUI({
                         <button
                           key={filter.value}
                           onClick={() => setTypeFilter(filter.value)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
-                            typeFilter === filter.value
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                          }`}
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${typeFilter === filter.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                            }`}
                         >
                           <Icon size={12} />
                           {filter.label}
@@ -314,11 +312,10 @@ export function EnhancedSearchUI({
                           <button
                             key={filter.value}
                             onClick={() => setFavoritesFilter(filter.value)}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
-                              favoritesFilter === filter.value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                            }`}
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${favoritesFilter === filter.value
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                              }`}
                           >
                             <Icon size={12} />
                             {filter.label}
@@ -411,7 +408,7 @@ export function EnhancedSearchUI({
         <motion.div className='relative group' layoutId='search-bar'>
           <div className='absolute inset-0 bg-primary/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full' />
 
-          <div className='glass-surface relative flex items-center rounded-full shadow-2xl p-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50'>
+          <div className={`${glass.surface} relative flex items-center rounded-full shadow-2xl p-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50`}>
             <Search className='ml-4 text-muted-foreground w-6 h-6' />
             <input
               ref={inputRef}
@@ -439,11 +436,10 @@ export function EnhancedSearchUI({
             )}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`p-3 mr-2 rounded-full transition-colors ${
-                showFilters
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-white/10'
-              }`}
+              className={`p-3 mr-2 rounded-full transition-colors ${showFilters
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/10'
+                }`}
               title={showFilters ? 'Hide filters' : 'Show filters'}
               aria-label={showFilters ? 'Hide filters' : 'Show filters'}
             >
@@ -465,7 +461,7 @@ export function EnhancedSearchUI({
               initial={{ opacity: 0, height: 0, scale: 0.95 }}
               animate={{ opacity: 1, height: 'auto', scale: 1 }}
               exit={{ opacity: 0, height: 0, scale: 0.95 }}
-              className='glass-surface glass-surface--strong rounded-2xl shadow-2xl p-6 overflow-hidden'
+              className={`${glass.surfaceStrong} rounded-2xl shadow-2xl p-6 overflow-hidden`}
             >
               <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
                 {/* Search Mode */}
@@ -490,11 +486,10 @@ export function EnhancedSearchUI({
                         <button
                           key={option.value}
                           onClick={() => setSortBy(option.value)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
-                            sortBy === option.value
-                              ? 'bg-primary text-primary-foreground shadow-md'
-                              : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
-                          }`}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${sortBy === option.value
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
+                            }`}
                         >
                           <Icon size={14} />
                           {option.label}
@@ -517,11 +512,10 @@ export function EnhancedSearchUI({
                         <button
                           key={filter.value}
                           onClick={() => setTypeFilter(filter.value)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
-                            typeFilter === filter.value
-                              ? 'bg-primary text-primary-foreground shadow-md'
-                              : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
-                          }`}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${typeFilter === filter.value
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
+                            }`}
                         >
                           <Icon size={14} />
                           {filter.label}
@@ -542,7 +536,7 @@ export function EnhancedSearchUI({
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className='glass-surface rounded-2xl shadow-2xl p-4 max-h-48 overflow-y-auto'
+              className={`${glass.surface} rounded-2xl shadow-2xl p-4 max-h-48 overflow-y-auto`}
             >
               <div className='text-sm text-muted-foreground mb-2'>
                 Try searching for:
