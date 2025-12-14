@@ -9,6 +9,12 @@ Prioritization is driven by user impact for a typical photo enthusiast (10k+ ima
 - Medium: Value-added features that improve workflow
 - Low: Nice-to-have features & experiments
 
+> STATUS UPDATE (2025-12-13): Implementation progress
+>
+> - Core search, scanning, job queue, and saved searches are implemented in the backend.
+> - Face clustering and many media analysis modules exist in `src/` but corresponding user-facing endpoints are not all wired in `server/main.py` yet.
+> - AI Storytelling is prioritized and has a working frontend surface (`ui/src/components/StoryMode.tsx`), but the backend story-building and LLM narration stack remains a planned item.
+
 ## Critical (MVP)
 
 - Secure image serving and path sandboxing (`server/main.py` `GET /image/thumbnail`).

@@ -121,10 +121,22 @@ class MetadataDatabase:
             )
         """)
         
+        # Favorites table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS favorites (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT UNIQUE NOT NULL,
+                favorited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT
+            )
+        """)
+        
         # Create indices for common searches
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_hash ON metadata(file_hash)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_extracted_at ON metadata(extracted_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_path ON metadata(file_path)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_file_path ON favorites(file_path)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_favorited_at ON favorites(favorited_at)")
         
         self.conn.commit()
         logger.info(f"Database initialized: {self.db_path}")
@@ -941,3 +953,123 @@ class QueryEngine:
                 values.add(str(value))
         
         return sorted(list(values))
+    
+    # Favorites management methods
+    def add_favorite(self, file_path: str, notes: str = "") -> bool:
+        """
+        Add a file to favorites.
+        
+        Args:
+            file_path: Path to the file
+            notes: Optional notes about the favorite
+            
+        Returns:
+            Success status
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                INSERT OR REPLACE INTO favorites (file_path, favorited_at, notes)
+                VALUES (?, CURRENT_TIMESTAMP, ?)
+            """, (file_path, notes))
+            self.db.conn.commit()
+            logger.info(f"Added {file_path} to favorites")
+            return True
+        except Exception as e:
+            logger.error(f"Error adding favorite {file_path}: {e}")
+            return False
+    
+    def remove_favorite(self, file_path: str) -> bool:
+        """
+        Remove a file from favorites.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            Success status
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("DELETE FROM favorites WHERE file_path = ?", (file_path,))
+            self.db.conn.commit()
+            logger.info(f"Removed {file_path} from favorites")
+            return True
+        except Exception as e:
+            logger.error(f"Error removing favorite {file_path}: {e}")
+            return False
+    
+    def is_favorite(self, file_path: str) -> bool:
+        """
+        Check if a file is favorited.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            True if file is favorited
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("SELECT 1 FROM favorites WHERE file_path = ?", (file_path,))
+            return cursor.fetchone() is not None
+        except Exception as e:
+            logger.error(f"Error checking favorite status for {file_path}: {e}")
+            return False
+    
+    def get_favorites(self, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        Get all favorited files with their metadata.
+        
+        Args:
+            limit: Maximum number of results
+            offset: Offset for pagination
+            
+        Returns:
+            List of favorite files with metadata
+        """
+        try:
+            cursor = self.db.conn.cursor()
+            cursor.execute("""
+                SELECT f.file_path, f.favorited_at, f.notes, m.metadata_json
+                FROM favorites f
+                LEFT JOIN metadata m ON f.file_path = m.file_path
+                ORDER BY f.favorited_at DESC
+                LIMIT ? OFFSET ?
+            """, (limit, offset))
+            
+            results = []
+            for row in cursor.fetchall():
+                metadata = {}
+                if row['metadata_json']:
+                    metadata = json.loads(row['metadata_json'])
+                
+                results.append({
+                    'file_path': row['file_path'],
+                    'favorited_at': row['favorited_at'],
+                    'notes': row['notes'] or '',
+                    'metadata': metadata
+                })
+            
+            return results
+        except Exception as e:
+            logger.error(f"Error getting favorites: {e}")
+            return []
+    
+    def toggle_favorite(self, file_path: str, notes: str = "") -> bool:
+        """
+        Toggle favorite status of a file.
+        
+        Args:
+            file_path: Path to the file
+            notes: Optional notes (only used when adding to favorites)
+            
+        Returns:
+            True if now favorited, False if removed from favorites
+        """
+        if self.is_favorite(file_path):
+            self.remove_favorite(file_path)
+            return False
+        else:
+            self.add_favorite(file_path, notes)
+            return True

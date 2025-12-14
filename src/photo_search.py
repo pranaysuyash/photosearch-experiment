@@ -505,6 +505,70 @@ class PhotoSearch:
         results = self.query_engine.search(query, limit=limit)
         self._display_results(results, query)
     
+    # Favorites management methods
+    def add_favorite(self, file_path: str, notes: str = "") -> bool:
+        """
+        Add a file to favorites.
+        
+        Args:
+            file_path: Path to the file
+            notes: Optional notes
+            
+        Returns:
+            Success status
+        """
+        return self.query_engine.add_favorite(file_path, notes)
+    
+    def remove_favorite(self, file_path: str) -> bool:
+        """
+        Remove a file from favorites.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            Success status
+        """
+        return self.query_engine.remove_favorite(file_path)
+    
+    def is_favorite(self, file_path: str) -> bool:
+        """
+        Check if a file is favorited.
+        
+        Args:
+            file_path: Path to the file
+            
+        Returns:
+            True if favorited
+        """
+        return self.query_engine.is_favorite(file_path)
+    
+    def get_favorites(self, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
+        """
+        Get all favorited files.
+        
+        Args:
+            limit: Maximum results
+            offset: Pagination offset
+            
+        Returns:
+            List of favorites with metadata
+        """
+        return self.query_engine.get_favorites(limit, offset)
+    
+    def toggle_favorite(self, file_path: str, notes: str = "") -> bool:
+        """
+        Toggle favorite status.
+        
+        Args:
+            file_path: Path to the file
+            notes: Optional notes (when adding)
+            
+        Returns:
+            True if now favorited, False if removed
+        """
+        return self.query_engine.toggle_favorite(file_path, notes)
+    
     def close(self):
         """Close database connection."""
         self.db.close()

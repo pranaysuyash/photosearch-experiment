@@ -1,0 +1,353 @@
+.tauri-integration {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.tauri-integration .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.tauri-integration .header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.tauri-integration .controls {
+  display: flex;
+  gap: 10px;
+}
+
+.refresh-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.refresh-btn:hover {
+  background: #bdc3c7;
+}
+
+.tauri-integration .tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e1e8ed;
+  overflow-x: auto;
+}
+
+.tauri-integration .tab-btn {
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #7f8c8d;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+
+.tauri-integration .tab-btn:hover {
+  color: #3498db;
+}
+
+.tauri-integration .tab-btn.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+.tauri-integration .tab-content {
+  background: white;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.commands-tab h3,
+.code-tab h3,
+.tips-tab h3,
+.checklist-tab h3,
+.guide-tab h3 {
+  margin: 0 0 15px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.commands-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.command-item {
+  background: #f8f9fa;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  padding: 15px;
+}
+
+.command-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.command-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.command-type {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  background: #ecf0f1;
+  color: #7f8c8d;
+}
+
+.command-details {
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.command-details p {
+  margin: 0 0 10px;
+}
+
+.command-params,
+.command-returns {
+  margin-top: 10px;
+  padding: 10px;
+  background: white;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.command-params pre,
+.command-returns pre {
+  margin: 5px 0 0;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.copy-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  background: #3498db;
+  color: white;
+}
+
+.copy-btn:hover {
+  background: #2980b9;
+}
+
+.code-block {
+  padding: 15px;
+  border-radius: 6px;
+  font-size: 13px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.rust-code {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.js-code {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.toml-code {
+  background: #f8f9fa;
+  color: #2c3e50;
+}
+
+.tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.tip-item {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.tip-number {
+  font-weight: 600;
+  color: #3498db;
+}
+
+.tip-text {
+  flex: 1;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 6px;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.checklist-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checklist-item label {
+  flex: 1;
+  font-size: 13px;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.guide-content {
+  font-size: 13px;
+  color: #2c3e50;
+  line-height: 1.6;
+}
+
+.guide-description {
+  margin-bottom: 20px;
+  color: #7f8c8d;
+}
+
+.guide-steps {
+  margin-bottom: 20px;
+}
+
+.steps-list {
+  padding-left: 20px;
+}
+
+.step-item {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.step-item strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #2c3e50;
+}
+
+.step-item p {
+  margin: 0;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+
+.step-code {
+  margin-top: 10px;
+  padding: 10px;
+  background: white;
+  border-radius: 4px;
+  font-size: 12px;
+  overflow-x: auto;
+}
+
+.guide-requirements,
+.guide-tips {
+  margin-bottom: 15px;
+}
+
+.guide-requirements h4,
+.guide-tips h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.guide-requirements ul,
+.guide-tips ul {
+  padding-left: 20px;
+  margin: 0;
+}
+
+.guide-requirements li,
+.guide-tips li {
+  margin-bottom: 5px;
+  font-size: 13px;
+  color: #2c3e50;
+}
+
+.tauri-integration .empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.tauri-integration .empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.tauri-integration .loading,
+.tauri-integration .error {
+  padding: 20px;
+  text-align: center;
+  color: #7f8c8d;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.tauri-integration .error {
+  color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}

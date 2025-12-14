@@ -94,15 +94,36 @@ python --version
 # Clone or navigate to project directory
 cd /Users/pranay/Projects/photosearch_experiment
 
-# Virtual environment is already created
-# Activate it:
-source venv/bin/activate  # Mac/Linux
+# Activate the virtual environment (preferred: .venv/, fallback: venv/)
+source .venv/bin/activate  # Mac/Linux
+# or (if your setup uses venv/ instead)
+source venv/bin/activate   # Mac/Linux
 # or
-venv\Scripts\activate     # Windows
+.venv\Scripts\activate     # Windows
 
-# Dependencies are already installed
-# To reinstall: pip install -r requirements.txt
+# Dependencies are already installed in the venv
+# To reinstall if needed: pip install -r requirements.txt
 ```
+
+### Dev (API + UI)
+
+Use these when iterating on the React UI + FastAPI backend and you want a clean restart without hunting down stale processes.
+
+```bash
+# Stop anything on ports 8000/5173 and restart both servers
+./start.sh
+
+# Stop both servers
+bash stop.sh
+
+# See what is running / what owns the ports
+bash scripts/dev-status.sh
+```
+
+More:
+
+- `docs/DEV_WORKFLOW.md`
+- `docs/UI_STYLING.md`
 
 ---
 

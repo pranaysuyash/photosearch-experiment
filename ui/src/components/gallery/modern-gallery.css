@@ -1,0 +1,596 @@
+/* Modern CSS Gallery with Subgrid and Scroll-Driven Transforms */
+
+/* CSS Custom Properties for Modern Easing Functions */
+:root {
+  --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-elastic: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-sharp: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-soft: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+  /* Scroll timeline variables */
+  --scroll-timeline-name: gallery-scroll;
+  --scroll-timeline-axis: block;
+
+  /* Grid subgrid patterns */
+  --grid-min: 280px;
+  --grid-gap: 1rem;
+  --card-radius: 16px;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-strong: 0 16px 64px rgba(0, 0, 0, 0.16);
+}
+
+/* Glass button styles live in ui/src/index.css (avoids global overrides) */
+
+/* Scroll Timeline Definition */
+@scroll-timeline gallery-scroll {
+  source: scroll-container;
+  orientation: vertical;
+  time-range: 1s;
+}
+
+/* Modern Gallery Grid with Subgrid Support */
+.modern-gallery-grid {
+  /* Container query for responsive grid */
+  container-type: inline-size;
+
+  display: grid;
+  grid-template-columns: repeat(auto-fit,
+      minmax(min(var(--grid-min), 100cqi), 1fr));
+  gap: var(--grid-gap);
+
+  /* Smooth scrolling */
+  scroll-behavior: smooth;
+  scroll-padding-block: 2rem;
+}
+
+/* Grid min size helpers */
+.grid-min-200 {
+  --grid-min: 200px;
+}
+
+.grid-min-240 {
+  --grid-min: 240px;
+}
+
+.grid-min-280 {
+  --grid-min: 280px;
+}
+
+/* Provide mapping from data-item-index to CSS variable for animation delays (0..19) */
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-item[data-item-index="0"] {
+    --item-index: 0;
+  }
+
+  .gallery-item[data-item-index="1"] {
+    --item-index: 1;
+  }
+
+  .gallery-item[data-item-index="2"] {
+    --item-index: 2;
+  }
+
+  .gallery-item[data-item-index="3"] {
+    --item-index: 3;
+  }
+
+  .gallery-item[data-item-index="4"] {
+    --item-index: 4;
+  }
+
+  .gallery-item[data-item-index="5"] {
+    --item-index: 5;
+  }
+
+  .gallery-item[data-item-index="6"] {
+    --item-index: 6;
+  }
+
+  .gallery-item[data-item-index="7"] {
+    --item-index: 7;
+  }
+
+  .gallery-item[data-item-index="8"] {
+    --item-index: 8;
+  }
+
+  .gallery-item[data-item-index="9"] {
+    --item-index: 9;
+  }
+
+  .gallery-item[data-item-index="10"] {
+    --item-index: 10;
+  }
+
+  .gallery-item[data-item-index="11"] {
+    --item-index: 11;
+  }
+
+  .gallery-item[data-item-index="12"] {
+    --item-index: 12;
+  }
+
+  .gallery-item[data-item-index="13"] {
+    --item-index: 13;
+  }
+
+  .gallery-item[data-item-index="14"] {
+    --item-index: 14;
+  }
+
+  .gallery-item[data-item-index="15"] {
+    --item-index: 15;
+  }
+
+  .gallery-item[data-item-index="16"] {
+    --item-index: 16;
+  }
+
+  .gallery-item[data-item-index="17"] {
+    --item-index: 17;
+  }
+
+  .gallery-item[data-item-index="18"] {
+    --item-index: 18;
+  }
+
+  .gallery-item[data-item-index="19"] {
+    --item-index: 19;
+  }
+}
+
+.gallery-item {
+  /* Enable subgrid for nested layout */
+  display: grid;
+  grid-auto-rows: auto;
+  grid-row: span var(--row-span, 1);
+
+  /* Modern card styling */
+  background: hsl(var(--card));
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+
+  /* Transform states */
+  transform: translateZ(0);
+  transition: all 0.4s var(--ease-smooth);
+
+  /* Perspective for 3D effects */
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+.gallery-item:hover {
+  /* Enhanced hover state with 3D transform */
+  transform: translateY(-8px) rotateX(2deg) rotateY(2deg);
+  box-shadow: var(--shadow-strong);
+  transition: all 0.6s var(--ease-elastic);
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+@supports (grid-template-rows: subgrid) {
+  .gallery-item {
+    grid-template-rows: subgrid;
+  }
+}
+
+.gallery-item:focus-within {
+  /* Focus state for accessibility */
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: var(--shadow-medium);
+}
+
+/* Advanced Image Styling */
+.gallery-image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+
+  /* Smooth loading and hover transitions */
+  transition: all 0.5s var(--ease-sharp);
+
+  /* Optimize for rendering */
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.gallery-item:hover .gallery-image {
+  /* Parallax zoom effect */
+  transform: scale(1.08) translateZ(0);
+  filter: contrast(1.1) brightness(1.05) saturate(1.1);
+}
+
+/* Scroll-Driven Transformations */
+@media (prefers-reduced-motion: no-preference) {
+  .gallery-item {
+    /* Scroll-triggered reveal animation (uses modern scroll-driven animations if supported) */
+    animation: scrollReveal 0.8s var(--ease-soft) both;
+  }
+
+  @supports (animation-timeline: var(--scroll-timeline-name)) {
+    .gallery-item {
+      animation-timeline: var(--scroll-timeline-name);
+      animation-range: entry 0% cover 25%;
+    }
+  }
+
+  .gallery-item:nth-child(odd) {
+    animation-delay: calc(var(--item-index, 0) * 0.1s);
+  }
+
+  .gallery-item:nth-child(even) {
+    animation-delay: calc(var(--item-index, 0) * 0.15s);
+  }
+}
+
+@keyframes scrollReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95) rotateX(15deg);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: translateY(10px) scale(0.98) rotateX(5deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+  }
+}
+
+/* Advanced Overlay System using CSS Grid Subgrid */
+.gallery-overlay {
+  /* Use subgrid for precise overlay positioning */
+  display: grid;
+  grid-auto-rows: auto;
+  grid-row: 1 / -1;
+
+  /* Gradient overlay with custom blending */
+  background: linear-gradient(180deg,
+      transparent 40%,
+      rgba(0, 0, 0, 0.1) 60%,
+      rgba(0, 0, 0, 0.8) 100%);
+
+  /* Smooth opacity transition */
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-smooth);
+}
+
+.gallery-item:hover .gallery-overlay,
+.gallery-item:focus-within .gallery-overlay {
+  opacity: 1;
+}
+
+@supports (grid-template-rows: subgrid) {
+  .gallery-overlay {
+    grid-template-rows: subgrid;
+  }
+}
+
+/* Metadata Grid using Subgrid */
+.gallery-metadata {
+  display: grid;
+  grid-auto-rows: auto;
+  grid-row: span 3;
+  align-content: end;
+
+  padding: 1.5rem;
+  color: white;
+
+  /* Transform for entrance animation */
+  transform: translateY(20px);
+  transition: all 0.5s var(--ease-bounce);
+}
+
+.gallery-item:hover .gallery-metadata {
+  transform: translateY(0);
+}
+
+@supports (grid-template-rows: subgrid) {
+  .gallery-metadata {
+    grid-template-rows: subgrid;
+  }
+}
+
+/* Enhanced Type Scale using CSS Custom Properties */
+.gallery-title {
+  font-size: clamp(0.875rem, 2.5cqi, 1rem);
+  font-weight: 600;
+  line-height: 1.4;
+
+  /* Text overflow handling */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-path {
+  font-size: clamp(0.75rem, 2cqi, 0.875rem);
+  opacity: 0.8;
+  line-height: 1.3;
+
+  /* Smooth truncate */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Score Visualization with Modern Styling */
+.gallery-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.score-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: inherit;
+  transition: width 0.6s var(--ease-smooth);
+  will-change: width;
+}
+
+/* Utility classes for score widths in increments of 10% */
+.score-fill-0 {
+  width: 0%;
+}
+
+.score-fill-10 {
+  width: 10%;
+}
+
+.score-fill-20 {
+  width: 20%;
+}
+
+.score-fill-30 {
+  width: 30%;
+}
+
+.score-fill-40 {
+  width: 40%;
+}
+
+.score-fill-50 {
+  width: 50%;
+}
+
+.score-fill-60 {
+  width: 60%;
+}
+
+.score-fill-70 {
+  width: 70%;
+}
+
+.score-fill-80 {
+  width: 80%;
+}
+
+.score-fill-90 {
+  width: 90%;
+}
+
+.score-fill-100 {
+  width: 100%;
+}
+
+.score-text {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.9;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+/* Video Badge with Advanced Styling */
+.gallery-video-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 2.5rem;
+  height: 2.5rem;
+  background: rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+
+  color: white;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.3s var(--ease-bounce);
+}
+
+.gallery-item:hover .gallery-video-badge {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Selection State with Modern Effects */
+.gallery-item.selected {
+  /* 3D transform for selection */
+  transform: translateY(-12px) rotateX(5deg) rotateY(-5deg) scale(1.05);
+  box-shadow: 0 20px 80px rgba(var(--primary-rgb), 0.3);
+  border: 2px solid hsl(var(--primary));
+
+  /* Animated ring effect */
+  position: relative;
+}
+
+.gallery-item.selected::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(from 0deg,
+      hsl(var(--primary)),
+      transparent 50%,
+      hsl(var(--primary)));
+  border-radius: inherit;
+  z-index: -1;
+  animation: selectionRing 2s linear infinite;
+}
+
+@keyframes selectionRing {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Selection Checkbox with Modern Styling */
+.gallery-select {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.3s var(--ease-bounce);
+}
+
+.gallery-item:hover .gallery-select {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.gallery-item.selected .gallery-select {
+  opacity: 1;
+  transform: scale(1);
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+/* Responsive Enhancements */
+@container (max-width: 480px) {
+  .modern-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gallery-metadata {
+    padding: 1rem;
+  }
+
+  .gallery-item:hover {
+    transform: translateY(-4px);
+  }
+}
+
+/* Container Query for Advanced Responsiveness */
+@container (min-width: 768px) {
+  .modern-gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+}
+
+@container (min-width: 1200px) {
+  .modern-gallery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  }
+}
+
+/* Performance Optimizations */
+.gallery-item {
+  /* Reduce repaints */
+  contain: layout style paint;
+
+  /* Hardware acceleration */
+  transform: translateZ(0);
+}
+
+.gallery-image {
+  /* Optimize image rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.4);
+    --shadow-medium: 0 8px 32px rgba(0, 0, 0, 0.5);
+    --shadow-strong: 0 16px 64px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Accessibility Enhancements */
+@media (prefers-reduced-motion: reduce) {
+
+  .gallery-item,
+  .gallery-image,
+  .gallery-overlay,
+  .gallery-metadata {
+    animation: none !important;
+    transition: opacity 0.2s ease !important;
+  }
+
+  .gallery-item:hover {
+    transform: translateY(-2px);
+  }
+}
+
+/* Focus Management for Keyboard Navigation */
+.gallery-item:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
+/* Loading State with Modern Skeleton */
+.gallery-skeleton {
+  background: linear-gradient(90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}

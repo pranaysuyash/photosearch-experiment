@@ -27,12 +27,16 @@ Thumbs.db
 
 # Logs
 *.log
+*.out
 
 # Data files (databases, catalogs, temp)
 data/
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
+.run/
 
 # Media files (large demo images/videos)
 media/

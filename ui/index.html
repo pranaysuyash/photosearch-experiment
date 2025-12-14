@@ -1,13 +1,82 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ui</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a0a12" />
+    <title>Living Museum</title>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Storage polyfill - must run BEFORE any other code
+      (function () {
+        const createSafeStorage = () => {
+          const store = {};
+          return {
+            getItem: (k) => (typeof store[k] === 'string' ? store[k] : null),
+            setItem: (k, v) => {
+              store[k] = String(v);
+            },
+            removeItem: (k) => {
+              delete store[k];
+            },
+            clear: () => {
+              Object.keys(store).forEach((k) => delete store[k]);
+            },
+            key: (i) => Object.keys(store)[i] ?? null,
+            length: Object.keys(store).length,
+          };
+        };
+
+        const test = (s) => {
+          try {
+            const k = '__ps_test_' + Date.now();
+            s.setItem(k, '1');
+            s.removeItem(k);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        };
+
+        try {
+          if (!test(window.localStorage)) {
+            Object.defineProperty(window, 'localStorage', {
+              value: createSafeStorage(),
+              writable: false,
+              configurable: true,
+            });
+          }
+        } catch (e) {
+          Object.defineProperty(window, 'localStorage', {
+            value: createSafeStorage(),
+            writable: false,
+            configurable: true,
+          });
+        }
+
+        try {
+          if (!test(window.sessionStorage)) {
+            Object.defineProperty(window, 'sessionStorage', {
+              value: createSafeStorage(),
+              writable: false,
+              configurable: true,
+            });
+          }
+        } catch (e) {
+          Object.defineProperty(window, 'sessionStorage', {
+            value: createSafeStorage(),
+            writable: false,
+            configurable: true,
+          });
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

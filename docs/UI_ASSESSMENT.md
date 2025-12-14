@@ -27,6 +27,8 @@ This document evaluates the current React UI, interaction patterns, accessibilit
 - Reasonable placeholder/tailwind skeleton design for loading states.
 - API wrapper abstracts the backend for the UI, making it easier to support alternate endpoints.
 
+> STATUS UPDATE (2025-12-13): Some UI regressions previously noted (global CSS leakage and misplaced components) were fixed by scoping CSS to component root selectors and lazy-loading non-core routes. The layout and glass design have been restored for most screens; see `ui/src/components/Layout.css`, `ui/src/components/StoryMode.tsx`, and `ui/src/router/MainRouter.tsx`.
+
 ## Opportunities & Recommendations
 
 1. Image Serving & Security (Critical)

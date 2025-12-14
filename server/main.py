@@ -1,6 +1,6 @@
 import sys
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
@@ -9,6 +9,9 @@ from pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import mimetypes
+from datetime import datetime
+import calendar
 
 # Add parent directory to path to import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -56,6 +59,85 @@ def apply_sort(results: list, sort_by: str) -> list:
     
     return results
 
+def _parse_isoish_datetime(value: str) -> Optional[datetime]:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+def _parse_month_or_date(value: Optional[str], end: bool = False) -> Optional[datetime]:
+    """
+    Supports YYYY-MM or ISO datetime/date strings.
+    For YYYY-MM: start is first day 00:00:00, end is last day 23:59:59.
+    """
+    if not value:
+        return None
+    v = value.strip()
+    if not v:
+        return None
+
+    if len(v) == 7 and v[4] == "-":
+        try:
+            year = int(v[0:4])
+            month = int(v[5:7])
+            last_day = calendar.monthrange(year, month)[1]
+            return datetime(year, month, last_day, 23, 59, 59) if end else datetime(year, month, 1, 0, 0, 0)
+        except Exception:
+            return None
+
+    dt = _parse_isoish_datetime(v)
+    if dt:
+        # Drop tzinfo to compare with naive datetimes
+        return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
+
+    try:
+        if len(v) == 10 and v[4] == "-" and v[7] == "-":
+            year = int(v[0:4])
+            month = int(v[5:7])
+            day = int(v[8:10])
+            return datetime(year, month, day, 23, 59, 59) if end else datetime(year, month, day, 0, 0, 0)
+    except Exception:
+        return None
+
+    return None
+
+def _get_created_datetime(meta: dict) -> Optional[datetime]:
+    try:
+        fs = (meta or {}).get("filesystem", {}) or {}
+        created = fs.get("created")
+        if isinstance(created, str):
+            dt = _parse_isoish_datetime(created)
+            if not dt:
+                return None
+            return dt.replace(tzinfo=None) if dt.tzinfo is not None else dt
+    except Exception:
+        return None
+    return None
+
+def apply_date_filter(results: list, date_from: Optional[str], date_to: Optional[str]) -> list:
+    """
+    Filters results by metadata.filesystem.created inclusive.
+    date_from/date_to accept YYYY-MM or ISO date/datetime strings.
+    """
+    start = _parse_month_or_date(date_from, end=False)
+    end = _parse_month_or_date(date_to, end=True)
+    if not start and not end:
+        return results
+
+    filtered = []
+    for r in results:
+        if not isinstance(r, dict):
+            continue
+        dt = _get_created_datetime(r.get("metadata") or {})
+        if not dt:
+            continue
+        if start and dt < start:
+            continue
+        if end and dt > end:
+            continue
+        filtered.append(r)
+    return filtered
+
 # Initialize Core Logic
 # We prefer a persistent instance
 photo_search_engine = PhotoSearch()
@@ -67,11 +149,18 @@ from image_loader import load_image
 
 from watcher import start_watcher
 
+# Initialize Intent Recognition
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from src.intent_recognition import IntentDetector
+from src.saved_searches import SavedSearchManager
+
 # Lazily loaded or initialized here
 # Note: EmbeddingGenerator loads a model (~500MB), so it might take a moment on first request or startup
 vector_store = LanceDBStore()
 embedding_generator = None # Load lazily or on startup
 file_watcher = None # Global observer instance
+intent_detector = IntentDetector() # Initialize intent detector
+saved_search_manager = SavedSearchManager() # Initialize saved search manager
 
 @app.on_event("startup")
 async def startup_event():
@@ -303,7 +392,11 @@ async def search_photos(
     offset: int = 0, 
     mode: str = "metadata",
     sort_by: str = "date_desc",  # date_desc, date_asc, name, size
-    type_filter: str = "all"  # all, photos, videos
+    type_filter: str = "all",  # all, photos, videos
+    favorites_filter: str = "all",  # all, favorites_only
+    date_from: Optional[str] = None,  # YYYY-MM or ISO date/datetime
+    date_to: Optional[str] = None,    # YYYY-MM or ISO date/datetime
+    log_history: bool = True  # Whether to log this search to history
 ):
     """
     Unified Search Endpoint.
@@ -313,8 +406,11 @@ async def search_photos(
       - 'hybrid' (Merge Metadata + Semantic)
     Sort: date_desc (default), date_asc, name, size
     Type Filter: all (default), photos, videos
+    Favorites Filter: all (default), favorites_only
     """
     try:
+        import time
+        start_time = time.time()
         # 1. Semantic Search
         if mode == "semantic":
             results_response = await search_semantic(query, limit * 2, 0)  # Get more for filtering
@@ -325,6 +421,13 @@ async def search_photos(
                 results = [r for r in results if not is_video_file(r.get('path', ''))]
             elif type_filter == "videos":
                 results = [r for r in results if is_video_file(r.get('path', ''))]
+            
+            # Apply favorites filter
+            if favorites_filter == "favorites_only":
+                results = [r for r in results if photo_search_engine.is_favorite(r.get('path', ''))]
+
+            # Apply date filter (filesystem.created)
+            results = apply_date_filter(results, date_from, date_to)
             
             # Apply sort
             results = apply_sort(results, sort_by)
@@ -367,6 +470,13 @@ async def search_photos(
             elif type_filter == "videos":
                 formatted_results = [r for r in formatted_results if is_video_file(r.get('path', ''))]
             
+            # Apply favorites filter
+            if favorites_filter == "favorites_only":
+                formatted_results = [r for r in formatted_results if photo_search_engine.is_favorite(r.get('path', ''))]
+
+            # Apply date filter (filesystem.created)
+            formatted_results = apply_date_filter(formatted_results, date_from, date_to)
+            
             # Apply sorting
             formatted_results = apply_sort(formatted_results, sort_by)
             
@@ -406,9 +516,30 @@ async def search_photos(
                 for r in semantic_results:
                     r['normalized_score'] = (r['score'] - min_score) / score_range
 
-            # D. Merge Logic
+            # D. Enhanced Merge Logic with Intent Detection
             METADATA_WEIGHT = 0.6
             SEMANTIC_WEIGHT = 0.4
+            
+            # Get intent-based weights using the intent detector
+            intent_result = intent_detector.detect_intent(query)
+            
+            # Map intent to weights
+            def get_weights_from_intent(primary_intent):
+                """Get metadata/semantic weights based on primary intent"""
+                # Metadata-heavy intents
+                if primary_intent in ['camera', 'date', 'technical']:
+                    return 0.7, 0.3
+                # Semantic-heavy intents
+                elif primary_intent in ['people', 'object', 'scene', 'event', 'emotion', 'activity']:
+                    return 0.4, 0.6
+                # Balanced intents
+                elif primary_intent in ['location', 'color']:
+                    return 0.5, 0.5
+                # Default balanced
+                else:
+                    return 0.6, 0.4
+            
+            intent_metadata_weight, intent_semantic_weight = get_weights_from_intent(intent_result['primary_intent'])
             
             seen_paths = set()
             hybrid_results = []
@@ -419,16 +550,19 @@ async def search_photos(
                 semantic_match = next((s for s in semantic_results if s['path'] == path), None)
                 
                 if semantic_match:
-                    combined_score = (METADATA_WEIGHT * 1.0) + (SEMANTIC_WEIGHT * semantic_match.get('normalized_score', 0.5))
+                    # Both sources available - use intent-based weights
+                    combined_score = (intent_metadata_weight * 1.0) + (intent_semantic_weight * semantic_match.get('normalized_score', 0.5))
                 else:
-                    combined_score = METADATA_WEIGHT * 0.8
+                    # Only metadata available
+                    combined_score = intent_metadata_weight * 0.8
                 
                 hybrid_results.append({
                     "path": path,
                     "filename": os.path.basename(path),
                     "score": round(combined_score, 3),
                     "metadata": r.get('metadata', {}),
-                    "source": "both" if semantic_match else "metadata"
+                    "source": "both" if semantic_match else "metadata",
+                    "intent": "metadata" if metadata_results else "semantic"
                 })
 
             for r in semantic_results:
@@ -437,22 +571,244 @@ async def search_photos(
                     hybrid_results.append({
                         "path": r['path'],
                         "filename": r['filename'],
-                        "score": round(SEMANTIC_WEIGHT * r.get('normalized_score', r['score']), 3),
+                        "score": round(intent_semantic_weight * r.get('normalized_score', r['score']), 3),
                         "metadata": r.get('metadata', {}),
-                        "source": "semantic"
+                        "source": "semantic",
+                        "intent": "semantic"
                     })
             
             # Sort by score descending
             hybrid_results.sort(key=lambda x: x['score'], reverse=True)
             
+            # Apply type filter
+            if type_filter == "photos":
+                hybrid_results = [r for r in hybrid_results if not is_video_file(r.get('path', ''))]
+            elif type_filter == "videos":
+                hybrid_results = [r for r in hybrid_results if is_video_file(r.get('path', ''))]
+            
+            # Apply favorites filter
+            if favorites_filter == "favorites_only":
+                hybrid_results = [r for r in hybrid_results if photo_search_engine.is_favorite(r.get('path', ''))]
+
+            # Apply date filter (filesystem.created)
+            hybrid_results = apply_date_filter(hybrid_results, date_from, date_to)
+            
             # Apply Pagination Slicing
             count = len(hybrid_results)
             paginated = hybrid_results[offset : offset + limit]
             
-            return {"count": count, "results": paginated}
+            # Log search to history if enabled
+            if log_history:
+                execution_time_ms = round((time.time() - start_time) * 1000, 2)
+                intent_result = intent_detector.detect_intent(query)
+                saved_search_manager.log_search_history(
+                    query=query,
+                    mode=mode,
+                    results_count=count,
+                    intent=intent_result["primary_intent"],
+                    execution_time_ms=execution_time_ms,
+                    user_agent="api",
+                    ip_address="localhost"
+                )
+            
+            return {"count": count, "results": paginated, "intent": {
+                "primary_intent": intent_result["primary_intent"],
+                "secondary_intents": intent_result["secondary_intents"],
+                "metadata_weight": intent_metadata_weight,
+                "semantic_weight": intent_semantic_weight,
+                "confidence": intent_result["confidence"],
+                "badges": intent_result["badges"],
+                "suggestions": intent_result["suggestions"],
+                "execution_time_ms": execution_time_ms
+            }}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Favorites endpoints
+@app.post("/favorites/toggle")
+async def toggle_favorite(payload: dict = Body(...)):
+    """
+    Toggle favorite status of a file.
+    
+    Body: {"file_path": "/path/to/file.jpg", "notes": "optional notes"}
+    """
+    file_path = payload.get("file_path")
+    notes = payload.get("notes", "")
+    
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path is required")
+    
+    try:
+        is_favorited = photo_search_engine.toggle_favorite(file_path, notes)
+        return {"success": True, "is_favorited": is_favorited}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/favorites")
+async def get_favorites(limit: int = 1000, offset: int = 0):
+    """
+    Get all favorited files.
+    """
+    try:
+        favorites = photo_search_engine.get_favorites(limit, offset)
+        return {"count": len(favorites), "results": favorites}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/favorites/check")
+async def check_favorite(file_path: str):
+    """
+    Check if a file is favorited.
+    
+    Query param: file_path=/path/to/file.jpg
+    """
+    try:
+        is_favorited = photo_search_engine.is_favorite(file_path)
+        return {"is_favorited": is_favorited}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/favorites")
+async def remove_favorite(payload: dict = Body(...)):
+    """
+    Remove a file from favorites.
+    
+    Body: {"file_path": "/path/to/file.jpg"}
+    """
+    file_path = payload.get("file_path")
+    
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path is required")
+    
+    try:
+        success = photo_search_engine.remove_favorite(file_path)
+        return {"success": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Bulk operations endpoints
+@app.post("/bulk/export")
+async def bulk_export(payload: dict = Body(...)):
+    """
+    Export multiple photos as a ZIP file.
+    
+    Body: {"file_paths": ["/path/to/file1.jpg", "/path/to/file2.jpg"], "format": "zip"}
+    """
+    file_paths = payload.get("file_paths", [])
+    format_type = payload.get("format", "zip")
+    
+    if not file_paths:
+        raise HTTPException(status_code=400, detail="file_paths is required")
+    
+    try:
+        import zipfile
+        import tempfile
+        import os
+        from pathlib import Path
+        
+        # Create temporary ZIP file
+        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as temp_zip:
+            zip_path = temp_zip.name
+            
+            with zipfile.ZipFile(temp_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for file_path in file_paths:
+                    if os.path.exists(file_path):
+                        # Add file to ZIP with just the filename (not full path)
+                        filename = os.path.basename(file_path)
+                        zipf.write(file_path, filename)
+        
+        # Return the ZIP file
+        return FileResponse(
+            path=zip_path,
+            filename=f"photos_export_{len(file_paths)}_files.zip",
+            media_type='application/zip',
+            background=BackgroundTasks([lambda: os.unlink(zip_path)])  # Delete temp file after response
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+@app.post("/bulk/delete")
+async def bulk_delete(payload: dict = Body(...)):
+    """
+    Delete multiple photos.
+    
+    Body: {"file_paths": ["/path/to/file1.jpg", "/path/to/file2.jpg"], "confirm": true}
+    """
+    file_paths = payload.get("file_paths", [])
+    confirm = payload.get("confirm", False)
+    
+    if not file_paths:
+        raise HTTPException(status_code=400, detail="file_paths is required")
+    
+    if not confirm:
+        raise HTTPException(status_code=400, detail="Deletion requires confirmation")
+    
+    try:
+        deleted_count = 0
+        errors = []
+        
+        for file_path in file_paths:
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    # Remove from database
+                    photo_search_engine.db.conn.execute("DELETE FROM metadata WHERE file_path = ?", (file_path,))
+                    photo_search_engine.db.conn.commit()
+                    deleted_count += 1
+                else:
+                    errors.append(f"File not found: {file_path}")
+            except Exception as e:
+                errors.append(f"Failed to delete {file_path}: {str(e)}")
+        
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk delete failed: {str(e)}")
+
+@app.post("/bulk/favorite")
+async def bulk_favorite(payload: dict = Body(...)):
+    """
+    Add/remove multiple photos to/from favorites.
+    
+    Body: {"file_paths": ["/path/to/file1.jpg", "/path/to/file2.jpg"], "action": "add|remove"}
+    """
+    file_paths = payload.get("file_paths", [])
+    action = payload.get("action", "add")
+    
+    if not file_paths:
+        raise HTTPException(status_code=400, detail="file_paths is required")
+    
+    if action not in ["add", "remove"]:
+        raise HTTPException(status_code=400, detail="action must be 'add' or 'remove'")
+    
+    try:
+        success_count = 0
+        errors = []
+        
+        for file_path in file_paths:
+            try:
+                if action == "add":
+                    photo_search_engine.add_favorite(file_path)
+                else:
+                    photo_search_engine.remove_favorite(file_path)
+                success_count += 1
+            except Exception as e:
+                errors.append(f"Failed to {action} favorite {file_path}: {str(e)}")
+        
+        return {
+            "success": True,
+            "processed_count": success_count,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Bulk favorite {action} failed: {str(e)}")
 
 @app.get("/search/semantic")
 async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_score: float = 0.22):
@@ -586,6 +942,38 @@ async def get_thumbnail(path: str, size: int = 300):
 
     raise HTTPException(status_code=404, detail="Image not found")
 
+@app.get("/file")
+async def get_file(path: str, download: bool = False):
+    """
+    Serve an original file (image/video/etc.) without transcoding.
+    Use `download=true` to force a download Content-Disposition.
+    """
+    # Security check
+    try:
+        if settings.MEDIA_DIR.exists():
+            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+        else:
+            allowed_paths = [settings.BASE_DIR.resolve()]
+
+        requested_path = Path(path).resolve()
+        is_allowed = any(
+            requested_path.is_relative_to(allowed_path)
+            for allowed_path in allowed_paths
+        )
+        if not is_allowed:
+            raise HTTPException(status_code=403, detail="Access denied")
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    media_type, _ = mimetypes.guess_type(path)
+    kwargs = {"media_type": media_type or "application/octet-stream"}
+    if download:
+        kwargs["filename"] = os.path.basename(path)
+    return FileResponse(path, **kwargs)
+
 @app.get("/video")
 async def get_video(path: str):
     """
@@ -636,6 +1024,358 @@ async def get_stats():
         # Leverage existing stats logic or db
         stats = photo_search_engine.db.get_stats()
         return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== INTENT RECOGNITION ENDPOINTS ==========
+
+@app.get("/intent/detect")
+async def detect_intent(query: str):
+    """
+    Detect search intent from a query.
+    
+    Args:
+        query: User search query string
+        
+    Returns:
+        Intent detection results including primary intent, secondary intents,
+        confidence scores, suggestions, and badges
+    """
+    try:
+        if not query or not query.strip():
+            return {
+                "intent": "generic",
+                "confidence": 0.0,
+                "suggestions": [],
+                "badges": []
+            }
+        
+        result = intent_detector.detect_intent(query)
+        return {
+            "intent": result["primary_intent"],
+            "confidence": result["confidence"],
+            "secondary_intents": result["secondary_intents"],
+            "suggestions": result["suggestions"],
+            "badges": result["badges"],
+            "description": result["description"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/intent/suggestions")
+async def get_search_suggestions(query: str, limit: int = 3):
+    """
+    Get search suggestions based on detected intent.
+    
+    Args:
+        query: User search query string
+        limit: Maximum number of suggestions to return
+        
+    Returns:
+        List of suggested search queries
+    """
+    try:
+        suggestions = intent_detector.get_search_suggestions(query)
+        return {"suggestions": suggestions[:limit]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/intent/badges")
+async def get_search_badges(query: str):
+    """
+    Get intent badges for UI display.
+    
+    Args:
+        query: User search query string
+        
+    Returns:
+        List of intent badges with labels and icons
+    """
+    try:
+        badges = intent_detector.get_search_badges(query)
+        return {"badges": badges}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/intent/all")
+async def get_all_intents():
+    """
+    Get all supported intents with descriptions.
+    
+    Returns:
+        Dictionary of all supported intents
+    """
+    try:
+        return intent_detector.get_all_intents()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ========== SAVED SEARCHES ENDPOINTS ==========
+
+class SaveSearchRequest(BaseModel):
+    query: str
+    mode: str = "metadata"
+    results_count: int = 0
+    intent: str = "generic"
+    is_favorite: bool = False
+    notes: str = ""
+    metadata: Optional[Dict] = None
+
+class UpdateSearchRequest(BaseModel):
+    is_favorite: Optional[bool] = None
+    notes: Optional[str] = None
+
+@app.post("/searches/save")
+async def save_search(request: SaveSearchRequest):
+    """
+    Save a search query for later reuse.
+    
+    Args:
+        request: SaveSearchRequest with search details
+        
+    Returns:
+        ID of the saved search
+    """
+    try:
+        search_id = saved_search_manager.save_search(
+            query=request.query,
+            mode=request.mode,
+            results_count=request.results_count,
+            intent=request.intent,
+            is_favorite=request.is_favorite,
+            notes=request.notes,
+            metadata=request.metadata
+        )
+        return {"search_id": search_id, "message": "Search saved successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches")
+async def get_saved_searches(
+    limit: int = 50,
+    offset: int = 0,
+    sort_by: str = "updated_at",
+    sort_order: str = "DESC",
+    favorites_only: bool = False
+):
+    """
+    Get saved searches with pagination and filtering.
+    
+    Args:
+        limit: Maximum number of results
+        offset: Pagination offset
+        sort_by: Field to sort by
+        sort_order: Sort order (ASC or DESC)
+        favorites_only: Only return favorite searches
+        
+    Returns:
+        List of saved searches
+    """
+    try:
+        searches = saved_search_manager.get_saved_searches(
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            filter_favorites=favorites_only
+        )
+        return {"count": len(searches), "searches": searches}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/{search_id}")
+async def get_saved_search(search_id: int):
+    """
+    Get a specific saved search by ID.
+    
+    Args:
+        search_id: ID of the search
+        
+    Returns:
+        Saved search details
+    """
+    try:
+        search = saved_search_manager.get_saved_search_by_id(search_id)
+        if not search:
+            raise HTTPException(status_code=404, detail="Search not found")
+        return search
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/searches/{search_id}/execute")
+async def execute_saved_search(search_id: int):
+    """
+    Execute a saved search and log the execution.
+    
+    Args:
+        search_id: ID of the saved search
+        
+    Returns:
+        Search results and execution details
+    """
+    try:
+        # Get the saved search
+        search = saved_search_manager.get_saved_search_by_id(search_id)
+        if not search:
+            raise HTTPException(status_code=404, detail="Search not found")
+        
+        # Execute the search using the existing search endpoint
+        results = await search_photos(
+            query=search['query'],
+            mode=search['mode'],
+            limit=50,
+            offset=0
+        )
+        
+        # Log the execution
+        saved_search_manager.log_search_execution(
+            search_id=search_id,
+            results_count=results['count'],
+            execution_time_ms=0,  # Would need to measure this in production
+            user_agent="api",
+            ip_address="localhost"
+        )
+        
+        return {
+            "search": search,
+            "results": results,
+            "message": "Search executed and logged"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/searches/{search_id}")
+async def update_saved_search(search_id: int, request: UpdateSearchRequest):
+    """
+    Update a saved search (favorite status or notes).
+    
+    Args:
+        search_id: ID of the search
+        request: UpdateSearchRequest with fields to update
+        
+    Returns:
+        Updated search details
+    """
+    try:
+        search = saved_search_manager.get_saved_search_by_id(search_id)
+        if not search:
+            raise HTTPException(status_code=404, detail="Search not found")
+        
+        if request.is_favorite is not None:
+            new_favorite_status = saved_search_manager.toggle_favorite(search_id)
+            search['is_favorite'] = new_favorite_status
+        
+        if request.notes is not None:
+            saved_search_manager.update_search_notes(search_id, request.notes)
+            search['notes'] = request.notes
+        
+        return {"search": search, "message": "Search updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/searches/{search_id}")
+async def delete_saved_search(search_id: int):
+    """
+    Delete a saved search.
+    
+    Args:
+        search_id: ID of the search to delete
+        
+    Returns:
+        Confirmation message
+    """
+    try:
+        success = saved_search_manager.delete_saved_search(search_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Search not found")
+        return {"message": "Search deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/analytics")
+async def get_search_analytics():
+    """
+    Get overall search analytics and insights.
+    
+    Returns:
+        Analytics data including popular searches, recent searches, etc.
+    """
+    try:
+        return saved_search_manager.get_overall_analytics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/history")
+async def get_search_history(
+    limit: int = 50,
+    offset: int = 0,
+    sort_by: str = "executed_at",
+    sort_order: str = "DESC"
+):
+    """
+    Get search history (all searches, not just saved ones).
+    
+    Args:
+        limit: Maximum number of results
+        offset: Pagination offset
+        sort_by: Field to sort by
+        sort_order: Sort order (ASC or DESC)
+        
+    Returns:
+        Search history records
+    """
+    try:
+        history = saved_search_manager.get_search_history(
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order
+        )
+        return {"count": len(history), "history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/recurring")
+async def get_recurring_searches(threshold: int = 2):
+    """
+    Get searches that have been executed multiple times.
+    
+    Args:
+        threshold: Minimum number of executions to be considered recurring
+        
+    Returns:
+        List of recurring searches
+    """
+    try:
+        recurring = saved_search_manager.get_recurring_searches(threshold=threshold)
+        return {"count": len(recurring), "recurring_searches": recurring}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/performance")
+async def get_search_performance():
+    """
+    Get performance metrics for searches.
+    
+    Returns:
+        Performance data including average execution time, etc.
+    """
+    try:
+        return saved_search_manager.get_search_performance()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/searches/history/clear")
+async def clear_search_history():
+    """
+    Clear all search history (but keep saved searches).
+    
+    Returns:
+        Number of records deleted
+    """
+    try:
+        deleted_count = saved_search_manager.clear_search_history()
+        return {"deleted_count": deleted_count, "message": "Search history cleared"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -763,6 +1503,896 @@ async def upgrade_user_tier(user_id: str, new_tier: str):
 class ExportRequest(BaseModel):
     paths: List[str]
     format: str = "zip"  # Future: could support "json" for metadata export
+
+# Initialize Face Clustering
+from src.face_clustering import FaceClusterer
+face_clusterer = FaceClusterer()
+
+# Initialize OCR Search
+from src.ocr_search import OCRSearch
+ocr_search = OCRSearch()
+
+# Initialize Modal System
+from src.modal_system import ModalSystem
+modal_system = ModalSystem()
+
+# Initialize Code Splitting
+from src.code_splitting import CodeSplittingConfig, LazyLoadPerformanceTracker
+code_splitting_config = CodeSplittingConfig()
+lazy_load_tracker = LazyLoadPerformanceTracker()
+
+# Initialize Tauri Integration
+from src.tauri_integration import TauriIntegration
+tauri_integration = TauriIntegration()
+
+class FaceClusterRequest(BaseModel):
+    image_paths: List[str]
+    eps: float = 0.6
+    min_samples: int = 2
+
+class ClusterLabelRequest(BaseModel):
+    cluster_id: int
+    label: str
+
+@app.post("/faces/cluster")
+async def cluster_faces(request: FaceClusterRequest):
+    """
+    Cluster faces in the specified images
+    
+    Args:
+        request: FaceClusterRequest with image paths and clustering parameters
+        
+    Returns:
+        Dictionary with clustering results
+    """
+    try:
+        clusters = face_clusterer.cluster_faces(
+            request.image_paths,
+            eps=request.eps,
+            min_samples=request.min_samples
+        )
+        return {"status": "success", "clusters": clusters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/faces/clusters")
+async def get_all_clusters(limit: int = 100, offset: int = 0):
+    """
+    Get all face clusters
+    
+    Args:
+        limit: Maximum number of clusters to return
+        offset: Pagination offset
+        
+    Returns:
+        Dictionary with cluster information
+    """
+    try:
+        clusters = face_clusterer.get_all_clusters(limit, offset)
+        return {"status": "success", "clusters": clusters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/faces/clusters/{cluster_id}")
+async def get_cluster_details(cluster_id: int):
+    """
+    Get details for a specific cluster
+    
+    Args:
+        cluster_id: ID of the cluster
+        
+    Returns:
+        Dictionary with cluster details
+    """
+    try:
+        details = face_clusterer.get_cluster_details(cluster_id)
+        return {"status": "success", "details": details}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/faces/image/{image_path:path}")
+async def get_image_clusters(image_path: str):
+    """
+    Get face clusters for a specific image
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Dictionary with face cluster information for the image
+    """
+    try:
+        clusters = face_clusterer.get_face_clusters(image_path)
+        return {"status": "success", "clusters": clusters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.put("/faces/clusters/{cluster_id}/label")
+async def update_cluster_label(cluster_id: int, request: ClusterLabelRequest):
+    """
+    Update the label for a cluster
+    
+    Args:
+        cluster_id: ID of the cluster
+        request: ClusterLabelRequest with new label
+        
+    Returns:
+        Dictionary with update status
+    """
+    try:
+        success = face_clusterer.update_cluster_label(cluster_id, request.label)
+        return {"status": "success" if success else "failed", "updated": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/faces/clusters/{cluster_id}")
+async def delete_cluster(cluster_id: int):
+    """
+    Delete a face cluster
+    
+    Args:
+        cluster_id: ID of the cluster to delete
+        
+    Returns:
+        Dictionary with deletion status
+    """
+    try:
+        success = face_clusterer.delete_cluster(cluster_id)
+        return {"status": "success" if success else "failed", "deleted": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/faces/stats")
+async def get_face_stats():
+    """
+    Get statistics about face clusters
+    
+    Returns:
+        Dictionary with face clustering statistics
+    """
+    try:
+        stats = face_clusterer.get_cluster_statistics()
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# OCR Search Endpoints
+
+class OCRSearchRequest(BaseModel):
+    query: str
+    limit: int = 100
+    offset: int = 0
+
+class OCRImageRequest(BaseModel):
+    image_paths: List[str]
+
+@app.post("/ocr/extract")
+async def extract_text_from_images(request: OCRImageRequest):
+    """
+    Extract text from multiple images
+    
+    Args:
+        request: OCRImageRequest with list of image paths
+        
+    Returns:
+        Dictionary with extracted text for each image
+    """
+    try:
+        results = ocr_search.extract_text_from_images(request.image_paths)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ocr/search")
+async def search_ocr_text(query: str, limit: int = 100, offset: int = 0):
+    """
+    Search for images containing specific text
+    
+    Args:
+        query: Text to search for
+        limit: Maximum number of results
+        offset: Pagination offset
+        
+    Returns:
+        Dictionary with search results
+    """
+    try:
+        results = ocr_search.search_text(query, limit, offset)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ocr/stats")
+async def get_ocr_stats():
+    """
+    Get OCR statistics
+    
+    Returns:
+        Dictionary with OCR statistics
+    """
+    try:
+        stats = ocr_search.get_ocr_summary()
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/ocr/image/{image_path:path}")
+async def get_image_ocr_stats(image_path: str):
+    """
+    Get OCR statistics for a specific image
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Dictionary with OCR statistics for the image
+    """
+    try:
+        stats = ocr_search.get_ocr_stats(image_path)
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/ocr/image/{image_path:path}")
+async def delete_image_ocr_data(image_path: str):
+    """
+    Delete OCR data for a specific image
+    
+    Args:
+        image_path: Path to the image file
+        
+    Returns:
+        Dictionary with deletion status
+    """
+    try:
+        success = ocr_search.delete_ocr_data(image_path)
+        return {"status": "success" if success else "failed", "deleted": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/ocr/all")
+async def clear_all_ocr_data():
+    """
+    Clear all OCR data
+    
+    Returns:
+        Dictionary with deletion count
+    """
+    try:
+        count = ocr_search.clear_all_ocr_data()
+        return {"status": "success", "deleted_count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Modal System Endpoints
+
+class DialogRequest(BaseModel):
+    dialog_type: str
+    title: str
+    message: str
+    options: Optional[List[str]] = None
+    timeout: Optional[int] = None
+    user_id: str = "system"
+
+class DialogActionRequest(BaseModel):
+    action: str
+    user_id: str = "system"
+
+class ProgressDialogRequest(BaseModel):
+    title: str
+    message: str
+    max_value: int = 100
+    current_value: int = 0
+    user_id: str = "system"
+
+class InputDialogRequest(BaseModel):
+    title: str
+    message: str
+    input_type: str = "text"
+    default_value: Optional[str] = None
+    user_id: str = "system"
+
+@app.post("/dialogs/create")
+async def create_dialog(request: DialogRequest):
+    """
+    Create a new dialog
+    
+    Args:
+        request: DialogRequest with dialog details
+        
+    Returns:
+        Dictionary with dialog ID
+    """
+    try:
+        dialog_id = modal_system.create_dialog(
+            dialog_type=request.dialog_type,
+            title=request.title,
+            message=request.message,
+            options=request.options or [],
+            timeout=request.timeout,
+            user_id=request.user_id
+        )
+        return {"status": "success", "dialog_id": dialog_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dialogs/active")
+async def get_active_dialogs(user_id: str = "system"):
+    """
+    Get all active dialogs for a user
+    
+    Args:
+        user_id: ID of the user
+        
+    Returns:
+        Dictionary with active dialogs
+    """
+    try:
+        dialogs = modal_system.get_active_dialogs(user_id)
+        return {"status": "success", "dialogs": dialogs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dialogs/{dialog_id}")
+async def get_dialog(dialog_id: str, user_id: str = "system"):
+    """
+    Get details for a specific dialog
+    
+    Args:
+        dialog_id: ID of the dialog
+        user_id: ID of the user
+        
+    Returns:
+        Dictionary with dialog details
+    """
+    try:
+        dialog = modal_system.get_dialog(dialog_id)
+        if dialog and dialog.get("user_id") == user_id:
+            return {"status": "success", "dialog": dialog}
+        else:
+            raise HTTPException(status_code=404, detail="Dialog not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/{dialog_id}/action")
+async def dialog_action(dialog_id: str, request: DialogActionRequest):
+    """
+    Record an action on a dialog
+    
+    Args:
+        dialog_id: ID of the dialog
+        request: DialogActionRequest with action details
+        
+    Returns:
+        Dictionary with action status
+    """
+    try:
+        success = modal_system.record_dialog_action(
+            dialog_id,
+            request.action,
+            request.user_id
+        )
+        return {"status": "success" if success else "failed", "recorded": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/{dialog_id}/close")
+async def close_dialog(dialog_id: str, request: DialogActionRequest):
+    """
+    Close a dialog
+    
+    Args:
+        dialog_id: ID of the dialog
+        request: DialogActionRequest with close action
+        
+    Returns:
+        Dictionary with close status
+    """
+    try:
+        success = modal_system.close_dialog(
+            dialog_id,
+            request.action,
+            request.user_id
+        )
+        return {"status": "success" if success else "failed", "closed": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/{dialog_id}/dismiss")
+async def dismiss_dialog(dialog_id: str, user_id: str = "system"):
+    """
+    Dismiss a dialog
+    
+    Args:
+        dialog_id: ID of the dialog
+        user_id: ID of the user
+        
+    Returns:
+        Dictionary with dismiss status
+    """
+    try:
+        success = modal_system.dismiss_dialog(dialog_id, user_id)
+        return {"status": "success" if success else "failed", "dismissed": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/confirmation")
+async def create_confirmation_dialog(request: DialogRequest):
+    """
+    Create a confirmation dialog
+    
+    Args:
+        request: DialogRequest with confirmation details
+        
+    Returns:
+        Dictionary with dialog ID
+    """
+    try:
+        dialog_id = modal_system.create_confirmation_dialog(
+            title=request.title,
+            message=request.message,
+            options=request.options or ["Yes", "No"],
+            timeout=request.timeout,
+            user_id=request.user_id
+        )
+        return {"status": "success", "dialog_id": dialog_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/error")
+async def create_error_dialog(request: DialogRequest):
+    """
+    Create an error dialog
+    
+    Args:
+        request: DialogRequest with error details
+        
+    Returns:
+        Dictionary with dialog ID
+    """
+    try:
+        dialog_id = modal_system.create_error_dialog(
+            title=request.title,
+            message=request.message,
+            timeout=request.timeout,
+            user_id=request.user_id
+        )
+        return {"status": "success", "dialog_id": dialog_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/progress")
+async def create_progress_dialog(request: ProgressDialogRequest):
+    """
+    Create a progress dialog
+    
+    Args:
+        request: ProgressDialogRequest with progress details
+        
+    Returns:
+        Dictionary with dialog ID
+    """
+    try:
+        dialog_id = modal_system.create_progress_dialog(
+            title=request.title,
+            message=request.message,
+            max_value=request.max_value,
+            current_value=request.current_value,
+            user_id=request.user_id
+        )
+        return {"status": "success", "dialog_id": dialog_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/progress/{dialog_id}")
+async def update_progress_dialog(dialog_id: str, request: ProgressDialogRequest):
+    """
+    Update a progress dialog
+    
+    Args:
+        dialog_id: ID of the progress dialog
+        request: ProgressDialogRequest with updated values
+        
+    Returns:
+        Dictionary with update status
+    """
+    try:
+        success = modal_system.update_progress_dialog(
+            dialog_id,
+            request.current_value,
+            request.message
+        )
+        return {"status": "success" if success else "failed", "updated": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/progress/{dialog_id}/complete")
+async def complete_progress_dialog(dialog_id: str, user_id: str = "system"):
+    """
+    Complete a progress dialog
+    
+    Args:
+        dialog_id: ID of the progress dialog
+        user_id: ID of the user
+        
+    Returns:
+        Dictionary with completion status
+    """
+    try:
+        success = modal_system.complete_progress_dialog(dialog_id, user_id)
+        return {"status": "success" if success else "failed", "completed": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/dialogs/input")
+async def create_input_dialog(request: InputDialogRequest):
+    """
+    Create an input dialog
+    
+    Args:
+        request: InputDialogRequest with input details
+        
+    Returns:
+        Dictionary with dialog ID
+    """
+    try:
+        dialog_id = modal_system.create_input_dialog(
+            title=request.title,
+            message=request.message,
+            input_type=request.input_type,
+            default_value=request.default_value,
+            user_id=request.user_id
+        )
+        return {"status": "success", "dialog_id": dialog_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dialogs/history")
+async def get_dialog_history(user_id: str = "system", limit: int = 50):
+    """
+    Get dialog history for a user
+    
+    Args:
+        user_id: ID of the user
+        limit: Maximum number of dialogs to return
+        
+    Returns:
+        Dictionary with dialog history
+    """
+    try:
+        history = modal_system.get_dialog_history(user_id, limit)
+        return {"status": "success", "history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/dialogs/stats")
+async def get_dialog_stats():
+    """
+    Get dialog statistics
+    
+    Returns:
+        Dictionary with dialog statistics
+    """
+    try:
+        stats = modal_system.get_dialog_statistics()
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Code Splitting Endpoints
+
+class CodeSplittingConfigRequest(BaseModel):
+    chunk_name: str
+    config: Dict
+
+class PerformanceRecordRequest(BaseModel):
+    component_name: str
+    chunk_name: str
+    load_time_ms: float
+    size_kb: float
+    timestamp: Optional[str] = None
+
+@app.get("/code-splitting/config")
+async def get_code_splitting_config():
+    """
+    Get code splitting configuration
+    
+    Returns:
+        Dictionary with code splitting configuration
+    """
+    try:
+        config = code_splitting_config.get_config()
+        return {"status": "success", "config": config}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/chunk/{chunk_name}")
+async def get_chunk_config(chunk_name: str):
+    """
+    Get configuration for a specific chunk
+    
+    Args:
+        chunk_name: Name of the chunk
+        
+    Returns:
+        Dictionary with chunk configuration
+    """
+    try:
+        config = code_splitting_config.get_chunk_config(chunk_name)
+        if config:
+            return {"status": "success", "config": config}
+        else:
+            raise HTTPException(status_code=404, detail="Chunk not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/code-splitting/chunk/{chunk_name}")
+async def set_chunk_config(chunk_name: str, request: CodeSplittingConfigRequest):
+    """
+    Set configuration for a specific chunk
+    
+    Args:
+        chunk_name: Name of the chunk
+        request: CodeSplittingConfigRequest with configuration
+        
+    Returns:
+        Dictionary with update status
+    """
+    try:
+        success = code_splitting_config.set_chunk_config(chunk_name, request.config)
+        return {"status": "success" if success else "failed", "updated": success}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/enabled")
+async def get_code_splitting_enabled():
+    """
+    Check if code splitting is enabled
+    
+    Returns:
+        Dictionary with enabled status
+    """
+    try:
+        enabled = code_splitting_config.is_code_splitting_enabled()
+        return {"status": "success", "enabled": enabled}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/code-splitting/enabled")
+async def set_code_splitting_enabled(enabled: bool):
+    """
+    Enable or disable code splitting
+    
+    Args:
+        enabled: Boolean indicating whether to enable code splitting
+        
+    Returns:
+        Dictionary with update status
+    """
+    try:
+        code_splitting_config.enable_code_splitting(enabled)
+        return {"status": "success", "enabled": enabled}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/code-splitting/performance")
+async def record_lazy_load_performance(request: PerformanceRecordRequest):
+    """
+    Record lazy load performance data
+    
+    Args:
+        request: PerformanceRecordRequest with performance data
+        
+    Returns:
+        Dictionary with recording status
+    """
+    try:
+        lazy_load_tracker.record_lazy_load(
+            request.component_name,
+            request.chunk_name,
+            request.load_time_ms,
+            request.size_kb,
+            request.timestamp
+        )
+        return {"status": "success", "recorded": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/performance")
+async def get_lazy_load_performance(component_name: str = None):
+    """
+    Get lazy load performance statistics
+    
+    Args:
+        component_name: Optional component name to filter by
+        
+    Returns:
+        Dictionary with performance statistics
+    """
+    try:
+        stats = lazy_load_tracker.get_performance_stats(component_name)
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/performance/chunks")
+async def get_chunk_performance():
+    """
+    Get performance statistics by chunk
+    
+    Returns:
+        Dictionary with chunk performance statistics
+    """
+    try:
+        stats = lazy_load_tracker.get_chunk_performance()
+        return {"status": "success", "stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/integration-guide")
+async def get_frontend_integration_guide():
+    """
+    Get frontend integration guide for code splitting
+    
+    Returns:
+        Dictionary with integration guide
+    """
+    try:
+        from src.code_splitting import get_frontend_integration_guide
+        guide = get_frontend_integration_guide()
+        return {"status": "success", "guide": guide}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/code-splitting/api-endpoints")
+async def get_api_endpoints():
+    """
+    Get available API endpoints for code splitting
+    
+    Returns:
+        Dictionary with API endpoints
+    """
+    try:
+        from src.code_splitting import get_api_endpoints
+        endpoints = get_api_endpoints()
+        return {"status": "success", "endpoints": endpoints}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Tauri Integration Endpoints
+
+@app.get("/tauri/commands")
+async def get_tauri_commands():
+    """
+    Get available Tauri commands
+    
+    Returns:
+        Dictionary with Tauri commands
+    """
+    try:
+        commands = tauri_integration.get_all_commands()
+        return {"status": "success", "commands": commands}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/commands/{command_name}")
+async def get_tauri_command(command_name: str):
+    """
+    Get details for a specific Tauri command
+    
+    Args:
+        command_name: Name of the command
+        
+    Returns:
+        Dictionary with command details
+    """
+    try:
+        command = tauri_integration.get_command(command_name)
+        if command:
+            return {"status": "success", "command": command}
+        else:
+            raise HTTPException(status_code=404, detail="Command not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/rust-skeleton")
+async def get_rust_skeleton():
+    """
+    Get Rust skeleton code for Tauri integration
+    
+    Returns:
+        Dictionary with Rust skeleton code
+    """
+    try:
+        skeleton = tauri_integration.generate_rust_skeleton()
+        return {"status": "success", "skeleton": skeleton}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/frontend-hooks")
+async def get_frontend_hooks():
+    """
+    Get frontend hooks for Tauri integration
+    
+    Returns:
+        Dictionary with frontend hooks code
+    """
+    try:
+        hooks = tauri_integration.generate_frontend_hooks()
+        return {"status": "success", "hooks": hooks}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/config")
+async def get_tauri_config():
+    """
+    Get Tauri configuration
+    
+    Returns:
+        Dictionary with Tauri configuration
+    """
+    try:
+        config = tauri_integration.generate_tauri_config()
+        return {"status": "success", "config": config}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/security")
+async def get_security_recommendations():
+    """
+    Get security recommendations for Tauri integration
+    
+    Returns:
+        Dictionary with security recommendations
+    """
+    try:
+        recommendations = tauri_integration.get_security_recommendations()
+        return {"status": "success", "recommendations": recommendations}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/performance")
+async def get_performance_tips():
+    """
+    Get performance tips for Tauri integration
+    
+    Returns:
+        Dictionary with performance tips
+    """
+    try:
+        tips = tauri_integration.get_performance_tips()
+        return {"status": "success", "tips": tips}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/checklist")
+async def get_integration_checklist():
+    """
+    Get integration checklist for Tauri
+    
+    Returns:
+        Dictionary with integration checklist
+    """
+    try:
+        checklist = tauri_integration.get_integration_checklist()
+        return {"status": "success", "checklist": checklist}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/tauri/setup-guide")
+async def get_setup_guide():
+    """
+    Get Tauri setup guide
+    
+    Returns:
+        Dictionary with setup guide
+    """
+    try:
+        from src.tauri_integration import get_tauri_setup_guide
+        guide = get_tauri_setup_guide()
+        return {"status": "success", "guide": guide}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/export")
 async def export_photos(request: ExportRequest):

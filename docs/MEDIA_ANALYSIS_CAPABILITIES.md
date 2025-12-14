@@ -9,6 +9,7 @@
 ## 📸 IMAGE ANALYSIS
 
 ### Object Detection & Recognition
+
 - [ ] **Object Detection** - Identify and locate objects (YOLO, Faster R-CNN, DETR)
 - [ ] **Object Classification** - Categorize images (ResNet, EfficientNet, ViT)
 - [ ] **Multi-label Classification** - Multiple tags per image
@@ -21,6 +22,7 @@
 - [ ] **Plant Recognition** - Species, health assessment
 
 ### Scene Understanding
+
 - [ ] **Scene Classification** - Indoor/outdoor, beach, forest, city
 - [ ] **Scene Parsing** - Understand layout and elements
 - [ ] **Depth Estimation** - 2D to depth map
@@ -31,6 +33,7 @@
 - [ ] **Season Detection** - Summer, winter, spring, fall
 
 ### Face Analysis
+
 - [ ] **Face Detection** - Find faces in images
 - [ ] **Face Recognition** - Identify specific people
 - [ ] **Face Verification** - Same person check
@@ -48,6 +51,7 @@
 - [ ] **Face Quality Assessment** - Blur, occlusion, lighting
 
 ### Body & Pose
+
 - [ ] **Pose Estimation** - Body keypoints (OpenPose, MediaPipe)
 - [ ] **Body Segmentation** - Separate person from background
 - [ ] **Gesture Recognition** - Hand signs, body language
@@ -59,6 +63,7 @@
 - [ ] **Fashion Analysis** - Style, color, pattern
 
 ### Segmentation
+
 - [ ] **Semantic Segmentation** - Pixel-level classification
 - [ ] **Instance Segmentation** - Separate each object (Mask R-CNN)
 - [ ] **Panoptic Segmentation** - Combined semantic + instance
@@ -69,6 +74,7 @@
 - [ ] **Salient Object Detection** - Find main subject
 
 ### Text in Images (OCR)
+
 - [ ] **OCR** - Extract text from images (Tesseract, EasyOCR)
 - [ ] **Handwriting Recognition** - Read handwritten text
 - [ ] **Document Layout Analysis** - Understand document structure
@@ -81,6 +87,7 @@
 - [ ] **Multi-language OCR** - Various scripts support
 
 ### Image Quality
+
 - [ ] **Image Quality Assessment** - Sharpness, noise, exposure
 - [ ] **Blur Detection** - Motion blur, focus blur
 - [ ] **Noise Analysis** - ISO noise, compression artifacts
@@ -93,6 +100,7 @@
 - [ ] **Color Correction** - Fix color issues
 
 ### Image Generation & Editing
+
 - [ ] **Image Generation** - Create images from text (DALL-E, Stable Diffusion, Midjourney)
 - [ ] **Image Inpainting** - Fill missing regions
 - [ ] **Outpainting** - Extend image boundaries
@@ -107,6 +115,7 @@
 - [ ] **HDR Imaging** - High dynamic range
 
 ### Color Analysis
+
 - [ ] **Color Palette Extraction** - Dominant colors
 - [ ] **Color Histogram** - Distribution of colors
 - [ ] **Color Temperature** - Warm/cool analysis
@@ -117,6 +126,7 @@
 - [ ] **Color Grading** - Cinematic looks
 
 ### Similarity & Matching
+
 - [ ] **Image Similarity** - Find similar images
 - [ ] **Duplicate Detection** - Find exact/near duplicates
 - [ ] **Perceptual Hashing** - Robust image fingerprinting
@@ -130,6 +140,7 @@
 ## 🎬 VIDEO ANALYSIS
 
 ### Temporal Understanding
+
 - [ ] **Action Recognition** - What's happening in video
 - [ ] **Activity Detection** - Complex activities
 - [ ] **Event Detection** - Specific events
@@ -141,6 +152,7 @@
 - [ ] **Repetition Detection** - Repeated actions
 
 ### Object Tracking
+
 - [ ] **Single Object Tracking** - Follow one object
 - [ ] **Multi-Object Tracking** - Track multiple objects
 - [ ] **Re-identification** - Same person across videos
@@ -149,6 +161,7 @@
 - [ ] **Long-term Tracking** - Extended sequences
 
 ### Video Understanding
+
 - [ ] **Video Classification** - Categorize videos
 - [ ] **Video Captioning** - Describe video content
 - [ ] **Video Question Answering** - Answer questions about video
@@ -157,6 +170,7 @@
 - [ ] **Video Grounding** - Locate moments from text
 
 ### Video Processing
+
 - [ ] **Frame Extraction** - Get individual frames
 - [ ] **Frame Interpolation** - Create in-between frames
 - [ ] **Video Stabilization** - Remove shake
@@ -167,6 +181,7 @@
 - [ ] **Video Speed Control** - Slow motion, fast forward
 
 ### Video Generation
+
 - [ ] **Text-to-Video** - Generate video from text (Sora, Runway)
 - [ ] **Image-to-Video** - Animate still images
 - [ ] **Video-to-Video** - Transform video style
@@ -176,6 +191,7 @@
 - [ ] **Talking Head Generation** - Animate faces
 
 ### Motion Analysis
+
 - [ ] **Optical Flow** - Pixel movement
 - [ ] **Motion Estimation** - Camera/object motion
 - [ ] **Motion Segmentation** - Separate moving objects
@@ -187,6 +203,7 @@
 ## 🎵 AUDIO ANALYSIS
 
 ### Speech Recognition
+
 - [ ] **Speech-to-Text** - Transcription (Whisper, DeepSpeech)
 - [ ] **Speaker Identification** - Who is speaking
 - [ ] **Speaker Diarization** - Multiple speakers
@@ -197,6 +214,7 @@
 - [ ] **Command Recognition** - Voice commands
 
 ### Speech Analysis
+
 - [ ] **Emotion from Voice** - Detect mood
 - [ ] **Sentiment Analysis** - Positive/negative
 - [ ] **Stress Detection** - Voice stress analysis
@@ -206,6 +224,7 @@
 - [ ] **Filler Word Detection** - Um, uh, like
 
 ### Audio Generation
+
 - [ ] **Text-to-Speech** - Generate speech (ElevenLabs, Bark)
 - [ ] **Voice Cloning** - Copy voice
 - [ ] **Voice Conversion** - Change voice
@@ -215,6 +234,7 @@
 - [ ] **Sound Effects Generation** - Create sounds
 
 ### Music Analysis
+
 - [ ] **Music Classification** - Genre, mood
 - [ ] **Beat Detection** - Tempo, rhythm
 - [ ] **Chord Recognition** - Musical chords
@@ -225,6 +245,7 @@
 - [ ] **Lyrics Extraction** - Words from songs
 
 ### Audio Classification
+
 - [ ] **Sound Event Detection** - What's that sound
 - [ ] **Environmental Sound Classification** - Nature, urban
 - [ ] **Acoustic Scene Classification** - Where was it recorded
@@ -236,6 +257,7 @@
 ## 📝 TEXT & NLP ON MEDIA
 
 ### Caption & Description
+
 - [ ] **Image Captioning** - Describe images (BLIP, GIT)
 - [ ] **Dense Captioning** - Multiple regions
 - [ ] **Visual Question Answering** - Answer questions about images
@@ -243,6 +265,7 @@
 - [ ] **Audio Captioning** - Describe sounds
 
 ### Search & Retrieval
+
 - [ ] **Text-to-Image Search** - Find images by description (CLIP)
 - [ ] **Text-to-Video Search** - Find videos by description
 - [ ] **Natural Language Search** - Conversational queries
@@ -250,6 +273,7 @@
 - [ ] **Cross-modal Retrieval** - Search across modalities
 
 ### Understanding & Reasoning
+
 - [ ] **Visual Reasoning** - Logic about images
 - [ ] **Multi-modal Understanding** - Combined modalities
 - [ ] **Scene Graph Generation** - Objects and relationships
@@ -257,6 +281,7 @@
 - [ ] **Temporal Reasoning** - Understanding time
 
 ### Content Analysis
+
 - [ ] **Sentiment Analysis** - Mood of content
 - [ ] **Topic Modeling** - What's it about
 - [ ] **Entity Extraction** - People, places, things
@@ -269,6 +294,7 @@
 ## 🔢 EMBEDDINGS & VECTORS
 
 ### Image Embeddings
+
 - [ ] **CLIP Embeddings** - Text-image alignment
 - [ ] **ResNet Embeddings** - Visual features
 - [ ] **DINO Embeddings** - Self-supervised features
@@ -277,16 +303,19 @@
 - [ ] **Style Embeddings** - Artistic style vectors
 
 ### Video Embeddings
+
 - [ ] **Video CLIP** - Video-text embeddings
 - [ ] **VideoMAE** - Video features
 - [ ] **X-CLIP** - Extended video understanding
 
 ### Audio Embeddings
+
 - [ ] **Audio CLIP** - Audio-text alignment
 - [ ] **Wav2Vec** - Speech representations
 - [ ] **VGGish** - Audio features
 
 ### Vector Operations
+
 - [ ] **Similarity Search** - Find nearest neighbors
 - [ ] **Clustering** - Group similar items
 - [ ] **Dimensionality Reduction** - Visualize embeddings
@@ -297,6 +326,7 @@
 ## 🧠 MULTIMODAL AI
 
 ### Large Multimodal Models
+
 - [ ] **GPT-4V** - Vision + Language (OpenAI)
 - [ ] **Gemini** - Multimodal (Google)
 - [ ] **Claude Vision** - Image understanding (Anthropic)
@@ -306,6 +336,7 @@
 - [ ] **IDEFICS** - Open multimodal
 
 ### Multimodal Tasks
+
 - [ ] **Image Chat** - Conversation about images
 - [ ] **Video Chat** - Conversation about videos
 - [ ] **Document Understanding** - Parse documents
@@ -318,6 +349,7 @@
 ## 🎯 SPECIALIZED APPLICATIONS
 
 ### Medical Imaging
+
 - [ ] **X-ray Analysis** - Abnormality detection
 - [ ] **CT/MRI Analysis** - 3D medical imaging
 - [ ] **Retinal Analysis** - Eye disease detection
@@ -326,6 +358,7 @@
 - [ ] **Medical Report Generation** - Auto-generate reports
 
 ### Document Analysis
+
 - [ ] **Document Classification** - Type of document
 - [ ] **Document Parsing** - Extract structure
 - [ ] **Form Understanding** - Fill forms
@@ -334,6 +367,7 @@
 - [ ] **Redaction Detection** - Find redacted areas
 
 ### Satellite/Aerial
+
 - [ ] **Land Use Classification** - Urban, forest, water
 - [ ] **Building Detection** - Find structures
 - [ ] **Road Extraction** - Map roads
@@ -342,6 +376,7 @@
 - [ ] **Disaster Assessment** - Damage estimation
 
 ### Autonomous Driving
+
 - [ ] **Lane Detection** - Find road lanes
 - [ ] **Traffic Sign Recognition** - Read signs
 - [ ] **Pedestrian Detection** - Find people
@@ -350,6 +385,7 @@
 - [ ] **3D Object Detection** - LiDAR/camera fusion
 
 ### Security & Surveillance
+
 - [ ] **Intrusion Detection** - Unauthorized access
 - [ ] **Violence Detection** - Fights, aggression
 - [ ] **Crowd Analysis** - Density, flow
@@ -358,6 +394,7 @@
 - [ ] **Access Control** - Face/body recognition
 
 ### Creative Tools
+
 - [ ] **Photo Editing AI** - Smart editing suggestions
 - [ ] **Composition Suggestions** - Improve framing
 - [ ] **Portrait Enhancement** - Skin, eyes, teeth
@@ -370,6 +407,7 @@
 ## 🔧 TECHNICAL CAPABILITIES
 
 ### Preprocessing
+
 - [ ] **Image Resizing** - Smart cropping, scaling
 - [ ] **Normalization** - Standard preprocessing
 - [ ] **Augmentation** - Training data expansion
@@ -377,6 +415,7 @@
 - [ ] **Batch Processing** - Handle many files
 
 ### Model Management
+
 - [ ] **Model Serving** - Deploy models
 - [ ] **Model Optimization** - ONNX, TensorRT
 - [ ] **Quantization** - Reduce model size
@@ -384,6 +423,7 @@
 - [ ] **Distillation** - Create smaller models
 
 ### Infrastructure
+
 - [ ] **GPU Acceleration** - CUDA, Metal
 - [ ] **Distributed Processing** - Multiple machines
 - [ ] **Edge Deployment** - Mobile, IoT
@@ -395,6 +435,7 @@
 ## 📊 ANALYTICS & INSIGHTS
 
 ### Library Analytics
+
 - [ ] **Photo Statistics** - Counts, trends
 - [ ] **Timeline Analysis** - Photos over time
 - [ ] **Location Mapping** - Where photos taken
@@ -403,12 +444,14 @@
 - [ ] **Memory Highlights** - Best of year
 
 ### Quality Analytics
+
 - [ ] **Best Photo Selection** - Choose best shot
 - [ ] **Duplicate Groups** - Organize duplicates
 - [ ] **Blurry Photo Detection** - Find bad photos
 - [ ] **Storage Optimization** - What to delete
 
 ### Social Analytics
+
 - [ ] **Engagement Prediction** - Will it get likes
 - [ ] **Trend Analysis** - What's popular
 - [ ] **Influencer Detection** - Key people
@@ -419,6 +462,7 @@
 ## 🛠️ TOOLS & FRAMEWORKS
 
 ### Python Libraries
+
 - OpenCV, PIL/Pillow, scikit-image
 - PyTorch, TensorFlow, JAX
 - Transformers (Hugging Face)
@@ -430,6 +474,7 @@
 - InsightFace
 
 ### APIs & Services
+
 - OpenAI (GPT-4V, DALL-E, Whisper)
 - Google Cloud Vision, Video Intelligence
 - AWS Rekognition, Textract, Transcribe
@@ -440,6 +485,7 @@
 - Clarifai
 
 ### Open Source Models
+
 - CLIP, BLIP, LLaVA
 - **SigLIP** ← Google's 2024 CLIP successor (planned for testing)
 - Stable Diffusion, SDXL
@@ -450,6 +496,7 @@
 - Grounding DINO
 
 ### Vector Databases
+
 - Pinecone
 - Milvus
 - Chroma
@@ -460,6 +507,7 @@
 
 > **📊 Benchmark Notes (2025-12-07):**
 > Tested FAISS, ChromaDB, LanceDB with 1000 real images.
+>
 > - FAISS: Fastest search (0.09ms), but no metadata support
 > - ChromaDB: Best DX, built-in metadata filtering
 > - LanceDB: Best balance (25ms ingest, 4ms search, disk-native)
@@ -469,36 +517,40 @@
 ## � SEARCH MODES ROADMAP
 
 ### Currently Implemented ✅
-| Mode | Description | Status |
-|:-----|:------------|:-------|
+
+| Mode                        | Description                               | Status                |
+| :-------------------------- | :---------------------------------------- | :-------------------- |
 | **Text → Image (Semantic)** | Natural language query: "sunset at beach" | ✅ `/search/semantic` |
-| **Metadata Search** | Filename, date, type filters | ✅ `/search` |
+| **Metadata Search**         | Filename, date, type filters              | ✅ `/search`          |
 
 ### Ready to Implement 🔧
-| Mode | Description | Effort | Notes |
-|:-----|:------------|:-------|:------|
-| **Image → Image** | Upload/paste image, find similar | Low | Same embedding model, compare vectors |
-| **Sketch → Image** | Draw rough sketch, find matches | Medium | CLIP handles rough drawings surprisingly well |
-| **Color Palette Search** | Find images by dominant colors | Low | Extract color histogram, filter by similarity |
-| **Object Filter** | "Show only photos with dogs" | Medium | CLIP or YOLO for object detection |
+
+| Mode                     | Description                      | Effort | Notes                                         |
+| :----------------------- | :------------------------------- | :----- | :-------------------------------------------- |
+| **Image → Image**        | Upload/paste image, find similar | Low    | Same embedding model, compare vectors         |
+| **Sketch → Image**       | Draw rough sketch, find matches  | Medium | CLIP handles rough drawings surprisingly well |
+| **Color Palette Search** | Find images by dominant colors   | Low    | Extract color histogram, filter by similarity |
+| **Object Filter**        | "Show only photos with dogs"     | Medium | CLIP or YOLO for object detection             |
 
 ### Experimental Ideas 🧪
-| Mode | Description | Tech Stack | Wow Factor |
-|:-----|:------------|:-----------|:-----------|
-| **Camera → Image** | Point phone camera at object, find photos of it | WebRTC + CLIP | ⭐⭐⭐⭐⭐ |
-| **Voice → Image** | "Hey, find my vacation photos" | Whisper + CLIP | ⭐⭐⭐⭐ |
-| **Draw on Canvas** | Use Apple Pencil/touch to sketch | Canvas API + CLIP | ⭐⭐⭐⭐⭐ |
-| **Face Recognition** | "Show photos of John" | InsightFace + Clustering | ⭐⭐⭐⭐ |
-| **Scene/Mood** | "Cozy", "Adventurous", "Romantic" | Fine-tuned CLIP | ⭐⭐⭐ |
+
+| Mode                 | Description                                     | Tech Stack               | Wow Factor |
+| :------------------- | :---------------------------------------------- | :----------------------- | :--------- |
+| **Camera → Image**   | Point phone camera at object, find photos of it | WebRTC + CLIP            | ⭐⭐⭐⭐⭐ |
+| **Voice → Image**    | "Hey, find my vacation photos"                  | Whisper + CLIP           | ⭐⭐⭐⭐   |
+| **Draw on Canvas**   | Use Apple Pencil/touch to sketch                | Canvas API + CLIP        | ⭐⭐⭐⭐⭐ |
+| **Face Recognition** | "Show photos of John"                           | InsightFace + Clustering | ⭐⭐⭐⭐   |
+| **Scene/Mood**       | "Cozy", "Adventurous", "Romantic"               | Fine-tuned CLIP          | ⭐⭐⭐     |
 
 ### Futuristic / AR-VR 🚀
-| Idea | Description | Tech | Complexity |
-|:-----|:------------|:-----|:-----------|
-| **3D Memory Museum** | Walk through your photos in VR | React Three Fiber / WebXR | Already have `MemoryMuseum.tsx`! |
-| **AR Photo Frames** | Place virtual frames on walls | ARKit/ARCore + WebXR | High |
-| **Spatial Photo Gallery** | Photos float around you in 3D space | Quest 3 / Vision Pro | Very High |
-| **Time Travel Mode** | Scrub timeline, see photos spatially arranged by location | Mapbox + Three.js | Medium |
-| **AI Photo Curator** | "Create a slideshow of my best memories" | GPT-4V + CLIP scoring | Medium |
+
+| Idea                      | Description                                               | Tech                      | Complexity                                                                                                                                                 |
+| :------------------------ | :-------------------------------------------------------- | :------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **3D Memory Museum**      | Walk through your photos in VR                            | React Three Fiber / WebXR | NOTE (2025-12-13): `MemoryMuseum.tsx` was removed; feature remains proposed and the `PhotoGlobe` component serves as the current 3D/visualization baseline |
+| **AR Photo Frames**       | Place virtual frames on walls                             | ARKit/ARCore + WebXR      | High                                                                                                                                                       |
+| **Spatial Photo Gallery** | Photos float around you in 3D space                       | Quest 3 / Vision Pro      | Very High                                                                                                                                                  |
+| **Time Travel Mode**      | Scrub timeline, see photos spatially arranged by location | Mapbox + Three.js         | Medium                                                                                                                                                     |
+| **AI Photo Curator**      | "Create a slideshow of my best memories"                  | GPT-4V + CLIP scoring     | Medium                                                                                                                                                     |
 
 ---
 

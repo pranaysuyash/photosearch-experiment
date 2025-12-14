@@ -1,0 +1,101 @@
+import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+
+interface LazyImageProps {
+  src: string;
+  alt: string;
+  className?: string;
+  placeholder?: string;
+  onLoad?: () => void;
+  onError?: () => void;
+  onLoadTime?: (loadTime: number) => void;
+}
+
+export function LazyImage({
+  src,
+  alt,
+  className = '',
+  placeholder,
+  onLoad,
+  onError,
+  onLoadTime,
+}: LazyImageProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const loadStartTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            loadStartTimeRef.current = performance.now();
+            observerRef.current?.disconnect();
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '50px' }
+    );
+
+    observerRef.current.observe(img);
+
+    return () => {
+      observerRef.current?.disconnect();
+    };
+  }, []);
+
+  const handleLoad = () => {
+    const loadTime = performance.now() - loadStartTimeRef.current;
+    onLoadTime?.(loadTime);
+    setIsLoaded(true);
+    onLoad?.();
+  };
+
+  const handleError = () => {
+    setHasError(true);
+    onError?.();
+  };
+
+  return (
+    <div className={`relative overflow-hidden ${className}`}>
+      {/* Placeholder/Loading state */}
+      {(!isLoaded || hasError) && (
+        <div className='absolute inset-0 bg-muted animate-pulse flex items-center justify-center'>
+          {placeholder ? (
+            <img
+              src={placeholder}
+              alt=''
+              className='w-full h-full object-cover opacity-50'
+            />
+          ) : (
+            <div className='w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin' />
+          )}
+        </div>
+      )}
+
+      {/* Main image */}
+      {isInView && (
+        <motion.img
+          ref={imgRef}
+          src={src}
+          alt={alt}
+          className={`w-full h-full object-cover transition-opacity duration-300 ${
+            isLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={handleLoad}
+          onError={handleError}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isLoaded ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+        />
+      )}
+    </div>
+  );
+}
