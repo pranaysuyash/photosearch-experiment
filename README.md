@@ -110,7 +110,31 @@ source venv/bin/activate   # Mac/Linux
 Use these when iterating on the React UI + FastAPI backend and you want a clean restart without hunting down stale processes.
 
 ```bash
-# Stop anything on ports 8000/5173 and restart both servers
+## Phase 0 & 1 Complete ✅
+
+### Features Implemented:
+- Tauri desktop app with frameless window
+- Design system (glass.ts)
+- Platform detection (usePlatformDetect)
+- DynamicNotchSearch component with 3 modes (Notch, Bubble, Mobile)
+- ActionsPod extraction
+- Filter pills with dropdowns
+- Keyboard shortcuts (Cmd+K, Escape)
+- Hover-to-expand behavior
+
+### To Run:
+```bash
+# Desktop app
+cargo tauri dev
+
+# Web version
+cd ui && npm run dev
+```
+
+### Known Issues:
+- None
+
+## Setup & Running on ports 8000/5173 and restart both servers
 ./start.sh
 
 # Stop both servers

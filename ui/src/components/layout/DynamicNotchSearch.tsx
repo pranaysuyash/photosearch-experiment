@@ -1,18 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
+import { usePlatformDetect } from '../../hooks/usePlatformDetect';
+import { useNotch } from '../../hooks/useNotch';
+import { glass } from '../../design/glass';
 import {
   Search,
   Sparkles,
   Pin,
   PinOff,
-  ChevronRight,
+  ChevronDown,
   Image as ImageIcon,
   FileText,
   Video,
-  // X,
+  X,
 } from 'lucide-react';
 
+/**
+ * DynamicNotchSearch Component
+ * 
+ * Center-expansion design: The notch stays as a visual anchor in the center.
+ * When expanded, the search bar expands LEFT and filter options expand RIGHT
+ * from the central divider (like iPhone Dynamic Island).
+ */
 export function DynamicNotchSearch() {
   const {
     searchQuery,
@@ -22,36 +32,41 @@ export function DynamicNotchSearch() {
     setSearchMode,
     typeFilter,
     setTypeFilter,
-    // dateFrom, setDateRange
   } = usePhotoSearchContext();
 
+  const { isDesktopApp, isMobile } = usePlatformDetect();
+  const { topInset } = useNotch();
+
+  const initialMode = isMobile ? 'mobile' : isDesktopApp ? 'notch' : 'bubble';
+
+  const [mode, setMode] = useState<'notch' | 'bubble' | 'mobile'>(initialMode);
   const [expanded, setExpanded] = useState(false);
   const [pinned, setPinned] = useState(false);
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
-  const [mode, setMode] = useState<'notch' | 'bubble' | 'camera'>('camera');
+
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Handle outside clicks
+  useEffect(() => {
+    if (isMobile) setMode('mobile');
+    else if (isDesktopApp) setMode('notch');
+    else setMode('bubble');
+  }, [isMobile, isDesktopApp]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
-      ) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         if (!pinned && expanded) {
           setExpanded(false);
           setActiveGroup(null);
         }
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [expanded, pinned]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -60,34 +75,31 @@ export function DynamicNotchSearch() {
         setPinned(true);
         setTimeout(() => inputRef.current?.focus(), 100);
       }
-      if (e.key === 'Escape') {
-        if (expanded) {
-          setExpanded(false);
-          setPinned(false);
-          setActiveGroup(null);
-          inputRef.current?.blur();
-        }
-      }
-      // Mode switching for demo purposes
-      if (e.altKey) {
-        if (e.key === '1') setMode('bubble');
-        if (e.key === '2') setMode('notch');
-        if (e.key === '3') setMode('camera');
+      if (e.key === 'Escape' && expanded) {
+        setExpanded(false);
+        setPinned(false);
+        setActiveGroup(null);
+        inputRef.current?.blur();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [expanded]);
 
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
   const handleMouseEnter = () => {
-    if (pinned) return;
+    if (pinned || isMobile) return;
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     setExpanded(true);
   };
 
   const handleMouseLeave = () => {
-    if (pinned) return;
+    if (pinned || isMobile) return;
     hoverTimerRef.current = setTimeout(() => {
       setExpanded(false);
       setActiveGroup(null);
@@ -97,199 +109,208 @@ export function DynamicNotchSearch() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     search(searchQuery);
-    // Optional: collapse on search?
-    // setExpanded(false);
   };
 
-  // Animation variants
-  const containerVariants = {
-    collapsed: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
-    },
-    expanded: {
-      width: '100%',
-      height: 400, // Large expanded state
-      borderRadius: 16,
-      transition: { type: 'spring' as const, stiffness: 300, damping: 25 },
-    },
+  const clearSearch = () => {
+    setSearchQuery('');
+    inputRef.current?.focus();
   };
+
+  const collapsedHeight = mode === 'notch' && topInset > 0 ? Math.max(40, topInset + 8) : 44;
 
   return (
-    <motion.div
+    <div
       ref={containerRef}
-      className={`fixed z-[9999] bg-[#141824] shadow-2xl text-[#e6e8ef] overflow-visible flex items-center
-        ${mode === 'camera' ? 'top-0 left-1/2 -translate-x-1/2' : ''}
-        ${mode === 'notch' ? 'top-2 left-1/2 -translate-x-1/2' : ''}
-        ${mode === 'bubble' ? 'top-4 right-4' : ''}
-      `}
-      initial='collapsed'
-      animate={expanded ? 'expanded' : 'collapsed'}
-      variants={containerVariants}
+      className="fixed z-[9999] flex items-center justify-center"
+      style={{
+        top: mode === 'notch' ? 0 : 16,
+        left: 0,
+        right: 0,
+        pointerEvents: 'none',
+      }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={{
-        // Safe area support
-        marginTop: 'env(safe-area-inset-top)',
-      }}
     >
-      {/* Handle / Icon (Visible when collapsed) */}
-      <div
-        className={`absolute inset-0 flex items-center justify-center cursor-pointer ${expanded ? 'opacity-0 pointer-events-none' : 'opacity-100'
-          }`}
-        onClick={() => setPinned(!pinned)}
-      >
-        {mode === 'camera' ? (
-          <div className='w-16 h-4 bg-black/50 rounded-full shadow-inner' />
-        ) : (
-          <Search className='w-5 h-5 opacity-80' />
-        )}
-      </div>
-
-      {/* Expanded Content */}
+      {/* Center-Expanding Container */}
       <motion.div
-        className='flex items-center w-full h-full px-2 opacity-0'
-        animate={{ opacity: expanded ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
+        className="flex items-center justify-center"
+        style={{ pointerEvents: 'auto' }}
+        initial={false}
+        animate={{
+          gap: expanded ? 8 : 0,
+        }}
+        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       >
-        {/* Left: Search Input */}
-        <form
-          onSubmit={handleSearchSubmit}
-          className='flex-1 flex items-center gap-2 min-w-0'
+        {/* LEFT: Search Input (expands left from center) */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 280, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className={`${glass.surfaceStrong} rounded-full overflow-hidden flex items-center`}
+              style={{ originX: 1, height: collapsedHeight }} // Expand from right edge (toward left), match height
+            >
+              <form onSubmit={handleSearchSubmit} className="flex items-center w-full h-full">
+                <Search className="ml-4 text-muted-foreground w-4 h-4 flex-shrink-0" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search photos..."
+                  className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-sm placeholder:text-muted-foreground/50"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="p-1 mr-2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* CENTER: The Notch/Island (always visible) */}
+        <motion.div
+          onClick={() => !expanded && setExpanded(true)}
+          className={`${glass.surfaceStrong} flex items-center justify-center cursor-pointer`}
+          animate={{
+            width: expanded ? 52 : 140,
+            height: collapsedHeight,
+            borderRadius: mode === 'notch' && !expanded ? '0 0 22px 22px' : 22,
+          }}
+          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          whileHover={!expanded ? { scale: 1.02 } : {}}
+          whileTap={!expanded ? { scale: 0.98 } : {}}
         >
-          <div className='relative flex-1 flex items-center'>
-            <Search className='absolute left-3 w-4 h-4 text-gray-400' />
-            <input
-              ref={inputRef}
-              type='text'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder='Search photos...'
-              className='w-full h-9 pl-9 pr-3 bg-[#101420] border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors'
-            />
-          </div>
-
-          <button
-            type='button'
-            onClick={() => setPinned(!pinned)}
-            className={`p-2 rounded-full hover:bg-white/10 transition-colors ${pinned ? 'text-blue-400' : 'text-gray-400'
-              }`}
-          >
-            {pinned ? (
-              <Pin className='w-4 h-4' />
-            ) : (
-              <PinOff className='w-4 h-4' />
-            )}
-          </button>
-        </form>
-
-        <div className='w-px h-6 bg-white/10 mx-2' />
-
-        {/* Right: Filters */}
-        <div className='flex items-center gap-1'>
-          {/* Type Filter Group */}
-          <div className='relative group'>
+          {!expanded ? (
+            // Collapsed: Dynamic Island aesthetic
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-2 h-2 rounded-full bg-gradient-to-br from-white/25 to-white/5" />
+              <Search className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground font-medium tracking-wider">SEARCH</span>
+              <div className="flex gap-1 ml-0.5">
+                <div className="w-1 h-1 rounded-full bg-white/25 animate-pulse" />
+                <div className="w-1 h-1 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-1 h-1 rounded-full bg-white/15 animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </div>
+            </div>
+          ) : (
+            // Expanded: Central divider with pin
             <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${activeGroup === 'type'
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400'
-                }`}
-              onClick={() =>
-                setActiveGroup(activeGroup === 'type' ? null : 'type')
-              }
+              type="button"
+              onClick={() => setPinned(!pinned)}
+              className={`p-2 rounded-full transition-all ${pinned ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-white/10'}`}
+              title={pinned ? "Unpin" : "Pin open"}
             >
-              Type <ChevronRight className='w-3 h-3 opacity-50' />
+              {pinned ? <Pin className="w-4 h-4" /> : <PinOff className="w-4 h-4" />}
             </button>
+          )}
+        </motion.div>
 
-            <AnimatePresence>
-              {activeGroup === 'type' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className='absolute top-full right-0 mt-2 w-48 bg-[#141824] border border-white/10 rounded-xl shadow-xl p-2 flex flex-col gap-1 overflow-hidden'
-                >
-                  <div className='text-[10px] uppercase tracking-wider text-gray-500 px-2 py-1 font-semibold'>
-                    File Type
-                  </div>
-                  {[
-                    { id: 'all', label: 'All', icon: Sparkles },
-                    { id: 'photo', label: 'Photos', icon: ImageIcon },
-                    { id: 'video', label: 'Videos', icon: Video },
-                  ].map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => {
-                        setTypeFilter(t.id);
-                        setActiveGroup(null);
-                      }}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${typeFilter === t.id
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'hover:bg-white/5 text-gray-300'
-                        }`}
-                    >
-                      <t.icon className='w-3 h-3' />
-                      {t.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Mode Filter Group */}
-          <div className='relative group'>
-            <button
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-white/10 transition-colors flex items-center gap-1 ${activeGroup === 'mode'
-                ? 'bg-white/10 text-white'
-                : 'text-gray-400'
-                }`}
-              onClick={() =>
-                setActiveGroup(activeGroup === 'mode' ? null : 'mode')
-              }
+        {/* RIGHT: Filter Options (expand right from center) */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 'auto', opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              className={`${glass.surfaceStrong} rounded-full flex items-center gap-1 px-2`}
+              style={{ originX: 0, height: collapsedHeight, overflow: 'visible' }}
             >
-              Mode <ChevronRight className='w-3 h-3 opacity-50' />
-            </button>
-
-            <AnimatePresence>
-              {activeGroup === 'mode' && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className='absolute top-full right-0 mt-2 w-48 bg-[#141824] border border-white/10 rounded-xl shadow-xl p-2 flex flex-col gap-1 overflow-hidden'
+              {/* Type Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setActiveGroup(activeGroup === 'type' ? null : 'type')}
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 transition-all ${activeGroup === 'type' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
+                    }`}
                 >
-                  <div className='text-[10px] uppercase tracking-wider text-gray-500 px-2 py-1 font-semibold'>
-                    Search Mode
-                  </div>
-                  {[
-                    { id: 'semantic', label: 'Semantic (AI)', icon: Sparkles },
-                    { id: 'metadata', label: 'Metadata', icon: FileText },
-                    { id: 'visual', label: 'Visual Match', icon: ImageIcon },
-                  ].map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        setSearchMode(m.id as any);
-                        setActiveGroup(null);
-                      }}
-                      className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs w-full text-left transition-colors ${searchMode === m.id
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'hover:bg-white/5 text-gray-300'
-                        }`}
+                  {typeFilter === 'all' ? 'All' : typeFilter}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${activeGroup === 'type' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {activeGroup === 'type' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className={`absolute top-full right-0 mt-2 w-32 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
                     >
-                      <m.icon className='w-3 h-3' />
-                      {m.label}
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
+                      {[
+                        { id: 'all', label: 'All', icon: Sparkles },
+                        { id: 'photo', label: 'Photos', icon: ImageIcon },
+                        { id: 'video', label: 'Videos', icon: Video },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => { setTypeFilter(item.id); setActiveGroup(null); }}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${typeFilter === item.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-white/10'
+                            }`}
+                        >
+                          <item.icon className="w-3 h-3" />
+                          {item.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Mode Filter */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setActiveGroup(activeGroup === 'mode' ? null : 'mode')}
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 transition-all ${activeGroup === 'mode' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
+                    }`}
+                >
+                  {searchMode === 'semantic' ? 'AI' : searchMode === 'metadata' ? 'Meta' : 'Visual'}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${activeGroup === 'mode' ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {activeGroup === 'mode' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      className={`absolute top-full right-0 mt-2 w-36 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
+                    >
+                      {[
+                        { id: 'semantic', label: 'Semantic (AI)', icon: Sparkles },
+                        { id: 'metadata', label: 'Metadata', icon: FileText },
+                        { id: 'visual', label: 'Visual Match', icon: ImageIcon },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => { setSearchMode(item.id as any); setActiveGroup(null); }}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${searchMode === item.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-white/10'
+                            }`}
+                        >
+                          <item.icon className="w-3 h-3" />
+                          {item.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }

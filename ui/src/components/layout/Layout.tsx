@@ -8,19 +8,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  // Search,
-  Settings,
-  Info,
+  // Settings,
+  // Info,
   Eye,
-  EyeOff,
+  // EyeOff,
   ArrowUp,
-  Clock,
+  // Clock,
 } from 'lucide-react';
 import { ModeRail } from './ModeRail';
-import { Spotlight } from '../search/Spotlight';
+// import { Spotlight } from '../search/Spotlight';
 import { DynamicNotchSearch } from './DynamicNotchSearch';
+import { ActionsPod } from './ActionsPod';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
-import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
+// import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 import {
   isLocalStorageAvailable,
   localGetItem,
@@ -53,13 +53,13 @@ const Layout = ({ children }: LayoutProps) => {
   //   setFavoritesFilter,
   //   search,
   // } = usePhotoSearchContext();
-  const { openForPhoto } = usePhotoViewer();
+  // const { openForPhoto } = usePhotoViewer();
 
   const [minimalMode, setMinimalMode] = useState(false);
 
   const [headerHidden, setHeaderHidden] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  // const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [hasRecentJobs, setHasRecentJobs] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [stats, setStats] = useState<{
@@ -266,7 +266,7 @@ const Layout = ({ children }: LayoutProps) => {
                       className='btn-glass btn-glass--muted text-xs px-3 py-2'
                       onClick={() => {
                         setStatusOpen(false);
-                        setSpotlightOpen(true);
+                        // setSpotlightOpen(true);
                       }}
                     >
                       Scan a folder…
@@ -290,58 +290,10 @@ const Layout = ({ children }: LayoutProps) => {
               animate={headerMotionTarget}
               transition={headerMotionTransition}
             >
-              <div className='glass-surface rounded-full p-1 header-actions'>
-                {/* {!showHeaderSearch && (
-                  <button
-                    onClick={() => setSpotlightOpen(true)}
-                    className='icon-btn'
-                    data-tooltip='Search'
-                    title='Search (⌘/Ctrl+K)'
-                    aria-label='Search'
-                  >
-                    <Search size={18} />
-                  </button>
-                )} */}
-                <Link
-                  to='/jobs'
-                  className='icon-btn relative'
-                  data-tooltip='Jobs'
-                  title='Jobs (background scans/indexing)'
-                  aria-label='Jobs'
-                >
-                  <Clock size={18} />
-                  {hasRecentJobs && (
-                    <span className='absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.65)]' />
-                  )}
-                </Link>
-                <button
-                  onClick={toggleMinimalMode}
-                  className='icon-btn'
-                  data-tooltip='Focus'
-                  title='Focus mode (hide chrome)'
-                  aria-label='Toggle focus mode'
-                >
-                  <EyeOff size={18} />
-                </button>
-                <Link
-                  to='/settings'
-                  className='icon-btn'
-                  data-tooltip='Settings'
-                  title='Settings'
-                  aria-label='Settings'
-                >
-                  <Settings size={18} />
-                </Link>
-                <Link
-                  to='/about'
-                  className='icon-btn'
-                  data-tooltip='About'
-                  title='About'
-                  aria-label='About'
-                >
-                  <Info size={18} />
-                </Link>
-              </div>
+              <ActionsPod
+                hasRecentJobs={hasRecentJobs}
+                toggleMinimalMode={toggleMinimalMode}
+              />
             </motion.div>
           </div>
         </div>
@@ -349,37 +301,10 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Notch search: appears when header is hidden (compact state) */}
       {/* Uses safe-area detection for proper spacing on all devices */}
-      {/* <NotchBar show={headerHidden} compact className='pointer-events-auto'>
-        <div className='w-full flex justify-center'>
-          <div className='w-full max-w-3xl px-2'>
-            <EnhancedSearchUI
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              searchMode={searchMode}
-              setSearchMode={setSearchMode}
-              sortBy={sortBy}
-              setSortBy={setSortBy}
-              typeFilter={typeFilter}
-              setTypeFilter={setTypeFilter}
-              favoritesFilter={favoritesFilter}
-              setFavoritesFilter={setFavoritesFilter}
-              onSearch={() => search(searchQuery)}
-              isCompact={true}
-              heroTitle={null}
-            />
-          </div>
-        </div>
-      </NotchBar> */}
-
       {!minimalMode && <DynamicNotchSearch />}
 
       {/* Main Content Area */}
       <main className='flex-1 w-full max-w-[1600px] mx-auto pt-20 px-4 md:px-6 pb-32'>
-        <Spotlight
-          open={spotlightOpen}
-          onOpenChange={setSpotlightOpen}
-          onPhotoSelect={(photo) => openForPhoto(photos, photo)}
-        />
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 20 }}
