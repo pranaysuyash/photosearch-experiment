@@ -142,6 +142,18 @@ bash stop.sh
 
 # See what is running / what owns the ports
 bash scripts/dev-status.sh
+
+### Docker (Full App Audit/Test)
+
+To run the full application (Vue/React UI + Python Backend) in a single container:
+
+```bash
+# Build
+docker build -f Dockerfile.full -t photosearch-full .
+
+# Run (exposed at localhost:8080)
+docker run -p 8080:80 photosearch-full
+```
 ```
 
 More:

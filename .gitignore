@@ -63,3 +63,7 @@ experiments/
 # Keep all README files
 !README.md
 !**/README.md
+
+# Build artifacts
+ui/dist
+

@@ -6,20 +6,22 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   // Settings,
   // Info,
   Eye,
   // EyeOff,
+  // EyeOff, // Removed as per instruction
   ArrowUp,
   // Clock,
 } from 'lucide-react';
 import { ModeRail } from './ModeRail';
 // import { Spotlight } from '../search/Spotlight';
 import { DynamicNotchSearch } from './DynamicNotchSearch';
-import { ActionsPod } from './ActionsPod';
+import { ActionsPod } from './ActionsPod'; // Kept as ActionsPod, assuming instruction's 'ActionPod' was a typo
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
+// import { useJobMonitor } from '../../hooks/useJobMonitor'; // Removed as per instruction
 // import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 import {
   isLocalStorageAvailable,
@@ -30,6 +32,7 @@ import { api } from '../../api';
 import './Layout.css';
 // import { NotchBar, useNotchAware } from './NotchBar';
 
+
 interface LayoutProps {
   children?: React.ReactNode;
 }
@@ -38,30 +41,20 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const lastScrollYRef = useRef(0);
   // const { hasNotch } = useNotchAware();
+
+  const [searchExpanded, setSearchExpanded] = useState(false);
+
   const { photos, resultCount } = usePhotoSearchContext();
-  // const {
-  //   loading,
-  //   searchQuery,
-  //   setSearchQuery,
-  //   searchMode,
-  //   setSearchMode,
-  //   sortBy,
-  //   setSortBy,
-  //   typeFilter,
-  //   setTypeFilter,
-  //   favoritesFilter,
-  //   setFavoritesFilter,
-  //   search,
-  // } = usePhotoSearchContext();
-  // const { openForPhoto } = usePhotoViewer();
+  const resultsNumber = resultCount ?? photos.length;
+
+
 
   const [minimalMode, setMinimalMode] = useState(false);
-
   const [headerHidden, setHeaderHidden] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
-  // const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [hasRecentJobs, setHasRecentJobs] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+
   const [stats, setStats] = useState<{
     active_files?: number;
     deleted_files?: number;
@@ -144,7 +137,7 @@ const Layout = ({ children }: LayoutProps) => {
   // Search moved to page content - don't show in header
   // const showHeaderSearch = false;
 
-  const resultsNumber = resultCount ?? photos.length;
+  // const resultsNumber = resultCount ?? photos.length; // Now from context
 
   const toggleMinimalMode = () => {
     const next = !minimalMode;
@@ -165,7 +158,13 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className='modern-layout'>
+    <div className='min-h-screen bg-background text-foreground selection:bg-primary/30 selection:text-primary-foreground font-sans'>
+      {/* Background gradients */}
+      <div className='fixed inset-0 z-0 pointer-events-none'>
+        <div className='absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px] opacity-50 mix-blend-screen animate-pulse-slow' />
+        <div className='absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/5 blur-[120px] opacity-50 mix-blend-screen animate-pulse-slow delay-1000' />
+      </div>
+
       {minimalMode && (
         <button
           onClick={toggleMinimalMode}
@@ -179,13 +178,12 @@ const Layout = ({ children }: LayoutProps) => {
       )}
 
       {/* Floating Top Bar */}
-      {/* Floating Top Bar */}
       {!minimalMode && (
         <div className='fixed top-0 left-0 right-0 z-[1000] pointer-events-none'>
-          <div className='w-full max-w-[1600px] mx-auto relative h-0 px-4 md:px-6'>
+          <div className='w-full max-w-[1600px] mx-auto grid grid-cols-[auto_1fr_auto] items-start px-4 md:px-6 pt-4 gap-4'>
             {/* Left rail: modes */}
             <motion.div
-              className='absolute top-4 left-4 md:left-6 pointer-events-auto'
+              className='pointer-events-auto z-20'
               initial={{ opacity: 0, y: -10 }}
               animate={headerMotionTarget}
               transition={headerMotionTransition}
@@ -193,115 +191,104 @@ const Layout = ({ children }: LayoutProps) => {
               <ModeRail variant='standalone' />
             </motion.div>
 
-            {/* Status only - search moved to page content */}
-            {/* {(resultsNumber > 0 || stats?.active_files !== undefined) && (
-              <motion.div
-                className='absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto hidden lg:flex gap-2'
-                animate={
-                  headerHidden ? { opacity: 0, y: -140 } : { opacity: 1, y: 0 }
-                }
-                transition={{ duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
-              >
-                {loading && (
-                  <div
-                    className='w-4 h-4 border-2 border-white/15 border-t-white/70 rounded-full animate-spin'
-                    aria-label='Searching'
-                    title='Searching...'
-                  />
-                )}
-                {resultsNumber > 0 && (
-                  <button
-                    type='button'
-                    className='status-chip'
-                    onClick={() => setStatusOpen((v) => !v)}
-                    aria-label='Search results and library status'
-                    title='Results + Library status'
-                  >
-                    {resultsNumber.toLocaleString()} results
-                  </button>
-                )}
-                {stats?.active_files !== undefined && (
-                  <button
-                    type='button'
-                    className='status-chip'
-                    onClick={() => setStatusOpen((v) => !v)}
-                    aria-label='Library indexing status'
-                    title='Library indexing status'
-                  >
-                    Indexed {stats.active_files.toLocaleString()}
-                  </button>
-                )}
-              </motion.div>
-            )} */}
-
-            {statusOpen && (
-              <div className='status-popover-root'>
-                <div
-                  className='status-popover-backdrop'
-                  onClick={() => setStatusOpen(false)}
-                />
-                <div className='status-popover glass-surface glass-surface--strong rounded-2xl p-4'>
-                  <div className='text-sm font-semibold text-foreground mb-2'>
-                    Library status
-                  </div>
-                  <div className='text-sm text-muted-foreground space-y-1'>
-                    <div>
-                      Results:{' '}
-                      <span className='text-foreground font-semibold'>
-                        {resultsNumber.toLocaleString()}
-                      </span>
-                    </div>
-                    {stats?.active_files !== undefined && (
-                      <div>
-                        Indexed:{' '}
-                        <span className='text-foreground font-semibold'>
-                          {stats.active_files.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className='mt-3 flex flex-wrap gap-2'>
-                    <button
-                      type='button'
-                      className='btn-glass btn-glass--muted text-xs px-3 py-2'
-                      onClick={() => {
-                        setStatusOpen(false);
-                        // setSpotlightOpen(true);
-                      }}
-                    >
-                      Scan a folder…
-                    </button>
-                    <Link
-                      to='/settings#library'
-                      className='btn-glass btn-glass--primary text-xs px-3 py-2'
-                      onClick={() => setStatusOpen(false)}
-                    >
-                      Manage library
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Right rail: actions */}
+            {/* Center: Dynamic Notch Search */}
             <motion.div
-              className='absolute top-4 right-4 md:right-6 pointer-events-auto'
+              className='flex justify-center pointer-events-auto z-10'
               initial={{ opacity: 0, y: -10 }}
               animate={headerMotionTarget}
               transition={headerMotionTransition}
             >
-              <ActionsPod
-                hasRecentJobs={hasRecentJobs}
-                toggleMinimalMode={toggleMinimalMode}
-              />
+              <DynamicNotchSearch onExpandedChange={setSearchExpanded} />
             </motion.div>
+
+            {/* Right rail: actions */}
+            <div className="relative z-20 h-11 flex items-center justify-end">
+              <AnimatePresence>
+                {!searchExpanded && (
+                  <>
+                    {/* Desktop: Static Grid Item */}
+                    <motion.div
+                      layout
+                      className='pointer-events-auto hidden md:block'
+                      initial={{ opacity: 0, x: 20, scale: 0.9 }}
+                      animate={{ opacity: 1, x: 0, scale: 1 }}
+                      exit={{ opacity: 0, x: 20, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ActionsPod
+                        hasRecentJobs={hasRecentJobs}
+                        toggleMinimalMode={toggleMinimalMode}
+                      />
+                    </motion.div>
+
+                    {/* Mobile: Absolute Positioned */}
+                    <motion.div
+                      className='pointer-events-auto md:hidden absolute right-0 top-12'
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={headerMotionTarget}
+                      transition={headerMotionTransition}
+                    >
+                      <ActionsPod
+                        hasRecentJobs={hasRecentJobs}
+                        toggleMinimalMode={toggleMinimalMode}
+                      />
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
+
+          {statusOpen && (
+            <div className='status-popover-root'>
+              <div
+                className='status-popover-backdrop'
+                onClick={() => setStatusOpen(false)}
+              />
+              <div className='status-popover glass-surface glass-surface--strong rounded-2xl p-4'>
+                <div className='text-sm font-semibold text-foreground mb-2'>
+                  Library status
+                </div>
+                <div className='text-sm text-muted-foreground space-y-1'>
+                  <div>
+                    Results:{' '}
+                    <span className='text-foreground font-semibold'>
+                      {resultsNumber.toLocaleString()}
+                    </span>
+                  </div>
+                  {stats?.active_files !== undefined && (
+                    <div>
+                      Indexed:{' '}
+                      <span className='text-foreground font-semibold'>
+                        {stats.active_files.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className='mt-3 flex flex-wrap gap-2'>
+                  <button
+                    type='button'
+                    className='btn-glass btn-glass--muted text-xs px-3 py-2'
+                    onClick={() => {
+                      setStatusOpen(false);
+                      // setSpotlightOpen(true);
+                    }}
+                  >
+                    Scan a folder…
+                  </button>
+                  <Link
+                    to='/settings#library'
+                    className='btn-glass btn-glass--primary text-xs px-3 py-2'
+                    onClick={() => setStatusOpen(false)}
+                  >
+                    Manage library
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Notch search: appears when header is hidden (compact state) */}
-      {/* Uses safe-area detection for proper spacing on all devices */}
-      {!minimalMode && <DynamicNotchSearch />}
 
       {/* Main Content Area */}
       <main className='flex-1 w-full max-w-[1600px] mx-auto pt-20 px-4 md:px-6 pb-32'>
@@ -314,20 +301,22 @@ const Layout = ({ children }: LayoutProps) => {
         >
           {children}
         </motion.div>
-      </main>
+      </main >
 
       {/* Back to Top */}
-      {!minimalMode && showBackToTop && (
-        <button
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className='fixed bottom-6 right-6 z-[1000] btn-glass btn-glass--muted w-11 h-11 p-0 justify-center'
-          title='Back to top'
-          aria-label='Back to top'
-        >
-          <ArrowUp size={18} />
-        </button>
-      )}
-    </div>
+      {
+        !minimalMode && showBackToTop && (
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className='fixed bottom-6 right-6 z-[1000] btn-glass btn-glass--muted w-11 h-11 p-0 justify-center'
+            title='Back to top'
+            aria-label='Back to top'
+          >
+            <ArrowUp size={18} />
+          </button>
+        )
+      }
+    </div >
   );
 };
 

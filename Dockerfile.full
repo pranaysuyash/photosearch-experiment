@@ -1,0 +1,48 @@
+# Stage 1: Build Frontend
+FROM node:18-alpine as ui-build
+WORKDIR /app/ui
+# Copy only package files first to leverage cache
+COPY ui/package*.json ./
+RUN npm install --legacy-peer-deps
+# Copy source
+COPY ui ./
+RUN npm run build
+
+# Stage 2: Production Runtime
+FROM python:3.11-slim
+
+# Install system dependencies
+# ffmpeg for video processing, libmagic for file type detection, nginx/supervisor for serving
+RUN apt-get update && apt-get install -y \
+    nginx \
+    supervisor \
+    ffmpeg \
+    libmagic1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -f /etc/nginx/sites-enabled/default
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY server/requirements.txt ./server/requirements.txt
+RUN pip install --no-cache-dir -r server/requirements.txt
+
+# Copy application source code
+COPY . .
+
+# Copy built frontend assets to Nginx
+COPY --from=ui-build /app/ui/dist /usr/share/nginx/html
+
+# Configure Nginx
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Configure Supervisor
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+EXPOSE 80
+
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

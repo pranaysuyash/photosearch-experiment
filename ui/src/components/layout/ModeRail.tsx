@@ -6,13 +6,14 @@ import { ModeSwitcher } from './ModeSwitcher';
 type Mode = 'grid' | 'globe' | 'story';
 type Variant = 'standalone' | 'inline';
 
-function getMode(pathname: string): Mode {
+function getMode(pathname: string): Mode | null {
   if (pathname.startsWith('/globe')) return 'globe';
   if (pathname.startsWith('/story-mode')) return 'story';
-  return 'grid';
+  if (pathname === '/') return 'grid';
+  return null;
 }
 
-function ModeIcon({ mode }: { mode: Mode }) {
+function ModeIcon({ mode }: { mode: Mode | null }) {
   if (mode === 'globe') return <Globe size={18} />;
   if (mode === 'story') return <Film size={18} />;
   return <Grid3x3 size={18} />;
@@ -63,7 +64,7 @@ export function ModeRail({ variant = 'standalone' }: { variant?: Variant }) {
       onMouseLeave={scheduleClose}
     >
       <button
-        className='btn-glass btn-glass--muted w-[34px] h-[34px] p-0 justify-center'
+        className='btn-glass btn-glass--muted w-[36px] h-[36px] p-0 justify-center'
         onClick={() => setOpen((v) => !v)}
         title='View modes'
         aria-label='View modes'

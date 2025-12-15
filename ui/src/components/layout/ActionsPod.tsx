@@ -14,7 +14,7 @@ interface ActionsPodProps {
 
 export function ActionsPod({ hasRecentJobs, toggleMinimalMode }: ActionsPodProps) {
     return (
-        <div className={`${glass.surface} rounded-full p-1 header-actions flex items-center gap-1`}>
+        <div className={`${glass.surface} rounded-full px-1 h-11 header-actions flex items-center gap-1`}>
             <Link
                 to='/jobs'
                 className='p-2 rounded-full hover:bg-white/10 transition-colors relative text-muted-foreground hover:text-foreground'

@@ -12,7 +12,6 @@ import {
   ChevronDown,
   Image as ImageIcon,
   FileText,
-  Video,
   X,
 } from 'lucide-react';
 
@@ -23,7 +22,7 @@ import {
  * When expanded, the search bar expands LEFT and filter options expand RIGHT
  * from the central divider (like iPhone Dynamic Island).
  */
-export function DynamicNotchSearch() {
+export function DynamicNotchSearch({ onExpandedChange }: { onExpandedChange?: (expanded: boolean) => void }) {
   const {
     searchQuery,
     setSearchQuery,
@@ -47,6 +46,11 @@ export function DynamicNotchSearch() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Notify parent of expansion state changes
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   useEffect(() => {
     if (isMobile) setMode('mobile');
@@ -145,34 +149,39 @@ export function DynamicNotchSearch() {
         <AnimatePresence>
           {expanded && (
             <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              // Outer: owns size + glass + shadow, must NOT clip
+              className={`${glass.surfaceStrong} rounded-full relative flex items-center`}
+              style={{ originX: 1, height: collapsedHeight, alignSelf: 'center', boxSizing: 'border-box' }}
+              initial={{ width: 0, opacity: 0, height: collapsedHeight, marginRight: -20 }}
+              animate={{ width: 280, opacity: 1, height: collapsedHeight, marginRight: 0 }}
+              exit={{ width: 0, opacity: 0, height: collapsedHeight, marginRight: -20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className={`${glass.surfaceStrong} rounded-full overflow-hidden flex items-center`}
-              style={{ originX: 1, height: collapsedHeight }} // Expand from right edge (toward left), match height
+              data-notch-left
             >
-              <form onSubmit={handleSearchSubmit} className="flex items-center w-full h-full">
-                <Search className="ml-4 text-muted-foreground w-4 h-4 flex-shrink-0" />
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search photos..."
-                  className="flex-1 bg-transparent border-none outline-none px-3 py-3 text-sm placeholder:text-muted-foreground/50"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="p-1 mr-2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </form>
+              {/* Inner: only content clips */}
+              <div className="w-full h-full rounded-full overflow-hidden flex items-center">
+                <form onSubmit={handleSearchSubmit} className="flex items-center w-full h-full" style={{ margin: 0 }}>
+                  <Search className="ml-4 text-muted-foreground w-4 h-4 flex-shrink-0" />
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search photos..."
+                    className="h-full flex-1 bg-transparent border-none outline-none px-3 text-sm placeholder:text-muted-foreground/50 leading-none"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      className="p-1 mr-2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </form>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -182,31 +191,40 @@ export function DynamicNotchSearch() {
           onClick={() => !expanded && setExpanded(true)}
           className={`${glass.surfaceStrong} flex items-center justify-center cursor-pointer`}
           animate={{
-            width: expanded ? 52 : 140,
+            width: expanded ? 52 : 180, // Wider when collapsed to include filters
             height: collapsedHeight,
             borderRadius: mode === 'notch' && !expanded ? '0 0 22px 22px' : 22,
           }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
           whileHover={!expanded ? { scale: 1.02 } : {}}
           whileTap={!expanded ? { scale: 0.98 } : {}}
+          style={{ alignSelf: 'center', boxSizing: 'border-box' }}
+          data-notch-center
         >
           {!expanded ? (
-            // Collapsed: Dynamic Island aesthetic
-            <div className="flex items-center gap-2 px-2">
-              <div className="w-2 h-2 rounded-full bg-gradient-to-br from-white/25 to-white/5" />
-              <Search className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground font-medium tracking-wider">SEARCH</span>
-              <div className="flex gap-1 ml-0.5">
-                <div className="w-1 h-1 rounded-full bg-white/25 animate-pulse" />
-                <div className="w-1 h-1 rounded-full bg-white/20 animate-pulse" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1 h-1 rounded-full bg-white/15 animate-pulse" style={{ animationDelay: '0.4s' }} />
+            // Collapsed: Unified Dynamic Island (Search + Filters)
+            <div className="flex items-center justify-between w-full px-1">
+              {/* Left side: Search indicator */}
+              <div className="flex items-center gap-2 pl-2">
+                <div className="w-2 h-2 rounded-full bg-gradient-to-br from-white/25 to-white/5" />
+                <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground font-medium tracking-wider">SEARCH</span>
+              </div>
+
+              {/* Divider */}
+              <div className="h-3 w-[1px] bg-white/10 mx-1" />
+
+              {/* Right side: Filter icons (visual only in collapsed) */}
+              <div className="flex items-center gap-2 pr-2">
+                <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+                <ImageIcon className="w-3.5 h-3.5 text-muted-foreground" />
               </div>
             </div>
           ) : (
             // Expanded: Central divider with pin
             <button
               type="button"
-              onClick={() => setPinned(!pinned)}
+              onClick={(e) => { e.stopPropagation(); setPinned(!pinned); }}
               className={`p-2 rounded-full transition-all ${pinned ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-white/10'}`}
               title={pinned ? "Unpin" : "Pin open"}
             >
@@ -215,51 +233,56 @@ export function DynamicNotchSearch() {
           )}
         </motion.div>
 
-        {/* RIGHT: Filter Options (expand right from center) */}
+        {/* RIGHT: Filter Options (visible ONLY when expanded) */}
         <AnimatePresence>
           {expanded && (
             <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 'auto', opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
+              className={`${glass.surfaceStrong} rounded-full flex items-center overflow-visible cursor-pointer ml-2`}
+              initial={{ width: 0, opacity: 0, height: collapsedHeight, marginLeft: -20 }}
+              animate={{
+                width: 'auto',
+                opacity: 1,
+                height: collapsedHeight,
+                marginLeft: 0,
+                gap: 8,
+                paddingLeft: 8,
+                paddingRight: 8,
+              }}
+              exit={{ width: 0, opacity: 0, height: collapsedHeight, marginLeft: -20 }}
               transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              className={`${glass.surfaceStrong} rounded-full flex items-center gap-1 px-2`}
-              style={{ originX: 0, height: collapsedHeight, overflow: 'visible' }}
+              style={{ originX: 0, alignSelf: 'center', boxSizing: 'border-box' }}
+              data-notch-right
             >
               {/* Type Filter */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setActiveGroup(activeGroup === 'type' ? null : 'type')}
-                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 transition-all ${activeGroup === 'type' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all ${activeGroup === 'type' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
                     }`}
                 >
                   {typeFilter === 'all' ? 'All' : typeFilter}
                   <ChevronDown className={`w-3 h-3 transition-transform ${activeGroup === 'type' ? 'rotate-180' : ''}`} />
                 </button>
-
+                {/* Type Dropdown */}
                 <AnimatePresence>
                   {activeGroup === 'type' && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      className={`absolute top-full right-0 mt-2 w-32 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className={`absolute top-full left-0 mt-2 w-44 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
                     >
-                      {[
-                        { id: 'all', label: 'All', icon: Sparkles },
-                        { id: 'photo', label: 'Photos', icon: ImageIcon },
-                        { id: 'video', label: 'Videos', icon: Video },
-                      ].map((item) => (
+                      {['all', 'photo', 'video'].map((type) => (
                         <button
-                          key={item.id}
+                          key={type}
                           type="button"
-                          onClick={() => { setTypeFilter(item.id); setActiveGroup(null); }}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${typeFilter === item.id ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:bg-white/10'
+                          onClick={() => { setTypeFilter(type as any); setActiveGroup(null); }}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${typeFilter === type ? 'bg-white/10 text-foreground' : 'text-muted-foreground hover:bg-white/5'
                             }`}
                         >
-                          <item.icon className="w-3 h-3" />
-                          {item.label}
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
                         </button>
                       ))}
                     </motion.div>
@@ -272,19 +295,20 @@ export function DynamicNotchSearch() {
                 <button
                   type="button"
                   onClick={() => setActiveGroup(activeGroup === 'mode' ? null : 'mode')}
-                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 transition-all ${activeGroup === 'mode' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all ${activeGroup === 'mode' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
                     }`}
                 >
                   {searchMode === 'semantic' ? 'AI' : searchMode === 'metadata' ? 'Meta' : 'Visual'}
                   <ChevronDown className={`w-3 h-3 transition-transform ${activeGroup === 'mode' ? 'rotate-180' : ''}`} />
                 </button>
-
+                {/* Mode Dropdown */}
                 <AnimatePresence>
                   {activeGroup === 'mode' && (
                     <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
                       className={`absolute top-full right-0 mt-2 w-36 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
                     >
                       {[

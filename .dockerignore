@@ -1,0 +1,12 @@
+node_modules
+ui/node_modules
+venv
+.venv
+.git
+.DS_Store
+__pycache__
+*.pyc
+data
+outputs
+cache
+ui/dist
