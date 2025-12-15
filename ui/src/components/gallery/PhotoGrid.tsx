@@ -535,6 +535,29 @@ export function PhotoGrid({
                 />
               </div>
 
+              {/* Match Explanation - Overlaid on image at bottom */}
+              {photo.matchExplanation && (
+                <div 
+                  onClick={(e) => {
+                    console.log('Wrapper div clicked - stopping propagation');
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onMouseUp={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 }}
+                >
+                  <MatchExplanation 
+                    explanation={photo.matchExplanation}
+                    isCompact={true}
+                  />
+                </div>
+              )}
+
               {/* Advanced Metadata Grid using Subgrid */}
               <div className='gallery-metadata'>
                 <div className='gallery-title'>{photo.filename}</div>
@@ -542,36 +565,7 @@ export function PhotoGrid({
                   {photo.path.split('/').slice(-2).join('/')}
                 </div>
 
-                {/* Match Explanation - Positioned at top of metadata */}
-                {photo.matchExplanation && (
-                  <div 
-                    className='mb-3 w-full order-first'
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  >
-                    <MatchExplanation 
-                      explanation={photo.matchExplanation}
-                      isCompact={true}
-                    />
-                  </div>
-                )}
 
-                {/* Score Badge - Secondary position */}
-                {photo.score > 0 && (
-                  <div className='gallery-score flex items-center gap-2 mt-2'>
-                    <div className='score-bar'>
-                      <div
-                        className={`score-fill score-fill-${Math.round(Math.round(photo.score * 100) / 10) * 10
-                          }`}
-                      />
-                    </div>
-                    <div className='score-text'>
-                      {Math.round(photo.score * 100)}%
-                    </div>
-                  </div>
-                )}
               </div>
             </motion.div>
           );

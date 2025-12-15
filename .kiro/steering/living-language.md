@@ -3,6 +3,11 @@
 ## Purpose
 Maintain consistent "living app" language throughout the codebase to create a more natural, human-centered user experience.
 
+## Design Principles
+- **No Emojis**: Use proper Lucide React icons instead of emojis for a professional, premium feel
+- **Glass Morphism**: Consistent glass design language throughout the UI
+- **Contextual Positioning**: UI elements should be connected to what they describe, not floating separately
+
 ## Language Replacements
 
 ### User-Facing Strings (CRITICAL - Never revert these)

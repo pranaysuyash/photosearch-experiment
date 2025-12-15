@@ -33,7 +33,7 @@ const Home = () => {
   }, []);
 
   const hasResults = photos.length > 0;
-  const isLibraryEmpty = libraryCount === 0 && !loading;
+  const isLibraryEmpty = libraryCount === 0 && !loading && photos.length === 0;
   const showLoadingHero = loading && photos.length === 0;
 
   return (

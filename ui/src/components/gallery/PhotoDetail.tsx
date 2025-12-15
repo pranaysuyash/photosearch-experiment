@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -14,9 +14,11 @@ import {
   Music,
   FileText,
   Code,
+  HelpCircle,
 } from 'lucide-react';
 import { type Photo, api } from '../../api';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
+import { createPortal } from 'react-dom';
 
 interface PhotoDetailProps {
   photos: Photo[]; // Full list for navigation
@@ -182,6 +184,7 @@ export function PhotoDetail({
   const photo = currentIndex !== null ? photos[currentIndex] : null;
   const { setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
+  const [showExplanation, setShowExplanation] = useState(false);
 
   useEffect(() => {
     if (photo) {
@@ -198,18 +201,22 @@ export function PhotoDetail({
     if (currentIndex === null) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft' && currentIndex > 0) {
+      if (e.key === 'Escape') {
+        if (showExplanation) {
+          setShowExplanation(false);
+        } else {
+          onClose();
+        }
+      } else if (e.key === 'ArrowLeft' && currentIndex > 0 && !showExplanation) {
         onNavigate(currentIndex - 1);
-      } else if (e.key === 'ArrowRight' && currentIndex < photos.length - 1) {
+      } else if (e.key === 'ArrowRight' && currentIndex < photos.length - 1 && !showExplanation) {
         onNavigate(currentIndex + 1);
-      } else if (e.key === 'Escape') {
-        onClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, photos.length, onNavigate, onClose]);
+  }, [currentIndex, photos.length, onNavigate, onClose, showExplanation]);
 
   if (!photo) return null;
 
@@ -248,6 +255,7 @@ export function PhotoDetail({
   const hasNext = currentIndex !== null && currentIndex < photos.length - 1;
 
   return (
+    <>
     <AnimatePresence>
       {photo && (
         <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
@@ -368,12 +376,29 @@ export function PhotoDetail({
               {/* Score if semantic search */}
               {photo.score !== undefined && photo.score > 0 && (
                 <div className='mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg'>
-                  <span className='text-blue-400 text-sm'>
-                    Relevance Score:{' '}
-                  </span>
-                  <span className='text-white font-bold'>
-                    {(photo.score * 100).toFixed(0)}%
-                  </span>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <span className='text-blue-400 text-sm'>
+                        Relevance Score:{' '}
+                      </span>
+                      <span className='text-white font-bold'>
+                        {(photo.score * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    {photo.matchExplanation && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowExplanation(true);
+                        }}
+                        className='btn-glass btn-glass--muted px-2 py-1 text-xs flex items-center gap-1'
+                        title='Why this matched'
+                      >
+                        <HelpCircle size={12} />
+                        Why
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -799,5 +824,80 @@ export function PhotoDetail({
         </div>
       )}
     </AnimatePresence>
+    
+    {/* Match Explanation Modal */}
+    {showExplanation && photo?.matchExplanation && createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ pointerEvents: 'auto' }}>
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+          onClick={() => setShowExplanation(false)}
+        />
+        {/* Modal */}
+        <div
+          className="relative w-full max-w-lg glass-surface glass-surface--strong rounded-2xl shadow-2xl p-6 max-h-[80vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${
+                photo.matchExplanation.type === 'metadata' ? 'bg-blue-500' :
+                photo.matchExplanation.type === 'semantic' ? 'bg-purple-500' :
+                'bg-gradient-to-r from-blue-500 to-purple-500'
+              }`} />
+              <h3 className="text-lg font-bold text-white/95">Why this matched</h3>
+            </div>
+            <button
+              onClick={() => setShowExplanation(false)}
+              className="btn-glass p-2 rounded-lg hover:bg-white/20"
+            >
+              <X size={14} className="text-white/80" />
+            </button>
+          </div>
+          
+          <div className="space-y-2">
+            {photo.matchExplanation.reasons && photo.matchExplanation.reasons.length > 0 ? (
+              photo.matchExplanation.reasons.map((reason, idx) => {
+                const Icon = reason.category.toLowerCase().includes('camera') || reason.category.toLowerCase().includes('lens') ? Camera :
+                             reason.category.toLowerCase().includes('location') || reason.category.toLowerCase().includes('gps') ? MapPin :
+                             reason.category.toLowerCase().includes('date') || reason.category.toLowerCase().includes('time') ? Calendar :
+                             FileText;
+                return (
+                  <div
+                    key={idx}
+                    className="glass-surface rounded-lg p-3"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0 p-1.5 glass-surface rounded">
+                        <Icon size={14} className="text-white/80" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-bold text-white/95">
+                            {reason.category}
+                          </span>
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-white/20 backdrop-blur-sm font-semibold text-white/90">
+                            {Math.round(reason.confidence * 100)}%
+                          </span>
+                        </div>
+                        <p className="text-sm text-white/80 leading-relaxed">
+                          {reason.matched}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="glass-surface rounded-lg p-3 text-center">
+                <p className="text-white/70 text-sm">No detailed explanation available</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>,
+      document.body
+    )}
+  </>
   );
 }
