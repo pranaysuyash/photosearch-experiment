@@ -38,6 +38,12 @@ data/
 *.sqlite3
 .run/
 
+# AI/ML Models (downloaded on first use)
+models/
+
+# Face thumbnails cache
+cache/
+
 # Media files (large demo images/videos)
 media/
 *.jpg

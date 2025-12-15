@@ -1,178 +1,156 @@
+/* Intent Recognition Component Styles */
+
 .intent-recognition {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  border-radius: 12px;
-  padding: 16px;
-  margin: 16px 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e1e8ed;
+  @apply bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg p-4 shadow-sm mb-4;
+  animation: slideIn 0.3s ease-out;
+}
+
+.intent-loading {
+  @apply flex items-center gap-2 text-sm text-gray-500 p-3 bg-gray-50 rounded-lg;
+}
+
+.intent-loading::before {
+  content: '';
+  @apply w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin;
+}
+
+.intent-error {
+  @apply text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3;
 }
 
 .intent-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  @apply flex items-start gap-3 mb-3;
 }
 
 .intent-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  @apply flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg font-medium transition-all duration-200;
 }
 
-/* Intent color variants */
-.intent-find-person {
-  background: #3498db;
+.intent-icon.intent-find-person {
+  @apply bg-blue-100 text-blue-600 border border-blue-200;
 }
 
-.intent-find-location {
-  background: #2ecc71;
+.intent-icon.intent-find-location {
+  @apply bg-green-100 text-green-600 border border-green-200;
 }
 
-.intent-find-object {
-  background: #e74c3c;
+.intent-icon.intent-find-object {
+  @apply bg-purple-100 text-purple-600 border border-purple-200;
 }
 
-.intent-find-event {
-  background: #f39c12;
+.intent-icon.intent-find-event {
+  @apply bg-pink-100 text-pink-600 border border-pink-200;
 }
 
-.intent-find-date {
-  background: #9b59b6;
+.intent-icon.intent-find-date {
+  @apply bg-orange-100 text-orange-600 border border-orange-200;
 }
 
-.intent-find-color {
-  background: #1abc9c;
+.intent-icon.intent-find-color {
+  @apply bg-yellow-100 text-yellow-600 border border-yellow-200;
 }
 
-.intent-find-emotion {
-  background: #e91e63;
+.intent-icon.intent-find-emotion {
+  @apply bg-red-100 text-red-600 border border-red-200;
 }
 
-.intent-find-style {
-  background: #00bcd4;
+.intent-icon.intent-find-style {
+  @apply bg-indigo-100 text-indigo-600 border border-indigo-200;
 }
 
-.intent-find-quality {
-  background: #ff9800;
+.intent-icon.intent-find-quality {
+  @apply bg-teal-100 text-teal-600 border border-teal-200;
 }
 
-.intent-find-technical {
-  background: #607d8b;
+.intent-icon.intent-find-technical {
+  @apply bg-gray-100 text-gray-600 border border-gray-200;
 }
 
-.intent-find-creative {
-  background: #8bc34a;
+.intent-icon.intent-find-creative {
+  @apply bg-violet-100 text-violet-600 border border-violet-200;
 }
 
-.intent-find-organize {
-  background: #ff5722;
+.intent-icon.intent-find-organize {
+  @apply bg-cyan-100 text-cyan-600 border border-cyan-200;
 }
 
 .intent-info {
-  flex: 1;
+  @apply flex-1 min-w-0;
 }
 
 .intent-name {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: #2c3e50;
-  text-transform: capitalize;
+  @apply text-sm font-semibold text-gray-900 capitalize mb-1;
 }
 
 .intent-description {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: #7f8c8d;
-  font-weight: 400;
+  @apply text-sm text-gray-600;
 }
 
 .intent-suggestions {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e1e8ed;
+  @apply mt-4 pt-3 border-t border-gray-100;
 }
 
 .intent-suggestions h4 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #2c3e50;
+  @apply text-sm font-medium text-gray-700 mb-2;
 }
 
 .suggestion-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @apply flex flex-wrap gap-2;
 }
 
 .suggestion-item {
-  background: white;
-  border: 1px solid #bdc3c7;
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: #2c3e50;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.suggestion-item:hover {
-  background: #3498db;
-  color: white;
-  border-color: #3498db;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(52, 152, 219, 0.3);
+  @apply text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-md hover:bg-blue-100 transition-colors cursor-pointer border border-blue-200;
 }
 
 .intent-badges {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #e1e8ed;
+  @apply mt-3;
 }
 
 .intent-badges h4 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #2c3e50;
+  @apply text-sm font-medium text-gray-700 mb-2;
 }
 
 .badge-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  @apply flex flex-wrap gap-2;
 }
 
 .badge-item {
-  background: white;
-  border: 1px solid #bdc3c7;
-  border-radius: 12px;
-  padding: 4px 10px;
-  font-size: 11px;
-  color: #7f8c8d;
-  font-weight: 500;
+  @apply text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md border border-gray-200;
 }
 
-.intent-loading,
-.intent-error {
-  padding: 12px;
-  font-size: 14px;
-  color: #7f8c8d;
-  text-align: center;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.6);
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.intent-error {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .intent-recognition {
+    @apply p-3;
+  }
+  
+  .intent-header {
+    @apply gap-2;
+  }
+  
+  .intent-icon {
+    @apply w-8 h-8 text-base;
+  }
+  
+  .suggestion-list,
+  .badge-list {
+    @apply gap-1;
+  }
+  
+  .suggestion-item,
+  .badge-item {
+    @apply text-xs px-1.5 py-0.5;
+  }
 }

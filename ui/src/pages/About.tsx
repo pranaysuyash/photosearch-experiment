@@ -12,7 +12,7 @@ const About = () => {
           About Living Museum
         </h1>
         <p className='text-sm text-muted-foreground'>
-          Your AI-powered photo workstation.
+          Your intelligent photo workstation.
         </p>
       </div>
 

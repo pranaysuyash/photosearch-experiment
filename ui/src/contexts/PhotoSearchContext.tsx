@@ -54,7 +54,7 @@ export function PhotoSearchProvider({
   const [resultCount, setResultCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<SearchMode>('metadata');
+  const [searchMode, setSearchMode] = useState<SearchMode>('semantic');
   const [sortBy, setSortBy] = useState('date_desc');
   const [typeFilter, setTypeFilter] = useState('all');
   const [favoritesFilter, setFavoritesFilter] = useState('all');

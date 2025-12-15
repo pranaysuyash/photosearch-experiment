@@ -1,7 +1,7 @@
 import os
 import lancedb
 import pyarrow as pa
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from server.config import settings
 
 class LanceDBStore:
@@ -187,3 +187,214 @@ class LanceDBStore:
         if self.table_name in self.db.table_names():
             self.db.drop_table(self.table_name)
             self.table = None
+
+
+class FaceEmbeddingStore(LanceDBStore):
+    """
+    Vector store for face embeddings using ArcFace (512-dim).
+    
+    Stores face embeddings alongside metadata for efficient
+    similarity search and clustering operations.
+    """
+    
+    def __init__(self):
+        """Initialize face embedding store with dedicated table."""
+        super().__init__(table_name="faces")
+    
+    def add_face(
+        self, 
+        face_id: str, 
+        embedding: List[float], 
+        image_path: str,
+        bbox: str,  # JSON string: "[x, y, width, height]"
+        confidence: float,
+        cluster_id: Optional[int] = None,
+        embedding_version: str = "arcface_r50_v1",
+        age: Optional[int] = None,
+        gender: Optional[str] = None
+    ):
+        """
+        Add a single face embedding with metadata.
+        
+        Args:
+            face_id: Unique identifier for this face
+            embedding: 512-dim ArcFace embedding
+            image_path: Path to source image
+            bbox: JSON string of bounding box
+            confidence: Detection confidence score
+            cluster_id: Optional cluster assignment
+            embedding_version: Model version for migration tracking
+            age: Optional estimated age
+            gender: Optional estimated gender ('M' or 'F')
+        """
+        metadata = {
+            'image_path': image_path,
+            'bbox': bbox,
+            'confidence': confidence,
+            'embedding_version': embedding_version,
+        }
+        if cluster_id is not None:
+            metadata['cluster_id'] = cluster_id
+        if age is not None:
+            metadata['age'] = age
+        if gender is not None:
+            metadata['gender'] = gender
+            
+        self.add(face_id, embedding, metadata)
+    
+    def add_faces_batch(self, faces: List[Dict]):
+        """
+        Add multiple faces in a batch.
+        
+        Args:
+            faces: List of dicts with keys:
+                - face_id: str
+                - embedding: List[float]
+                - image_path: str
+                - bbox: str
+                - confidence: float
+                - cluster_id: Optional[int]
+                - embedding_version: str
+        """
+        if not faces:
+            return
+            
+        ids = []
+        embeddings = []
+        metadata_list = []
+        
+        for face in faces:
+            ids.append(face['face_id'])
+            embeddings.append(face['embedding'])
+            metadata_list.append({
+                'image_path': face['image_path'],
+                'bbox': face['bbox'],
+                'confidence': face['confidence'],
+                'embedding_version': face.get('embedding_version', 'arcface_r50_v1'),
+                'cluster_id': face.get('cluster_id', -1),
+                'age': face.get('age', -1),
+                'gender': face.get('gender', ''),
+            })
+        
+        self.add_batch(ids, embeddings, metadata_list)
+    
+    def find_similar_faces(
+        self, 
+        query_embedding: List[float], 
+        limit: int = 20,
+        min_confidence: float = 0.0
+    ) -> List[Dict]:
+        """
+        Find faces similar to the query embedding.
+        
+        Args:
+            query_embedding: 512-dim face embedding to search for
+            limit: Maximum number of results
+            min_confidence: Minimum detection confidence threshold
+            
+        Returns:
+            List of similar faces with similarity scores
+        """
+        results = self.search(query_embedding, limit=limit)
+        
+        # Filter by confidence if specified
+        if min_confidence > 0:
+            results = [
+                r for r in results 
+                if r.get('metadata', {}).get('confidence', 0) >= min_confidence
+            ]
+        
+        return results
+    
+    def get_faces_by_image(self, image_path: str) -> List[Dict]:
+        """
+        Get all faces detected in a specific image.
+        
+        Args:
+            image_path: Path to the image
+            
+        Returns:
+            List of face records from that image
+        """
+        if self.table is None:
+            return []
+            
+        try:
+            # Use SQL-like filter
+            results = self.table.search().where(
+                f"image_path = '{image_path}'"
+            ).to_list()
+            
+            return [
+                {
+                    'id': r.get('id'),
+                    'confidence': r.get('confidence'),
+                    'bbox': r.get('bbox'),
+                    'cluster_id': r.get('cluster_id'),
+                }
+                for r in results
+            ]
+        except Exception as e:
+            print(f"Error getting faces for image: {e}")
+            return []
+    
+    def update_cluster_ids(self, face_cluster_map: Dict[str, int]):
+        """
+        Update cluster IDs for multiple faces.
+        
+        Args:
+            face_cluster_map: Dict mapping face_id -> cluster_id
+        """
+        # LanceDB doesn't support direct updates easily,
+        # so we'd need to delete and re-add, or use a different approach
+        # For now, log this as a TODO for the cluster assignment
+        print(f"TODO: Update cluster IDs for {len(face_cluster_map)} faces")
+    
+    def get_all_embeddings_for_clustering(self) -> Tuple[List[str], Any]:
+        """
+        Get all face embeddings for clustering.
+        
+        Returns:
+            Tuple of (face_ids, embeddings_array)
+        """
+        if self.table is None:
+            return [], None
+            
+        try:
+            import numpy as np
+            
+            # Fetch all records
+            tbl = self.table.to_arrow()
+            face_ids = tbl["id"].to_pylist()
+            
+            # Get vectors
+            vectors = tbl["vector"].to_pylist()
+            embeddings = np.array(vectors)
+            
+            return face_ids, embeddings
+        except Exception as e:
+            print(f"Error fetching embeddings for clustering: {e}")
+            return [], None
+    
+    def get_face_count(self) -> int:
+        """Return total number of faces stored."""
+        return self.get_count()
+
+
+# Convenience function to get singleton instances
+_photo_store = None
+_face_store = None
+
+def get_photo_store() -> LanceDBStore:
+    """Get singleton photo embedding store."""
+    global _photo_store
+    if _photo_store is None:
+        _photo_store = LanceDBStore(table_name="photos")
+    return _photo_store
+
+def get_face_store() -> FaceEmbeddingStore:
+    """Get singleton face embedding store."""
+    global _face_store
+    if _face_store is None:
+        _face_store = FaceEmbeddingStore()
+    return _face_store

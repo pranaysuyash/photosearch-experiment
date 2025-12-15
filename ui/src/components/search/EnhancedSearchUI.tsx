@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import { SearchToggle, type SearchMode } from './SearchToggle';
 import { SearchModeHelp } from './SearchModeHelp';
+import { IntentRecognition } from './IntentRecognition';
+import { MetadataFieldAutocomplete } from './MetadataFieldAutocomplete';
+import { useLiveMatchCount } from '../../hooks/useLiveMatchCount';
 import { glass } from '../../design/glass';
 
 interface EnhancedSearchUIProps {
@@ -84,12 +87,21 @@ export function EnhancedSearchUI({
   const [showFilters, setShowFilters] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showHelpHint, setShowHelpHint] = useState(false);
+  const [showFieldAutocomplete, setShowFieldAutocomplete] = useState(false);
+  const [recognizedIntent, setRecognizedIntent] = useState<string | null>(null);
   const [autoHelpSeen, setAutoHelpSeen] = useState(() => {
     try {
       return localStorage.getItem('lm:searchHelpSeen') === '1';
     } catch {
       return false;
     }
+  });
+
+  // Live match count hook
+  const { count: liveMatchCount, isLoading: isCountingMatches } = useLiveMatchCount({
+    query: searchQuery,
+    searchMode,
+    debounceMs: 500
   });
   const filteredSuggestions = useMemo(() => {
     if (searchQuery.length > 0) {
@@ -106,6 +118,22 @@ export function EnhancedSearchUI({
   const handleSuggestionClick = (suggestion: string) => {
     setSearchQuery(suggestion);
     setShowSuggestions(false);
+    inputRef.current?.focus();
+  };
+
+  const handleIntentRecognized = (intent: string) => {
+    setRecognizedIntent(intent);
+    // Auto-switch modes based on intent
+    if (intent.startsWith('find_technical') || intent.startsWith('find_date') || intent.startsWith('camera')) {
+      setSearchMode('metadata');
+    } else if (intent.startsWith('find_person') || intent.startsWith('find_emotion') || intent.startsWith('find_object')) {
+      setSearchMode('semantic');
+    }
+  };
+
+  const handleFieldSelected = (newQuery: string) => {
+    setSearchQuery(newQuery);
+    setShowFieldAutocomplete(false);
     inputRef.current?.focus();
   };
 
@@ -139,6 +167,14 @@ export function EnhancedSearchUI({
             onChange={(e) => {
               setSearchQuery(e.target.value);
               if (showHelpHint) setShowHelpHint(false);
+              
+              // Show field autocomplete for metadata mode
+              if (searchMode === 'metadata' && e.target.value.length > 1) {
+                setShowFieldAutocomplete(true);
+                setShowSuggestions(false);
+              } else {
+                setShowFieldAutocomplete(false);
+              }
             }}
             onKeyDown={handleKeyDown}
             onFocus={() => {
@@ -152,12 +188,17 @@ export function EnhancedSearchUI({
                 }
                 return;
               }
-              if (searchQuery.length === 0) setShowSuggestions(true);
+              if (searchQuery.length === 0) {
+                setShowSuggestions(true);
+              } else if (searchMode === 'metadata' && searchQuery.length > 1) {
+                setShowFieldAutocomplete(true);
+              }
             }}
             onBlur={() =>
               setTimeout(() => {
                 setShowSuggestions(false);
                 setShowHelpHint(false);
+                setShowFieldAutocomplete(false);
               }, 150)
             }
           />
@@ -193,6 +234,51 @@ export function EnhancedSearchUI({
           >
             Search
           </button>
+        </div>
+
+        {/* Live Match Count - More Prominent and Always Visible */}
+        <div className="flex items-center justify-center mt-3 mb-2 min-h-[40px]">
+          <div className="flex items-center gap-3">
+            {isCountingMatches ? (
+              <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
+                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                Analyzing your query...
+              </div>
+            ) : liveMatchCount !== null ? (
+              <div className={`text-sm font-semibold px-4 py-2 rounded-full border shadow-sm ${
+                liveMatchCount === 0 
+                  ? 'text-red-700 bg-red-50 border-red-200' 
+                  : 'text-green-700 bg-green-50 border-green-200'
+              }`}>
+                {liveMatchCount === 0 ? 'No matches found' : 
+                 `${liveMatchCount} ${liveMatchCount === 1 ? 'match' : 'matches'} found`}
+              </div>
+            ) : searchQuery.trim() ? (
+              <div className="text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
+                Type to see live match count...
+              </div>
+            ) : null}
+            {recognizedIntent && (
+              <div className="text-sm text-purple-700 bg-purple-50 border border-purple-200 px-3 py-2 rounded-full shadow-sm">
+                Intent: {recognizedIntent.replace('_', ' ')}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Intent Recognition */}
+        <IntentRecognition
+          query={searchQuery}
+          onIntentDetected={handleIntentRecognized}
+        />
+
+        {/* Field Autocomplete */}
+        <div className="relative">
+          <MetadataFieldAutocomplete
+            query={searchQuery}
+            onFieldSelected={handleFieldSelected}
+            isVisible={showFieldAutocomplete && searchMode === 'metadata'}
+          />
         </div>
 
         {/* First-run hint (compact mode) */}
@@ -416,12 +502,29 @@ export function EnhancedSearchUI({
               className='flex-1 bg-transparent border-none outline-none px-4 py-3 text-lg placeholder:text-muted-foreground/50'
               placeholder="Search for 'sunset in paris' or 'birthday cake'"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                
+                // Show field autocomplete for metadata mode
+                if (searchMode === 'metadata' && e.target.value.length > 1) {
+                  setShowFieldAutocomplete(true);
+                  setShowSuggestions(false);
+                } else {
+                  setShowFieldAutocomplete(false);
+                }
+              }}
               onKeyDown={handleKeyDown}
-              onFocus={() =>
-                searchQuery.length === 0 && setShowSuggestions(true)
-              }
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              onFocus={() => {
+                if (searchQuery.length === 0) {
+                  setShowSuggestions(true);
+                } else if (searchMode === 'metadata' && searchQuery.length > 1) {
+                  setShowFieldAutocomplete(true);
+                }
+              }}
+              onBlur={() => setTimeout(() => {
+                setShowSuggestions(false);
+                setShowFieldAutocomplete(false);
+              }, 150)}
               autoFocus
             />
             {searchQuery && (
@@ -451,6 +554,57 @@ export function EnhancedSearchUI({
             >
               Search
             </button>
+          </div>
+        </motion.div>
+
+        {/* Live Match Count & Intent Recognition */}
+        <motion.div 
+          className="w-full max-w-4xl"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          {/* Live Match Count - Always Visible */}
+          <div className="flex items-center justify-center gap-4 mb-4 min-h-[48px]">
+            {isCountingMatches ? (
+              <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
+                <div className="w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+                Analyzing your query...
+              </div>
+            ) : liveMatchCount !== null ? (
+              <div className={`text-sm font-medium px-4 py-2 rounded-full shadow-sm ${
+                liveMatchCount === 0 
+                  ? 'text-red-600 bg-red-50 border border-red-200' 
+                  : 'text-green-600 bg-green-50 border border-green-200'
+              }`}>
+                {liveMatchCount === 0 ? 'No matches found' : 
+                 `${liveMatchCount} ${liveMatchCount === 1 ? 'match' : 'matches'} found`}
+              </div>
+            ) : searchQuery.trim() ? (
+              <div className="text-sm text-muted-foreground bg-muted px-4 py-2 rounded-full border">
+                Type to see live match count...
+              </div>
+            ) : null}
+            {recognizedIntent && (
+              <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 px-3 py-2 rounded-full shadow-sm">
+                Intent: {recognizedIntent.replace('_', ' ')}
+              </div>
+            )}
+          </div>
+
+          {/* Intent Recognition */}
+          <IntentRecognition
+            query={searchQuery}
+            onIntentDetected={handleIntentRecognized}
+          />
+
+          {/* Field Autocomplete */}
+          <div className="relative">
+            <MetadataFieldAutocomplete
+              query={searchQuery}
+              onFieldSelected={handleFieldSelected}
+              isVisible={showFieldAutocomplete && searchMode === 'metadata'}
+            />
           </div>
         </motion.div>
 

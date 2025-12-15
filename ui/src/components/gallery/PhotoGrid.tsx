@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Masonry from 'react-masonry-css';
 import { type Photo, api } from '../../api';
 import { useRef, useEffect, useState, useCallback, memo } from 'react';
@@ -8,7 +8,9 @@ import { SortControls } from './SortControls';
 import { MediaTypeFilter } from './MediaTypeFilter';
 import { FavoritesFilter } from './FavoritesFilter';
 import { FavoritesToggle } from './FavoritesToggle';
+import { MatchExplanation } from '../search/MatchExplanation';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
+import { ContextMenu } from '../actions/ContextMenu';
 import './modern-gallery.css';
 
 interface PhotoGridProps {
@@ -49,6 +51,10 @@ export function PhotoGrid({
   const [deleting, setDeleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const [contextMenu, setContextMenu] = useState<{
+    photo: Photo;
+    position: { x: number; y: number };
+  } | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { setBaseAccentUrl, setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
@@ -203,6 +209,32 @@ export function PhotoGrid({
       }
     } catch (e) {
       console.error('Failed to toggle favorite:', e);
+    }
+  }, []);
+
+  const handleContextMenu = useCallback((event: React.MouseEvent, photo: Photo) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    setContextMenu({
+      photo,
+      position: { x: event.clientX, y: event.clientY }
+    });
+  }, []);
+
+  const handleCloseContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  const handleActionExecute = useCallback((actionId: string, result: any) => {
+    console.log('Action executed:', actionId, result);
+    
+    // Handle specific action results
+    if (result.success) {
+      // You could show a toast notification here
+      console.log('Action completed successfully:', result.message);
+    } else {
+      console.error('Action failed:', result.error);
     }
   }, []);
 
@@ -440,6 +472,7 @@ export function PhotoGrid({
               onClick={() =>
                 selectMode ? toggleSelection(photo.path) : onPhotoSelect(photo)
               }
+              onContextMenu={(e) => handleContextMenu(e, photo)}
               onMouseEnter={() =>
                 setOverrideAccentUrl(
                   'gridHover',
@@ -509,9 +542,25 @@ export function PhotoGrid({
                   {photo.path.split('/').slice(-2).join('/')}
                 </div>
 
-                {/* Enhanced Score Visualization */}
+                {/* Match Explanation - Positioned at top of metadata */}
+                {photo.matchExplanation && (
+                  <div 
+                    className='mb-3 w-full order-first'
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    <MatchExplanation 
+                      explanation={photo.matchExplanation}
+                      isCompact={true}
+                    />
+                  </div>
+                )}
+
+                {/* Score Badge - Secondary position */}
                 {photo.score > 0 && (
-                  <div className='gallery-score'>
+                  <div className='gallery-score flex items-center gap-2 mt-2'>
                     <div className='score-bar'>
                       <div
                         className={`score-fill score-fill-${Math.round(Math.round(photo.score * 100) / 10) * 10
@@ -584,6 +633,18 @@ export function PhotoGrid({
           </motion.div>
         )}
       </div>
+
+      {/* Context Menu */}
+      <AnimatePresence>
+        {contextMenu && (
+          <ContextMenu
+            photo={contextMenu.photo}
+            position={contextMenu.position}
+            onClose={handleCloseContextMenu}
+            onActionExecute={handleActionExecute}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

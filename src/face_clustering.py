@@ -38,16 +38,37 @@ from datetime import datetime
 from collections import defaultdict
 
 # Try to import face detection/recognition libraries
-# These would need to be installed: pip install mtcnn facenet-pytorch
+# Using InsightFace (RetinaFace + ArcFace) for production-grade accuracy
 try:
-    from mtcnn import MTCNN
-    from facenet_pytorch import InceptionResnetV1
-    import torch
+    from insightface.app import FaceAnalysis
+    import cv2
     FACE_LIBRARIES_AVAILABLE = True
+    
+    # Try to detect GPU availability
+    try:
+        import torch
+        if torch.cuda.is_available():
+            _DEFAULT_PROVIDERS = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+            _DEVICE_INFO = 'CUDA GPU'
+        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+            _DEFAULT_PROVIDERS = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+            _DEVICE_INFO = 'Apple Silicon MPS'
+        else:
+            _DEFAULT_PROVIDERS = ['CPUExecutionProvider']
+            _DEVICE_INFO = 'CPU'
+    except ImportError:
+        _DEFAULT_PROVIDERS = ['CPUExecutionProvider']
+        _DEVICE_INFO = 'CPU (torch not available)'
+        
 except ImportError:
     FACE_LIBRARIES_AVAILABLE = False
+    _DEFAULT_PROVIDERS = []
+    _DEVICE_INFO = 'N/A'
     print("Warning: Face detection libraries not available. Install with:")
-    print("pip install mtcnn facenet-pytorch torch")
+    print("pip install insightface onnxruntime opencv-python")
+
+# Embedding version for migration tracking
+FACE_EMBEDDING_VERSION = "arcface_r50_v1"
 
 class FaceClusterer:
     """Face detection and clustering system."""
@@ -128,55 +149,84 @@ class FaceClusterer:
         self.conn.commit()
     
     def _initialize_models(self):
-        """Initialize face detection and embedding models."""
+        """Initialize face detection and embedding models with GPU auto-detection."""
         if not FACE_LIBRARIES_AVAILABLE:
+            print("Face libraries not available, skipping model initialization")
             return
         
-        # Initialize face detector (MTCNN)
-        self.face_detector = MTCNN()
-        
-        # Initialize embedding model (FaceNet)
-        self.embedding_model = InceptionResnetV1(pretrained='vggface2').eval()
-        
-        print("Face detection and embedding models initialized")
+        try:
+            # Determine model storage path
+            model_root = Path("./models")
+            model_root.mkdir(exist_ok=True)
+            
+            # Initialize InsightFace with auto-detected providers
+            # buffalo_l includes RetinaFace (detection) + ArcFace (embedding)
+            self.face_analyzer = FaceAnalysis(
+                name='buffalo_l',
+                root=str(model_root),
+                providers=_DEFAULT_PROVIDERS
+            )
+            
+            # Prepare with detection threshold
+            # ctx_id=-1 means use first available device
+            self.face_analyzer.prepare(ctx_id=-1, det_thresh=0.5)
+            
+            print(f"Face models initialized (device: {_DEVICE_INFO})")
+            print(f"Embedding version: {FACE_EMBEDDING_VERSION}")
+            
+        except Exception as e:
+            print(f"Error initializing face models: {e}")
+            print("Face detection will be disabled")
+            self.face_analyzer = None
     
     def detect_faces(self, image_path: str) -> List[Dict]:
         """
-        Detect faces in an image.
+        Detect faces in an image using InsightFace RetinaFace.
         
         Args:
             image_path: Path to image file
             
         Returns:
-            List of face detection results with bounding boxes
+            List of face detection results with bounding boxes and embeddings
         """
-        if not FACE_LIBRARIES_AVAILABLE:
+        if not FACE_LIBRARIES_AVAILABLE or not hasattr(self, 'face_analyzer') or self.face_analyzer is None:
             return []
         
         try:
-            from PIL import Image
-            import torch
+            # Read image with OpenCV (InsightFace expects BGR)
+            img = cv2.imread(image_path)
+            if img is None:
+                print(f"Could not read image: {image_path}")
+                return []
             
-            # Load image
-            img = Image.open(image_path)
-            
-            # Convert to RGB if needed
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-            
-            # Detect faces
-            faces = self.face_detector.detect_faces([img])
+            # Detect faces - InsightFace returns Face objects with:
+            # - bbox: [x1, y1, x2, y2]
+            # - det_score: detection confidence
+            # - embedding: 512-dim ArcFace vector
+            # - age, gender (optional attributes)
+            faces = self.face_analyzer.get(img)
             
             # Convert to our format
             results = []
             for face in faces:
-                bounding_box = face['box']
-                confidence = face['confidence']
+                # Convert bbox from [x1,y1,x2,y2] to [x,y,width,height] for compatibility
+                x1, y1, x2, y2 = face.bbox
+                bounding_box = [int(x1), int(y1), int(x2 - x1), int(y2 - y1)]
                 
-                results.append({
+                result = {
                     'bounding_box': bounding_box,
-                    'confidence': confidence
-                })
+                    'confidence': float(face.det_score),
+                    'embedding': face.embedding,  # 512-dim ArcFace embedding
+                    'embedding_version': FACE_EMBEDDING_VERSION,
+                }
+                
+                # Add optional attributes if available
+                if hasattr(face, 'age') and face.age is not None:
+                    result['age'] = int(face.age)
+                if hasattr(face, 'gender') and face.gender is not None:
+                    result['gender'] = 'M' if face.gender == 1 else 'F'
+                
+                results.append(result)
             
             return results
             
@@ -188,46 +238,43 @@ class FaceClusterer:
         """
         Extract face embedding from a face region.
         
+        Note: With InsightFace, embeddings are already extracted during detect_faces().
+        This method is kept for compatibility and re-extraction scenarios.
+        
         Args:
             image_path: Path to image file
             bounding_box: Bounding box [x, y, width, height]
             
         Returns:
-            Face embedding vector or None if extraction fails
+            Face embedding vector (512-dim) or None if extraction fails
         """
-        if not FACE_LIBRARIES_AVAILABLE:
+        if not FACE_LIBRARIES_AVAILABLE or not hasattr(self, 'face_analyzer') or self.face_analyzer is None:
             return None
         
         try:
-            from PIL import Image
-            import torch
+            # Read image
+            img = cv2.imread(image_path)
+            if img is None:
+                return None
             
-            # Load image
-            img = Image.open(image_path)
-            
-            # Convert to RGB if needed
-            if img.mode != 'RGB':
-                img = img.convert('RGB')
-            
-            # Crop face region
+            # Crop face region with padding
             x, y, width, height = bounding_box
-            face_img = img.crop((x, y, x + width, y + height))
+            padding = int(max(width, height) * 0.2)
             
-            # Resize to model input size
-            face_img = face_img.resize((160, 160))
+            y1 = max(0, y - padding)
+            y2 = min(img.shape[0], y + height + padding)
+            x1 = max(0, x - padding)
+            x2 = min(img.shape[1], x + width + padding)
             
-            # Convert to tensor
-            face_tensor = torch.tensor(np.array(face_img)).permute(2, 0, 1).float()
-            face_tensor = face_tensor.unsqueeze(0)  # Add batch dimension
+            face_crop = img[y1:y2, x1:x2]
             
-            # Normalize
-            face_tensor = (face_tensor - 127.5) / 128.0
+            # Detect face in cropped region and get embedding
+            faces = self.face_analyzer.get(face_crop)
             
-            # Extract embedding
-            with torch.no_grad():
-                embedding = self.embedding_model(face_tensor)
+            if faces and len(faces) > 0:
+                return faces[0].embedding
             
-            return embedding.numpy().flatten()
+            return None
             
         except Exception as e:
             print(f"Error extracting embedding from {image_path}: {e}")

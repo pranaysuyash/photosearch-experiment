@@ -66,11 +66,26 @@ export interface PhotoMetadata {
   [key: string]: unknown;
 }
 
+export interface MatchReason {
+  category: string;
+  matched: string;
+  confidence: number;
+  badge: string;
+  type: 'metadata' | 'semantic' | 'hybrid';
+}
+
+export interface MatchExplanation {
+  type: 'metadata' | 'semantic' | 'hybrid';
+  reasons: MatchReason[];
+  overallConfidence: number;
+}
+
 export interface Photo {
   path: string;
   filename: string;
   score: number;
   metadata: PhotoMetadata;
+  matchExplanation?: MatchExplanation;
 }
 
 export interface TimelineData {
