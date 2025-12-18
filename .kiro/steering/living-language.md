@@ -48,16 +48,12 @@ These files contain living language and should be carefully reviewed before any 
 3. **Test user experience**: Ensure the language feels natural and human-centered
 
 ### Git Hooks (Recommended)
-Create a pre-commit hook to catch AI terminology in user-facing files:
+Create a pre-commit hook to catch AI terminology in user-facing files (only inspects staged string literals and JSX text nodes):
 
 ```bash
 #!/bin/sh
-# Check for AI terminology in user-facing files
-if git diff --cached --name-only | grep -E "\.(tsx|ts)$" | xargs git diff --cached | grep -i "AI.*detected\|AI.*powered\|AI.*analysis"; then
-    echo "❌ Found AI terminology in user-facing code. Please use living language instead."
-    echo "See .kiro/steering/living-language.md for guidelines"
-    exit 1
-fi
+# Use the helper script that scans staged .tsx/.ts/.md/.mdx files and inspects only added string literals or JSX text
+. "$(git rev-parse --show-toplevel)/.kiro/scripts/check_living_language.sh"
 ```
 
 ## Root Cause Analysis
