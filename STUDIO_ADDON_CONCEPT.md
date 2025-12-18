@@ -376,7 +376,7 @@ graph TD
 
 ### Challenge 5: Privacy & Security
 **Problem**: Sensitive media processing
-**Solution**: Local-first architecture, end-to-end encryption, user control
+**Solution**: Dual local + cloud architecture, end-to-end encryption, user control
 
 ## Competitive Landscape
 

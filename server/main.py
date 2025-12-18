@@ -3,27 +3,60 @@ import os
 from typing import List, Optional, Dict
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Body, BackgroundTasks
-from jobs import job_store, Job
-from pricing import pricing_manager, PricingTier, UsageStats
+from fastapi import FastAPI, HTTPException, Body, BackgroundTasks, Request
+from .jobs import job_store, Job
+from .pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 import mimetypes
-from datetime import datetime
+from datetime import datetime, timezone
 import calendar
+import json
+import uuid
+import hashlib
+import hmac
+import re
+from urllib.parse import urlencode, urlparse, parse_qsl
+import requests
+import shutil
+from threading import Lock
+from PIL import Image
+
+# Simple in-memory rate limiting counters (per-IP sliding window)
+_rate_lock = Lock()
+_rate_counters: dict = {}
 
 # Add parent directory to path to import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.photo_search import PhotoSearch
+from src.api_versioning import api_version_manager, APIResponseHandler
+from src.cache_manager import cache_manager
+from src.logging_config import setup_logging, log_search_operation, log_indexing_operation, log_error
 
-from config import settings
+from .config import settings
+from .sources import SourceStore
+from .source_items import SourceItemStore
+from .trash_db import TrashDB
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global embedding_generator, file_watcher
+    global embedding_generator, file_watcher, ps_logger, perf_tracker
+    print("Initializing logging...")
+    try:
+        ps_logger, perf_tracker = setup_logging(log_level="INFO", log_file="logs/app.log")
+        print("Logging initialized.")
+    except Exception as e:
+        print(f"Logging setup error: {e}")
+        # Fallback to basic logging
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        ps_logger = logging.getLogger("PhotoSearch")
+        from src.logging_config import PerformanceTracker
+        perf_tracker = PerformanceTracker(ps_logger)
+
     print("Initializing Embedding Model...")
     try:
         embedding_generator = EmbeddingGenerator()
@@ -79,7 +112,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS, 
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -98,18 +131,43 @@ def apply_sort(results: list, sort_by: str) -> list:
     if not results:
         return results
     
+    def _meta(r: dict) -> dict:
+        m = r.get("metadata", {})
+        return m if isinstance(m, dict) else {}
+
+    def _date_key(r: dict) -> str:
+        m = _meta(r)
+        fs = m.get("filesystem", {}) if isinstance(m.get("filesystem", {}), dict) else {}
+        return (
+            fs.get("created")
+            or m.get("date_taken")
+            or m.get("created")
+            or ""
+        )
+
+    def _size_key(r: dict) -> int:
+        m = _meta(r)
+        fs = m.get("filesystem", {}) if isinstance(m.get("filesystem", {}), dict) else {}
+        v = fs.get("size_bytes")
+        if isinstance(v, (int, float)):
+            return int(v)
+        v2 = m.get("file_size")
+        if isinstance(v2, (int, float)):
+            return int(v2)
+        return 0
+
     if sort_by == "date_desc":
         # Sort by created date descending (newest first)
-        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('created', ''), reverse=True)
+        return sorted(results, key=_date_key, reverse=True)
     elif sort_by == "date_asc":
         # Sort by created date ascending (oldest first)
-        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('created', ''))
+        return sorted(results, key=_date_key)
     elif sort_by == "name":
         # Sort by filename alphabetically
         return sorted(results, key=lambda x: x.get('filename', '').lower())
     elif sort_by == "size":
         # Sort by file size descending (largest first)
-        return sorted(results, key=lambda x: x.get('metadata', {}).get('filesystem', {}).get('size_bytes', 0), reverse=True)
+        return sorted(results, key=_size_key, reverse=True)
     
     return results
 
@@ -197,11 +255,11 @@ def apply_date_filter(results: list, date_from: Optional[str], date_to: Optional
 photo_search_engine = PhotoSearch()
 
 # Initialize Semantic Search Components
-from lancedb_store import LanceDBStore
-from embedding_generator import EmbeddingGenerator
-from image_loader import load_image
+from .lancedb_store import LanceDBStore
+from .embedding_generator import EmbeddingGenerator
+from .image_loader import load_image
 
-from watcher import start_watcher
+from .watcher import start_watcher
 
 # Initialize Intent Recognition
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -216,7 +274,797 @@ file_watcher = None # Global observer instance
 intent_detector = IntentDetector() # Initialize intent detector
 saved_search_manager = SavedSearchManager() # Initialize saved search manager
 
+# Sources (Local + Cloud)
+source_store = SourceStore(settings.BASE_DIR / "sources.db")
+source_item_store = SourceItemStore(settings.BASE_DIR / "sources_items.db")
+trash_db = TrashDB(settings.BASE_DIR / "trash.db")
+
 # Startup and shutdown now handled by lifespan context manager above
+
+class SourceOut(BaseModel):
+    id: str
+    type: str
+    name: str
+    status: str
+    created_at: str
+    updated_at: str
+    last_sync_at: Optional[str] = None
+    last_error: Optional[str] = None
+    config: Dict[str, object] = {}
+
+class LocalFolderSourceCreate(BaseModel):
+    name: Optional[str] = None
+    path: str
+    force: bool = False
+
+class S3SourceCreate(BaseModel):
+    name: str
+    endpoint_url: str
+    region: str
+    bucket: str
+    prefix: Optional[str] = None
+    access_key_id: str
+    secret_access_key: str
+
+class GoogleDriveSourceCreate(BaseModel):
+    name: str
+    client_id: str
+    client_secret: str
+
+def _source_to_out(source_id: str) -> SourceOut:
+    s = source_store.get_source(source_id, redact=True)
+    return SourceOut(
+        id=s.id,
+        type=s.type,
+        name=s.name,
+        status=s.status,
+        created_at=s.created_at,
+        updated_at=s.updated_at,
+        last_sync_at=s.last_sync_at,
+        last_error=s.last_error,
+        config=s.config or {},
+    )
+
+@app.get("/sources")
+async def list_sources():
+    sources = source_store.list_sources(redact=True)
+    return {"sources": [SourceOut(
+        id=s.id,
+        type=s.type,
+        name=s.name,
+        status=s.status,
+        created_at=s.created_at,
+        updated_at=s.updated_at,
+        last_sync_at=s.last_sync_at,
+        last_error=s.last_error,
+        config=s.config or {},
+    ) for s in sources]}
+
+@app.delete("/sources/{source_id}")
+async def delete_source(source_id: str):
+    try:
+        source_store.get_source(source_id, redact=False)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Source not found")
+    source_store.delete_source(source_id)
+    return {"ok": True}
+
+@app.post("/sources/{source_id}/rescan")
+async def rescan_source(background_tasks: BackgroundTasks, source_id: str, payload: dict = Body(default={})):
+    try:
+        src = source_store.get_source(source_id, redact=False)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if src.type != "local_folder":
+        raise HTTPException(status_code=400, detail="Rescan is only supported for local_folder sources right now")
+    path = (src.config or {}).get("path")
+    if not isinstance(path, str) or not path:
+        raise HTTPException(status_code=400, detail="Invalid source path")
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=400, detail="Directory does not exist")
+    force = bool(payload.get("force", False))
+
+    job_id = job_store.create_job(type="scan")
+
+    def run_scan(job_id: str, path: str, force: bool):
+        try:
+            scan_results = photo_search_engine.scan(path, force=force, job_id=job_id)
+            all_files = scan_results.get("all_files", [])
+            if all_files:
+                process_semantic_indexing(all_files)
+            job_store.update_job(job_id, status="completed", message="Scan and indexing finished.")
+            source_store.update_source(source_id, last_sync_at=datetime.utcnow().isoformat() + "Z", last_error=None, status="connected")
+        except Exception as e:
+            job_store.update_job(job_id, status="failed", message=str(e))
+            source_store.update_source(source_id, status="error", last_error=str(e))
+
+    background_tasks.add_task(run_scan, job_id, path, force)
+    return {"ok": True, "job_id": job_id}
+
+def _aws_sigv4_headers(
+    *,
+    method: str,
+    url: str,
+    region: str,
+    access_key_id: str,
+    secret_access_key: str,
+    service: str = "s3",
+    headers: Optional[Dict[str, str]] = None,
+) -> Dict[str, str]:
+    """
+    Minimal AWS SigV4 signer for S3-compatible endpoints.
+    """
+    headers = dict(headers or {})
+    u = urlparse(url)
+    host = u.netloc
+    amz_date = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = amz_date[0:8]
+
+    # Canonical query string
+    q = parse_qsl(u.query, keep_blank_values=True)
+    q.sort(key=lambda kv: (kv[0], kv[1]))
+    canonical_qs = "&".join(
+        [
+            f"{requests.utils.quote(str(k), safe='~')}={requests.utils.quote(str(v), safe='~')}"
+            for k, v in q
+        ]
+    )
+
+    canonical_headers = f"host:{host}\n" + f"x-amz-date:{amz_date}\n"
+    signed_headers = "host;x-amz-date"
+    payload_hash = hashlib.sha256(b"").hexdigest()
+    canonical_request = "\n".join([
+        method,
+        u.path or "/",
+        canonical_qs,
+        canonical_headers,
+        signed_headers,
+        payload_hash,
+    ])
+
+    algorithm = "AWS4-HMAC-SHA256"
+    credential_scope = f"{date_stamp}/{region}/{service}/aws4_request"
+    string_to_sign = "\n".join([
+        algorithm,
+        amz_date,
+        credential_scope,
+        hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
+    ])
+
+    def _sign(key: bytes, msg: str) -> bytes:
+        return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+
+    k_date = _sign(("AWS4" + secret_access_key).encode("utf-8"), date_stamp)
+    k_region = _sign(k_date, region)
+    k_service = _sign(k_region, service)
+    k_signing = _sign(k_service, "aws4_request")
+    signature = hmac.new(k_signing, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
+
+    authorization_header = (
+        f"{algorithm} Credential={access_key_id}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    headers["Authorization"] = authorization_header
+    headers["x-amz-date"] = amz_date
+    headers["host"] = host
+    return headers
+
+def _s3_urls(endpoint_url: str, bucket: str, key: str = "", query: Optional[Dict[str, str]] = None) -> str:
+    base = endpoint_url.rstrip("/")
+    parsed = urlparse(base)
+    if not parsed.scheme or not parsed.netloc:
+        raise ValueError("endpoint_url must include scheme, e.g. https://<host>")
+
+    host = parsed.netloc
+    # Prefer virtual-hosted style unless endpoint already includes bucket.
+    bucket_in_host = host.startswith(f"{bucket}.")
+    if bucket_in_host:
+        path = (parsed.path or "/") + ("/" + key.lstrip("/") if key else "/")
+        netloc = host
+    else:
+        netloc = f"{bucket}.{host}"
+        path = (parsed.path or "/") + ("/" + key.lstrip("/") if key else "/")
+
+    if not path.startswith("/"):
+        path = "/" + path
+    qs = urlencode(query or {})
+    return f"{parsed.scheme}://{netloc}{path}" + (f"?{qs}" if qs else "")
+
+def _s3_list_objects(cfg: Dict[str, object]) -> List[Dict[str, object]]:
+    import xml.etree.ElementTree as ET
+
+    endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    region = str(cfg.get("region", "")).strip()
+    bucket = str(cfg.get("bucket", "")).strip()
+    prefix = str(cfg.get("prefix", "") or "").strip()
+    access_key_id = str(cfg.get("access_key_id", "")).strip()
+    secret_access_key = str(cfg.get("secret_access_key", "")).strip()
+
+    token: Optional[str] = None
+    out: List[Dict[str, object]] = []
+
+    while True:
+        query: Dict[str, str] = {"list-type": "2", "max-keys": "1000"}
+        if prefix:
+            query["prefix"] = prefix
+        if token:
+            query["continuation-token"] = token
+        url = _s3_urls(endpoint_url, bucket, "", query=query)
+        signed = _aws_sigv4_headers(
+            method="GET",
+            url=url,
+            region=region,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+        )
+        resp = requests.get(url, headers=signed, timeout=20)
+        if resp.status_code != 200:
+            raise RuntimeError(f"S3 list failed ({resp.status_code}): {resp.text[:200]}")
+
+        root = ET.fromstring(resp.text)
+        ns = ""
+        if root.tag.startswith("{"):
+            ns = root.tag.split("}")[0] + "}"
+
+        for c in root.findall(f"{ns}Contents"):
+            key = (c.findtext(f"{ns}Key") or "").strip()
+            etag = (c.findtext(f"{ns}ETag") or "").strip().strip('"')
+            last_modified = (c.findtext(f"{ns}LastModified") or "").strip()
+            size = c.findtext(f"{ns}Size")
+            size_int = int(size) if size and size.isdigit() else None
+            if key:
+                out.append({"key": key, "etag": etag or None, "last_modified": last_modified or None, "size": size_int})
+
+        is_truncated = (root.findtext(f"{ns}IsTruncated") or "").strip().lower() == "true"
+        token = (root.findtext(f"{ns}NextContinuationToken") or "").strip() or None
+        if not is_truncated or not token:
+            break
+    return out
+
+def _s3_download_object(cfg: Dict[str, object], key: str, dest: Path) -> None:
+    endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    region = str(cfg.get("region", "")).strip()
+    bucket = str(cfg.get("bucket", "")).strip()
+    access_key_id = str(cfg.get("access_key_id", "")).strip()
+    secret_access_key = str(cfg.get("secret_access_key", "")).strip()
+
+    url = _s3_urls(endpoint_url, bucket, key)
+    signed = _aws_sigv4_headers(
+        method="GET",
+        url=url,
+        region=region,
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+    )
+    with requests.get(url, headers=signed, stream=True, timeout=120) as resp:
+        if resp.status_code != 200:
+            raise RuntimeError(f"S3 download failed ({resp.status_code}): {resp.text[:200]}")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_suffix(dest.suffix + ".part")
+        with open(tmp, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    f.write(chunk)
+        tmp.replace(dest)
+
+def _test_s3_connection(cfg: Dict[str, object]) -> None:
+    endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    region = str(cfg.get("region", "")).strip()
+    bucket = str(cfg.get("bucket", "")).strip()
+    access_key_id = str(cfg.get("access_key_id", "")).strip()
+    secret_access_key = str(cfg.get("secret_access_key", "")).strip()
+    if not endpoint_url or not region or not bucket or not access_key_id or not secret_access_key:
+        raise ValueError("Missing required S3 configuration fields")
+    prefix = str(cfg.get("prefix", "") or "").strip()
+    url = _s3_urls(endpoint_url, bucket, "", query={"list-type": "2", "max-keys": "1", **({"prefix": prefix} if prefix else {})})
+    signed = _aws_sigv4_headers(
+        method="GET",
+        url=url,
+        region=region,
+        access_key_id=access_key_id,
+        secret_access_key=secret_access_key,
+    )
+    resp = requests.get(url, headers=signed, timeout=15)
+    if resp.status_code != 200:
+        raise RuntimeError(f"S3 connection failed ({resp.status_code}): {resp.text[:200]}")
+
+def _sync_s3_source(source_id: str, job_id: str) -> None:
+    job_store.update_job(job_id, status="processing", message="Enumerating S3…", progress=5)
+    src = source_store.get_source(source_id, redact=False)
+    cfg = src.config or {}
+    items = _s3_list_objects(cfg)
+    seen_marker = datetime.now(timezone.utc).isoformat()
+
+    job_store.update_job(job_id, message=f"Found {len(items)} objects. Downloading…", progress=20)
+    root = _media_source_root(source_id) / "s3"
+    root.mkdir(parents=True, exist_ok=True)
+    downloaded = 0
+
+    for idx, it in enumerate(items):
+        key = str(it.get("key", ""))
+        if not key:
+            continue
+        name = key.split("/")[-1]
+        if not _is_media_name(name):
+            continue
+
+        etag = it.get("etag")
+        modified = it.get("last_modified")
+        size = it.get("size")
+        size_int = int(size) if isinstance(size, int) else None
+
+        remote_id = key
+        try:
+            prev = source_item_store.get(source_id, remote_id)
+        except Exception:
+            prev = None
+
+        source_item_store.upsert_seen(
+            source_id=source_id,
+            remote_id=remote_id,
+            remote_path=key,
+            etag=str(etag) if etag else None,
+            modified_at=str(modified) if modified else None,
+            size_bytes=size_int,
+            mime_type=None,
+            name=name,
+        )
+
+        # Respect app-level states: keep in manifest, but do not download/index.
+        if prev and prev.status in ("trashed", "removed"):
+            continue
+
+        # Mirror path under root, preserving prefix structure.
+        rel = Path(key)
+        dest = root / rel
+        needs_download = not dest.exists()
+        if prev and prev.etag and etag and prev.etag != str(etag):
+            needs_download = True
+        if prev and prev.size_bytes and size_int and prev.size_bytes != size_int:
+            needs_download = True
+        if prev and prev.local_path and not Path(prev.local_path).exists():
+            needs_download = True
+
+        if needs_download:
+            _s3_download_object(cfg, key, dest)
+            source_item_store.set_local_path(source_id, remote_id, str(dest))
+            downloaded += 1
+
+        if idx % 50 == 0:
+            pct = 20 + int((idx / max(1, len(items))) * 55)
+            job_store.update_job(job_id, message=f"Downloading S3 objects… ({idx}/{len(items)})", progress=pct)
+
+    missing = source_item_store.mark_missing_as_deleted(source_id, seen_marker)
+    for m in missing:
+        if m.local_path:
+            try:
+                lp = Path(m.local_path)
+                if lp.exists():
+                    lp.unlink()
+                try:
+                    photo_search_engine.db.mark_as_deleted(m.local_path, reason="source_deleted")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+    job_store.update_job(job_id, message="Indexing downloaded files…", progress=80)
+    results = photo_search_engine.scan(str(root), force=False)
+    all_files = results.get("all_files", []) if isinstance(results, dict) else []
+    if all_files:
+        job_store.update_job(job_id, message="Semantic indexing…", progress=92)
+        process_semantic_indexing(all_files)
+
+    source_store.update_source(source_id, status="connected", last_error=None, last_sync_at=datetime.utcnow().isoformat() + "Z")
+    job_store.update_job(
+        job_id,
+        status="completed",
+        progress=100,
+        message=f"S3 sync complete ({downloaded} downloaded, {len(missing)} removed).",
+        result={"downloaded": downloaded, "removed": len(missing)},
+    )
+
+@app.post("/sources/local-folder")
+async def add_local_folder_source(background_tasks: BackgroundTasks, payload: LocalFolderSourceCreate):
+    path = payload.path
+    if not path:
+        raise HTTPException(status_code=400, detail="Path is required")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=400, detail="Directory does not exist")
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=400, detail="Path must be a directory")
+
+    name = payload.name or os.path.basename(path.rstrip("/")) or "Local Folder"
+    src = source_store.create_source("local_folder", name=name, config={"path": path}, status="connected")
+
+    job_id = job_store.create_job(type="scan")
+    force = bool(payload.force)
+
+    def run_scan(job_id: str, path: str, force: bool):
+        try:
+            scan_results = photo_search_engine.scan(path, force=force, job_id=job_id)
+            all_files = scan_results.get("all_files", [])
+            if all_files:
+                process_semantic_indexing(all_files)
+            job_store.update_job(job_id, status="completed", message="Scan and indexing finished.")
+            source_store.update_source(src.id, last_sync_at=datetime.utcnow().isoformat() + "Z", last_error=None)
+        except Exception as e:
+            job_store.update_job(job_id, status="failed", message=str(e))
+            source_store.update_source(src.id, status="error", last_error=str(e))
+
+    background_tasks.add_task(run_scan, job_id, path, force)
+    return {"source": _source_to_out(src.id), "job_id": job_id}
+
+@app.post("/sources/s3")
+async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCreate):
+    cfg = payload.model_dump()
+    # Store secrets server-side; return only redacted config.
+    src = source_store.create_source("s3", name=payload.name, config=cfg, status="pending")
+    try:
+        _test_s3_connection(cfg)
+        source_store.update_source(src.id, status="connected", last_error=None)
+        job_id = job_store.create_job(type="source_sync")
+
+        def run_sync():
+            try:
+                _sync_s3_source(src.id, job_id)
+            except Exception as e:
+                job_store.update_job(job_id, status="failed", message=str(e))
+                source_store.update_source(src.id, status="error", last_error=str(e))
+
+        background_tasks.add_task(run_sync)
+    except Exception as e:
+        source_store.update_source(src.id, status="error", last_error=str(e))
+        return {"source": _source_to_out(src.id)}
+    return {"source": _source_to_out(src.id), "job_id": job_id}
+
+def _google_redirect_uri() -> str:
+    # For local dev (desktop/web) backend runs on :8000.
+    return "http://127.0.0.1:8000/oauth/google/callback"
+
+def _media_source_root(source_id: str) -> Path:
+    root = settings.BASE_DIR / "media_sources" / source_id
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+def _is_media_name(name: str) -> bool:
+    n = (name or "").lower()
+    exts = (
+        ".jpg", ".jpeg", ".png", ".webp", ".gif", ".heic", ".heif", ".tif", ".tiff",
+        ".mp4", ".mov", ".m4v", ".mkv", ".webm", ".avi",
+        ".pdf", ".svg",
+        ".mp3", ".wav", ".m4a", ".aac",
+    )
+    return any(n.endswith(e) for e in exts)
+
+def _safe_filename(name: str) -> str:
+    keep = []
+    for ch in name:
+        if ch.isalnum() or ch in (" ", ".", "-", "_", "(", ")", "[", "]"):
+            keep.append(ch)
+        else:
+            keep.append("_")
+    out = "".join(keep).strip()
+    return out[:180] if out else "file"
+
+def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
+    src = source_store.get_source(source_id, redact=False)
+    cfg = src.config or {}
+    refresh_token = cfg.get("refresh_token")
+    if not refresh_token:
+        raise RuntimeError("Missing refresh_token (re-authorize Google Drive source)")
+    token_resp = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "client_id": cfg.get("client_id"),
+            "client_secret": cfg.get("client_secret"),
+            "refresh_token": refresh_token,
+            "grant_type": "refresh_token",
+        },
+        timeout=20,
+    )
+    if token_resp.status_code != 200:
+        raise RuntimeError(f"Token refresh failed: {token_resp.text[:200]}")
+    tok = token_resp.json()
+    access_token = tok.get("access_token")
+    expires_in = tok.get("expires_in")
+    expires_at = None
+    if expires_in:
+        expires_at = datetime.utcnow().timestamp() + float(expires_in)
+    patch = {"access_token": access_token, "expires_at": expires_at}
+    source_store.update_source(source_id, config_patch=patch, status="connected", last_error=None)
+    return patch
+
+def _get_google_access_token(source_id: str) -> str:
+    src = source_store.get_source(source_id, redact=False)
+    cfg = src.config or {}
+    access_token = cfg.get("access_token")
+    expires_at = cfg.get("expires_at")
+    if isinstance(access_token, str) and access_token:
+        if isinstance(expires_at, (int, float)) and (datetime.utcnow().timestamp() + 60) < float(expires_at):
+            return access_token
+        # Token nearing expiry; refresh.
+        patch = _refresh_google_access_token(source_id)
+        return str(patch.get("access_token", ""))
+    patch = _refresh_google_access_token(source_id)
+    return str(patch.get("access_token", ""))
+
+def _sync_google_drive_source(source_id: str, job_id: str) -> None:
+    job_store.update_job(job_id, status="processing", message="Enumerating Google Drive…", progress=5)
+    token = _get_google_access_token(source_id)
+    headers = {"Authorization": f"Bearer {token}"}
+    page_token = None
+    seen_marker = datetime.now(timezone.utc).isoformat()
+    files: List[Dict[str, object]] = []
+
+    q = "trashed = false and (mimeType contains 'image/' or mimeType contains 'video/' or mimeType = 'application/pdf' or mimeType contains 'audio/')"
+    while True:
+        params = {
+            "pageSize": 1000,
+            "fields": "nextPageToken, files(id,name,mimeType,modifiedTime,md5Checksum,size)",
+            "q": q,
+        }
+        if page_token:
+            params["pageToken"] = page_token
+        resp = requests.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params, timeout=30)
+        if resp.status_code == 401:
+            # Refresh and retry once.
+            token = _get_google_access_token(source_id)
+            headers = {"Authorization": f"Bearer {token}"}
+            resp = requests.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params, timeout=30)
+        if resp.status_code != 200:
+            raise RuntimeError(f"Drive list failed ({resp.status_code}): {resp.text[:200]}")
+        data = resp.json()
+        batch = data.get("files") or []
+        files.extend(batch)
+        page_token = data.get("nextPageToken")
+        if not page_token:
+            break
+
+    job_store.update_job(job_id, message=f"Found {len(files)} Drive items. Downloading…", progress=20)
+    root = _media_source_root(source_id) / "drive"
+    root.mkdir(parents=True, exist_ok=True)
+
+    downloaded = 0
+    for idx, f in enumerate(files):
+        file_id = str(f.get("id", ""))
+        name = str(f.get("name", "")) or file_id
+        mime = str(f.get("mimeType", "")) or None
+        if name and not _is_media_name(name) and mime and not (mime.startswith("image/") or mime.startswith("video/") or mime.startswith("audio/") or mime == "application/pdf"):
+            continue
+
+        md5 = f.get("md5Checksum")
+        modified = f.get("modifiedTime")
+        size = f.get("size")
+        size_int = int(size) if isinstance(size, (int, float, str)) and str(size).isdigit() else None
+
+        try:
+            prev = source_item_store.get(source_id, file_id)
+        except Exception:
+            prev = None
+
+        source_item_store.upsert_seen(
+            source_id=source_id,
+            remote_id=file_id,
+            remote_path=file_id,
+            etag=str(md5) if md5 else None,
+            modified_at=str(modified) if modified else None,
+            size_bytes=size_int,
+            mime_type=mime,
+            name=name,
+        )
+
+        # Respect app-level states: keep in manifest, but do not download/index.
+        if prev and prev.status in ("trashed", "removed"):
+            continue
+
+        safe = _safe_filename(name)
+        local_path = root / f"{file_id}__{safe}"
+        needs_download = not local_path.exists()
+        if prev and prev.etag and md5 and prev.etag != str(md5):
+            needs_download = True
+        if prev and prev.modified_at and modified and prev.modified_at != str(modified):
+            needs_download = True
+        if prev and prev.size_bytes and size_int and prev.size_bytes != size_int:
+            needs_download = True
+        if prev and prev.local_path and not Path(prev.local_path).exists():
+            needs_download = True
+
+        if needs_download:
+            url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+            with requests.get(url, headers=headers, params={"alt": "media"}, stream=True, timeout=120) as r:
+                if r.status_code == 401:
+                    token = _get_google_access_token(source_id)
+                    headers = {"Authorization": f"Bearer {token}"}
+                    r = requests.get(url, headers=headers, params={"alt": "media"}, stream=True, timeout=120)
+                if r.status_code != 200:
+                    raise RuntimeError(f"Drive download failed ({r.status_code}): {r.text[:200]}")
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = local_path.with_suffix(local_path.suffix + ".part")
+                with open(tmp, "wb") as out:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        if chunk:
+                            out.write(chunk)
+                tmp.replace(local_path)
+            source_item_store.set_local_path(source_id, file_id, str(local_path))
+            downloaded += 1
+
+        if idx % 25 == 0:
+            pct = 20 + int((idx / max(1, len(files))) * 55)
+            job_store.update_job(job_id, message=f"Downloading Drive items… ({idx}/{len(files)})", progress=pct)
+
+    missing = source_item_store.mark_missing_as_deleted(source_id, seen_marker)
+    for m in missing:
+        if m.local_path:
+            try:
+                lp = Path(m.local_path)
+                if lp.exists():
+                    lp.unlink()
+                try:
+                    photo_search_engine.db.mark_as_deleted(m.local_path, reason="source_deleted")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+    job_store.update_job(job_id, message="Indexing downloaded files…", progress=80)
+    results = photo_search_engine.scan(str(root), force=False)
+    all_files = results.get("all_files", []) if isinstance(results, dict) else []
+    if all_files:
+        job_store.update_job(job_id, message="Semantic indexing…", progress=92)
+        process_semantic_indexing(all_files)
+
+    source_store.update_source(source_id, status="connected", last_error=None, last_sync_at=datetime.utcnow().isoformat() + "Z")
+    job_store.update_job(
+        job_id,
+        status="completed",
+        progress=100,
+        message=f"Drive sync complete ({downloaded} downloaded, {len(missing)} removed).",
+        result={"downloaded": downloaded, "removed": len(missing)},
+    )
+
+@app.post("/sources/google-drive")
+async def add_google_drive_source(payload: GoogleDriveSourceCreate):
+    cfg = {"client_id": payload.client_id, "client_secret": payload.client_secret}
+    src = source_store.create_source("google_drive", name=payload.name, config=cfg, status="auth_required")
+    state_nonce = str(uuid.uuid4())
+    source_store.update_source(src.id, config_patch={"state_nonce": state_nonce})
+
+    params = {
+        "client_id": payload.client_id,
+        "redirect_uri": _google_redirect_uri(),
+        "response_type": "code",
+        "scope": "https://www.googleapis.com/auth/drive.readonly",
+        "access_type": "offline",
+        "prompt": "consent",
+        "include_granted_scopes": "true",
+        "state": f"{src.id}:{state_nonce}",
+    }
+    auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
+    return {"source": _source_to_out(src.id), "auth_url": auth_url}
+
+@app.get("/oauth/google/callback")
+async def google_oauth_callback(background_tasks: BackgroundTasks, code: Optional[str] = None, state: Optional[str] = None, error: Optional[str] = None):
+    if error:
+        return {
+            "ok": False,
+            "error": error,
+        }
+    if not code or not state or ":" not in state:
+        raise HTTPException(status_code=400, detail="Missing code/state")
+    source_id, nonce = state.split(":", 1)
+    try:
+        src = source_store.get_source(source_id, redact=False)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Source not found")
+    if src.type != "google_drive":
+        raise HTTPException(status_code=400, detail="Invalid source type")
+    expected = (src.config or {}).get("state_nonce")
+    if not expected or expected != nonce:
+        raise HTTPException(status_code=400, detail="Invalid state")
+
+    client_id = str((src.config or {}).get("client_id", ""))
+    client_secret = str((src.config or {}).get("client_secret", ""))
+    token_resp = requests.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": _google_redirect_uri(),
+            "grant_type": "authorization_code",
+        },
+        timeout=15,
+    )
+    if token_resp.status_code != 200:
+        source_store.update_source(source_id, status="error", last_error=f"token exchange failed: {token_resp.text[:200]}")
+        raise HTTPException(status_code=400, detail="Token exchange failed")
+    tok = token_resp.json()
+    access_token = tok.get("access_token")
+    refresh_token = tok.get("refresh_token")
+    expires_in = tok.get("expires_in")
+    expires_at = None
+    if expires_in:
+        expires_at = datetime.utcnow().timestamp() + float(expires_in)
+
+    source_store.update_source(
+        source_id,
+        status="connected",
+        last_error=None,
+        last_sync_at=datetime.utcnow().isoformat() + "Z",
+        config_patch={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "expires_at": expires_at,
+        },
+    )
+
+    job_id = job_store.create_job(type="source_sync")
+
+    def run_sync():
+        try:
+            _sync_google_drive_source(source_id, job_id)
+        except Exception as e:
+            job_store.update_job(job_id, status="failed", message=str(e))
+            source_store.update_source(source_id, status="error", last_error=str(e))
+
+    background_tasks.add_task(run_sync)
+
+    # Lightweight HTML response for popup flows.
+    html = f"""
+<!doctype html>
+<html>
+  <head><meta charset="utf-8"><title>Connected</title></head>
+  <body style="font-family: system-ui; padding: 24px;">
+    <h2>Google Drive connected</h2>
+    <p>Sync started in the background. You can close this window.</p>
+    <script>
+      try {{
+        if (window.opener) {{
+          window.opener.postMessage({{ type: 'lm:sourceConnected', sourceId: {json.dumps(source_id)}, jobId: {json.dumps(job_id)} }}, '*');
+        }}
+      }} catch (e) {{}}
+      setTimeout(() => window.close(), 200);
+    </script>
+  </body>
+</html>
+"""
+    return HTMLResponse(content=html)
+
+@app.post("/sources/{source_id}/sync")
+async def sync_source(background_tasks: BackgroundTasks, source_id: str):
+    try:
+        src = source_store.get_source(source_id, redact=False)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    job_id = job_store.create_job(type="source_sync")
+
+    def run_sync():
+        try:
+            if src.type == "s3":
+                _sync_s3_source(source_id, job_id)
+            elif src.type == "google_drive":
+                _sync_google_drive_source(source_id, job_id)
+            elif src.type == "local_folder":
+                # Mirror of existing rescan behavior
+                path = (src.config or {}).get("path")
+                if not isinstance(path, str) or not path:
+                    raise RuntimeError("Invalid local folder path")
+                results = photo_search_engine.scan(path, force=False)
+                all_files = results.get("all_files", []) if isinstance(results, dict) else []
+                if all_files:
+                    process_semantic_indexing(all_files)
+                job_store.update_job(job_id, status="completed", progress=100, message="Local re-scan complete.")
+            else:
+                raise RuntimeError("Unsupported source type")
+        except Exception as e:
+            job_store.update_job(job_id, status="failed", message=str(e))
+            source_store.update_source(source_id, status="error", last_error=str(e))
+
+    background_tasks.add_task(run_sync)
+    return {"ok": True, "job_id": job_id}
 
 class ScanRequest(BaseModel):
     path: str
@@ -394,15 +1242,32 @@ async def force_indexing(request: ScanRequest):
     except Exception as e:
          raise HTTPException(status_code=500, detail=str(e))
 
+# Register the endpoints with API version manager
+api_version_manager.register_endpoint(
+    path="/search",
+    method="GET",
+    summary="Search Photos",
+    description="Unified search endpoint supporting metadata, semantic, and hybrid search modes"
+)
+
+api_version_manager.register_endpoint(
+    path="/search/semantic",
+    method="GET",
+    summary="Semantic Search",
+    description="Semantic search using CLIP embeddings"
+)
+
 @app.get("/search")
 async def search_photos(
-    query: str = "", 
-    limit: int = 50, 
-    offset: int = 0, 
+    query: str = "",
+    limit: int = 50,
+    offset: int = 0,
     mode: str = "metadata",
     sort_by: str = "date_desc",  # date_desc, date_asc, name, size
     type_filter: str = "all",  # all, photos, videos
+    source_filter: str = "all",  # all, local, cloud, hybrid
     favorites_filter: str = "all",  # all, favorites_only
+    tag: Optional[str] = None,  # Filter to a single user tag
     date_from: Optional[str] = None,  # YYYY-MM or ISO date/datetime
     date_to: Optional[str] = None,    # YYYY-MM or ISO date/datetime
     log_history: bool = True  # Whether to log this search to history
@@ -420,10 +1285,23 @@ async def search_photos(
     try:
         import time
         start_time = time.time()
+
+        tagged_paths = None
+        if tag:
+            try:
+                from .tags_db import get_tags_db
+
+                tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+                tagged_paths = set(tags_db.get_tag_paths(tag))
+            except Exception:
+                tagged_paths = set()
         # 1. Semantic Search
         if mode == "semantic":
             results_response = await search_semantic(query, limit * 2, 0)  # Get more for filtering
             results = results_response.get('results', [])
+
+            if tagged_paths is not None:
+                results = [r for r in results if r.get("path") in tagged_paths]
             
             # Apply type filter
             if type_filter == "photos":
@@ -437,6 +1315,25 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             results = apply_date_filter(results, date_from, date_to)
+            # Apply source filter (local/cloud/hybrid)
+            if source_filter != "all":
+                def is_cloud_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    lower = p.lower()
+                    return lower.startswith("http://") or lower.startswith("https://") or lower.startswith("s3://") or lower.startswith("cloud:") or lower.startswith("gdrive:") or "amazonaws.com" in lower or lower.startswith("dropbox:") or lower.startswith("onedrive:")
+
+                def is_local_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    return bool(re.match(r'^[A-Za-z]:\\|^/|^file://|^~/', p))
+
+                if source_filter == "local":
+                    results = [r for r in results if is_local_path(r.get('path', ''))]
+                elif source_filter == "cloud":
+                    results = [r for r in results if is_cloud_path(r.get('path', ''))]
+                elif source_filter == "hybrid":
+                    results = [r for r in results if (not is_local_path(r.get('path', '')) and not is_cloud_path(r.get('path', '')))]
             
             # Apply sort
             results = apply_sort(results, sort_by)
@@ -495,6 +1392,9 @@ async def search_photos(
                 formatted_results = [r for r in formatted_results if not is_video_file(r.get('path', ''))]
             elif type_filter == "videos":
                 formatted_results = [r for r in formatted_results if is_video_file(r.get('path', ''))]
+
+            if tagged_paths is not None:
+                formatted_results = [r for r in formatted_results if r.get("path") in tagged_paths]
             
             # Apply favorites filter
             if favorites_filter == "favorites_only":
@@ -502,6 +1402,25 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             formatted_results = apply_date_filter(formatted_results, date_from, date_to)
+            # Apply source filter (local/cloud/hybrid)
+            if source_filter != "all":
+                def is_cloud_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    lower = p.lower()
+                    return lower.startswith("http://") or lower.startswith("https://") or lower.startswith("s3://") or lower.startswith("cloud:") or lower.startswith("gdrive:") or "amazonaws.com" in lower or lower.startswith("dropbox:") or lower.startswith("onedrive:")
+
+                def is_local_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    return bool(re.match(r'^[A-Za-z]:\\|^/|^file://|^~/', p))
+
+                if source_filter == "local":
+                    formatted_results = [r for r in formatted_results if is_local_path(r.get('path', ''))]
+                elif source_filter == "cloud":
+                    formatted_results = [r for r in formatted_results if is_cloud_path(r.get('path', ''))]
+                elif source_filter == "hybrid":
+                    formatted_results = [r for r in formatted_results if (not is_local_path(r.get('path', '')) and not is_cloud_path(r.get('path', '')))]
             
             # Apply sorting
             formatted_results = apply_sort(formatted_results, sort_by)
@@ -611,6 +1530,9 @@ async def search_photos(
                 hybrid_results = [r for r in hybrid_results if not is_video_file(r.get('path', ''))]
             elif type_filter == "videos":
                 hybrid_results = [r for r in hybrid_results if is_video_file(r.get('path', ''))]
+
+            if tagged_paths is not None:
+                hybrid_results = [r for r in hybrid_results if r.get("path") in tagged_paths]
             
             # Apply favorites filter
             if favorites_filter == "favorites_only":
@@ -618,6 +1540,25 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             hybrid_results = apply_date_filter(hybrid_results, date_from, date_to)
+            # Apply source filter (local/cloud/hybrid)
+            if source_filter != "all":
+                def is_cloud_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    lower = p.lower()
+                    return lower.startswith("http://") or lower.startswith("https://") or lower.startswith("s3://") or lower.startswith("cloud:") or lower.startswith("gdrive:") or "amazonaws.com" in lower or lower.startswith("dropbox:") or lower.startswith("onedrive:")
+
+                def is_local_path(p: str) -> bool:
+                    if not p:
+                        return False
+                    return bool(re.match(r'^[A-Za-z]:\\|^/|^file://|^~/', p))
+
+                if source_filter == "local":
+                    hybrid_results = [r for r in hybrid_results if is_local_path(r.get('path', ''))]
+                elif source_filter == "cloud":
+                    hybrid_results = [r for r in hybrid_results if is_cloud_path(r.get('path', ''))]
+                elif source_filter == "hybrid":
+                    hybrid_results = [r for r in hybrid_results if (not is_local_path(r.get('path', '')) and not is_cloud_path(r.get('path', '')))]
             
             # Apply Pagination Slicing
             count = len(hybrid_results)
@@ -656,6 +1597,18 @@ async def search_photos(
                     user_agent="api",
                     ip_address="localhost"
                 )
+
+                # Add structured logging for search operation
+                try:
+                    log_search_operation(
+                        ps_logger,
+                        query=query,
+                        mode=mode,
+                        results_count=count,
+                        execution_time=execution_time_ms
+                    )
+                except Exception as e:
+                    print(f"Error logging search operation: {e}")
             
             return {"count": count, "results": paginated, "intent": {
                 "primary_intent": intent_result["primary_intent"],
@@ -816,6 +1769,305 @@ async def bulk_delete(payload: dict = Body(...)):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Bulk delete failed: {str(e)}")
+
+
+# ==============================================================================
+# TRASH / RESTORE (RECENTLY DELETED)
+# ==============================================================================
+
+class TrashMoveRequest(BaseModel):
+    file_paths: List[str]
+
+
+class TrashRestoreRequest(BaseModel):
+    item_ids: List[str]
+
+
+class TrashEmptyRequest(BaseModel):
+    item_ids: Optional[List[str]] = None
+
+
+class LibraryRemoveRequest(BaseModel):
+    file_paths: List[str]
+
+
+def _trash_root() -> Path:
+    root = settings.BASE_DIR / "trash_files"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def _trash_allowed_roots() -> List[Path]:
+    roots: List[Path] = [
+        settings.BASE_DIR.resolve(),
+        settings.MEDIA_DIR.resolve(),
+        (settings.BASE_DIR / "media_sources").resolve(),
+    ]
+    try:
+        for s in source_store.list_sources(redact=False):
+            if s.type != "local_folder":
+                continue
+            p = (s.config or {}).get("path")
+            if isinstance(p, str) and p:
+                try:
+                    roots.append(Path(p).resolve())
+                except Exception:
+                    continue
+    except Exception:
+        pass
+    return roots
+
+
+def _assert_path_allowed_for_trash(p: Path) -> None:
+    roots = _trash_allowed_roots()
+    rp = p.resolve()
+    is_allowed = any(rp.is_relative_to(root) for root in roots)
+    if not is_allowed:
+        raise HTTPException(status_code=403, detail="Path is outside connected sources")
+    if rp.is_relative_to(_trash_root().resolve()):
+        raise HTTPException(status_code=400, detail="Path is already in Trash")
+
+
+def _reindex_one_file(path: str) -> None:
+    try:
+        from src.metadata_extractor import extract_all_metadata
+
+        metadata = extract_all_metadata(path)
+        if metadata:
+            photo_search_engine.db.store_metadata(path, metadata)
+            process_semantic_indexing([path])
+    except Exception:
+        # Restore should succeed even if indexing fails.
+        pass
+
+
+@app.post("/trash/move")
+async def trash_move(req: TrashMoveRequest):
+    """
+    Move files into app-managed Trash and remove them from the active library index.
+    For cloud sources, this moves the mirrored local copy only (does not delete remote originals).
+    """
+    if not req.file_paths:
+        raise HTTPException(status_code=400, detail="file_paths is required")
+
+    moved: List[dict] = []
+    errors: List[str] = []
+    for file_path in req.file_paths:
+        try:
+            src_path = Path(file_path)
+            _assert_path_allowed_for_trash(src_path)
+            if not src_path.exists() or not src_path.is_file():
+                raise HTTPException(status_code=404, detail="File not found")
+
+            trash_id = str(uuid.uuid4())
+            dest_dir = _trash_root() / trash_id
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / src_path.name
+
+            shutil.move(str(src_path), str(dest))
+
+            # Remove from active indices (metadata + embeddings)
+            try:
+                photo_search_engine.db.mark_as_deleted(str(src_path), reason="trashed")
+            except Exception:
+                pass
+            try:
+                vector_store.delete([str(src_path)])
+            except Exception:
+                pass
+
+            # Link to a cloud source item when applicable (so sync won't re-download).
+            source_item = None
+            try:
+                source_item = source_item_store.find_by_local_path(str(src_path.resolve()))
+            except Exception:
+                source_item = None
+            if source_item:
+                try:
+                    source_item_store.set_status(source_item.source_id, source_item.remote_id, "trashed")
+                    source_item_store.set_local_path(source_item.source_id, source_item.remote_id, str(dest))
+                except Exception:
+                    pass
+
+            item = trash_db.create(
+                item_id=trash_id,
+                original_path=str(src_path),
+                trashed_path=str(dest),
+                source_id=source_item.source_id if source_item else None,
+                remote_id=source_item.remote_id if source_item else None,
+            )
+            moved.append(
+                {
+                    "id": item.id,
+                    "original_path": item.original_path,
+                    "trashed_path": item.trashed_path,
+                    "created_at": item.created_at,
+                }
+            )
+        except HTTPException as he:
+            errors.append(f"{file_path}: {he.detail}")
+        except Exception as e:
+            errors.append(f"{file_path}: {str(e)}")
+
+    return {"moved": moved, "errors": errors}
+
+
+@app.get("/trash")
+async def list_trash(limit: int = 200, offset: int = 0):
+    items = trash_db.list(status="trashed", limit=limit, offset=offset)
+    out: List[dict] = []
+    for it in items:
+        out.append(
+            {
+                "id": it.id,
+                "original_path": it.original_path,
+                "trashed_path": it.trashed_path,
+                "status": it.status,
+                "source_id": it.source_id,
+                "remote_id": it.remote_id,
+                "created_at": it.created_at,
+            }
+        )
+    return {"items": out}
+
+
+@app.post("/trash/restore")
+async def restore_from_trash(req: TrashRestoreRequest):
+    if not req.item_ids:
+        raise HTTPException(status_code=400, detail="item_ids is required")
+
+    restored: List[str] = []
+    errors: List[str] = []
+    for item_id in req.item_ids:
+        try:
+            item = trash_db.get(item_id)
+            if item.status != "trashed":
+                raise HTTPException(status_code=400, detail="Item is not in Trash")
+
+            src = Path(item.trashed_path)
+            dst = Path(item.original_path)
+            _assert_path_allowed_for_trash(dst)
+            if not src.exists():
+                raise HTTPException(status_code=404, detail="Trashed file missing")
+
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(src), str(dst))
+
+            # Reindex restored path
+            _reindex_one_file(str(dst))
+
+            if item.source_id and item.remote_id:
+                try:
+                    source_item_store.set_status(item.source_id, item.remote_id, "active")
+                    source_item_store.set_local_path(item.source_id, item.remote_id, str(dst))
+                except Exception:
+                    pass
+
+            trash_db.mark_restored(item_id)
+            restored.append(item_id)
+        except HTTPException as he:
+            errors.append(f"{item_id}: {he.detail}")
+        except Exception as e:
+            errors.append(f"{item_id}: {str(e)}")
+
+    return {"restored": restored, "errors": errors}
+
+
+@app.post("/trash/empty")
+async def empty_trash(req: TrashEmptyRequest):
+    """
+    Permanently delete files currently in Trash.
+    For cloud sources, this acts as "Remove from library" (remote originals are not deleted).
+    """
+    items = []
+    if req.item_ids:
+        for item_id in req.item_ids:
+            try:
+                items.append(trash_db.get(item_id))
+            except Exception:
+                continue
+    else:
+        items = trash_db.list(status="trashed", limit=5000, offset=0)
+
+    deleted: List[str] = []
+    errors: List[str] = []
+    for it in items:
+        try:
+            if it.status != "trashed":
+                continue
+            p = Path(it.trashed_path)
+            if p.exists() and p.is_file():
+                p.unlink()
+
+            if it.source_id and it.remote_id:
+                # Ensure sync doesn't re-download (remote originals remain).
+                try:
+                    source_item_store.set_status(it.source_id, it.remote_id, "removed")
+                except Exception:
+                    pass
+
+            trash_db.mark_deleted(it.id)
+            deleted.append(it.id)
+        except Exception as e:
+            errors.append(f"{it.id}: {str(e)}")
+
+    return {"deleted": deleted, "errors": errors}
+
+
+@app.post("/library/remove")
+async def remove_from_library(req: LibraryRemoveRequest):
+    """
+    Remove items from the library index without sending them to Trash.
+    - For cloud sources (Drive/S3 mirrors): deletes the local mirror and marks the source item as `removed` so it won't re-download.
+    - For local files: removes from the index only (files remain on disk and may reappear if re-scanned).
+    """
+    if not req.file_paths:
+        raise HTTPException(status_code=400, detail="file_paths is required")
+
+    removed: List[str] = []
+    errors: List[str] = []
+    for file_path in req.file_paths:
+        try:
+            p = Path(file_path)
+            roots = _trash_allowed_roots()
+            rp = p.resolve()
+            if not any(rp.is_relative_to(root) for root in roots):
+                raise HTTPException(status_code=403, detail="Path is outside connected sources")
+
+            # Remove from indices (metadata + embeddings)
+            try:
+                photo_search_engine.db.mark_as_deleted(str(rp), reason="removed")
+            except Exception:
+                pass
+            try:
+                vector_store.delete([str(rp)])
+            except Exception:
+                pass
+
+            # If this is a cloud-mirrored file, prevent re-download and delete local copy.
+            source_item = None
+            try:
+                source_item = source_item_store.find_by_local_path(str(rp))
+            except Exception:
+                source_item = None
+            if source_item:
+                try:
+                    source_item_store.set_status(source_item.source_id, source_item.remote_id, "removed")
+                except Exception:
+                    pass
+                try:
+                    if rp.exists() and rp.is_file():
+                        rp.unlink()
+                except Exception:
+                    pass
+
+            removed.append(str(rp))
+        except HTTPException as he:
+            errors.append(f"{file_path}: {he.detail}")
+        except Exception as e:
+            errors.append(f"{file_path}: {str(e)}")
+
+    return {"removed": removed, "errors": errors}
 
 @app.post("/bulk/favorite")
 async def bulk_favorite(payload: dict = Body(...)):
@@ -1312,78 +2564,193 @@ async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_scor
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/image/thumbnail")
-async def get_thumbnail(path: str, size: int = 300):
+async def get_thumbnail(request: Request, path: str = "", size: int = 300, token: str | None = None):
     """
     Serve a thumbnail or the full image.
     Args:
-        path: Path to the image file
+        path: Path to the image file (local/dev usage)
         size: Max dimension for thumbnail (default 300)
+        token: Optional signed token for production/public access
     """
+    # Resolve path either from token (preferred for public) or from 'path' param
+    requested_path_str: str
+
+    if token:
+        # Verify token and extract path
+        try:
+            payload = verify_token(token, expected_scope="thumbnail")
+            requested_path_str = payload.get("path")
+        except TokenError as te:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {str(te)}")
+    else:
+        # If signed URLs are enabled in production, require token for non-local clients
+        client_host = None
+        try:
+            client_host = request.client.host if request.client else None
+        except Exception:
+            client_host = None
+
+        if settings.SIGNED_URL_ENABLED and settings.SANDBOX_STRICT:
+            # Allow loopback clients to use path param for local desktop flows
+            if client_host not in ("127.0.0.1", "::1", "localhost"):
+                raise HTTPException(status_code=401, detail="Signed URL required for this deployment")
+
+        requested_path_str = path
+
     # Security check: Ensure path is within allowed directory
-    # In production, use MEDIA_DIR for stricter sandboxing
-    # In development, allow BASE_DIR for flexibility
     try:
-        # Use stricter MEDIA_DIR if it exists, otherwise fall back to BASE_DIR
         if settings.MEDIA_DIR.exists():
             allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
         else:
             allowed_paths = [settings.BASE_DIR.resolve()]
-        
-        requested_path = Path(path).resolve()
-        
-        # Check if requested path is within any allowed directory
+
+        requested_path = Path(requested_path_str).resolve()
+
         is_allowed = any(
-            requested_path.is_relative_to(allowed_path) 
+            requested_path.is_relative_to(allowed_path)
             for allowed_path in allowed_paths
         )
-        
+
         if not is_allowed:
-            print(f"Access denied: {requested_path} is outside allowed directories")
+            logger.warning(f"Access denied to image: {hash_for_logs(requested_path_str)} ip={request.client.host if request.client else 'unknown'}")
             raise HTTPException(status_code=403, detail="Access denied: File outside allowed directories")
     except ValueError:
-        # is_relative_to raises ValueError if different drives on Windows, etc.
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if os.path.exists(path):
+    # Record access (hashed path to protect privacy)
+    try:
+        if settings.ACCESS_LOG_MASKING:
+            logged_path = hash_for_logs(requested_path_str)
+        else:
+            logged_path = requested_path_str
+        logger.info(f"IMAGE_ACCESS path={logged_path} size={size} ip={request.client.host if request.client else 'unknown'} token={'yes' if token else 'no'}")
+    except Exception:
+        # In case logging fails, don't block response
+        pass
+
+    # Serve the thumbnail after security checks and access logging
+    if os.path.exists(requested_path_str):
         try:
             from PIL import Image
             import io
-            from fastapi.responses import Response
-            
+
             # For 3D textures we want small files (size=300 is good)
             # For Detail Modal we want larger (size=1200)
-            
+
             # Open image
-            with Image.open(path) as img:
+            with Image.open(requested_path_str) as img:
                 # Convert to RGB if needed (e.g. RGBA or P)
-                if img.mode in ('RGBA', 'P'):
-                    img = img.convert('RGB')
-                    
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+
                 # Calculate new aspect ratio
                 # thumbnail() modifies in-place and preserves aspect ratio
                 img.thumbnail((size, size))
-                
+
                 # Save to buffer
                 img_io = io.BytesIO()
-                img.save(img_io, 'JPEG', quality=70)
+                img.save(img_io, "JPEG", quality=70)
                 img_io.seek(0)
-                
+
+                # Rate limiting: check per-IP quota
+                try:
+                    if settings.RATE_LIMIT_ENABLED:
+                        client_ip = request.client.host if request.client else "unknown"
+                        now = __import__("time").time()
+                        with _rate_lock:
+                            lst = _rate_counters.get(client_ip, [])
+                            # keep only entries in the last 60s
+                            lst = [t for t in lst if now - t < 60]
+                            if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
+                                raise HTTPException(status_code=429, detail="Rate limit exceeded")
+                            lst.append(now)
+                            _rate_counters[client_ip] = lst
+                except HTTPException:
+                    raise
+                except Exception:
+                    # don't block on rate errors
+                    pass
+
                 # Return in-memory bytes with caching headers
+                content_bytes = img_io.getvalue()
+                logger.info(f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str}")
                 return Response(
-                    content=img_io.getvalue(), 
-                    media_type="image/jpeg", 
-                    headers={"Cache-Control": "public, max-age=31536000"}
+                    content=content_bytes,
+                    media_type="image/jpeg",
+                    headers={"Cache-Control": "public, max-age=31536000"},
                 )
-                
+
         except ImportError:
             # Fallback if Pillow not working
             pass # fall through to local file
+        except HTTPException:
+            # Propagate HTTPExceptions like rate limiting up to the client
+            raise
         except Exception as e:
-            print(f"Thumbnail error: {e}")
+            logger.error(f"Thumbnail error for {requested_path_str}: {e}")
             pass # fall through to local file
 
         # Fallback to serving original file
-        return FileResponse(path)
+        return FileResponse(requested_path_str)
+
+
+@app.post("/admin/unmask")
+async def admin_unmask(payload: dict = Body(...), request: Request = None):
+    """Admin-only: Given a hashed path (as in access logs), attempt to find the real path.
+
+    This endpoint is gated by `ACCESS_LOG_UNMASK_ENABLED` and requires admin JWT (JWT_AUTH_ENABLED + claim is_admin).
+    It performs a directory scan of MEDIA_DIR and resolves the first path whose hash matches the provided hash.
+    Use with caution — this should be audited and require elevated privileges.
+    Body: { hash: string }
+    """
+    if not settings.ACCESS_LOG_UNMASK_ENABLED:
+        raise HTTPException(status_code=403, detail="Unmasking disabled")
+
+    h = payload.get("hash")
+    if not h:
+        raise HTTPException(status_code=400, detail="hash is required")
+
+    # Require admin JWT
+    if settings.JWT_AUTH_ENABLED:
+        auth_header = None
+        if request:
+            auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Authorization required")
+        try:
+            scheme, token = auth_header.split(" ", 1)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid Authorization header")
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid auth scheme")
+        try:
+            payload_jwt = verify_jwt(token)
+        except AuthError as ae:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {str(ae)}")
+        if not payload_jwt.get("is_admin"):
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+    else:
+        # Fallback: require issuer API key
+        if settings.IMAGE_TOKEN_ISSUER_KEY:
+            api_key = request.headers.get("x-api-key") if request else None
+            if api_key != settings.IMAGE_TOKEN_ISSUER_KEY:
+                raise HTTPException(status_code=401, detail="Missing or invalid issuer API key")
+        else:
+            raise HTTPException(status_code=401, detail="Unmask requires admin auth")
+
+    # Brute-force scan MEDIA_DIR for matching hash
+    try:
+        for root, dirs, files in os.walk(settings.MEDIA_DIR):
+            for f in files:
+                candidate = Path(root) / f
+                if hash_for_logs(str(candidate)) == h:
+                    # Audit log
+                    logger.warning(f"UNMASK used by {request.client.host if request.client else 'unknown'} for hash={h}")
+                    return {"path": str(candidate)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    raise HTTPException(status_code=404, detail="No matching path found")
 
     raise HTTPException(status_code=404, detail="Image not found")
 
@@ -1741,12 +3108,74 @@ async def delete_saved_search(search_id: int):
 async def get_search_analytics():
     """
     Get overall search analytics and insights.
-    
+
     Returns:
         Analytics data including popular searches, recent searches, etc.
     """
     try:
         return saved_search_manager.get_overall_analytics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/analytics/detailed")
+async def get_detailed_analytics(days: int = 30):
+    """
+    Get detailed search analytics for a specific time period.
+
+    Args:
+        days: Number of days to analyze (default: 30)
+
+    Returns:
+        Detailed analytics data with trends and insights
+    """
+    try:
+        return saved_search_manager.get_detailed_analytics(days=days)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/analytics/trends")
+async def get_search_trends(days: int = 90):
+    """
+    Get search trends over time.
+
+    Args:
+        days: Number of days to calculate trends for (default: 90)
+
+    Returns:
+        Trend data showing search evolution over time
+    """
+    try:
+        return saved_search_manager.get_search_trends(days=days)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/searches/analytics/export")
+async def export_analytics(format_type: str = "json", days: int = 30):
+    """
+    Export analytics data in various formats.
+
+    Args:
+        format_type: Output format ('json', 'csv', 'text') - default: json
+        days: Number of days to include in analysis - default: 30
+
+    Returns:
+        Analytics data in specified format
+    """
+    try:
+        if format_type not in ["json", "csv", "text"]:
+            raise HTTPException(status_code=400, detail="Format must be 'json', 'csv', or 'text'")
+
+        exported_data = saved_search_manager.export_analytics(
+            format_type=format_type,
+            days=days
+        )
+
+        if format_type == "json":
+            import json
+            return json.loads(exported_data)
+        else:
+            from fastapi.responses import PlainTextResponse
+            return PlainTextResponse(exported_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1920,9 +3349,9 @@ async def check_usage_limit(user_id: str, additional_images: int = 0):
     """
     if additional_images < 0:
         raise HTTPException(status_code=400, detail="Additional images must be positive")
-    
+
     can_add = pricing_manager.check_limit(user_id, additional_images)
-    
+
     return {
         "can_add": can_add,
         "message": "User can add images" if can_add else "User would exceed their image limit"
@@ -1935,15 +3364,83 @@ async def upgrade_user_tier(user_id: str, new_tier: str):
     Upgrade a user to a new pricing tier.
     """
     success = pricing_manager.upgrade_tier(user_id, new_tier)
-    
+
     if not success:
         raise HTTPException(status_code=400, detail="Invalid tier or user not found")
-    
+
     return {
         "success": True,
         "message": f"User {user_id} upgraded to {new_tier} tier",
         "new_tier": new_tier
     }
+
+@app.get("/usage/history/{user_id}")
+async def get_user_usage_history(user_id: str, days: int = 30):
+    """
+    Get usage history for a specific user.
+
+    Args:
+        user_id: ID of the user
+        days: Number of days to retrieve history for (default: 30)
+
+    Returns:
+        List of usage records
+    """
+    try:
+        history = pricing_manager.get_usage_history(user_id, days)
+        return {
+            "user_id": user_id,
+            "days": days,
+            "history": history
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/usage/growth/{user_id}")
+async def get_user_growth_rate(user_id: str, days: int = 30):
+    """
+    Get user growth rate over time.
+
+    Args:
+        user_id: ID of the user
+        days: Number of days to calculate growth over (default: 30)
+
+    Returns:
+        Growth rate statistics
+    """
+    try:
+        growth = pricing_manager.get_user_growth_rate(user_id, days)
+        return growth
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/usage/tier-averages")
+async def get_tier_usage_averages():
+    """
+    Get average usage statistics per pricing tier.
+
+    Returns:
+        Dictionary with average usage per tier
+    """
+    try:
+        averages = pricing_manager.get_tier_averages()
+        return averages
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/usage/company-analytics")
+async def get_company_usage_analytics():
+    """
+    Get comprehensive usage analytics for the company.
+
+    Returns:
+        Company-wide usage statistics
+    """
+    try:
+        analytics = pricing_manager.get_company_usage_analytics()
+        return analytics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 class ExportRequest(BaseModel):
     paths: List[str]
@@ -1956,6 +3453,14 @@ face_clusterer = FaceClusterer()
 # Initialize OCR Search
 from src.ocr_search import OCRSearch
 ocr_search = OCRSearch()
+
+# Signed URL helpers
+from server.signed_urls import issue_token, verify_token, TokenError
+from server.security_utils import hash_for_logs
+from server.auth import verify_jwt, AuthError, create_jwt
+import logging
+logger = logging.getLogger("photosearch")
+
 
 # Initialize Modal System
 from src.modal_system import ModalSystem
@@ -2102,6 +3607,88 @@ async def get_face_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 # OCR Search Endpoints
+
+@app.get('/server/config')
+async def server_config():
+    """Return a small subset of server configuration useful for the UI (non-sensitive)."""
+    return {
+        "signed_url_enabled": bool(settings.SIGNED_URL_ENABLED),
+        "sandbox_strict": bool(settings.SANDBOX_STRICT),
+        "rate_limit_enabled": bool(settings.RATE_LIMIT_ENABLED),
+        "access_log_masking": bool(settings.ACCESS_LOG_MASKING),
+        "jwt_auth_enabled": bool(settings.JWT_AUTH_ENABLED),
+    }
+
+
+@app.post("/image/token")
+async def issue_image_token(payload: dict = Body(...), request: Request = None):
+    """Issue a signed token for image access. Body: { path: string, ttl?: int, scope?: 'thumbnail'|'file' }
+
+    This endpoint should be protected in production (JWT auth or IMAGE_TOKEN_ISSUER_KEY).
+    """
+    path = payload.get("path")
+    ttl = payload.get("ttl")
+    scope = payload.get("scope", "thumbnail")
+
+    if not path:
+        raise HTTPException(status_code=400, detail="path is required")
+
+    # If JWT auth is enabled, require a valid Bearer token
+    uid = None
+    if settings.JWT_AUTH_ENABLED:
+        auth_header = None
+        if request:
+            auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+        if not auth_header:
+            raise HTTPException(status_code=401, detail="Authorization required")
+        try:
+            scheme, token = auth_header.split(" ", 1)
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid Authorization header")
+        if scheme.lower() != "bearer":
+            raise HTTPException(status_code=401, detail="Invalid auth scheme")
+        try:
+            payload_jwt = verify_jwt(token)
+            uid = payload_jwt.get("sub") or payload_jwt.get("uid")
+        except AuthError as ae:
+            raise HTTPException(status_code=401, detail=f"Invalid token: {str(ae)}")
+
+    # Otherwise, allow image token issuance if issuer key is configured
+    elif settings.IMAGE_TOKEN_ISSUER_KEY:
+        api_key = None
+        if request:
+            api_key = request.headers.get("x-api-key")
+        if api_key != settings.IMAGE_TOKEN_ISSUER_KEY:
+            raise HTTPException(status_code=401, detail="Missing or invalid issuer API key")
+    else:
+        logger.warning("No token issuer configured; token issuance is unprotected (dev only)")
+
+    # Basic sandbox check - ensure path is inside allowed directories
+    try:
+        if settings.MEDIA_DIR.exists():
+            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+        else:
+            allowed_paths = [settings.BASE_DIR.resolve()]
+
+        requested_path = Path(path).resolve()
+
+        is_allowed = any(
+            requested_path.is_relative_to(allowed_path)
+            for allowed_path in allowed_paths
+        )
+
+        if not is_allowed:
+            raise HTTPException(status_code=403, detail="Path is outside allowed directories")
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    # Issue token
+    try:
+        token = issue_token(path, uid=uid, ttl=ttl, scope=scope)
+        return {"token": token, "expires_in": ttl or settings.SIGNED_URL_TTL_SECONDS}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 class OCRSearchRequest(BaseModel):
     query: str
@@ -2901,6 +4488,693 @@ async def export_photos(request: ExportRequest):
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename=photos_export.zip"}
     )
+
+# ==============================================================================
+# TAGS ENDPOINTS
+# ==============================================================================
+
+from .tags_db import get_tags_db
+from .ratings_db import get_ratings_db
+from .duplicates_db import get_duplicates_db
+
+
+class TagCreate(BaseModel):
+    name: str
+
+
+class TagPhotosRequest(BaseModel):
+    photo_paths: List[str]
+
+
+@app.get("/tags")
+async def list_tags(limit: int = 200, offset: int = 0):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    tags = tags_db.list_tags(limit=limit, offset=offset)
+    return {"tags": [t.__dict__ for t in tags]}
+
+
+@app.post("/tags")
+async def create_tag(req: TagCreate):
+    name = (req.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="name is required")
+    if len(name) > 80:
+        raise HTTPException(status_code=400, detail="name too long")
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    tags_db.create_tag(name)
+    return {"ok": True}
+
+
+@app.delete("/tags/{tag_name}")
+async def delete_tag(tag_name: str):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    ok = tags_db.delete_tag(tag_name)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    return {"ok": True}
+
+
+@app.get("/tags/{tag_name}")
+async def get_tag(tag_name: str, include_photos: bool = True):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    if not tags_db.has_tag(tag_name):
+        raise HTTPException(status_code=404, detail="Tag not found")
+    out: Dict[str, object] = {"tag": tag_name}
+    if include_photos:
+        paths = tags_db.get_tag_paths(tag_name)
+        photos = []
+        for path in paths:
+            metadata = photo_search_engine.db.get_metadata(path)
+            if metadata:
+                photos.append(
+                    {
+                        "path": path,
+                        "filename": os.path.basename(path),
+                        "metadata": metadata,
+                    }
+                )
+        out["photos"] = photos
+        out["photo_count"] = len(paths)
+    return out
+
+
+@app.post("/tags/{tag_name}/photos")
+async def add_photos_to_tag(tag_name: str, req: TagPhotosRequest):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    added = tags_db.add_photos(tag_name, req.photo_paths or [])
+    return {"added": added, "total": len(req.photo_paths or [])}
+
+
+@app.delete("/tags/{tag_name}/photos")
+async def remove_photos_from_tag(tag_name: str, req: TagPhotosRequest):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    removed = tags_db.remove_photos(tag_name, req.photo_paths or [])
+    return {"removed": removed}
+
+
+@app.get("/photos/{path:path}/tags")
+async def get_photo_tags(path: str):
+    tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
+    tags = tags_db.get_photo_tags(path)
+    return {"tags": tags}
+
+
+# ==============================================================================
+# ALBUMS ENDPOINTS
+# ==============================================================================
+
+from .albums_db import get_albums_db, Album as AlbumModel
+from .smart_albums import initialize_predefined_smart_albums, populate_smart_album
+import uuid
+
+class AlbumCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+class AlbumUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cover_photo_path: Optional[str] = None
+
+class AlbumPhotosRequest(BaseModel):
+    photo_paths: List[str]
+
+@app.post("/albums")
+async def create_album(req: AlbumCreate):
+    """Create a new album."""
+    albums_db = get_albums_db()
+    album_id = str(uuid.uuid4())
+
+    album = albums_db.create_album(
+        album_id=album_id,
+        name=req.name,
+        description=req.description
+    )
+
+    return {"album": album}
+
+@app.get("/albums")
+async def list_albums(include_smart: bool = True):
+    """List all albums."""
+    albums_db = get_albums_db()
+
+    # Initialize predefined smart albums if not exists
+    initialize_predefined_smart_albums(albums_db)
+
+    albums = albums_db.list_albums(include_smart=include_smart)
+    return {"albums": albums}
+
+@app.get("/albums/{album_id}")
+async def get_album(album_id: str, include_photos: bool = True):
+    """Get album details."""
+    albums_db = get_albums_db()
+    album = albums_db.get_album(album_id)
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    result = {"album": album}
+
+    if include_photos:
+        photo_paths = albums_db.get_album_photos(album_id)
+        # Get metadata for photos
+        photos = []
+        for path in photo_paths:
+            metadata = photo_search_engine.db.get_metadata(path)
+            if metadata:
+                photos.append({
+                    "path": path,
+                    "filename": os.path.basename(path),
+                    "metadata": metadata
+                })
+        result["photos"] = photos
+
+    return result
+
+@app.put("/albums/{album_id}")
+async def update_album(album_id: str, req: AlbumUpdate):
+    """Update album details."""
+    albums_db = get_albums_db()
+
+    album = albums_db.update_album(
+        album_id=album_id,
+        name=req.name,
+        description=req.description,
+        cover_photo_path=req.cover_photo_path
+    )
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    return {"album": album}
+
+@app.delete("/albums/{album_id}")
+async def delete_album(album_id: str):
+    """Delete an album."""
+    albums_db = get_albums_db()
+
+    # Don't allow deleting smart albums
+    album = albums_db.get_album(album_id)
+    if album and album.is_smart:
+        raise HTTPException(status_code=400, detail="Cannot delete smart albums")
+
+    success = albums_db.delete_album(album_id)
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    return {"ok": True}
+
+@app.post("/albums/{album_id}/photos")
+async def add_photos_to_album(album_id: str, req: AlbumPhotosRequest):
+    """Add photos to album."""
+    albums_db = get_albums_db()
+
+    # Check album exists
+    album = albums_db.get_album(album_id)
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Don't allow adding to smart albums
+    if album.is_smart:
+        raise HTTPException(status_code=400, detail="Cannot manually add photos to smart albums")
+
+    added = albums_db.add_photos_to_album(album_id, req.photo_paths)
+
+    return {"added": added, "total": len(req.photo_paths)}
+
+@app.delete("/albums/{album_id}/photos")
+async def remove_photos_from_album(album_id: str, req: AlbumPhotosRequest):
+    """Remove photos from album."""
+    albums_db = get_albums_db()
+
+    # Check album exists
+    album = albums_db.get_album(album_id)
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Don't allow removing from smart albums
+    if album.is_smart:
+        raise HTTPException(status_code=400, detail="Cannot manually remove photos from smart albums")
+
+    removed = albums_db.remove_photos_from_album(album_id, req.photo_paths)
+
+    return {"removed": removed}
+
+@app.post("/albums/{album_id}/refresh")
+async def refresh_smart_album(album_id: str):
+    """Refresh a smart album (recompute matches)."""
+    albums_db = get_albums_db()
+
+    album = albums_db.get_album(album_id)
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    if not album.is_smart:
+        raise HTTPException(status_code=400, detail="Only smart albums can be refreshed")
+
+    # Get all photos with metadata
+    cursor = photo_search_engine.db.conn.cursor()
+    cursor.execute("SELECT file_path, metadata_json FROM metadata WHERE deleted_at IS NULL")
+
+    photos_with_metadata = []
+    for row in cursor.fetchall():
+        import json
+        metadata = json.loads(row['metadata_json']) if row['metadata_json'] else {}
+        photos_with_metadata.append((row['file_path'], metadata))
+
+    # Populate smart album
+    populate_smart_album(albums_db, album_id, photos_with_metadata)
+
+    # Return updated album
+    album = albums_db.get_album(album_id)
+    return {"album": album}
+
+@app.get("/photos/{path:path}/albums")
+async def get_photo_albums(path: str):
+    """Get all albums containing a specific photo."""
+    albums_db = get_albums_db()
+    albums = albums_db.get_photo_albums(path)
+    return {"albums": albums}
+
+# ========== Image Transformation Endpoints ==========
+
+class TransformRequest(BaseModel):
+    """Request for image transformation operations."""
+    backup: bool = True  # Create backup before transformation
+
+@app.post("/photos/rotate")
+async def rotate_photo(path: str = Body(...), degrees: int = Body(...), backup: bool = Body(True)):
+    """
+    Rotate a photo by specified degrees (90, 180, 270, or -90).
+    Creates a backup by default before modifying the original.
+    """
+    if degrees not in [90, 180, 270, -90]:
+        raise HTTPException(status_code=400, detail="Degrees must be 90, 180, 270, or -90")
+
+    file_path = Path(path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    try:
+        # Create backup if requested
+        if backup:
+            backup_path = file_path.parent / f"{file_path.stem}_backup{file_path.suffix}"
+            shutil.copy2(file_path, backup_path)
+
+        # Open image
+        img = Image.open(file_path)
+
+        # Rotate (negative degrees for clockwise rotation in PIL)
+        # PIL's rotate is counter-clockwise, so we negate for intuitive clockwise rotation
+        if degrees == 90:
+            rotated = img.transpose(Image.ROTATE_270)  # 90° CW
+        elif degrees == -90 or degrees == 270:
+            rotated = img.transpose(Image.ROTATE_90)   # 90° CCW
+        elif degrees == 180:
+            rotated = img.transpose(Image.ROTATE_180)
+        else:
+            rotated = img.rotate(-degrees, expand=True)
+
+        # Save with original format and quality
+        save_kwargs = {}
+        if img.format == 'JPEG':
+            save_kwargs['quality'] = 95
+            save_kwargs['optimize'] = True
+
+        rotated.save(file_path, format=img.format, **save_kwargs)
+        img.close()
+        rotated.close()
+
+        return {
+            "ok": True,
+            "path": str(file_path),
+            "operation": f"rotated_{degrees}deg",
+            "backup_created": backup
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Rotation failed: {str(e)}")
+
+@app.post("/photos/flip")
+async def flip_photo(path: str = Body(...), direction: str = Body(...), backup: bool = Body(True)):
+    """
+    Flip a photo horizontally or vertically.
+    Creates a backup by default before modifying the original.
+    """
+    if direction not in ['horizontal', 'vertical']:
+        raise HTTPException(status_code=400, detail="Direction must be 'horizontal' or 'vertical'")
+
+    file_path = Path(path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    try:
+        # Create backup if requested
+        if backup:
+            backup_path = file_path.parent / f"{file_path.stem}_backup{file_path.suffix}"
+            shutil.copy2(file_path, backup_path)
+
+        # Open image
+        img = Image.open(file_path)
+
+        # Flip
+        if direction == 'horizontal':
+            flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
+        else:  # vertical
+            flipped = img.transpose(Image.FLIP_TOP_BOTTOM)
+
+        # Save with original format and quality
+        save_kwargs = {}
+        if img.format == 'JPEG':
+            save_kwargs['quality'] = 95
+            save_kwargs['optimize'] = True
+
+        flipped.save(file_path, format=img.format, **save_kwargs)
+        img.close()
+        flipped.close()
+
+        return {
+            "ok": True,
+            "path": str(file_path),
+            "operation": f"flipped_{direction}",
+            "backup_created": backup
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Flip failed: {str(e)}")
+
+@app.get("/api/schema")
+async def get_api_schema():
+    """Get the API schema and version information."""
+    schema = api_version_manager.get_api_schema()
+    return schema
+
+@app.get("/api/cache/stats")
+async def get_cache_stats():
+    """Get cache statistics and performance metrics."""
+    stats = cache_manager.stats()
+    return stats
+
+@app.post("/api/cache/clear")
+async def clear_cache():
+    """Clear all cache entries."""
+    cache_manager.clear()
+    return {"message": "Cache cleared successfully"}
+
+@app.get("/api/cache/cleanup")
+async def cleanup_cache():
+    """Clean up expired cache entries."""
+    removed_count = cache_manager.cleanup()
+    return {"message": f"Cleaned up {removed_count} expired entries"}
+
+@app.get("/api/logs/test")
+async def test_logging():
+    """Test endpoint to verify logging functionality."""
+    import time
+    start = time.time()
+
+    # Log a test message
+    ps_logger.info("Test log message from API endpoint")
+
+    execution_time = (time.time() - start) * 1000
+
+    # Log the operation
+    log_search_operation(
+        ps_logger,
+        query="test",
+        mode="test",
+        results_count=0,
+        execution_time=execution_time
+    )
+
+    return {"message": "Test log message sent", "execution_time_ms": execution_time}
+
+# ==============================================================================
+# RATINGS ENDPOINTS
+# ==============================================================================
+
+class RatingCreate(BaseModel):
+    rating: int
+
+
+@app.get("/api/photos/{file_path:path}/rating")
+async def get_photo_rating(file_path: str):
+    """Get rating for a photo."""
+    try:
+        ratings_db = get_ratings_db(settings.BASE_DIR / "ratings.db")
+        rating = ratings_db.get_rating(file_path)
+        return {"rating": rating}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/photos/{file_path:path}/rating")
+async def set_photo_rating(file_path: str, rating_req: RatingCreate):
+    """Set rating for a photo (1-5 stars, 0 = unrated)."""
+    try:
+        if not (0 <= rating_req.rating <= 5):
+            raise HTTPException(status_code=400, detail="Rating must be between 0 and 5")
+
+        ratings_db = get_ratings_db(settings.BASE_DIR / "ratings.db")
+        success = ratings_db.set_rating(file_path, rating_req.rating)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to set rating")
+
+        return {"success": True, "rating": rating_req.rating}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ratings/photos/{rating}")
+async def get_photos_by_rating(rating: int, limit: int = 100, offset: int = 0):
+    """Get photos with specific rating."""
+    try:
+        if not (1 <= rating <= 5):
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+
+        ratings_db = get_ratings_db(settings.BASE_DIR / "ratings.db")
+        photo_paths = ratings_db.get_photos_by_rating(rating, limit, offset)
+
+        # Get full metadata for each photo
+        photos = []
+        for path in photo_paths:
+            metadata = photo_search_engine.db.get_metadata(path)
+            if metadata:
+                photos.append({
+                    "path": path,
+                    "metadata": metadata,
+                    "rating": rating
+                })
+
+        return {"count": len(photos), "results": photos}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/ratings/stats")
+async def get_rating_stats():
+    """Get rating statistics."""
+    try:
+        ratings_db = get_ratings_db(settings.BASE_DIR / "ratings.db")
+        stats = ratings_db.get_rating_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# DUPLICATES ENDPOINTS
+# ==============================================================================
+
+class DuplicateResolution(BaseModel):
+    resolution: str  # 'keep_all', 'keep_selected', 'delete_all'
+    keep_files: Optional[List[str]] = None
+
+
+@app.get("/api/duplicates")
+async def get_duplicates(hash_type: Optional[str] = None, limit: int = 100, offset: int = 0):
+    """Get duplicate groups."""
+    try:
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+        groups = duplicates_db.get_duplicate_groups(hash_type, limit, offset)
+        return {"count": len(groups), "groups": [g.__dict__ for g in groups]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/duplicates/scan")
+async def scan_duplicates(type: str = "exact", limit: int = 1000):
+    """Scan for duplicates."""
+    try:
+        if type not in ["exact", "perceptual"]:
+            raise HTTPException(status_code=400, detail="Type must be 'exact' or 'perceptual'")
+
+        # Get all photo paths from database
+        cursor = photo_search_engine.db.conn.cursor()
+        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT ?", (limit,))
+        all_files = [row[0] for row in cursor.fetchall()]
+
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+
+        if type == "exact":
+            groups = duplicates_db.find_exact_duplicates(all_files)
+        else:
+            # For perceptual duplicates, we'd implement image similarity detection
+            # For now, return empty
+            groups = []
+
+        return {"scanned": len(all_files), "duplicate_groups_found": len(groups), "groups": [g.__dict__ for g in groups]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/duplicates/{group_id}/resolve")
+async def resolve_duplicates(group_id: str, resolution: DuplicateResolution):
+    """Resolve a duplicate group."""
+    try:
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+        success = duplicates_db.resolve_duplicates(group_id, resolution.resolution, resolution.keep_files)
+        return {"success": success, "group_id": group_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/duplicates/{group_id}")
+async def delete_duplicate_group(group_id: str):
+    """Delete a duplicate group."""
+    try:
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+        success = duplicates_db.delete_group(group_id)
+        return {"success": success, "group_id": group_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/duplicates/stats")
+async def get_duplicates_stats():
+    """Get duplicate statistics."""
+    try:
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+        stats = duplicates_db.get_duplicate_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/duplicates/cleanup")
+async def cleanup_duplicates():
+    """Clean up entries for missing files."""
+    try:
+        duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
+        cleaned_count = duplicates_db.cleanup_missing_files()
+        return {"cleaned_files": cleaned_count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# FACE RECOGNITION ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/faces/clusters")
+async def get_face_clusters():
+    """Get all face clusters."""
+    try:
+        # Get all photo paths from database
+        cursor = photo_search_engine.db.conn.cursor()
+        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT 1000")
+        all_files = [row[0] for row in cursor.fetchall()]
+
+        clusterer = FaceClusterer()
+        clusters = clusterer.get_image_clusters(all_files)
+
+        # Format for frontend
+        formatted_clusters = []
+        for cluster_id, cluster_data in clusters.items():
+            formatted_clusters.append({
+                "id": cluster_id,
+                "label": cluster_data.get("label", f"Person {cluster_id}"),
+                "face_count": cluster_data.get("face_count", 0),
+                "image_count": len(cluster_data.get("images", [])),
+                "images": cluster_data.get("images", [])[:6],  # Limit to 6 preview images
+                "created_at": cluster_data.get("created_at")
+            })
+
+        return {"clusters": formatted_clusters}
+    except Exception as e:
+        # Return empty clusters if face recognition is not available
+        return {"clusters": []}
+
+
+@app.post("/api/faces/scan")
+async def scan_faces(limit: int = 100):
+    """Scan for faces in photos."""
+    try:
+        # Get all photo paths from database
+        cursor = photo_search_engine.db.conn.cursor()
+        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT ?", (limit,))
+        all_files = [row[0] for row in cursor.fetchall()]
+
+        clusterer = FaceClusterer()
+        result = clusterer.cluster_faces(all_files)
+
+        return {
+            "scanned": len(all_files),
+            "clusters_found": len(result),
+            "total_faces": sum(len(cluster.get("images", [])) for cluster in result.values())
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/faces/clusters/{cluster_id}/label")
+async def set_cluster_label(cluster_id: str, label_data: dict):
+    """Set label for a face cluster."""
+    try:
+        label = label_data.get("label", "").strip()
+        if not label:
+            raise HTTPException(status_code=400, detail="Label cannot be empty")
+
+        # This would update the cluster label in the database
+        # For now, just return success
+        return {"success": True, "cluster_id": cluster_id, "label": label}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/photos/{person_name}")
+async def get_photos_by_person(person_name: str, limit: int = 100, offset: int = 0):
+    """Get photos for a specific person."""
+    try:
+        # This would search for photos containing the specific person
+        # For now, return empty results
+        return {"count": 0, "results": [], "person": person_name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/stats")
+async def get_face_stats():
+    """Get face recognition statistics."""
+    try:
+        cursor = photo_search_engine.db.conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM metadata WHERE deleted_at IS NULL")
+        total_photos = cursor.fetchone()[0]
+
+        # For now, return placeholder stats
+        return {
+            "total_photos": total_photos,
+            "faces_detected": 0,
+            "clusters_found": 0,
+            "unidentified_faces": 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn

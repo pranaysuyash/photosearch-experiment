@@ -11,6 +11,8 @@ import { api, type Photo, type TimelineData } from '../api';
 import { type SearchMode } from '../components/search/SearchToggle';
 import { usePerformanceMonitor } from '../hooks/usePerformanceMonitor';
 
+export type GridZoomLevel = 'compact' | 'comfortable' | 'spacious';
+
 interface PhotoSearchContextType {
   photos: Photo[];
   loading: boolean;
@@ -21,18 +23,24 @@ interface PhotoSearchContextType {
   searchMode: SearchMode;
   sortBy: string;
   typeFilter: string;
+  sourceFilter: 'all' | 'local' | 'cloud' | 'hybrid';
+  setSourceFilter: (filter: 'all' | 'local' | 'cloud' | 'hybrid') => void;
   favoritesFilter: string;
+  tag: string | null;
   dateFrom: string | null;
   dateTo: string | null;
   timelineData: TimelineData[];
   timelineLoading: boolean;
+  gridZoom: GridZoomLevel;
   setSearchQuery: (query: string) => void;
   setSearchMode: (mode: SearchMode) => void;
   setSortBy: (sort: string) => void;
   setTypeFilter: (filter: string) => void;
   setFavoritesFilter: (filter: string) => void;
+  setTag: (tag: string | null) => void;
   setDateRange: (from: string | null, to: string | null) => void;
   clearDateRange: () => void;
+  setGridZoom: (zoom: GridZoomLevel) => void;
   loadMore: () => void;
   search: (query: string) => void;
   clearError: () => void;
@@ -57,13 +65,21 @@ export function PhotoSearchProvider({
   const [searchMode, setSearchMode] = useState<SearchMode>('semantic');
   const [sortBy, setSortBy] = useState('date_desc');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState<
+    'all' | 'local' | 'cloud' | 'hybrid'
+  >('all');
   const [favoritesFilter, setFavoritesFilter] = useState('all');
+  const [tag, setTag] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string | null>(null);
   const [dateTo, setDateTo] = useState<string | null>(null);
-  const [timelineData, setTimelineData] = useState<TimelineData[]>(
-    []
-  );
+  const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(true);
+
+  // Grid zoom with localStorage persistence
+  const [gridZoom, setGridZoomState] = useState<GridZoomLevel>(() => {
+    const saved = localStorage.getItem('lm:gridZoom');
+    return (saved as GridZoomLevel) || 'comfortable';
+  });
 
   // Performance monitoring
   const { startSearch, endSearch, recordApiCall, recordCacheHit } =
@@ -89,6 +105,7 @@ export function PhotoSearchProvider({
   const sortByRef = useRef(sortBy);
   const typeFilterRef = useRef(typeFilter);
   const favoritesFilterRef = useRef(favoritesFilter);
+  const tagRef = useRef<string | null>(tag);
   const dateFromRef = useRef<string | null>(dateFrom);
   const dateToRef = useRef<string | null>(dateTo);
 
@@ -113,10 +130,17 @@ export function PhotoSearchProvider({
   useEffect(() => {
     typeFilterRef.current = typeFilter;
   }, [typeFilter]);
+  useEffect(() => {
+    // keep a ref or variable for source filter if needed in the future
+  }, [sourceFilter]);
 
   useEffect(() => {
     favoritesFilterRef.current = favoritesFilter;
   }, [favoritesFilter]);
+
+  useEffect(() => {
+    tagRef.current = tag;
+  }, [tag]);
 
   useEffect(() => {
     dateFromRef.current = dateFrom;
@@ -138,10 +162,13 @@ export function PhotoSearchProvider({
       const currentSortBy = sortByRef.current;
       const currentTypeFilter = typeFilterRef.current;
       const currentFavoritesFilter = favoritesFilterRef.current;
+      const currentTag = tagRef.current;
       const currentDateFrom = dateFromRef.current;
       const currentDateTo = dateToRef.current;
 
-      const searchParams = `${query}|${currentSearchMode}|${currentSortBy}|${currentTypeFilter}|${currentFavoritesFilter}|${currentDateFrom ?? ''}|${currentDateTo ?? ''}`;
+      const searchParams = `${query}|${currentSearchMode}|${currentSortBy}|${currentTypeFilter}|${currentFavoritesFilter}|${
+        currentTag ?? ''
+      }|${currentDateFrom ?? ''}|${currentDateTo ?? ''}`;
       if (!isLoadMore && searchParams === lastSearchParamsRef.current) {
         console.log(
           `[PhotoSearchContext] Skipping duplicate search: ${searchParams}`
@@ -201,8 +228,11 @@ export function PhotoSearchProvider({
           currentSortBy,
           currentTypeFilter,
           currentFavoritesFilter,
+          currentTag,
           currentDateFrom,
           currentDateTo,
+          // pass source filter from state
+          sourceFilter,
           abortController.signal
         );
 
@@ -302,6 +332,11 @@ export function PhotoSearchProvider({
     setDateTo(null);
   }, []);
 
+  const setGridZoom = useCallback((zoom: GridZoomLevel) => {
+    setGridZoomState(zoom);
+    localStorage.setItem('lm:gridZoom', zoom);
+  }, []);
+
   // Fetch timeline data once
   useEffect(() => {
     if (!timelineFetchedRef.current) {
@@ -324,16 +359,7 @@ export function PhotoSearchProvider({
       // Only re-search if we've done the initial fetch
       doSearch(debouncedSearchQuery);
     }
-  }, [
-    debouncedSearchQuery,
-    searchMode,
-    sortBy,
-    typeFilter,
-    favoritesFilter,
-    dateFrom,
-    dateTo,
-    doSearch,
-  ]);
+  }, [debouncedSearchQuery, searchMode, sortBy, typeFilter, sourceFilter]);
 
   const value: PhotoSearchContextType = {
     photos,
@@ -345,18 +371,24 @@ export function PhotoSearchProvider({
     searchMode,
     sortBy,
     typeFilter,
+    sourceFilter,
     favoritesFilter,
+    tag,
     dateFrom,
     dateTo,
     timelineData,
     timelineLoading,
+    gridZoom,
     setSearchQuery,
     setSearchMode,
     setSortBy,
     setTypeFilter,
+    setSourceFilter,
     setFavoritesFilter,
+    setTag,
     setDateRange,
     clearDateRange,
+    setGridZoom,
     loadMore,
     search,
     clearError,

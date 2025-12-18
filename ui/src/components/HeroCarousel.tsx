@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { api } from '../api';
+import SecureLazyImage from './gallery/SecureLazyImage';
 import { usePhotoSearchContext } from '../contexts/PhotoSearchContext';
 
 export function HeroCarousel({ onEnter3D }: { onEnter3D?: () => void }) {
@@ -46,8 +46,9 @@ export function HeroCarousel({ onEnter3D }: { onEnter3D?: () => void }) {
           transition={{ duration: 1.5 }}
           className='absolute inset-0'
         >
-          <img
-            src={api.getImageUrl(photos[currentIndex].path)}
+          <SecureLazyImage
+            path={photos[currentIndex].path}
+            size={800}
             alt='Hero memory'
             className='w-full h-full object-cover opacity-80'
           />

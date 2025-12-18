@@ -1,7 +1,7 @@
 # Roadmap: Living Museum (PhotoSearch)
 
-**Last Updated**: 2025-12-09  
-**Status**: Phase 2 Complete, Core Baseline In Progress
+**Last Updated**: 2025-12-17
+**Status**: Phase 2 Complete, Core Baseline 85% Complete
 
 ---
 
@@ -40,22 +40,48 @@ A **media management app** supporting both **local and cloud** storage with AI-p
 - [x] Multi-select mode with bulk export (ZIP)
 - [x] Download original button
 - [x] Spotlight/Command Palette photo selection
+- [x] Sort by (Date/Name/Size) - verified complete 2025-12-17
+- [x] Filter (Photos/Videos/All) - verified complete 2025-12-17
+- [x] Favorites (Star toggle + filter) - implemented 2025-12-17
+- [x] Delete/Trash (5-second undo) - implemented 2025-12-17
 
 ---
 
-## 🚧 In Progress: Core Baseline
+## 🚧 In Progress: Core Baseline (93% Complete)
 
 **Goal**: Implement essential features that every media management app must have.
 
-| Feature | Priority | Status |
-|---------|----------|--------|
-| **Sort by** (Date/Name/Size) | P0 | ❌ |
-| **Filter** (Photos/Videos/All) | P0 | ❌ |
-| **Favorites** (Star toggle) | P0 | ❌ |
-| **Delete/Trash** | P0 | ❌ |
-| **Albums** (Create, add photos) | P0 | ❌ |
-| **Grid zoom** (Dense ↔ Comfortable) | P1 | ❌ |
-| **Rotate/Flip** (Basic edit) | P1 | ❌ |
+| Feature | Priority | Status | Completion Date |
+|---------|----------|--------|-----------------|
+| **Sort by** (Date/Name/Size) | P0 | ✅ | 2025-12-17 |
+| **Filter** (Photos/Videos/All) | P0 | ✅ | 2025-12-17 |
+| **Favorites** (Star toggle) | P0 | ✅ | 2025-12-17 |
+| **Delete/Trash** | P0 | ✅ | 2025-12-17 |
+| **Albums** (Create, add photos, Smart Albums) | P0 | ✅ | 2025-12-17 |
+| **Grid zoom** (Dense ↔ Comfortable) | P1 | ✅ | 2025-12-17 |
+| **Rotate/Flip** (Basic edit) | P1 | ❌ | - |
+
+### Albums Feature Details (NEW - 2025-12-17)
+
+- ✅ SQLite database with junction tables
+- ✅ 9 REST API endpoints (CRUD + photo management)
+- ✅ Smart Albums engine with 8 rule types
+- ✅ 5 predefined Smart Albums (Screenshots, Large Videos, No Location, Recent, With Location)
+- ✅ Frontend: 6 UI components + routing + navigation
+- ✅ Create/Edit/Delete albums
+- ✅ Add/Remove photos from albums
+- ✅ Auto-populated Smart Albums
+- ✅ Glass-morphism design system compliance
+- 📄 [Full Documentation](./ALBUMS_IMPLEMENTATION_2025-12-17.md)
+
+### Grid Zoom Feature Details (NEW - 2025-12-17)
+
+- ✅ 3 zoom levels (Compact: 7 cols, Comfortable: 5 cols, Spacious: 3 cols)
+- ✅ ZoomControls component with glass-morphism design
+- ✅ Dynamic column breakpoints in PhotoGrid
+- ✅ Keyboard shortcuts (`+` to zoom in, `-` to zoom out)
+- ✅ localStorage persistence
+- ✅ Smooth responsive transitions
 
 ---
 

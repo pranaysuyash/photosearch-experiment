@@ -53,9 +53,12 @@ export function DynamicNotchSearch({ onExpandedChange }: { onExpandedChange?: (e
   }, [expanded, onExpandedChange]);
 
   useEffect(() => {
-    if (isMobile) setMode('mobile');
-    else if (isDesktopApp) setMode('notch');
-    else setMode('bubble');
+    const id = requestAnimationFrame(() => {
+      if (isMobile) setMode('mobile');
+      else if (isDesktopApp) setMode('notch');
+      else setMode('bubble');
+    });
+    return () => cancelAnimationFrame(id);
   }, [isMobile, isDesktopApp]);
 
   useEffect(() => {

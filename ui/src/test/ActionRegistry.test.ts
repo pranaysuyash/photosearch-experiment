@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as fc from 'fast-check';
 import { ActionRegistry } from '../services/ActionRegistry';
 import { ActionCategory, ActionType } from '../types/actions';
-import type { PhotoAction, PhotoContext, Photo } from '../types/actions';
+import type { PhotoAction } from '../types/actions';
 
 describe('ActionRegistry Property Tests', () => {
   let registry: ActionRegistry;
@@ -72,17 +72,17 @@ describe('ActionRegistry Property Tests', () => {
     icon: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
     category: actionCategoryArb,
     type: actionTypeArb,
-    contextRequirements: fc.array(fc.record({
-      type: fc.constantFrom('fileLocation', 'fileType', 'capability', 'app'),
-      value: fc.oneof(fc.string().filter(s => s.trim().length > 0), fc.array(fc.string().filter(s => s.trim().length > 0), { minLength: 1, maxLength: 3 })),
-      operator: fc.option(fc.constantFrom('equals', 'includes', 'excludes'))
-    }), { minLength: 0, maxLength: 3 }),
-    priority: fc.integer({ min: 0, max: 100 }),
-    shortcut: fc.option(fc.string()),
-    description: fc.option(fc.string()),
-    isEnabled: fc.constant(() => true),
-    execute: fc.constant(async () => ({ success: true }))
-  });
+	    contextRequirements: fc.array(fc.record({
+	      type: fc.constantFrom('fileLocation', 'fileType', 'capability', 'app'),
+	      value: fc.oneof(fc.string().filter(s => s.trim().length > 0), fc.array(fc.string().filter(s => s.trim().length > 0), { minLength: 1, maxLength: 3 })),
+	      operator: fc.option(fc.constantFrom('equals', 'includes', 'excludes'), { nil: undefined })
+	    }), { minLength: 0, maxLength: 3 }),
+	    priority: fc.integer({ min: 0, max: 100 }),
+	    shortcut: fc.option(fc.string(), { nil: undefined }),
+	    description: fc.option(fc.string(), { nil: undefined }),
+	    isEnabled: fc.constant(() => true),
+	    execute: fc.constant(async () => ({ success: true }))
+	  });
 
   const photoArb = fc.record({
     path: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),

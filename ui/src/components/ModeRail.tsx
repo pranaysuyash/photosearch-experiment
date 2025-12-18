@@ -18,7 +18,7 @@ function ModeIcon({ mode }: { mode: Mode }) {
   return <Grid3x3 size={18} />;
 }
 
-export function ModeRail({ /* variant = 'standalone' */ }: { variant?: Variant }) {
+export function ModeRail() {
   const location = useLocation();
   const mode = getMode(location.pathname);
   const [open, setOpen] = useState(false);

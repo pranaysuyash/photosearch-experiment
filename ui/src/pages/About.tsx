@@ -23,7 +23,7 @@ const About = () => {
           </h2>
           <p className='text-sm text-muted-foreground leading-relaxed'>
             Living Museum helps you search and rediscover your photo library using
-            metadata, semantics, OCR, and faces — all local-first.
+            metadata, semantics, OCR, and faces — across local folders and connected cloud sources.
           </p>
         </section>
 

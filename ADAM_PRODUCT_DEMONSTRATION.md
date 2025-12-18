@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-PhotoSearch Studio is a **commercial-grade AI photo management and search platform** designed specifically for professional photographers and creative agencies. Unlike consumer tools like Google Photos or Apple Photos, PhotoSearch Studio combines **local-first privacy** with **professional-grade features** and **AI-powered semantic search** to solve the exact challenges you described.
+PhotoSearch Studio is a **commercial-grade AI photo management and search platform** designed specifically for professional photographers and creative agencies. Unlike consumer tools like Google Photos or Apple Photos, PhotoSearch Studio combines a **dual local + cloud library** with **professional-grade features** and **AI-powered semantic search** to solve the exact challenges you described.
 
 ### Your Specific Use Cases - Solved
 
@@ -226,13 +226,13 @@ When you first open PhotoSearch Studio, you'll see a clean, professional interfa
 
 ## Technical Architecture & Performance
 
-### **Local-First Privacy**
+### **Privacy by Design (Dual Local + Cloud)**
 
-**Your data never leaves your control:**
-- All processing happens on your hardware
-- No cloud dependency for core features
-- Optional cloud sync for team collaboration
-- GDPR compliant with full data ownership
+**Your data stays in your control:**
+- Originals can live in local folders and/or your connected cloud sources
+- Processing can run locally or in cloud workers (plan-dependent)
+- No data mining; clear provenance and access controls
+- GDPR-friendly posture with user ownership and exportability
 
 **Performance Specifications:**
 - Handles 100,000+ photos efficiently
@@ -474,7 +474,7 @@ PhotoSearch Studio directly addresses every challenge you mentioned:
 - One-time purchase vs. ongoing subscriptions
 - Immediate productivity gains
 - Professional feature set designed for agencies
-- Local-first privacy with optional cloud features
+- Dual local + cloud library with privacy-by-design controls
 - Scalable from solo photographer to large agency
 
 **Risk mitigation:**

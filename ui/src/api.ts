@@ -133,10 +133,107 @@ export interface UsageStats {
   days_remaining: number;
 }
 
+export interface Source {
+  id: string;
+  type: 'local_folder' | 's3' | 'google_drive';
+  name: string;
+  status: 'pending' | 'connected' | 'auth_required' | 'error';
+  created_at: string;
+  updated_at: string;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+  config: Record<string, unknown>;
+}
+
+export interface Album {
+  id: string;
+  name: string;
+  description?: string;
+  cover_photo_path?: string;
+  created_at: string;
+  updated_at: string;
+  is_smart: boolean;
+  smart_rules?: Record<string, unknown>;
+  photo_count: number;
+}
+
+export interface TagSummary {
+  name: string;
+  photo_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TrashItem {
+  id: string;
+  original_path: string;
+  trashed_path: string;
+  status: string;
+  source_id?: string | null;
+  remote_id?: string | null;
+  created_at: string;
+}
+
 export const api = {
   scan: async (path: string, background: boolean = true) => {
     const res = await apiClient.post('/scan', { path, background });
     return res.data; // Returns { job_id, status } if background=true
+  },
+
+  // Sources (Local + Cloud)
+  listSources: async () => {
+    const res = await apiClient.get('/sources');
+    return res.data as { sources: Source[] };
+  },
+
+  addLocalFolderSource: async (
+    path: string,
+    name?: string,
+    force: boolean = false
+  ) => {
+    const res = await apiClient.post('/sources/local-folder', {
+      path,
+      name,
+      force,
+    });
+    return res.data as { source: Source; job_id: string };
+  },
+
+  addS3Source: async (payload: {
+    name: string;
+    endpoint_url: string;
+    region: string;
+    bucket: string;
+    prefix?: string;
+    access_key_id: string;
+    secret_access_key: string;
+  }) => {
+    const res = await apiClient.post('/sources/s3', payload);
+    return res.data as { source: Source; job_id?: string };
+  },
+
+  addGoogleDriveSource: async (payload: {
+    name: string;
+    client_id: string;
+    client_secret: string;
+  }) => {
+    const res = await apiClient.post('/sources/google-drive', payload);
+    return res.data as { source: Source; auth_url: string };
+  },
+
+  deleteSource: async (sourceId: string) => {
+    const res = await apiClient.delete(`/sources/${sourceId}`);
+    return res.data as { ok: boolean };
+  },
+
+  rescanSource: async (sourceId: string, force: boolean = false) => {
+    const res = await apiClient.post(`/sources/${sourceId}/rescan`, { force });
+    return res.data as { ok: boolean; job_id: string };
+  },
+
+  syncSource: async (sourceId: string) => {
+    const res = await apiClient.post(`/sources/${sourceId}/sync`);
+    return res.data as { ok: boolean; job_id: string };
   },
 
   getJobStatus: async (jobId: string) => {
@@ -166,8 +263,10 @@ export const api = {
     sortBy: string = 'date_desc',
     typeFilter: string = 'all',
     favoritesFilter: string = 'all',
+    tag?: string | null,
     dateFrom?: string | null,
     dateTo?: string | null,
+    sourceFilter: 'all' | 'local' | 'cloud' | 'hybrid' = 'all',
     signal?: AbortSignal
   ) => {
     const res = await apiClient.get('/search', {
@@ -178,7 +277,9 @@ export const api = {
         offset,
         sort_by: sortBy,
         type_filter: typeFilter,
+        source_filter: sourceFilter,
         favorites_filter: favoritesFilter,
+        ...(tag ? { tag } : {}),
         ...(dateFrom ? { date_from: dateFrom } : {}),
         ...(dateTo ? { date_to: dateTo } : {}),
       },
@@ -230,11 +331,50 @@ export const api = {
     }`;
   },
 
+  getServerConfig: async () => {
+    const res = await apiClient.get('/server/config');
+    return res.data;
+  },
+
+  // Obtain a signed thumbnail URL from the server (server must support /image/token and require auth)
+  getSignedImageUrl: async (path: string, size?: number, ttl?: number) => {
+    try {
+      const res = await apiClient.post('/image/token', {
+        path,
+        ttl,
+        scope: 'thumbnail',
+      });
+      const token = res.data?.token;
+      if (!token) return null;
+      return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(token)}${
+        size ? `&size=${size}` : ''
+      }`;
+    } catch {
+      // If token issuance failed (unauthenticated or server error), fall back to regular image URL
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+        size ? `&size=${size}` : ''
+      }`;
+    }
+  },
+
   // Serve the original file (no transcoding); set download=true to force attachment
   getFileUrl: (path: string, opts?: { download?: boolean }) => {
     const encodedPath = encodeURIComponent(path);
     const download = opts?.download ? '&download=true' : '';
     return `${API_BASE}/file?path=${encodedPath}${download}`;
+  },
+
+  // Set auth token (Bearer) for future requests
+  setAuthToken: (token?: string | null) => {
+    if (token)
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    else delete apiClient.defaults.headers.common['Authorization'];
+  },
+
+  // Set simple issuer key header for token issuance
+  setIssuerKey: (key?: string | null) => {
+    if (key) apiClient.defaults.headers.common['x-api-key'] = key;
+    else delete apiClient.defaults.headers.common['x-api-key'];
   },
 
   // Check if file is a video
@@ -261,6 +401,76 @@ export const api = {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  // Trash (Recently Deleted)
+  trashMove: async (filePaths: string[]) => {
+    const res = await apiClient.post('/trash/move', { file_paths: filePaths });
+    return res.data as { moved: Array<{ id: string }>; errors: string[] };
+  },
+
+  removeFromLibrary: async (filePaths: string[]) => {
+    const res = await apiClient.post('/library/remove', {
+      file_paths: filePaths,
+    });
+    return res.data as { removed: string[]; errors: string[] };
+  },
+
+  listTrash: async (limit: number = 200, offset: number = 0) => {
+    const res = await apiClient.get('/trash', { params: { limit, offset } });
+    return res.data as { items: TrashItem[] };
+  },
+
+  trashRestore: async (itemIds: string[]) => {
+    const res = await apiClient.post('/trash/restore', { item_ids: itemIds });
+    return res.data as { restored: string[]; errors: string[] };
+  },
+
+  trashEmpty: async (itemIds?: string[]) => {
+    const res = await apiClient.post('/trash/empty', { item_ids: itemIds });
+    return res.data as { deleted: string[]; errors: string[] };
+  },
+
+  // Tags
+  listTags: async (limit: number = 200, offset: number = 0) => {
+    const res = await apiClient.get('/tags', { params: { limit, offset } });
+    return res.data as { tags: TagSummary[] };
+  },
+
+  createTag: async (name: string) => {
+    const res = await apiClient.post('/tags', { name });
+    return res.data as { ok: boolean };
+  },
+
+  deleteTag: async (name: string) => {
+    const res = await apiClient.delete(`/tags/${encodeURIComponent(name)}`);
+    return res.data as { ok: boolean };
+  },
+
+  addPhotosToTag: async (tagName: string, photoPaths: string[]) => {
+    const res = await apiClient.post(
+      `/tags/${encodeURIComponent(tagName)}/photos`,
+      {
+        photo_paths: photoPaths,
+      }
+    );
+    return res.data as { added: number; total: number };
+  },
+
+  removePhotosFromTag: async (tagName: string, photoPaths: string[]) => {
+    const res = await apiClient.delete(
+      `/tags/${encodeURIComponent(tagName)}/photos`,
+      {
+        data: { photo_paths: photoPaths },
+      }
+    );
+    return res.data as { removed: number };
+  },
+
+  getPhotoTags: async (photoPath: string) => {
+    const encoded = encodeURIComponent(photoPath);
+    const res = await apiClient.get(`/photos/${encoded}/tags`);
+    return res.data as { tags: string[] };
   },
 
   // Get video URL for direct serving
@@ -362,6 +572,106 @@ export const api = {
     return res.data;
   },
 
+  // Albums management
+  listAlbums: async (includeSmart: boolean = true) => {
+    const res = await apiClient.get('/albums', {
+      params: { include_smart: includeSmart },
+    });
+    return res.data as { albums: Album[] };
+  },
+
+  createAlbum: async (name: string, description?: string) => {
+    const res = await apiClient.post('/albums', { name, description });
+    return res.data as { album: Album };
+  },
+
+  getAlbum: async (albumId: string, includePhotos: boolean = true) => {
+    const res = await apiClient.get(`/albums/${albumId}`, {
+      params: { include_photos: includePhotos },
+    });
+    return res.data as { album: Album; photos?: Photo[] };
+  },
+
+  updateAlbum: async (
+    albumId: string,
+    updates: {
+      name?: string;
+      description?: string;
+      cover_photo_path?: string;
+    }
+  ) => {
+    const res = await apiClient.put(`/albums/${albumId}`, updates);
+    return res.data as { album: Album };
+  },
+
+  deleteAlbum: async (albumId: string) => {
+    const res = await apiClient.delete(`/albums/${albumId}`);
+    return res.data as { ok: boolean };
+  },
+
+  addPhotosToAlbum: async (albumId: string, photoPaths: string[]) => {
+    const res = await apiClient.post(`/albums/${albumId}/photos`, {
+      photo_paths: photoPaths,
+    });
+    return res.data as { ok: boolean; added_count: number };
+  },
+
+  removePhotosFromAlbum: async (albumId: string, photoPaths: string[]) => {
+    const res = await apiClient.delete(`/albums/${albumId}/photos`, {
+      data: { photo_paths: photoPaths },
+    });
+    return res.data as { ok: boolean; removed_count: number };
+  },
+
+  refreshSmartAlbum: async (albumId: string) => {
+    const res = await apiClient.post(`/albums/${albumId}/refresh`);
+    return res.data as { ok: boolean; photo_count: number };
+  },
+
+  getPhotoAlbums: async (photoPath: string) => {
+    const encodedPath = encodeURIComponent(photoPath);
+    const res = await apiClient.get(`/photos/${encodedPath}/albums`);
+    return res.data as { albums: Album[] };
+  },
+
+  // ========== Image Transformation ==========
+
+  rotatePhoto: async (
+    path: string,
+    degrees: 90 | -90 | 180 | 270,
+    backup: boolean = true
+  ) => {
+    const res = await apiClient.post('/photos/rotate', {
+      path,
+      degrees,
+      backup,
+    });
+    return res.data as {
+      ok: boolean;
+      path: string;
+      operation: string;
+      backup_created: boolean;
+    };
+  },
+
+  flipPhoto: async (
+    path: string,
+    direction: 'horizontal' | 'vertical',
+    backup: boolean = true
+  ) => {
+    const res = await apiClient.post('/photos/flip', {
+      path,
+      direction,
+      backup,
+    });
+    return res.data as {
+      ok: boolean;
+      path: string;
+      operation: string;
+      backup_created: boolean;
+    };
+  },
+
   // Health check for backend connectivity
   healthCheck: async () => {
     try {
@@ -370,5 +680,81 @@ export const api = {
     } catch {
       return false;
     }
+  },
+
+  // API Schema and Documentation
+  getApiSchema: async () => {
+    const res = await apiClient.get('/api/schema');
+    return res.data;
+  },
+
+  // Cache Management
+  getCacheStats: async () => {
+    const res = await apiClient.get('/api/cache/stats');
+    return res.data;
+  },
+
+  clearCache: async () => {
+    const res = await apiClient.post('/api/cache/clear');
+    return res.data;
+  },
+
+  cleanupCache: async () => {
+    const res = await apiClient.get('/api/cache/cleanup');
+    return res.data;
+  },
+
+  // Logging
+  testLogging: async () => {
+    const res = await apiClient.get('/api/logs/test');
+    return res.data;
+  },
+
+  // Image Analysis
+  analyzeImage: async (path: string) => {
+    const res = await apiClient.post('/ai/analyze', { path });
+    return res.data;
+  },
+
+  // Prefer a neutral name for the client-side helper; keep the old name as an alias for compatibility
+  getAnalysis: async (path: string) => {
+    const res = await apiClient.get(`/ai/analysis/${encodeURIComponent(path)}`);
+    return res.data;
+  },
+
+  getAIAnalysis: async (path: string) => {
+    // Backwards-compatible alias
+    return await api.getAnalysis(path);
+  },
+
+  // Photo Rating System
+  getPhotoRating: async (path: string) => {
+    const res = await apiClient.get(`/api/photos/${encodeURIComponent(path)}/rating`);
+    return res.data.rating;
+  },
+
+  setPhotoRating: async (path: string, rating: number) => {
+    const res = await apiClient.post(
+      `/api/photos/${encodeURIComponent(path)}/rating`,
+      { rating }
+    );
+    return res.data;
+  },
+
+  removePhotoRating: async (path: string) => {
+    const res = await apiClient.delete(`/api/photos/${encodeURIComponent(path)}/rating`);
+    return res.data;
+  },
+
+  getPhotosByRating: async (rating: number, limit: number = 100, offset: number = 0) => {
+    const res = await apiClient.get(`/api/ratings/photos/${rating}`, {
+      params: { limit, offset }
+    });
+    return res.data;
+  },
+
+  getRatingStats: async () => {
+    const res = await apiClient.get('/api/ratings/stats');
+    return res.data.stats;
   },
 };

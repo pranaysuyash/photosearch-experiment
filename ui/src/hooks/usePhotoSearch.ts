@@ -57,7 +57,16 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
       
       console.log(`[usePhotoSearch] Fetching: query="${searchQuery}" mode=${searchMode} offset=${effectiveOffset}`);
       
-      const res = await api.search(searchQuery, searchMode, LIMIT, effectiveOffset, sortBy, typeFilter);
+      const res = await api.search(
+        searchQuery,
+        searchMode,
+        LIMIT,
+        effectiveOffset,
+        sortBy,
+        typeFilter,
+        'all',
+        null
+      );
       const newPhotos = res.results || [];
 
       if (!isLoadMore) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -46,7 +47,7 @@ const ActionIcon: React.FC<ActionIconProps> = ({ iconName, size = 16 }) => {
 interface ActionItemProps {
   action: PhotoAction;
   photo: Photo;
-  onExecute: (actionId: string, result: any) => void;
+  onExecute: (actionId: string, result?: unknown) => void;
   onClose: () => void;
 }
 
@@ -67,16 +68,17 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClo
     }
   }, [action.type]);
 
-  const handleExecute = async (options?: any) => {
+  const handleExecute = async (options?: unknown) => {
     if (isExecuting) return;
     
     setIsExecuting(true);
     try {
       // Mock execution for now - in real implementation this would use ActionService
-      const result = await action.execute(photo, options);
-      onExecute(action.id, result);
+      const result = await action.execute(photo, options as any);
+      onExecute(action.id, result as unknown);
       
-      if (result.success) {
+      // If result is known shape check safely
+      if (result && typeof (result as any).success !== 'undefined' && (result as any).success) {
         onClose();
       }
     } catch (error) {
@@ -228,7 +230,10 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
         y = viewportHeight - rect.height - 10;
       }
       
-      setAdjustedPosition({ x: Math.max(10, x), y: Math.max(10, y) });
+      const nx = Math.max(10, x);
+      const ny = Math.max(10, y);
+      const raf = requestAnimationFrame(() => setAdjustedPosition({ x: nx, y: ny }));
+      return () => cancelAnimationFrame(raf);
     }
   }, [position, actions]);
 

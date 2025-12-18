@@ -3,6 +3,7 @@ import { Command } from 'cmdk';
 import { Search, Zap, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { type Photo, api } from '../../api';
+import SecureLazyImage from '../gallery/SecureLazyImage';
 import {
   isLocalStorageAvailable,
   localGetItem,
@@ -11,6 +12,7 @@ import {
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { useNavigate } from 'react-router-dom';
 import { glass } from '../../design/glass';
+import { pickDirectory } from '../../utils/pickDirectory';
 
 interface SpotlightProps {
   onPhotoSelect?: (photo: Photo) => void;
@@ -54,8 +56,6 @@ export function Spotlight({
     type: 'success' | 'error' | 'info';
     details?: Record<string, unknown>;
   } | null>(null);
-  const [scanPath, setScanPath] = useState<string>('');
-  const [showScanInput, setShowScanInput] = useState(false);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -66,83 +66,81 @@ export function Spotlight({
     };
   }, []);
 
-  const handleScan = useCallback(
-    async (pathToScan?: string) => {
-      const path = pathToScan || scanPath;
+  const handleScan = useCallback(async () => {
+    setStatus({ message: 'Choose a folder…', type: 'info' });
+    const picked = await pickDirectory();
+    if (!picked) {
+      setStatus({
+        message:
+          'Local folder scanning is available in the desktop app. Connect cloud sources or open Settings → Sources.',
+        type: 'info',
+      });
+      return;
+    }
 
-      if (!path) {
-        // Show input for path
-        setShowScanInput(true);
-        setStatus({ message: 'Enter folder path to scan', type: 'info' });
-        return;
+    setStatus({ message: 'Starting scan…', type: 'info' });
+
+    try {
+      const res = await api.addLocalFolderSource(picked);
+      const jobId = res.job_id;
+
+      // Record recent jobs for the Jobs page
+      try {
+        if (isLocalStorageAvailable()) {
+          const raw = localGetItem('lm:recentJobs');
+          const existing: string[] = raw ? JSON.parse(raw) : [];
+          const next = [jobId, ...existing.filter((id) => id !== jobId)].slice(
+            0,
+            20
+          );
+          localSetItem('lm:recentJobs', JSON.stringify(next));
+          window.dispatchEvent(new Event('lm:jobsChange'));
+        }
+      } catch {
+        // ignore
       }
 
-      setShowScanInput(false);
-      setStatus({ message: 'Starting scan...', type: 'info' });
+      setStatus({ message: 'Scan started. Processing...', type: 'info' });
 
-      try {
-        const res = await api.scan(path, true);
-        const jobId = res.job_id;
+      // Clear any existing poll
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+      }
 
-        // Record recent jobs for the Jobs page
+      // Polling with ref tracking
+      pollRef.current = setInterval(async () => {
         try {
-          if (isLocalStorageAvailable()) {
-            const raw = localGetItem('lm:recentJobs');
-            const existing: string[] = raw ? JSON.parse(raw) : [];
-            const next = [
-              jobId,
-              ...existing.filter((id) => id !== jobId),
-            ].slice(0, 20);
-            localSetItem('lm:recentJobs', JSON.stringify(next));
-            window.dispatchEvent(new Event('lm:jobsChange'));
-          }
-        } catch {
-          // ignore
-        }
-
-        setStatus({ message: 'Scan started. Processing...', type: 'info' });
-
-        // Clear any existing poll
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-        }
-
-        // Polling with ref tracking
-        pollRef.current = setInterval(async () => {
-          try {
-            const job = await api.getJobStatus(jobId);
-            if (job.status === 'completed') {
-              if (pollRef.current) clearInterval(pollRef.current);
-              pollRef.current = null;
-              setStatus({ message: 'Scan Complete!', type: 'success' });
-              setTimeout(() => {
-                setOpen(false);
-                setStatus(null);
-              }, 2000);
-              // Refresh results
-              setSearchQuery(query);
-            } else if (job.status === 'failed') {
-              if (pollRef.current) clearInterval(pollRef.current);
-              pollRef.current = null;
-              setStatus({ message: `Failed: ${job.message}`, type: 'error' });
-            } else {
-              setStatus({
-                message: job.message || 'Processing...',
-                type: 'info',
-              });
-            }
-          } catch {
+          const job = await api.getJobStatus(jobId);
+          if (job.status === 'completed') {
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
-            setStatus({ message: 'Error tracking job', type: 'error' });
+            setStatus({ message: 'Scan Complete!', type: 'success' });
+            setTimeout(() => {
+              setOpen(false);
+              setStatus(null);
+            }, 2000);
+            // Refresh results
+            setSearchQuery(query);
+          } else if (job.status === 'failed') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setStatus({ message: `Failed: ${job.message}`, type: 'error' });
+          } else {
+            setStatus({
+              message: job.message || 'Processing...',
+              type: 'info',
+            });
           }
-        }, 1000);
-      } catch {
-        setStatus({ message: 'Failed to start scan', type: 'error' });
-      }
-    },
-    [scanPath, setShowScanInput, setStatus, setSearchQuery, query]
-  );
+        } catch {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setStatus({ message: 'Error tracking job', type: 'error' });
+        }
+      }, 1000);
+    } catch {
+      setStatus({ message: 'Failed to start scan', type: 'error' });
+    }
+  }, [query, setOpen, setSearchQuery, setStatus]);
 
   // Get system commands - use callback to stabilize reference
   // use handleScan directly as it is already memoized via useCallback
@@ -293,52 +291,24 @@ export function Spotlight({
 
               {status && (
                 <div
-                  className={`px-4 py-2 text-sm border-b border-border flex items-center ${status.type === 'error'
-                    ? 'text-destructive bg-destructive/10'
-                    : status.type === 'success'
+                  className={`px-4 py-2 text-sm border-b border-border flex items-center ${
+                    status.type === 'error'
+                      ? 'text-destructive bg-destructive/10'
+                      : status.type === 'success'
                       ? 'text-green-500 bg-green-500/10'
                       : 'text-muted-foreground bg-muted/50'
-                    }`}
+                  }`}
                 >
                   <div
-                    className={`w-2 h-2 rounded-full mr-2 ${status.type === 'error'
-                      ? 'bg-destructive'
-                      : status.type === 'success'
+                    className={`w-2 h-2 rounded-full mr-2 ${
+                      status.type === 'error'
+                        ? 'bg-destructive'
+                        : status.type === 'success'
                         ? 'bg-green-500'
                         : 'animate-pulse bg-blue-500'
-                      }`}
+                    }`}
                   />
                   {status.message}
-                </div>
-              )}
-
-              {showScanInput && (
-                <div className='px-4 py-3 border-b border-border bg-muted/30'>
-                  <label className='text-xs text-muted-foreground mb-1 block'>
-                    Folder path to scan:
-                  </label>
-                  <div className='flex gap-2'>
-                    <input
-                      type='text'
-                      value={scanPath}
-                      onChange={(e) => setScanPath(e.target.value)}
-                      placeholder='/Users/you/Pictures'
-                      className='flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm outline-none focus:ring-2 focus:ring-primary'
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && scanPath) {
-                          handleScan(scanPath);
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => handleScan(scanPath)}
-                      disabled={!scanPath}
-                      className='px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium disabled:opacity-50'
-                    >
-                      Scan
-                    </button>
-                  </div>
                 </div>
               )}
 
@@ -380,10 +350,12 @@ export function Spotlight({
                         className='flex items-center px-2 py-2 rounded-lg cursor-pointer hover:bg-accent hover:text-accent-foreground aria-selected:bg-accent aria-selected:text-accent-foreground'
                       >
                         <div className='w-8 h-8 rounded bg-secondary mr-3 overflow-hidden flex-shrink-0'>
-                          <img
-                            src={api.getImageUrl(photo.path)}
-                            alt=''
-                            className='w-full h-full object-cover'
+                          <SecureLazyImage
+                            path={photo.path}
+                            size={120}
+                            alt={photo.filename}
+                            className='w-8 h-8'
+                            showBadge={false}
                           />
                         </div>
                         <div className='flex flex-col overflow-hidden'>

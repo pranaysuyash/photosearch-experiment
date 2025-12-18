@@ -575,7 +575,7 @@ A professional-grade editing and analysis suite integrated with PhotoSearch, sim
 ✅ Advanced search capabilities
 ✅ Professional organization tools
 ✅ Customizable workflows
-✅ Local-first privacy approach
+✅ Privacy-by-design dual local + cloud
 ✅ Extensible architecture
 ```
 

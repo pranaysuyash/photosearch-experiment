@@ -124,9 +124,7 @@ This document evaluates the current React UI, interaction patterns, accessibilit
 
 1. Add path-sandboxing review and testing for image URLs.
 2. Implement the semantic/metadata toggle with tooltips explaining which type of search to use.
-3. Add an initial settings page to manage privacy & AI provider choices.
-4. Add support for pagination/virtualization for large datasets.
-5. Implement the photo detail modal with metadata & version history.
-6. Add selection & batch operations.
+
+Security / Image Serving: The UI now supports signed/ephemeral image URLs via `api.getSignedImageUrl()` and includes a `ServerConfigPanel` (Settings → Sync & Security) that shows whether signed URLs are enabled on the server and allows developers to provide an issuer API key or Bearer JWT for testing token issuance. 3. Add an initial settings page to manage privacy & AI provider choices. 4. Add support for pagination/virtualization for large datasets. 5. Implement the photo detail modal with metadata & version history. 6. Add selection & batch operations.
 
 End of UI Assessment

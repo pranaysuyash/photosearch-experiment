@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Pause, Play, HelpCircle, Map as MapIcon } from 'lucide-react';
 import { type Photo, api } from '../../api';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
+import SecureLazyImage from '../gallery/SecureLazyImage';
 
 interface PhotoGlobeProps {
   photos: Photo[];
@@ -28,11 +29,11 @@ function parseCssAccentRgb(): THREE.Color {
 }
 
 function useGeoJson(url: string) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<unknown>(null);
 
   useEffect(() => {
     let cancelled = false;
-    setData(null);
+    const clearId = requestAnimationFrame(() => setData(null));
     fetch(url)
       .then((r) => (r.ok ? r.json() : null))
       .then((json) => {
@@ -41,10 +42,11 @@ function useGeoJson(url: string) {
       })
       .catch(() => {
         if (cancelled) return;
-        setData(null);
+        requestAnimationFrame(() => setData(null));
       });
     return () => {
       cancelled = true;
+      cancelAnimationFrame(clearId);
     };
   }, [url]);
 
@@ -817,8 +819,8 @@ function RegionFillOverlay({
     level === 'admin1'
       ? '/ne_50m_admin_1_states_provinces.geojson'
       : countryDetail === '50m'
-        ? '/ne_50m_admin_0_countries.geojson'
-        : '/ne_110m_admin_0_countries.geojson';
+      ? '/ne_50m_admin_0_countries.geojson'
+      : '/ne_110m_admin_0_countries.geojson';
   const geoJson = useGeoJson(url);
 
   const index = useMemo(() => {
@@ -995,10 +997,12 @@ function PhotoMarker({
         <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
           <Html distanceFactor={10} center zIndexRange={[100, 0]}>
             <div className='glass-surface glass-surface--strong rounded-xl p-2 shadow-2xl transform -translate-y-8 cursor-pointer pointer-events-none w-max'>
-              <img
-                src={api.getImageUrl(primary.path, 150)}
+              <SecureLazyImage
+                path={primary.path}
+                size={150}
                 alt={primary.filename}
-                className='w-32 h-24 object-cover rounded-lg'
+                className='w-32 h-24 rounded-lg'
+                showBadge={false}
               />
               <p className='text-white text-xs mt-1 text-center truncate max-w-32 font-medium'>
                 {primary.filename}
@@ -1113,8 +1117,8 @@ function RotatingEarth({
           ? '50m'
           : '110m'
         : d > 16.5
-          ? '110m'
-          : '50m';
+        ? '110m'
+        : '50m';
     if (nextDetail !== countryDetailRef.current) {
       countryDetailRef.current = nextDetail;
       setCountryDetail(nextDetail);
@@ -1124,12 +1128,12 @@ function RotatingEarth({
       borderMode === 'admin1'
         ? 'admin1'
         : borderMode === 'countries'
-          ? 'countries'
-          : borderMode === 'auto'
-            ? d < 15.2
-              ? 'admin1'
-              : 'countries'
-            : 'countries';
+        ? 'countries'
+        : borderMode === 'auto'
+        ? d < 15.2
+          ? 'admin1'
+          : 'countries'
+        : 'countries';
     if (borderMode === 'off') return;
     if (nextLevel !== effectiveRegionLevel) setEffectiveRegionLevel(nextLevel);
   });
@@ -1317,15 +1321,31 @@ export function PhotoGlobe({
   }, [photos]);
 
   useEffect(() => {
-    if (hoveredPhoto) {
-      setOverrideAccentUrl(
-        'globeHover',
-        api.getImageUrl(hoveredPhoto.path, 96)
-      );
-    } else {
-      clearOverrideAccent('globeHover');
+    let mounted = true;
+    async function setAccent() {
+      if (!hoveredPhoto) return;
+      try {
+        const url = await api.getSignedImageUrl(hoveredPhoto.path, 96);
+        if (!mounted) return;
+        setOverrideAccentUrl(
+          'globeHover',
+          url || api.getImageUrl(hoveredPhoto.path, 96)
+        );
+      } catch (e) {
+        if (!mounted) return;
+        setOverrideAccentUrl(
+          'globeHover',
+          api.getImageUrl(hoveredPhoto.path, 96)
+        );
+      }
     }
-    return () => clearOverrideAccent('globeHover');
+
+    if (hoveredPhoto) setAccent();
+    else clearOverrideAccent('globeHover');
+    return () => {
+      mounted = false;
+      clearOverrideAccent('globeHover');
+    };
   }, [hoveredPhoto, setOverrideAccentUrl, clearOverrideAccent]);
 
   // Space key to toggle rotation
@@ -1364,22 +1384,23 @@ export function PhotoGlobe({
               m === 'off'
                 ? 'auto'
                 : m === 'auto'
-                  ? 'countries'
-                  : m === 'countries'
-                    ? 'admin1'
-                    : 'off'
+                ? 'countries'
+                : m === 'countries'
+                ? 'admin1'
+                : 'off'
             )
           }
-          className={`btn-glass ${borderMode === 'off' ? 'btn-glass--muted' : 'btn-glass--primary'
-            } w-10 h-10 p-0 justify-center`}
+          className={`btn-glass ${
+            borderMode === 'off' ? 'btn-glass--muted' : 'btn-glass--primary'
+          } w-10 h-10 p-0 justify-center`}
           title={
             borderMode === 'off'
               ? 'Show borders'
               : borderMode === 'auto'
-                ? 'Borders: Auto (countries → admin-1 on zoom)'
-                : borderMode === 'countries'
-                  ? 'Borders: Countries (click for admin-1)'
-                  : 'Borders: Admin-1 (click to hide)'
+              ? 'Borders: Auto (countries → admin-1 on zoom)'
+              : borderMode === 'countries'
+              ? 'Borders: Countries (click for admin-1)'
+              : 'Borders: Admin-1 (click to hide)'
           }
           aria-label='Borders'
         >
@@ -1417,10 +1438,10 @@ export function PhotoGlobe({
               {borderMode === 'off'
                 ? 'Off'
                 : borderMode === 'auto'
-                  ? 'Auto'
-                  : borderMode === 'countries'
-                    ? 'Countries'
-                    : 'Admin-1'}
+                ? 'Auto'
+                : borderMode === 'countries'
+                ? 'Countries'
+                : 'Admin-1'}
             </div>
             {locationStats.missing > 0 && (
               <div className='mt-2 text-white/60'>

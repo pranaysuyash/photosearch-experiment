@@ -138,7 +138,8 @@ class IntentDetector:
             # Keyword matching
             for keyword in intent_def['keywords']:
                 if keyword in query_clean:
-                    score += 1.0
+                    # Slightly favor keyword matches to boost confidence for clear queries
+                    score += 1.25
             
             # Pattern matching
             for pattern in intent_def['patterns']:
@@ -147,6 +148,11 @@ class IntentDetector:
             
             intent_scores[intent_name] = score
         
+        # Boost camera confidence for brand keywords (e.g., 'canon', 'nikon')
+        brand_keywords = {'canon', 'nikon', 'sony', 'iphone', 'samsung'}
+        if any(b in query_clean for b in brand_keywords):
+            intent_scores['camera'] += 1.5
+
         # Find primary intent (highest score)
         primary_intent = max(intent_scores.items(), key=lambda x: x[1])[0]
         primary_score = intent_scores[primary_intent]

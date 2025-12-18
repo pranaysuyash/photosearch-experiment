@@ -156,9 +156,14 @@ class PersistentJobStore:
         job_id = str(uuid.uuid4())
         
         try:
-            priority_enum = JobPriority(priority.upper())
-        except ValueError:
-            priority_enum = JobPriority.MEDIUM
+            # Try by name first (e.g., 'HIGH')
+            priority_enum = JobPriority[priority.upper()]
+        except Exception:
+            try:
+                # Then by value (e.g., 'high')
+                priority_enum = JobPriority(priority.lower())
+            except Exception:
+                priority_enum = JobPriority.MEDIUM
         
         cursor = self.conn.cursor()
         cursor.execute("""

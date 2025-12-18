@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Film } from 'lucide-react';
-import { api, type Photo } from '../../api';
+import type { Photo } from '../../api';
+import SecureLazyImage from '../gallery/SecureLazyImage';
 
 interface StoryModeProps {
   photos: Photo[];
@@ -87,15 +88,12 @@ export function StoryMode({
               whileHover={{ scale: 1.02, y: -4 }}
               onClick={() => onPhotoSelect?.(photo)}
             >
-              {/* Image with lazy loading */}
-              <img
-                src={api.getImageUrl(photo.path, 800)}
+              <SecureLazyImage
+                path={photo.path}
+                size={800}
                 alt={photo.filename}
-                className='w-full h-auto object-cover transition-transform duration-700 group-hover:scale-110'
-                loading='lazy'
-                onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = 'none';
-                }}
+                className='w-full aspect-[4/3] object-cover'
+                showBadge={false}
               />
 
               {/* Enhanced overlay */}
@@ -115,8 +113,9 @@ export function StoryMode({
                   <div className='mt-2 flex items-center gap-2'>
                     <div className='h-1 flex-1 bg-white/30 rounded-full overflow-hidden'>
                       <div
-                        className={`h-full bg-green-400 transition-all duration-500 score-fill-${Math.round(Math.round(photo.score * 100) / 10) * 10
-                          }`}
+                        className={`h-full bg-green-400 transition-all duration-500 score-fill-${
+                          Math.round(Math.round(photo.score * 100) / 10) * 10
+                        }`}
                       />
                     </div>
                     <span className='text-[10px] text-white/90'>

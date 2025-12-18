@@ -9,6 +9,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { EnhancedSearchUI } from '../search/EnhancedSearchUI';
+import { Hash, X } from 'lucide-react';
 
 interface PageSearchWrapperProps {
   children: React.ReactNode;
@@ -28,8 +29,12 @@ export const PageSearchWrapper = ({
     setSortBy,
     typeFilter,
     setTypeFilter,
+    sourceFilter,
+    setSourceFilter,
     favoritesFilter,
     setFavoritesFilter,
+    tag,
+    setTag,
     search,
   } = usePhotoSearchContext();
 
@@ -51,12 +56,54 @@ export const PageSearchWrapper = ({
           setSortBy={setSortBy}
           typeFilter={typeFilter}
           setTypeFilter={setTypeFilter}
+          sourceFilter={sourceFilter}
+          setSourceFilter={setSourceFilter}
           favoritesFilter={favoritesFilter}
           setFavoritesFilter={setFavoritesFilter}
+          tag={tag}
+          setTag={setTag}
           onSearch={() => search(searchQuery)}
           isCompact={false}
           heroTitle={null}
         />
+
+        {tag && (
+          <div className='mt-3 flex items-center justify-center'>
+            <div className='glass-surface rounded-full px-2 py-1 flex items-center gap-2'>
+              <div className='flex items-center gap-1 text-xs text-muted-foreground px-2 py-1'>
+                <Hash size={12} />
+                <span className='text-foreground font-semibold'>#{tag}</span>
+              </div>
+              <button
+                className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                onClick={() => setTag(null)}
+                title='Clear tag filter'
+                aria-label='Clear tag filter'
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {sourceFilter && sourceFilter !== 'all' && (
+          <div className='mt-3 flex items-center justify-center'>
+            <div className='glass-surface rounded-full px-3 py-1 flex items-center gap-2 text-xs'>
+              <span className='text-muted-foreground'>Source:</span>
+              <span className='text-foreground font-semibold'>
+                {sourceFilter.charAt(0).toUpperCase() + sourceFilter.slice(1)}
+              </span>
+              <button
+                className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                onClick={() => setSourceFilter('all')}
+                title='Clear source filter'
+                aria-label='Clear source filter'
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Page Content */}

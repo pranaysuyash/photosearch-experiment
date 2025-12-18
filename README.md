@@ -17,7 +17,7 @@ This is a modular, Python-based photo search application powered by AI. The proj
 - ✅ **Modular Design** - Each file can be imported and reused
 - ✅ **Documentation-Driven** - Comprehensive docs for every task
 - ✅ **Backend-Focused** - Robust API for the "Studio" frontend
-- ✅ **Private by Design** - Local-first AI processing (no data mining)
+- ✅ **Private by Design** - Dual local + cloud sources, no data mining, and configurable processing (local and/or cloud, depending on plan)
 - ✅ **Commercial Focus** - "Studio" feature set is a premium differentiator
 
 ---

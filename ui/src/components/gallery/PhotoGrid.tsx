@@ -2,15 +2,30 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Masonry from 'react-masonry-css';
 import { type Photo, api } from '../../api';
 import { useRef, useEffect, useState, useCallback, memo } from 'react';
-import { Play, Check, Download, Trash2, Star, StarOff } from 'lucide-react';
+import {
+  Play,
+  Check,
+  Download,
+  Trash2,
+  Star,
+  StarOff,
+  FolderPlus,
+  Hash,
+} from 'lucide-react';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { SortControls } from './SortControls';
 import { MediaTypeFilter } from './MediaTypeFilter';
 import { FavoritesFilter } from './FavoritesFilter';
 import { FavoritesToggle } from './FavoritesToggle';
+import { ZoomControls } from './ZoomControls';
 import { MatchExplanation } from '../search/MatchExplanation';
+import { SecureLazyImage } from './SecureLazyImage';
+
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
+import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { ContextMenu } from '../actions/ContextMenu';
+import { AddToAlbumDialog } from '../albums/AddToAlbumDialog';
+import { AddToTagDialog } from '../tags/AddToTagDialog';
 import './modern-gallery.css';
 
 interface PhotoGridProps {
@@ -50,6 +65,8 @@ export function PhotoGrid({
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
+  const [showAddToAlbum, setShowAddToAlbum] = useState(false);
+  const [showAddToTag, setShowAddToTag] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
     photo: Photo;
@@ -58,6 +75,7 @@ export function PhotoGrid({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { setBaseAccentUrl, setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
+  const { gridZoom, refresh } = usePhotoSearchContext();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -148,24 +166,29 @@ export function PhotoGrid({
     if (selectedPaths.size === 0) return;
 
     const confirmed = window.confirm(
-      `Are you sure you want to delete ${selectedPaths.size} photo${selectedPaths.size > 1 ? 's' : ''
-      }? This action cannot be undone.`
+      `Move ${selectedPaths.size} item${
+        selectedPaths.size > 1 ? 's' : ''
+      } to Trash? You can restore from Trash.`
     );
 
     if (!confirmed) return;
 
     setDeleting(true);
     try {
-      await api.deletePhotos(Array.from(selectedPaths), true);
+      const res = await api.trashMove(Array.from(selectedPaths));
+      if (res.errors?.length) {
+        console.warn('Trash move errors:', res.errors);
+      }
       // Clear selection and notify parent to refresh
       clearSelection();
       onPhotosDeleted?.();
+      refresh();
     } catch (e) {
-      console.error('Bulk delete failed:', e);
+      console.error('Trash move failed:', e);
     } finally {
       setDeleting(false);
     }
-  }, [selectedPaths, clearSelection, onPhotosDeleted]);
+  }, [selectedPaths, clearSelection, onPhotosDeleted, refresh]);
 
   const handleBulkFavorite = useCallback(
     async (action: 'add' | 'remove') => {
@@ -212,15 +235,18 @@ export function PhotoGrid({
     }
   }, []);
 
-  const handleContextMenu = useCallback((event: React.MouseEvent, photo: Photo) => {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    setContextMenu({
-      photo,
-      position: { x: event.clientX, y: event.clientY }
-    });
-  }, []);
+  const handleContextMenu = useCallback(
+    (event: React.MouseEvent, photo: Photo) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      setContextMenu({
+        photo,
+        position: { x: event.clientX, y: event.clientY },
+      });
+    },
+    []
+  );
 
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
@@ -228,7 +254,7 @@ export function PhotoGrid({
 
   const handleActionExecute = useCallback((actionId: string, result: any) => {
     console.log('Action executed:', actionId, result);
-    
+
     // Handle specific action results
     if (result.success) {
       // You could show a toast notification here
@@ -279,14 +305,40 @@ export function PhotoGrid({
     );
   }
 
-  const breakpointColumnsObj = {
-    default: 5,
-    1536: 5,
-    1280: 4,
-    1024: 3,
-    768: 2,
-    640: 1,
+  // Dynamic column breakpoints based on zoom level
+  const getBreakpointColumns = () => {
+    switch (gridZoom) {
+      case 'compact':
+        return {
+          default: 7,
+          1536: 7,
+          1280: 6,
+          1024: 5,
+          768: 4,
+          640: 3,
+        };
+      case 'comfortable':
+        return {
+          default: 5,
+          1536: 5,
+          1280: 4,
+          1024: 3,
+          768: 2,
+          640: 1,
+        };
+      case 'spacious':
+        return {
+          default: 3,
+          1536: 3,
+          1280: 3,
+          1024: 2,
+          768: 2,
+          640: 1,
+        };
+    }
   };
+
+  const breakpointColumnsObj = getBreakpointColumns();
 
   // Loading skeleton for initial load (no photos yet)
   if (loading && photos.length === 0) {
@@ -329,8 +381,9 @@ export function PhotoGrid({
       <div className='mb-6 flex flex-wrap items-center gap-2 sm:gap-3'>
         <motion.button
           onClick={() => setSelectMode(!selectMode)}
-          className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'
-            } text-sm font-semibold transition-all duration-300`}
+          className={`btn-glass ${
+            selectMode ? 'btn-glass--primary' : 'btn-glass--muted'
+          } text-sm font-semibold transition-all duration-300`}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -379,6 +432,24 @@ export function PhotoGrid({
                 </button>
 
                 <button
+                  onClick={() => setShowAddToAlbum(true)}
+                  className='btn-glass text-sm font-medium'
+                  title='Add selected items to albums'
+                >
+                  <FolderPlus size={14} />
+                  Album
+                </button>
+
+                <button
+                  onClick={() => setShowAddToTag(true)}
+                  className='btn-glass text-sm font-medium'
+                  title='Add tags to selected items'
+                >
+                  <Hash size={14} />
+                  Tags
+                </button>
+
+                <button
                   onClick={() => handleBulkFavorite('add')}
                   disabled={favoriting}
                   className='btn-glass text-sm font-medium'
@@ -402,10 +473,10 @@ export function PhotoGrid({
                   onClick={handleBulkDelete}
                   disabled={deleting}
                   className='btn-glass btn-glass--danger text-sm font-medium'
-                  title='Delete selected photos'
+                  title='Move selected items to Trash'
                 >
                   <Trash2 size={14} />
-                  {deleting ? 'Deleting...' : 'Delete'}
+                  {deleting ? 'Trashing...' : 'Trash'}
                 </button>
               </motion.div>
             )}
@@ -432,6 +503,11 @@ export function PhotoGrid({
           </div>
         )}
 
+        {/* Zoom Controls */}
+        <div className='w-full sm:w-auto'>
+          <ZoomControls />
+        </div>
+
         {/* Sort Controls */}
         {sortBy && onSortChange && (
           <div className='w-full sm:ml-auto sm:w-auto'>
@@ -452,8 +528,9 @@ export function PhotoGrid({
             <motion.div
               key={photo.path}
               layoutId={`photo-${photo.path}`}
-              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${isSelected ? 'selected' : ''
-                }`}
+              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${
+                isSelected ? 'selected' : ''
+              }`}
               style={
                 {
                   '--item-index': i,
@@ -473,19 +550,21 @@ export function PhotoGrid({
                 selectMode ? toggleSelection(photo.path) : onPhotoSelect(photo)
               }
               onContextMenu={(e) => handleContextMenu(e, photo)}
-              onMouseEnter={() =>
+              onMouseEnter={async () => {
+                const url = await api.getSignedImageUrl(photo.path, 96);
                 setOverrideAccentUrl(
                   'gridHover',
-                  api.getImageUrl(photo.path, 96)
-                )
-              }
+                  url || api.getImageUrl(photo.path, 96)
+                );
+              }}
               onMouseLeave={() => clearOverrideAccent('gridHover')}
-              onFocus={() =>
+              onFocus={async () => {
+                const url = await api.getSignedImageUrl(photo.path, 96);
                 setOverrideAccentUrl(
                   'gridHover',
-                  api.getImageUrl(photo.path, 96)
-                )
-              }
+                  url || api.getImageUrl(photo.path, 96)
+                );
+              }}
               onBlur={() => clearOverrideAccent('gridHover')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -501,11 +580,11 @@ export function PhotoGrid({
               role='button'
               aria-label={`Select ${photo.filename}`}
             >
-              <img
-                src={api.getImageUrl(photo.path)}
+              <SecureLazyImage
+                path={photo.path}
+                size={96}
                 alt={photo.filename}
                 className='gallery-image w-full h-auto object-cover rounded-xl'
-                loading='lazy'
               />
 
               {/* Enhanced Selection Checkbox */}
@@ -537,7 +616,7 @@ export function PhotoGrid({
 
               {/* Match Explanation - Overlaid on image at bottom */}
               {photo.matchExplanation && (
-                <div 
+                <div
                   onClick={(e) => {
                     console.log('Wrapper div clicked - stopping propagation');
                     e.preventDefault();
@@ -549,9 +628,15 @@ export function PhotoGrid({
                   onMouseUp={(e) => {
                     e.stopPropagation();
                   }}
-                  style={{ position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 }}
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                  }}
                 >
-                  <MatchExplanation 
+                  <MatchExplanation
                     explanation={photo.matchExplanation}
                     isCompact={true}
                   />
@@ -564,8 +649,6 @@ export function PhotoGrid({
                 <div className='gallery-path'>
                   {photo.path.split('/').slice(-2).join('/')}
                 </div>
-
-
               </div>
             </motion.div>
           );
@@ -639,6 +722,26 @@ export function PhotoGrid({
           />
         )}
       </AnimatePresence>
+
+      <AddToAlbumDialog
+        isOpen={showAddToAlbum}
+        photoPaths={Array.from(selectedPaths)}
+        onClose={() => setShowAddToAlbum(false)}
+        onSuccess={() => {
+          setShowAddToAlbum(false);
+          clearSelection();
+        }}
+      />
+
+      <AddToTagDialog
+        isOpen={showAddToTag}
+        photoPaths={Array.from(selectedPaths)}
+        onClose={() => setShowAddToTag(false)}
+        onSuccess={() => {
+          setShowAddToTag(false);
+          clearSelection();
+        }}
+      />
     </div>
   );
 }

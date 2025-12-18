@@ -27,6 +27,10 @@ class Job(BaseModel):
     updated_at: float
     result: Optional[dict] = None
 
+    def __getitem__(self, key: str):
+        """Allow dict-like access (job['status']) for backward compatibility with tests."""
+        return getattr(self, key)
+
 class EnhancedJobStore:
     def __init__(self):
         self._jobs: Dict[str, Job] = {}

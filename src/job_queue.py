@@ -108,6 +108,21 @@ class Job:
             'started_at': self.started_at,
             'completed_at': self.completed_at
         }
+
+    def __getitem__(self, key: str):
+        """Allow dict-like access (job['status']) for tests and legacy code.
+
+        Returns underlying enum values as strings for 'status' and 'priority'.
+        """
+        val = getattr(self, key)
+        # Unwrap enums to their .value for JSON-like access
+        try:
+            from enum import Enum as _Enum
+            if isinstance(val, _Enum):
+                return val.value
+        except Exception:
+            pass
+        return val
     
     @classmethod
     def from_dict(cls, data: Dict) -> 'Job':
@@ -221,9 +236,14 @@ class JobQueue:
         job_id = str(uuid.uuid4())
         
         try:
-            priority_enum = JobPriority(priority.upper())
-        except ValueError:
-            priority_enum = JobPriority.MEDIUM
+            # Try enum by name first (e.g., 'HIGH')
+            priority_enum = JobPriority[priority.upper()]
+        except Exception:
+            try:
+                # Try enum by value (e.g., 'high')
+                priority_enum = JobPriority(priority.lower())
+            except Exception:
+                priority_enum = JobPriority.MEDIUM
         
         job = Job(
             job_id=job_id,
@@ -316,14 +336,16 @@ class JobQueue:
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
         
-        query += " ORDER BY 
-            CASE priority 
-                WHEN 'high' THEN 1
-                WHEN 'medium' THEN 2
-                WHEN 'low' THEN 3
-                ELSE 4
-            END,
-            created_at ASC"
+        query += (
+            " ORDER BY "
+            "CASE priority "
+            "WHEN 'high' THEN 1 "
+            "WHEN 'medium' THEN 2 "
+            "WHEN 'low' THEN 3 "
+            "ELSE 4 "
+            "END, "
+            "created_at ASC"
+        )
         
         query += " LIMIT ? OFFSET ?"
         params.extend([limit, offset])

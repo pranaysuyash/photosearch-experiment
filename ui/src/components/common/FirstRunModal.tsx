@@ -14,7 +14,8 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
     // Check if user has seen this before
     const hasSeenModal = localGetItem('photosearch_first_run_seen');
     if (!hasSeenModal) {
-      setIsVisible(true);
+      const id = requestAnimationFrame(() => setIsVisible(true));
+      return () => cancelAnimationFrame(id);
     }
   }, []);
 
@@ -96,20 +97,11 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
 
           <button
             onClick={() => {
-              const defaultPath =
-                window.location.hostname === 'localhost'
-                  ? '/Users/pranay/Projects/photosearch_experiment/media'
-                  : 'media';
-              import('../../api').then(({ api }) => {
-                api
-                  .scan(defaultPath)
-                  .then(() => alert('Scan started in background!'))
-                  .catch((err) => alert('Scan failed: ' + err));
-              });
+              window.location.assign('/settings#sources');
             }}
             className='w-full py-3 rounded-xl border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium text-sm flex items-center justify-center gap-2'
           >
-            <span>⚡️</span> Scan Default Library
+            <span>⚡️</span> Connect a Source
           </button>
         </div>
 

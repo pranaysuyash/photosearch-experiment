@@ -11,8 +11,10 @@ import { usePhotoViewer } from '../contexts/PhotoViewerContext';
 import { motion } from 'framer-motion';
 import { api } from '../api';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
+  const navigate = useNavigate();
   const {
     photos,
     loading,
@@ -38,28 +40,22 @@ const Home = () => {
 
   return (
     <div className='min-h-screen flex flex-col gap-6'>
-      {isLibraryEmpty && (
-        <div className='flex flex-col items-center justify-center min-h-[50vh] text-center gap-6'>
+	      {isLibraryEmpty && (
+	        <div className='flex flex-col items-center justify-center min-h-[50vh] text-center gap-6'>
           <h1 className='text-4xl font-semibold bg-gradient-to-b from-foreground to-muted-foreground bg-clip-text text-transparent'>
             Welcome to Living Museum
           </h1>
-          <p className='text-muted-foreground max-w-md'>
-            Your library is empty. Scan a folder to start rediscovering your
-            memories.
-          </p>
+	          <p className='text-muted-foreground max-w-md'>
+	            Your library is empty. Connect a local folder or a cloud source to
+	            start building your museum.
+	          </p>
           <button
             onClick={() => {
-              // Trigger scan via Spotlight or direct API
-              // For now, simpler to tell user to use shortcut, but a button is better.
-              // We'll trust they can find the scan button in Spotlight or we can add a direct scan flow here if needed.
-              // But since Spotlight is the main entry:
-              window.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'k', metaKey: true })
-              );
+              navigate('/settings#sources');
             }}
             className='btn-glass btn-glass--primary px-8 py-3 text-lg'
           >
-            Start Scanning (⌘K)
+            Connect a Source
           </button>
         </div>
       )}

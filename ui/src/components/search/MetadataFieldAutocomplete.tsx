@@ -156,8 +156,8 @@ export const MetadataFieldAutocomplete = ({
 
   useEffect(() => {
     if (!isVisible || !query) {
-      setSuggestions([]);
-      return;
+      const id = requestAnimationFrame(() => setSuggestions([]));
+      return () => cancelAnimationFrame(id);
     }
 
     // Detect if user is typing a field name
