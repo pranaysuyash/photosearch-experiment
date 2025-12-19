@@ -16,7 +16,7 @@ import {
   FlipHorizontal,
   FlipVertical,
   Check,
-  Undo
+  Undo,
 } from 'lucide-react';
 import { glass } from '../../design/glass';
 import { api } from '../../api';
@@ -44,20 +44,33 @@ interface EditSettings {
   } | null;
 }
 
-export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: PhotoEditorProps) {
+const DEFAULT_SETTINGS: EditSettings = {
+  brightness: 0,
+  contrast: 0,
+  saturation: 0,
+  rotation: 0,
+  flipH: false,
+  flipV: false,
+  crop: null,
+};
+
+export function PhotoEditor({
+  photoPath,
+  imageUrl,
+  onClose,
+  onSave,
+  isOpen,
+}: PhotoEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
+    null
+  );
   const [settings, setSettings] = useState<EditSettings>({
-    brightness: 0,
-    contrast: 0,
-    saturation: 0,
-    rotation: 0,
-    flipH: false,
-    flipV: false,
-    crop: null
+    ...DEFAULT_SETTINGS,
   });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoadingEdits, setIsLoadingEdits] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
   const [cropEnd, setCropEnd] = useState({ x: 0, y: 0 });
@@ -76,6 +89,42 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
     }
   }, [isOpen, imageUrl]);
 
+  // Fetch saved edits when opening
+  useEffect(() => {
+    const loadEdits = async () => {
+      if (!isOpen || !photoPath) return;
+      setIsLoadingEdits(true);
+      try {
+        const res = await api.getPhotoEdit(photoPath);
+        const loaded =
+          (res && (res.edit_data || res.editData || res.data)) || null;
+        if (loaded) {
+          const merged = {
+            ...DEFAULT_SETTINGS,
+            ...(loaded.edit_data ?? loaded),
+          } as EditSettings;
+          setSettings(merged);
+        } else {
+          setSettings({ ...DEFAULT_SETTINGS });
+        }
+      } catch (error) {
+        console.error('Failed to load saved edits', error);
+        setSettings({ ...DEFAULT_SETTINGS });
+      } finally {
+        setIsLoadingEdits(false);
+      }
+    };
+
+    loadEdits();
+  }, [isOpen, photoPath]);
+
+  // Re-apply edits whenever settings or image change
+  useEffect(() => {
+    if (originalImage) {
+      applyEdits(originalImage, settings);
+    }
+  }, [originalImage, settings]);
+
   const applyEdits = (img: HTMLImageElement, currentSettings: EditSettings) => {
     if (!canvasRef.current) return;
 
@@ -85,8 +134,12 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
 
     // Calculate canvas size with rotation
     const angle = (currentSettings.rotation * Math.PI) / 180;
-    const rotatedWidth = Math.abs(img.width * Math.cos(angle)) + Math.abs(img.height * Math.sin(angle));
-    const rotatedHeight = Math.abs(img.width * Math.sin(angle)) + Math.abs(img.height * Math.cos(angle));
+    const rotatedWidth =
+      Math.abs(img.width * Math.cos(angle)) +
+      Math.abs(img.height * Math.sin(angle));
+    const rotatedHeight =
+      Math.abs(img.width * Math.sin(angle)) +
+      Math.abs(img.height * Math.cos(angle));
 
     canvas.width = rotatedWidth;
     canvas.height = rotatedHeight;
@@ -101,7 +154,9 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
     ctx.scale(currentSettings.flipH ? -1 : 1, currentSettings.flipV ? -1 : 1);
 
     // Apply filters
-    ctx.filter = `brightness(${100 + currentSettings.brightness}%) contrast(${100 + currentSettings.contrast}%) saturate(${100 + currentSettings.saturation}%)`;
+    ctx.filter = `brightness(${100 + currentSettings.brightness}%) contrast(${
+      100 + currentSettings.contrast
+    }%) saturate(${100 + currentSettings.saturation}%)`;
 
     // Apply crop if active
     if (currentSettings.crop) {
@@ -133,19 +188,10 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
   };
 
   const resetSettings = () => {
-    const defaultSettings: EditSettings = {
-      brightness: 0,
-      contrast: 0,
-      saturation: 0,
-      rotation: 0,
-      flipH: false,
-      flipV: false,
-      crop: null
-    };
-    setSettings(defaultSettings);
+    setSettings({ ...DEFAULT_SETTINGS });
     setCropMode(false);
     if (originalImage) {
-      applyEdits(originalImage, defaultSettings);
+      applyEdits(originalImage, { ...DEFAULT_SETTINGS });
     }
   };
 
@@ -188,7 +234,8 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
   };
 
   const endCrop = () => {
-    if (!cropMode || !isDragging || !originalImage || !canvasRef.current) return;
+    if (!cropMode || !isDragging || !originalImage || !canvasRef.current)
+      return;
 
     setIsDragging(false);
 
@@ -206,7 +253,7 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
         x: minX * scaleX,
         y: minY * scaleY,
         width: width * scaleX,
-        height: height * scaleY
+        height: height * scaleY,
       });
     }
 
@@ -223,7 +270,12 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
 
     setIsProcessing(true);
     try {
-      // Convert canvas to blob
+      // Save edit instructions to server
+      await api.savePhotoEdit(photoPath, settings);
+
+      // For now, we'll still generate a local preview
+      // In a full implementation, we could generate the edited image on the server
+      // or apply the edits client-side and save the result
       const blob = await new Promise<Blob>((resolve) => {
         canvasRef.current!.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.95);
       });
@@ -232,8 +284,8 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
       const editedImageUrl = URL.createObjectURL(blob);
       onSave(editedImageUrl);
 
-      // Optionally, save to server
-      // await api.savePhotoEdit(photoPath, blob);
+      // Optionally, we could also save the actual image file
+      // This would be handled by a backend service that applies the edits
     } catch (error) {
       console.error('Failed to save edit:', error);
     } finally {
@@ -244,31 +296,38 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+    <div className='fixed inset-0 z-[1300] flex items-center justify-center p-4'>
+      <div
+        className='absolute inset-0 bg-black/80 backdrop-blur-sm'
+        onClick={onClose}
+      />
 
-      <div className={`relative w-full max-w-7xl h-full max-h-[90vh] ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col`}>
+      <div
+        className={`relative w-full max-w-7xl h-full max-h-[90vh] ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col`}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-foreground">Photo Editor</h3>
-            <span className="text-xs text-muted-foreground bg-white/10 px-2 py-1 rounded-full">
+        <div className='flex items-center justify-between px-5 py-4 border-b border-white/10'>
+          <div className='flex items-center gap-3'>
+            <h3 className='text-lg font-semibold text-foreground'>
+              Photo Editor
+            </h3>
+            <span className='text-xs text-muted-foreground bg-white/10 px-2 py-1 rounded-full'>
               Basic Editing
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className='flex items-center gap-2'>
             <button
               onClick={resetSettings}
-              className="btn-glass btn-glass--muted text-sm px-3 py-2"
-              title="Reset all edits"
+              className='btn-glass btn-glass--muted text-sm px-3 py-2'
+              title='Reset all edits'
             >
               <Undo size={14} />
               Reset
             </button>
             <button
               onClick={onClose}
-              className="btn-glass btn-glass--muted w-9 h-9 p-0 justify-center"
-              aria-label="Close editor"
+              className='btn-glass btn-glass--muted w-9 h-9 p-0 justify-center'
+              aria-label='Close editor'
             >
               <X size={16} />
             </button>
@@ -276,13 +335,15 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
         </div>
 
         {/* Editor Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className='flex-1 flex overflow-hidden'>
           {/* Canvas Area */}
-          <div className="flex-1 flex items-center justify-center p-6 bg-black/20">
-            <div className="relative">
+          <div className='flex-1 flex items-center justify-center p-6 bg-black/20'>
+            <div className='relative'>
               <canvas
                 ref={canvasRef}
-                className={`max-w-full max-h-full object-contain ${cropMode ? 'cursor-crosshair' : ''}`}
+                className={`max-w-full max-h-full object-contain ${
+                  cropMode ? 'cursor-crosshair' : ''
+                }`}
                 onMouseDown={startCrop}
                 onMouseMove={updateCrop}
                 onMouseUp={endCrop}
@@ -292,12 +353,12 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
               {/* Crop overlay */}
               {cropMode && isDragging && (
                 <div
-                  className="absolute border-2 border-primary bg-white/10"
+                  className='absolute border-2 border-primary bg-white/10'
                   style={{
                     left: Math.min(cropStart.x, cropEnd.x),
                     top: Math.min(cropStart.y, cropEnd.y),
                     width: Math.abs(cropEnd.x - cropStart.x),
-                    height: Math.abs(cropEnd.y - cropStart.y)
+                    height: Math.abs(cropEnd.y - cropStart.y),
                   }}
                 />
               )}
@@ -305,37 +366,39 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
           </div>
 
           {/* Controls Panel */}
-          <div className="w-80 border-l border-white/10 p-4 space-y-6 overflow-y-auto">
+          <div className='w-80 border-l border-white/10 p-4 space-y-6 overflow-y-auto'>
             {/* Quick Actions */}
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-3">Quick Actions</h4>
-              <div className="grid grid-cols-2 gap-2">
+              <h4 className='text-sm font-medium text-foreground mb-3'>
+                Quick Actions
+              </h4>
+              <div className='grid grid-cols-2 gap-2'>
                 <button
                   onClick={rotateLeft}
-                  className="btn-glass btn-glass--muted text-xs px-3 py-2 justify-center"
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
                 >
-                  <RotateCcw size={14} className="mr-1" />
+                  <RotateCcw size={14} className='mr-1' />
                   Rotate Left
                 </button>
                 <button
                   onClick={rotateRight}
-                  className="btn-glass btn-glass--muted text-xs px-3 py-2 justify-center"
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
                 >
-                  <RotateCw size={14} className="mr-1" />
+                  <RotateCw size={14} className='mr-1' />
                   Rotate Right
                 </button>
                 <button
                   onClick={flipHorizontal}
-                  className="btn-glass btn-glass--muted text-xs px-3 py-2 justify-center"
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
                 >
-                  <FlipHorizontal size={14} className="mr-1" />
+                  <FlipHorizontal size={14} className='mr-1' />
                   Flip H
                 </button>
                 <button
                   onClick={flipVertical}
-                  className="btn-glass btn-glass--muted text-xs px-3 py-2 justify-center"
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
                 >
-                  <FlipVertical size={14} className="mr-1" />
+                  <FlipVertical size={14} className='mr-1' />
                   Flip V
                 </button>
               </div>
@@ -343,24 +406,27 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
 
             {/* Crop */}
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-3">Crop</h4>
-              <div className="space-y-2">
+              <h4 className='text-sm font-medium text-foreground mb-3'>Crop</h4>
+              <div className='space-y-2'>
                 {!settings.crop ? (
                   <button
                     onClick={() => setCropMode(true)}
-                    className={`btn-glass ${cropMode ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-2 w-full justify-center`}
+                    className={`btn-glass ${
+                      cropMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                    } text-xs px-3 py-2 w-full justify-center`}
                   >
-                    <Crop size={14} className="mr-1" />
+                    <Crop size={14} className='mr-1' />
                     {cropMode ? 'Click and drag to crop' : 'Start Crop'}
                   </button>
                 ) : (
-                  <div className="space-y-2">
-                    <div className="text-xs text-muted-foreground">
-                      Crop active: {Math.round(settings.crop?.width || 0)}×{Math.round(settings.crop?.height || 0)}
+                  <div className='space-y-2'>
+                    <div className='text-xs text-muted-foreground'>
+                      Crop active: {Math.round(settings.crop?.width || 0)}×
+                      {Math.round(settings.crop?.height || 0)}
                     </div>
                     <button
                       onClick={clearCrop}
-                      className="btn-glass btn-glass--danger text-xs px-3 py-2 w-full"
+                      className='btn-glass btn-glass--danger text-xs px-3 py-2 w-full'
                     >
                       Clear Crop
                     </button>
@@ -371,81 +437,95 @@ export function PhotoEditor({ photoPath, imageUrl, onClose, onSave, isOpen }: Ph
 
             {/* Adjustments */}
             <div>
-              <h4 className="text-sm font-medium text-foreground mb-3">Adjustments</h4>
-              <div className="space-y-4">
+              <h4 className='text-sm font-medium text-foreground mb-3'>
+                Adjustments
+              </h4>
+              <div className='space-y-4'>
                 {/* Brightness */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className='flex items-center justify-between mb-1'>
+                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Sun size={12} />
                       Brightness
                     </label>
-                    <span className="text-xs text-muted-foreground">{settings.brightness}</span>
+                    <span className='text-xs text-muted-foreground'>
+                      {settings.brightness}
+                    </span>
                   </div>
                   <input
-                    type="range"
-                    min="-100"
-                    max="100"
+                    type='range'
+                    min='-100'
+                    max='100'
                     value={settings.brightness}
-                    onChange={(e) => updateSetting('brightness', parseInt(e.target.value))}
-                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                    onChange={(e) =>
+                      updateSetting('brightness', parseInt(e.target.value))
+                    }
+                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
                 </div>
 
                 {/* Contrast */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className='flex items-center justify-between mb-1'>
+                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Contrast size={12} />
                       Contrast
                     </label>
-                    <span className="text-xs text-muted-foreground">{settings.contrast}</span>
+                    <span className='text-xs text-muted-foreground'>
+                      {settings.contrast}
+                    </span>
                   </div>
                   <input
-                    type="range"
-                    min="-100"
-                    max="100"
+                    type='range'
+                    min='-100'
+                    max='100'
                     value={settings.contrast}
-                    onChange={(e) => updateSetting('contrast', parseInt(e.target.value))}
-                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                    onChange={(e) =>
+                      updateSetting('contrast', parseInt(e.target.value))
+                    }
+                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
                 </div>
 
                 {/* Saturation */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <div className='flex items-center justify-between mb-1'>
+                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Droplet size={12} />
                       Saturation
                     </label>
-                    <span className="text-xs text-muted-foreground">{settings.saturation}</span>
+                    <span className='text-xs text-muted-foreground'>
+                      {settings.saturation}
+                    </span>
                   </div>
                   <input
-                    type="range"
-                    min="-100"
-                    max="100"
+                    type='range'
+                    min='-100'
+                    max='100'
                     value={settings.saturation}
-                    onChange={(e) => updateSetting('saturation', parseInt(e.target.value))}
-                    className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
+                    onChange={(e) =>
+                      updateSetting('saturation', parseInt(e.target.value))
+                    }
+                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
                 </div>
               </div>
             </div>
 
             {/* Save Button */}
-            <div className="pt-4">
+            <div className='pt-4'>
               <button
                 onClick={saveEdit}
                 disabled={isProcessing}
-                className="btn-glass btn-glass--primary text-sm px-4 py-3 w-full justify-center"
+                className='btn-glass btn-glass--primary text-sm px-4 py-3 w-full justify-center'
               >
                 {isProcessing ? (
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className='flex items-center gap-2'>
+                    <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
                     Processing...
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className='flex items-center gap-2'>
                     <Check size={16} />
                     Save Edit
                   </div>

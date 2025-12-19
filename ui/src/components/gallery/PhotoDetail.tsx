@@ -28,6 +28,7 @@ import {
   Code,
   HelpCircle,
   Edit3,
+  UserCircle2,
 } from 'lucide-react';
 import SecureLazyImage from './SecureLazyImage';
 import { type Photo, api } from '../../api';
@@ -38,6 +39,7 @@ import { AddToAlbumDialog } from '../albums/AddToAlbumDialog';
 import { AddToTagDialog } from '../tags/AddToTagDialog';
 import { StarRating } from '../rating/StarRating';
 import { PhotoEditor } from '../editing/PhotoEditor';
+import { NotesEditor } from '../notes/NotesEditor';
 import ImageAnalysis from './AIAnalysis';
 
 interface PhotoDetailProps {
@@ -218,9 +220,12 @@ export function PhotoDetail({
   const [flipV, setFlipV] = useState(false);
   const [busy, setBusy] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [imageKey, setImageKey] = useState(0);
   const [photoTags, setPhotoTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const viewerRef = useRef<HTMLDivElement | null>(null);
+  const [faceClusters, setFaceClusters] = useState<any[]>([]);
+  const [facesLoading, setFacesLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -280,6 +285,34 @@ export function PhotoDetail({
       .finally(() => setTagsLoading(false));
   }, [photo]);
 
+  const refreshFaces = async () => {
+    if (!photo) return;
+    setFacesLoading(true);
+    try {
+      const res = await api.getFacesForImage(photo.path);
+      const clustersRoot = (res && res.clusters) || res;
+      const normalized = Array.isArray(clustersRoot?.clusters)
+        ? clustersRoot.clusters
+        : Array.isArray(clustersRoot)
+        ? clustersRoot
+        : Array.isArray(clustersRoot?.clusters?.clusters)
+        ? clustersRoot.clusters.clusters
+        : [];
+      setFaceClusters(normalized || []);
+    } catch {
+      setFaceClusters([]);
+    } finally {
+      setFacesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!photo) {
+      setFaceClusters([]);
+      return;
+    }
+    refreshFaces();
+  }, [photo]);
   const refreshTags = async () => {
     if (!photo) return;
     setTagsLoading(true);
@@ -415,6 +448,38 @@ export function PhotoDetail({
     }
   };
 
+  const rotateImage = async () => {
+    if (!photo || busy) return;
+    setBusy(true);
+    try {
+      await api.rotatePhoto(photo.path, 90, true);
+      // Force image refresh to show the rotated version
+      setImageKey((prev) => prev + 1);
+      refresh();
+    } catch (error) {
+      console.error('Failed to rotate image:', error);
+      alert('Failed to rotate image. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const flipImage = async (direction: 'horizontal' | 'vertical') => {
+    if (!photo || busy) return;
+    setBusy(true);
+    try {
+      await api.flipPhoto(photo.path, direction, true);
+      // Force image refresh to show the flipped version
+      setImageKey((prev) => prev + 1);
+      refresh();
+    } catch (error) {
+      console.error('Failed to flip image:', error);
+      alert('Failed to flip image. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const rotateRight = () => setRotation((r) => (r + 90) % 360);
   const zoomIn = () =>
     setZoom((z) => Math.min(4, Math.round((z + 0.25) * 100) / 100));
@@ -521,6 +586,7 @@ export function PhotoDetail({
                     }}
                   >
                     <SecureLazyImage
+                      key={imageKey}
                       path={photo.path}
                       size={1200}
                       alt={photo.filename}
@@ -615,6 +681,33 @@ export function PhotoDetail({
                       Tags
                     </button>
                     <button
+                      onClick={rotateImage}
+                      disabled={busy || api.isVideo(photo.path)}
+                      className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                      title='Rotate image 90° clockwise'
+                    >
+                      <RotateCw size={14} />
+                      Rotate
+                    </button>
+                    <button
+                      onClick={() => flipImage('horizontal')}
+                      disabled={busy || api.isVideo(photo.path)}
+                      className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                      title='Flip image horizontally'
+                    >
+                      <FlipHorizontal size={14} />
+                      Flip H
+                    </button>
+                    <button
+                      onClick={() => flipImage('vertical')}
+                      disabled={busy || api.isVideo(photo.path)}
+                      className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                      title='Flip image vertically'
+                    >
+                      <FlipVertical size={14} />
+                      Flip V
+                    </button>
+                    <button
                       onClick={moveToTrash}
                       disabled={busy}
                       className='btn-glass btn-glass--danger text-xs px-3 py-2 justify-center'
@@ -644,66 +737,135 @@ export function PhotoDetail({
                       <StarRating
                         photoPath={photo.path}
                         initialRating={rating}
-                        size="sm"
+                        size='sm'
                         showLabel={true}
                       />
                     </div>
                   </div>
 
-                  {(tagsLoading || photoTags.length > 0) && (
-                    <div className='mt-3 glass-surface rounded-xl p-3'>
-                      <div className='flex items-center justify-between gap-2 mb-2'>
-                        <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
-                          <Hash size={12} />
-                          Tags
-                        </div>
-                        <button
-                          className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
-                          onClick={refreshTags}
-                          disabled={busy || tagsLoading}
-                          title='Refresh tags'
-                          aria-label='Refresh tags'
-                        >
-                          <RotateCw size={14} />
-                        </button>
-                      </div>
-                      {tagsLoading ? (
-                        <div className='text-xs text-white/50'>Loading…</div>
-                      ) : (
-                        <div className='flex flex-wrap gap-2'>
-                          {photoTags.map((t) => (
-                            <div
-                              key={t}
-                              className='flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1'
-                            >
-                              <span className='text-xs text-white/85'>
-                                #{t}
-                              </span>
-                              <button
-                                className='btn-glass btn-glass--muted w-7 h-7 p-0 justify-center'
-                                title='Remove tag'
-                                aria-label='Remove tag'
-                                disabled={busy}
-                                onClick={async () => {
-                                  if (!photo) return;
-                                  setBusy(true);
-                                  try {
-                                    await api.removePhotosFromTag(t, [
-                                      photo.path,
-                                    ]);
-                                    await refreshTags();
-                                  } finally {
-                                    setBusy(false);
-                                  }
-                                }}
-                              >
-                                <X size={12} />
-                              </button>
+                  {/* Notes */}
+                  <div className='mt-3'>
+                    <NotesEditor
+                      photoPath={photo.path}
+                      initialNote={photo.note || ''}
+                      size='md'
+                      showLabel={true}
+                    />
+                  </div>
+
+                  {(tagsLoading ||
+                    photoTags.length > 0 ||
+                    facesLoading ||
+                    faceClusters.length > 0) && (
+                    <div className='mt-3 glass-surface rounded-xl p-3 space-y-3'>
+                      {(tagsLoading || photoTags.length > 0) && (
+                        <div>
+                          <div className='flex items-center justify-between gap-2 mb-2'>
+                            <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
+                              <Hash size={12} />
+                              Tags
                             </div>
-                          ))}
-                          {photoTags.length === 0 && (
+                            <button
+                              className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                              onClick={refreshTags}
+                              disabled={busy || tagsLoading}
+                              title='Refresh tags'
+                              aria-label='Refresh tags'
+                            >
+                              <RotateCw size={14} />
+                            </button>
+                          </div>
+                          {tagsLoading ? (
                             <div className='text-xs text-white/50'>
-                              No tags yet.
+                              Loading…
+                            </div>
+                          ) : (
+                            <div className='flex flex-wrap gap-2'>
+                              {photoTags.map((t) => (
+                                <div
+                                  key={t}
+                                  className='flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1'
+                                >
+                                  <span className='text-xs text-white/85'>
+                                    #{t}
+                                  </span>
+                                  <button
+                                    className='btn-glass btn-glass--muted w-7 h-7 p-0 justify-center'
+                                    title='Remove tag'
+                                    aria-label='Remove tag'
+                                    disabled={busy}
+                                    onClick={async () => {
+                                      if (!photo) return;
+                                      setBusy(true);
+                                      try {
+                                        await api.removePhotosFromTag(t, [
+                                          photo.path,
+                                        ]);
+                                        await refreshTags();
+                                      } finally {
+                                        setBusy(false);
+                                      }
+                                    }}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                              {photoTags.length === 0 && (
+                                <div className='text-xs text-white/50'>
+                                  No tags yet.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {(facesLoading || faceClusters.length > 0) && (
+                        <div>
+                          <div className='flex items-center justify-between gap-2 mb-2'>
+                            <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
+                              <UserCircle2 size={12} />
+                              People
+                            </div>
+                            <button
+                              className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                              onClick={refreshFaces}
+                              disabled={busy || facesLoading}
+                              title='Refresh faces'
+                              aria-label='Refresh faces'
+                            >
+                              <RotateCw size={14} />
+                            </button>
+                          </div>
+                          {facesLoading ? (
+                            <div className='text-xs text-white/50'>
+                              Scanning…
+                            </div>
+                          ) : faceClusters.length === 0 ? (
+                            <div className='text-xs text-white/50'>
+                              No faces detected.
+                            </div>
+                          ) : (
+                            <div className='flex flex-wrap gap-2'>
+                              {faceClusters.map((c, idx) => (
+                                <div
+                                  key={c.id || idx}
+                                  className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1'
+                                >
+                                  <span className='text-xs text-white/85'>
+                                    {c.label ||
+                                      c.cluster_label ||
+                                      `Person ${c.id || idx + 1}`}
+                                  </span>
+                                  {typeof c.face_count === 'number' && (
+                                    <span className='text-[10px] text-white/60'>
+                                      {c.face_count} face
+                                      {c.face_count === 1 ? '' : 's'}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -714,75 +876,81 @@ export function PhotoDetail({
                   {!api.isVideo(photo.path) && (
                     <div className='mt-3 space-y-2'>
                       <div className='grid grid-cols-3 gap-2'>
-                      <button
-                        onClick={zoomOut}
-                        disabled={busy || zoom <= 1}
-                        className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                        title='Zoom out'
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <button
-                        onClick={resetView}
-                        disabled={
-                          busy ||
-                          (zoom === 1 && rotation === 0 && !flipH && !flipV)
-                        }
-                        className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                        title='Reset view'
-                      >
-                        {Math.round(zoom * 100)}%
-                      </button>
-                      <button
-                        onClick={zoomIn}
-                        disabled={busy || zoom >= 4}
-                        className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                        title='Zoom in'
-                      >
-                        <Plus size={14} />
-                      </button>
-                      <button
-                        onClick={rotateRight}
-                        disabled={busy}
-                        className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                        title='Rotate right 90°'
-                      >
-                        <RotateCw size={14} />
-                        Rotate
-                      </button>
+                        <button
+                          onClick={zoomOut}
+                          disabled={busy || zoom <= 1}
+                          className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                          title='Zoom out'
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <button
+                          onClick={resetView}
+                          disabled={
+                            busy ||
+                            (zoom === 1 && rotation === 0 && !flipH && !flipV)
+                          }
+                          className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                          title='Reset view'
+                        >
+                          {Math.round(zoom * 100)}%
+                        </button>
+                        <button
+                          onClick={zoomIn}
+                          disabled={busy || zoom >= 4}
+                          className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                          title='Zoom in'
+                        >
+                          <Plus size={14} />
+                        </button>
+                        <button
+                          onClick={rotateRight}
+                          disabled={busy}
+                          className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                          title='Rotate right 90°'
+                        >
+                          <RotateCw size={14} />
+                          Rotate
+                        </button>
                       </div>
                       <div className='grid grid-cols-3 gap-2'>
-                      <button
-                        onClick={flipHorizontal}
-                        disabled={busy}
-                        className={`btn-glass ${flipH ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-2 justify-center`}
-                        title='Flip horizontally'
-                      >
-                        <FlipHorizontal size={14} />
-                        Flip H
-                      </button>
-                      <button
-                        onClick={flipVertical}
-                        disabled={busy}
-                        className={`btn-glass ${flipV ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-2 justify-center`}
-                        title='Flip vertically'
-                      >
-                        <FlipVertical size={14} />
-                        Flip V
-                      </button>
-                      <button
-                        onClick={toggleFullscreen}
-                        disabled={busy}
-                        className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                        title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                      >
-                        {isFullscreen ? (
-                          <Minimize2 size={14} />
-                        ) : (
-                          <Maximize2 size={14} />
-                        )}
-                        {isFullscreen ? ' Exit' : ' Full'}
-                      </button>
+                        <button
+                          onClick={flipHorizontal}
+                          disabled={busy}
+                          className={`btn-glass ${
+                            flipH ? 'btn-glass--primary' : 'btn-glass--muted'
+                          } text-xs px-3 py-2 justify-center`}
+                          title='Flip horizontally'
+                        >
+                          <FlipHorizontal size={14} />
+                          Flip H
+                        </button>
+                        <button
+                          onClick={flipVertical}
+                          disabled={busy}
+                          className={`btn-glass ${
+                            flipV ? 'btn-glass--primary' : 'btn-glass--muted'
+                          } text-xs px-3 py-2 justify-center`}
+                          title='Flip vertically'
+                        >
+                          <FlipVertical size={14} />
+                          Flip V
+                        </button>
+                        <button
+                          onClick={toggleFullscreen}
+                          disabled={busy}
+                          className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                          title={
+                            isFullscreen ? 'Exit fullscreen' : 'Fullscreen'
+                          }
+                        >
+                          {isFullscreen ? (
+                            <Minimize2 size={14} />
+                          ) : (
+                            <Maximize2 size={14} />
+                          )}
+                          {isFullscreen ? ' Exit' : ' Full'}
+                        </button>
                       </div>
                     </div>
                   )}

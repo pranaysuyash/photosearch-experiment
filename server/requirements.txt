@@ -13,6 +13,8 @@ requests>=2.31.0
 # AI/ML Dependencies
 sentence-transformers>=2.2.0
 torch>=2.0.0
+ImageHash>=4.3.2
+PyWavelets>=1.9.0
 
 # Face Recognition (InsightFace with ArcFace)
 insightface>=0.7.3
@@ -33,3 +35,4 @@ mutagen>=1.47.0
 pillow-heif>=1.1.0
 pypdf>=6.0.0
 watchdog>=1.1.0
+psutil>=7.1.3

@@ -145,6 +145,116 @@ export interface Source {
   config: Record<string, unknown>;
 }
 
+// People Search Interface
+export interface PersonSearchResult {
+  people: Array<{
+    cluster_id: string;
+    label: string;
+    face_count: number;
+    photo_count: number;
+    thumbnail?: string;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  success: boolean;
+}
+
+// Face Detection Interfaces
+export interface FaceDetection {
+  detection_id: string;
+  photo_path: string;
+  bounding_box: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  has_embedding: boolean;
+  quality_score: number;
+}
+
+export interface FaceDetectionResult {
+  photo_path: string;
+  faces: FaceDetection[];
+  face_count: number;
+  success: boolean;
+  error?: string;
+}
+
+export interface FaceThumbnailResult {
+  detection_id: string;
+  thumbnail: string; // base64 encoded image
+  success: boolean;
+  error?: string;
+}
+
+export interface BatchDetectionResult {
+  processed_photos: number;
+  total_faces_detected: number;
+  results: Array<{
+    photo_path: string;
+    face_count: number;
+    detection_ids: string[];
+  }>;
+  success: boolean;
+}
+
+export interface FaceCluster {
+  cluster_id: string;
+  label: string;
+  face_count: number;
+  photo_count: number;
+  detection_ids: string[];
+}
+
+export interface ClusteringResult {
+  clusters_created: number;
+  total_faces_clustered: number;
+  clusters: FaceCluster[];
+  success: boolean;
+}
+
+export interface SimilarFace {
+  detection_id: string;
+  photo_path: string;
+  similarity: number;
+  person_id?: string;
+  person_label?: string;
+}
+
+export interface SimilarFacesResult {
+  detection_id: string;
+  similar_faces: SimilarFace[];
+  count: number;
+  success: boolean;
+}
+
+export interface ClusterQuality {
+  cluster_id: string;
+  label: string;
+  face_count: number;
+  avg_confidence: number;
+  avg_quality_score: number;
+  coherence_score: number;
+  quality_rating: 'Excellent' | 'Good' | 'Fair' | 'Poor' | 'Low';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClusterQualityResult {
+  cluster_id: string;
+  quality_analysis: ClusterQuality;
+  success: boolean;
+}
+
+export interface MergeClustersResult {
+  source_cluster_id: string;
+  target_cluster_id: string;
+  faces_moved: number;
+  success: boolean;
+}
+
 export interface Album {
   id: string;
   name: string;
@@ -383,25 +493,7 @@ export const api = {
     return videoExts.some((ext) => path.toLowerCase().endsWith(ext));
   },
 
-  // Export selected photos as ZIP
-  exportPhotos: async (paths: string[]) => {
-    const res = await apiClient.post(
-      '/export',
-      { paths },
-      {
-        responseType: 'blob',
-      }
-    );
-    // Trigger download
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'photos_export.zip');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-  },
+  // Export selected photos as ZIP (see comprehensive exportPhotos below)
 
   // Trash (Recently Deleted)
   trashMove: async (filePaths: string[]) => {
@@ -522,6 +614,89 @@ export const api = {
       file_path: filePath,
       notes,
     });
+    return res.data;
+  },
+
+  // Duplicates
+  getDuplicates: async (
+    opts: { hashType?: string; limit?: number; offset?: number } = {}
+  ) => {
+    const res = await apiClient.get('/api/duplicates', {
+      params: {
+        hash_type: opts.hashType,
+        limit: opts.limit,
+        offset: opts.offset,
+      },
+    });
+    return res.data;
+  },
+  getDuplicateStats: async () => {
+    const res = await apiClient.get('/api/duplicates/stats');
+    return res.data;
+  },
+  scanDuplicates: async (
+    type: 'exact' | 'perceptual' = 'exact',
+    limit: number = 1000
+  ) => {
+    const res = await apiClient.post('/api/duplicates/scan', null, {
+      params: { type, limit },
+    });
+    return res.data;
+  },
+  resolveDuplicateGroup: async (
+    groupId: string,
+    resolution: 'keep_all' | 'keep_selected' | 'delete_all',
+    keepFiles?: string[]
+  ) => {
+    const res = await apiClient.post(`/api/duplicates/${groupId}/resolve`, {
+      resolution,
+      keep_files: keepFiles,
+    });
+    return res.data;
+  },
+  cleanupDuplicates: async () => {
+    const res = await apiClient.post('/api/duplicates/cleanup');
+    return res.data;
+  },
+  deleteDuplicateGroup: async (groupId: string) => {
+    const res = await apiClient.delete(`/api/duplicates/${groupId}`);
+    return res.data;
+  },
+
+  // Additional duplicate methods for components
+  getDuplicateGroups: async () => {
+    const res = await apiClient.get('/api/duplicates/groups');
+    return res.data;
+  },
+
+  scanDuplicatesWithPath: async (directoryPath: string, similarityThreshold: number = 5.0) => {
+    const res = await apiClient.post('/api/duplicates/scan', {
+      directory_path: directoryPath,
+      similarity_threshold: similarityThreshold
+    });
+    return res.data;
+  },
+
+  // Photo edits (non-destructive settings)
+  savePhotoEdit: async (photoPath: string, editData: any) => {
+    const res = await apiClient.post(
+      `/api/photos/${encodeURIComponent(photoPath)}/edit`,
+      { edit_data: editData }
+    );
+    return res.data;
+  },
+  getPhotoEdit: async (photoPath: string) => {
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(photoPath)}/edit`
+    );
+    return res.data;
+  },
+
+  // Face clusters per image
+  getFacesForImage: async (photoPath: string) => {
+    const res = await apiClient.get(
+      `/faces/image/${encodeURIComponent(photoPath)}`
+    );
     return res.data;
   },
 
@@ -694,10 +869,7 @@ export const api = {
     return res.data;
   },
 
-  clearCache: async () => {
-    const res = await apiClient.post('/api/cache/clear');
-    return res.data;
-  },
+  // clearCache is defined below with more comprehensive implementation
 
   cleanupCache: async () => {
     const res = await apiClient.get('/api/cache/cleanup');
@@ -729,7 +901,9 @@ export const api = {
 
   // Photo Rating System
   getPhotoRating: async (path: string) => {
-    const res = await apiClient.get(`/api/photos/${encodeURIComponent(path)}/rating`);
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(path)}/rating`
+    );
     return res.data.rating;
   },
 
@@ -742,19 +916,938 @@ export const api = {
   },
 
   removePhotoRating: async (path: string) => {
-    const res = await apiClient.delete(`/api/photos/${encodeURIComponent(path)}/rating`);
+    const res = await apiClient.delete(
+      `/api/photos/${encodeURIComponent(path)}/rating`
+    );
     return res.data;
   },
 
-  getPhotosByRating: async (rating: number, limit: number = 100, offset: number = 0) => {
+  getPhotosByRating: async (
+    rating: number,
+    limit: number = 100,
+    offset: number = 0
+  ) => {
     const res = await apiClient.get(`/api/ratings/photos/${rating}`, {
-      params: { limit, offset }
+      params: { limit, offset },
     });
     return res.data;
   },
 
   getRatingStats: async () => {
     const res = await apiClient.get('/api/ratings/stats');
-    return res.data.stats;
+  },
+
+  // Notes management
+  getPhotoNote: async (path: string) => {
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(path)}/notes`
+    );
+    return res.data as { note: string | null; updated_at?: string | null };
+  },
+
+  setPhotoNote: async (path: string, note: string) => {
+    const res = await apiClient.post(
+      `/api/photos/${encodeURIComponent(path)}/notes`,
+      { note }
+    );
+    return res.data;
+  },
+
+  deletePhotoNote: async (path: string) => {
+    const res = await apiClient.delete(
+      `/api/photos/${encodeURIComponent(path)}/notes`
+    );
+    return res.data;
+  },
+
+  searchNotes: async (
+    query: string,
+    limit: number = 100,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get('/api/notes/search', {
+      params: { query, limit, offset },
+    });
+    return res.data;
+  },
+
+  getNotesStats: async () => {
+    const res = await apiClient.get('/api/notes/stats');
+  },
+
+  // Editing
+  getPhotoEdits: async (path: string) => {
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(path)}/edits`
+    );
+    return res.data.edit_data;
+  },
+
+  // Export and Share
+  exportPhotos: async (paths: string[], options: any) => {
+    const res = await apiClient.post(
+      '/export',
+      { paths, options },
+      { responseType: 'blob' }
+    );
+    return res.data;
+  },
+
+  getExportPresets: async () => {
+    const res = await apiClient.get('/export/presets');
+    return res.data.presets;
+  },
+
+  createShareLink: async (
+    paths: string[],
+    expirationHours: number = 24,
+    password?: string
+  ) => {
+    const res = await apiClient.post('/share', {
+      paths,
+      expiration_hours: expirationHours,
+      password,
+    });
+    return res.data;
+  },
+
+  getSharedContent: async (shareId: string, password?: string) => {
+    const params: any = {};
+    if (password) params.password = password;
+
+    return res.data.photos;
+  },
+
+  getNearbyLocations: async (
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 1.0
+  ) => {
+    const res = await apiClient.get('/locations/nearby', {
+      params: { latitude, longitude, radius_km: radiusKm },
+    });
+    return res.data;
+  },
+
+  getPlaceClusters: async (minPhotos: number = 2) => {
+    const res = await apiClient.get('/locations/clusters', {
+      params: { min_photos: minPhotos },
+    });
+    return res.data.clusters;
+  },
+
+  },
+
+  // Intent-based search
+  searchWithIntent: async (params: any) => {
+    const res = await apiClient.post('/search/intent', params);
+    return res.data;
+  },
+
+  refineSearch: async (
+    query: string,
+    previousResults: any[],
+    refinement: string
+  ) => {
+    const res = await apiClient.post('/search/refine', {
+      query,
+      previous_results: previousResults,
+      refinement,
+    });
+    return res.data;
+  },
+
+  detectIntent: async (query: string) => {
+    const res = await apiClient.get('/intent/detect', { params: { query } });
+    return res.data;
+  },
+
+  getSearchSuggestions: async (query: string) => {
+    const res = await apiClient.get('/intent/suggestions', {
+      params: { query },
+    });
+    return res.data.suggestions;
+  },
+
+  getSearchBadges: async (query: string) => {
+    const res = await apiClient.get('/intent/badges', { params: { query } });
+    return res.data.badges;
+  },
+
+  // Smart Collections
+  createSmartCollection: async (
+    name: string,
+    description: string,
+    ruleDefinition: any,
+    autoUpdate: boolean = true,
+    privacyLevel: string = 'private'
+  ) => {
+    const res = await apiClient.post('/collections/smart', {
+      name,
+      description,
+      rule_definition: ruleDefinition,
+      auto_update: autoUpdate,
+      privacy_level: privacyLevel,
+    });
+    return res.data;
+  },
+
+  getSmartCollections: async (limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get('/collections/smart', {
+      params: { limit, offset },
+    });
+    return res.data.collections;
+  },
+
+  getSmartCollection: async (collectionId: string) => {
+    const res = await apiClient.get(
+      `/collections/smart/${encodeURIComponent(collectionId)}`
+    );
+    return res.data.collection;
+  },
+
+  updateSmartCollection: async (collectionId: string, updates: any) => {
+    const res = await apiClient.put(
+      `/collections/smart/${encodeURIComponent(collectionId)}`,
+      updates
+    );
+    return res.data;
+  },
+
+  deleteSmartCollection: async (collectionId: string) => {
+    const res = await apiClient.delete(
+      `/collections/smart/${encodeURIComponent(collectionId)}`
+    );
+    return res.data;
+  },
+
+  getPhotosForCollection: async (collectionId: string) => {
+    const res = await apiClient.get(
+      `/collections/smart/${encodeURIComponent(collectionId)}/photos`
+    );
+    return res.data.photos;
+  },
+
+  getSmartCollectionsByRuleType: async (ruleType: string) => {
+    const res = await apiClient.get(
+      `/collections/smart/by-rule/${encodeURIComponent(ruleType)}`
+    );
+    return res.data.collections;
+  },
+
+  getSmartCollectionStats: async () => {
+    const res = await apiClient.get('/collections/smart/stats');
+  },
+
+  // Performance and caching (getCacheStats already defined above)
+
+  clearCache: async (cacheType?: string) => {
+    const res = await apiClient.post(
+      '/cache/clear',
+      {},
+      {
+        params: { cache_type: cacheType },
+      }
+    );
+    return res.data;
+  },
+
+  getCacheHealth: async () => {
+    const res = await apiClient.get('/cache/health');
+    return res.data;
+  },
+
+  // Insights
+  createAIInsight: async (
+    photoPath: string,
+    insightType: string,
+    insightData: any,
+    confidence: number = 0.8
+  ) => {
+    const res = await apiClient.post('/ai/insights', {
+      photo_path: photoPath,
+      insight_type: insightType,
+      insight_data: insightData,
+      confidence,
+    });
+    return res.data;
+  },
+
+  getInsightsForPhoto: async (photoPath: string) => {
+    const res = await apiClient.get(
+      `/ai/insights/photo/${encodeURIComponent(photoPath)}`
+    );
+    return res.data.insights;
+  },
+
+  getInsightsByType: async (insightType: string, limit: number = 50) => {
+    const res = await apiClient.get(
+      `/ai/insights/type/${encodeURIComponent(insightType)}`,
+      {
+        params: { limit },
+      }
+    );
+    return res.data.insights;
+  },
+
+  getAllInsights: async (limit: number = 100, offset: number = 0) => {
+    const res = await apiClient.get('/ai/insights', {
+      params: { limit, offset },
+    });
+    return res.data.insights;
+  },
+
+  updateInsightAppliedStatus: async (insightId: string, isApplied: boolean) => {
+    const res = await apiClient.put(
+      `/ai/insights/${encodeURIComponent(insightId)}`,
+      {
+        is_applied: isApplied,
+      }
+    );
+    return res.data;
+  },
+
+  deleteInsight: async (insightId: string) => {
+    const res = await apiClient.delete(
+      `/ai/insights/${encodeURIComponent(insightId)}`
+    );
+    return res.data;
+  },
+
+  getInsightsStats: async () => {
+    const res = await apiClient.get('/ai/insights/stats');
+  },
+
+  // analyzePhotographerPatterns already defined above
+
+  // Collaborative Spaces
+  createCollaborativeSpace: async (
+    name: string,
+    description: string,
+    privacyLevel: string = 'private',
+    maxMembers: number = 10
+  ) => {
+    const res = await apiClient.post('/collaborative/spaces', {
+      name,
+      description,
+      privacy_level: privacyLevel,
+      max_members: maxMembers,
+    });
+    return res.data;
+  },
+
+  getCollaborativeSpace: async (spaceId: string) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}`
+    );
+    return res.data.space;
+  },
+
+  getUserSpaces: async (
+    userId: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/user/${encodeURIComponent(userId)}`,
+      {
+        params: { limit, offset },
+      }
+    );
+    return res.data.spaces;
+  },
+
+  addMemberToSpace: async (
+    spaceId: string,
+    userId: string,
+    role: string = 'contributor'
+  ) => {
+    const res = await apiClient.post(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}/members`,
+      {
+        user_id: userId,
+        role,
+      }
+    );
+    return res.data;
+  },
+
+  removeMemberFromSpace: async (spaceId: string, userId: string) => {
+    const res = await apiClient.delete(
+      `/collaborative/spaces/${encodeURIComponent(
+        spaceId
+      )}/members/${encodeURIComponent(userId)}`
+    );
+    return res.data;
+  },
+
+  getSpaceMembers: async (spaceId: string) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}/members`
+    );
+    return res.data.members;
+  },
+
+  addPhotoToSpace: async (
+    spaceId: string,
+    photoPath: string,
+    caption?: string
+  ) => {
+    const res = await apiClient.post(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}/photos`,
+      {
+        photo_path: photoPath,
+        caption,
+      }
+    );
+    return res.data;
+  },
+
+  removePhotoFromSpace: async (spaceId: string, photoPath: string) => {
+    const res = await apiClient.delete(
+      `/collaborative/spaces/${encodeURIComponent(
+        spaceId
+      )}/photos/${encodeURIComponent(photoPath)}`
+    );
+    return res.data;
+  },
+
+  getSpacePhotos: async (
+    spaceId: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}/photos`,
+      {
+        params: { limit, offset },
+      }
+    );
+    return res.data.photos;
+  },
+
+  addCommentToSpacePhoto: async (
+    spaceId: string,
+    photoPath: string,
+    comment: string
+  ) => {
+    const res = await apiClient.post(
+      `/collaborative/spaces/${encodeURIComponent(
+        spaceId
+      )}/photos/${encodeURIComponent(photoPath)}/comments`,
+      {
+        comment,
+      }
+    );
+    return res.data;
+  },
+
+  getPhotoComments: async (
+    spaceId: string,
+    photoPath: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/${encodeURIComponent(
+        spaceId
+      )}/photos/${encodeURIComponent(photoPath)}/comments`,
+      {
+        params: { limit, offset },
+      }
+    );
+    return res.data.comments;
+  },
+
+  getSpaceStats: async (spaceId: string) => {
+    const res = await apiClient.get(
+      `/collaborative/spaces/${encodeURIComponent(spaceId)}/stats`
+    );
+  },
+
+  // setPhotoEdits and deletePhotoEdits already defined above
+
+  // People management
+  getPeopleInPhoto: async (path: string) => {
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(path)}/people`
+    );
+    return res.data.people;
+  },
+
+  addPersonToPhoto: async (path: string, personId: string) => {
+    const res = await apiClient.post(
+      `/api/photos/${encodeURIComponent(path)}/people`,
+      {
+        person_id: personId,
+      }
+    );
+    return res.data;
+  },
+
+  removePersonFromPhoto: async (path: string, personId: string) => {
+    const res = await apiClient.delete(
+      `/api/photos/${encodeURIComponent(path)}/people/${encodeURIComponent(
+        personId
+      )}`
+    );
+    return res.data;
+  },
+
+  searchPeople: async (query: string, limit: number = 10) => {
+    const res = await apiClient.get('/api/people/search', {
+      params: { query, limit }
+    });
+    return res.data;
+  },
+
+  // Face Detection
+  detectFaces: async (path: string) => {
+    const res = await apiClient.post(
+      `/api/photos/${encodeURIComponent(path)}/faces/detect`
+    );
+    return res.data;
+  },
+
+  getFacesInPhoto: async (path: string) => {
+    const res = await apiClient.get(
+      `/api/photos/${encodeURIComponent(path)}/faces`
+    );
+    return res.data;
+  },
+
+  getFaceThumbnail: async (detectionId: string) => {
+    const res = await apiClient.get(
+      `/api/faces/${encodeURIComponent(detectionId)}/thumbnail`
+    );
+    return res.data;
+  },
+
+  detectFacesBatch: async (photoPaths: string[]) => {
+    const res = await apiClient.post('/api/photos/batch/faces/detect', {
+      photo_paths: photoPaths,
+    });
+    return res.data;
+  },
+
+  // Automatic Clustering
+  clusterFaces: async (
+    similarityThreshold: number = 0.6,
+    minSamples: number = 2
+  ) => {
+    const res = await apiClient.post('/api/faces/cluster', null, {
+      params: {
+        similarity_threshold: similarityThreshold,
+        min_samples: minSamples,
+      },
+    });
+    return res.data;
+  },
+
+  findSimilarFaces: async (detectionId: string, threshold: number = 0.7) => {
+    const res = await apiClient.get(
+      `/api/faces/${encodeURIComponent(detectionId)}/similar`,
+      {
+        params: { threshold },
+      }
+    );
+    return res.data;
+  },
+
+  // Face Clustering
+  getFaceClusters: async () => {
+    const res = await apiClient.get('/api/faces/clusters');
+    return res.data;
+  },
+
+  getFaceStats: async () => {
+    const res = await apiClient.get('/api/faces/stats');
+    return res.data;
+  },
+
+  scanFaces: async () => {
+    const res = await apiClient.post('/api/faces/scan');
+    return res.data;
+  },
+
+  setFaceClusterLabel: async (clusterId: string, label: string) => {
+    const res = await apiClient.post(`/api/faces/clusters/${encodeURIComponent(clusterId)}/label`, { label });
+    return res.data;
+  },
+
+  getClusterQuality: async (clusterId: string) => {
+    const res = await apiClient.get(
+      `/api/clusters/${encodeURIComponent(clusterId)}/quality`
+    );
+    return res.data;
+  },
+
+  mergeClusters: async (clusterId: string, targetClusterId: string) => {
+    const res = await apiClient.post(
+      `/api/clusters/${encodeURIComponent(clusterId)}/merge`,
+      {
+        target_cluster_id: targetClusterId,
+      }
+    );
+    return res.data;
+  },
+
+  // Privacy Controls
+  setPhotoPrivacy: async (
+    photoPath: string,
+    ownerId: string,
+    visibility: string = 'private',
+    sharePermissions: Record<string, boolean> | null = null,
+    encryptionEnabled: boolean = false,
+    encryptionKeyHash?: string,
+    allowedUsers?: string[],
+    allowedGroups?: string[]
+  ) => {
+    const res = await apiClient.post(`/privacy/control/${encodeURIComponent(photoPath)}`, {
+      owner_id: ownerId,
+      visibility,
+      share_permissions: sharePermissions,
+      encryption_enabled: encryptionEnabled,
+      encryption_key_hash: encryptionKeyHash,
+      allowed_users: allowedUsers,
+      allowed_groups: allowedGroups
+    });
+    return res.data;
+  },
+
+  getPhotoPrivacy: async (photoPath: string) => {
+    const res = await apiClient.get(`/privacy/control/${encodeURIComponent(photoPath)}`);
+    return res.data.privacy;
+  },
+
+  updatePhotoPrivacy: async (
+    photoPath: string,
+    updates: {
+      visibility?: string;
+      share_permissions?: Record<string, boolean>;
+      encryption_enabled?: boolean;
+      encryption_key_hash?: string;
+      allowed_users?: string[];
+      allowed_groups?: string[];
+    }
+  ) => {
+    const res = await apiClient.put(`/privacy/control/${encodeURIComponent(photoPath)}`, updates);
+    return res.data;
+  },
+
+  getPhotosByVisibility: async (visibility: string, ownerId: string, limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get(`/privacy/visible/${encodeURIComponent(visibility)}/${encodeURIComponent(ownerId)}`, {
+      params: { limit, offset }
+    });
+    return res.data.photos;
+  },
+
+  getPhotosAccessibleToUser: async (userId: string, limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get(`/privacy/access/${encodeURIComponent(userId)}`, {
+      params: { limit, offset }
+    });
+    return res.data.photos;
+  },
+
+  checkPhotoAccess: async (photoPath: string, userId: string) => {
+    const res = await apiClient.get(`/privacy/check-access/${encodeURIComponent(photoPath)}/${encodeURIComponent(userId)}`);
+    return res.data.has_access;
+  },
+
+  getEncryptedPhotos: async (ownerId: string) => {
+    const res = await apiClient.get(`/privacy/encrypted/${encodeURIComponent(ownerId)}`);
+    return res.data.encrypted_photos;
+  },
+
+  getPrivacyStats: async (ownerId: string) => {
+    const res = await apiClient.get(`/privacy/stats/${encodeURIComponent(ownerId)}`);
+  },
+
+  revokeUserAccess: async (photoPath: string, userId: string) => {
+    const res = await apiClient.delete(`/privacy/revoke-access/${encodeURIComponent(photoPath)}/${encodeURIComponent(userId)}`);
+    return res.data;
+  },
+
+  // Timeline & Story Creation
+  createStory: async (title: string, description: string, privacyLevel: string = 'private') => {
+    const res = await apiClient.post('/stories', {
+      title,
+      description,
+      privacy_level: privacyLevel
+    });
+    return res.data;
+  },
+
+  getStory: async (storyId: string) => {
+    const res = await apiClient.get(`/stories/${encodeURIComponent(storyId)}`);
+    return res.data.story;
+  },
+
+  getStoriesByOwner: async (ownerId: string, includeUnpublished: boolean = false, limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get(`/stories/owner/${encodeURIComponent(ownerId)}`, {
+      params: { include_unpublished: includeUnpublished, limit, offset }
+    });
+    return res.data.stories;
+  },
+
+  updateStory: async (storyId: string, updates: any) => {
+    const res = await apiClient.put(`/stories/${encodeURIComponent(storyId)}`, updates);
+    return res.data;
+  },
+
+  addPhotoToStory: async (storyId: string, photoData: any) => {
+    const res = await apiClient.post(`/stories/${encodeURIComponent(storyId)}/photos`, photoData);
+    return res.data;
+  },
+
+  getStoryTimeline: async (storyId: string) => {
+    const res = await apiClient.get(`/stories/${encodeURIComponent(storyId)}/timeline`);
+    return res.data.timeline;
+  },
+
+  updateTimelineEntry: async (entryId: string, updates: any) => {
+    const res = await apiClient.put(`/timeline/entries/${encodeURIComponent(entryId)}`, updates);
+    return res.data;
+  },
+
+  removePhotoFromTimeline: async (entryId: string) => {
+    const res = await apiClient.delete(`/timeline/entries/${encodeURIComponent(entryId)}`);
+    return res.data;
+  },
+
+  getStoryStats: async (storyId: string) => {
+    const res = await apiClient.get(`/stories/${encodeURIComponent(storyId)}/stats`);
+  },
+
+  getUserStoryStats: async (userId: string) => {
+    const res = await apiClient.get(`/stories/user/${encodeURIComponent(userId)}/stats`);
+  },
+
+  toggleStoryPublish: async (storyId: string, publish: boolean) => {
+    const res = await apiClient.post(`/stories/${encodeURIComponent(storyId)}/publish`, { publish });
+    return res.data;
+  },
+
+  // Bulk Actions with Undo
+  recordBulkAction: async (actionType: string, paths: string[], operationData?: any) => {
+    const res = await apiClient.post('/bulk/action', {
+      action_type: actionType,
+      paths,
+      operation_data: operationData
+    });
+    return res.data;
+  },
+
+  getBulkActionHistory: async (userId: string, actionType?: string, limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get(`/bulk/history/${encodeURIComponent(userId)}`, {
+      params: { action_type: actionType, limit, offset }
+    });
+    return res.data;
+  },
+
+  undoBulkAction: async (actionId: string) => {
+    const res = await apiClient.post(`/bulk/undo/${encodeURIComponent(actionId)}`);
+    return res.data;
+  },
+
+  canUndoBulkAction: async (actionId: string) => {
+    const res = await apiClient.get(`/bulk/can-undo/${encodeURIComponent(actionId)}`);
+    return res.data;
+  },
+
+  getBulkActionsStats: async (userId: string) => {
+    const res = await apiClient.get(`/bulk/stats/${encodeURIComponent(userId)}`);
+    return res.data;
+  },
+
+  // Multi-tag Filtering
+  createTagFilter: async (name: string, tagExpressions: any[], combinationOperator: string = 'AND') => {
+    const res = await apiClient.post('/tag-filters', {
+      name,
+      tag_expressions: tagExpressions,
+      combination_operator: combinationOperator
+    });
+    return res.data;
+  },
+
+  getTagFilter: async (filterId: string) => {
+    const res = await apiClient.get(`/tag-filters/${encodeURIComponent(filterId)}`);
+    return res.data.tag_filter;
+  },
+
+  getTagFilters: async (limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get('/tag-filters', { params: { limit, offset } });
+    return res.data.filters;
+  },
+
+  updateTagFilter: async (filterId: string, updates: any) => {
+    const res = await apiClient.put(`/tag-filters/${encodeURIComponent(filterId)}`, updates);
+    return res.data;
+  },
+
+  deleteTagFilter: async (filterId: string) => {
+    const res = await apiClient.delete(`/tag-filters/${encodeURIComponent(filterId)}`);
+    return res.data;
+  },
+
+  applyTagFilter: async (tagExpressions: any[], combinationOperator: string = 'AND') => {
+    const res = await apiClient.post('/tag-filters/apply', {
+      tag_expressions: tagExpressions,
+      combination_operator: combinationOperator
+    });
+    return res.data;
+  },
+
+  getPhotosByTags: async (tags: string[], operator: string = 'OR', excludeTags?: string[]) => {
+    const params: any = {
+      tags: tags.join(','),
+      operator
+    };
+
+    if (excludeTags) {
+      params.exclude_tags = excludeTags.join(',');
+    }
+
+    const res = await apiClient.get('/photos/by-tags', { params });
+    return res.data;
+  },
+
+  getCommonTags: async (photoPaths: string[], limit: number = 10) => {
+    const res = await apiClient.get('/tags/common', {
+      params: { photo_paths: photoPaths.join(','), limit }
+    });
+    return res.data.common_tags;
+  },
+
+  searchTags: async (query: string, limit: number = 20) => {
+    const res = await apiClient.get('/tags/search', {
+      params: { query, limit }
+    });
+    return res.data.tags;
+  },
+
+  getTagStats: async () => {
+    const res = await apiClient.get('/tags/stats');
+  },
+
+  // Version Stacks
+  createPhotoVersion: async (
+    originalPath: string,
+    versionPath: string,
+    versionType: string = 'edit',
+    versionName?: string,
+    versionDescription?: string,
+    editInstructions?: any,
+    parentVersionId?: string
+  ) => {
+    const res = await apiClient.post('/versions', {
+      original_path: originalPath,
+      version_path: versionPath,
+      version_type: versionType,
+      version_name: versionName,
+      version_description: versionDescription,
+      edit_instructions: editInstructions,
+      parent_version_id: parentVersionId
+    });
+    return res.data;
+  },
+
+  getPhotoVersions: async (photoPath: string) => {
+    const res = await apiClient.get(`/versions/photo/${encodeURIComponent(photoPath)}`);
+    return res.data;
+  },
+
+  getVersionStack: async (originalPath: string) => {
+    const res = await apiClient.get(`/versions/stack/${encodeURIComponent(originalPath)}`);
+    return res.data.stack;
+  },
+
+  updateVersionMetadata: async (versionPath: string, updates: { versionName?: string; versionDescription?: string }) => {
+    const res = await apiClient.put(`/versions/${encodeURIComponent(versionPath)}`, updates);
+    return res.data;
+  },
+
+  deleteVersion: async (versionId: string) => {
+    const res = await apiClient.delete(`/versions/${encodeURIComponent(versionId)}`);
+    return res.data;
+  },
+
+  getAllVersionStacks: async (limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get('/versions/stacks', { params: { limit, offset } });
+    return res.data.stacks;
+  },
+
+  getVersionStats: async () => {
+    const res = await apiClient.get('/versions/stats');
+  },
+
+  mergeVersionStacks: async (path1: string, path2: string) => {
+    const res = await apiClient.post('/versions/merge-stacks', { path1, path2 });
+    return res.data;
+  },
+
+  // Location Clustering & Correction
+  correctPhotoLocation: async (
+    photoPath: string,
+    correction: {
+      corrected_place_name?: string | null;
+      country?: string | null;
+      region?: string | null;
+      city?: string | null;
+    }
+  ) => {
+    const res = await apiClient.post(`/locations/correct/${encodeURIComponent(photoPath)}`, correction);
+    return res.data;
+  },
+
+  getPhotoLocation: async (photoPath: string) => {
+    const res = await apiClient.get(`/locations/photo/${encodeURIComponent(photoPath)}`);
+    return res.data.location;
+  },
+
+  getPhotosNearby: async (latitude: number, longitude: number, radiusKm: number = 1.0) => {
+    const res = await apiClient.get('/locations/nearby', {
+      params: { latitude, longitude, radius_km: radiusKm }
+    });
+    return res.data;
+  },
+
+  getLocationClusters: async (minPhotos: number = 2) => {
+    const res = await apiClient.get('/locations/clusters', {
+      params: { min_photos: minPhotos }
+    });
+    return res.data;
+  },
+
+  getPhotosInCluster: async (clusterId: string, limit: number = 50, offset: number = 0) => {
+    const res = await apiClient.get(`/locations/clusters/${encodeURIComponent(clusterId)}/photos`, {
+      params: { limit, offset }
+    });
+    return res.data;
+  },
+
+  getPhotoCluster: async (photoPath: string) => {
+    const res = await apiClient.get(`/locations/photo/${encodeURIComponent(photoPath)}/cluster`);
+    return res.data.cluster;
+  },
+
+  createLocationClusters: async (minPhotos: number = 2, maxDistanceMeters: number = 100) => {
+    const res = await apiClient.post('/locations/clusterize', null, {
+      params: { min_photos: minPhotos, max_distance_meters: maxDistanceMeters }
+    });
+    return res.data;
+  },
+
+  getLocationStats: async () => {
+    const res = await apiClient.get('/locations/stats');
+    return res.data;
+  },
+
+  bulkCorrectPlaceNames: async (photoPaths: string[], correctedName: string) => {
+    const res = await apiClient.post('/locations/correct-bulk', {
+      photo_paths: photoPaths,
+      corrected_name: correctedName
+    });
+    return res.data;
   },
 };

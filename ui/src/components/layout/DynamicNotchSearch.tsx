@@ -301,7 +301,7 @@ export function DynamicNotchSearch({ onExpandedChange }: { onExpandedChange?: (e
                   className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all ${activeGroup === 'mode' ? 'bg-white/15 text-foreground' : 'text-muted-foreground hover:bg-white/10'
                     }`}
                 >
-                  {searchMode === 'semantic' ? 'AI' : searchMode === 'metadata' ? 'Meta' : 'Visual'}
+                  {searchMode === 'semantic' ? 'Semantic' : searchMode === 'metadata' ? 'Meta' : 'Visual'}
                   <ChevronDown className={`w-3 h-3 transition-transform ${activeGroup === 'mode' ? 'rotate-180' : ''}`} />
                 </button>
                 {/* Mode Dropdown */}
@@ -315,7 +315,7 @@ export function DynamicNotchSearch({ onExpandedChange }: { onExpandedChange?: (e
                       className={`absolute top-full right-0 mt-2 w-36 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
                     >
                       {[
-                        { id: 'semantic', label: 'Semantic (AI)', icon: Sparkles },
+                        { id: 'semantic', label: 'Semantic', icon: Sparkles },
                         { id: 'metadata', label: 'Metadata', icon: FileText },
                         { id: 'visual', label: 'Visual Match', icon: ImageIcon },
                       ].map((item) => (

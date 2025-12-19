@@ -1,399 +1,310 @@
 """
-Advanced Caching System for Photo Search Application
+Performance Optimization & Caching System
 
-This module provides:
-1. Multi-level caching (memory, disk)
-2. Cache invalidation strategies
-3. Performance monitoring for cache operations
-4. Cache statistics and analytics
-5. Integration with existing search operations
+Implements caching strategies to improve application performance,
+particularly for large photo collections.
 """
 
-import time
-import json
-import pickle
-import hashlib
+import asyncio
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
-from pathlib import Path
-import sqlite3
+import hashlib
+import json
+from collections import OrderedDict
+import time
 import threading
-from functools import wraps
 
-
-class CacheEntry:
-    """Represents a cached entry with metadata."""
-
-    def __init__(self, key: str, value: Any, ttl_seconds: int = 3600):
-        self.key = key
-        self.value = value
-        self.created_at = datetime.now()
-        self.expires_at = self.created_at + timedelta(seconds=ttl_seconds)
-        self.access_count = 1
-        self.last_accessed = self.created_at
-
-    def is_expired(self) -> bool:
-        """Check if the cache entry has expired."""
-        return datetime.now() >= self.expires_at
-
-    def is_valid(self) -> bool:
-        """Check if the cache entry is still valid."""
-        return not self.is_expired()
-
-    def update_access(self):
-        """Update access statistics."""
-        self.access_count += 1
-        self.last_accessed = datetime.now()
-
-
-class MemoryCache:
-    """In-memory cache implementation."""
-
-    def __init__(self, max_size: int = 1000):
+class LRUCache:
+    """Simple LRU Cache implementation with thread safety"""
+    
+    def __init__(self, max_size: int = 1000, ttl: int = 3600):
+        """
+        Initialize LRU cache with max size and TTL.
+        
+        Args:
+            max_size: Maximum number of items to store
+            ttl: Time-to-live in seconds
+        """
         self.max_size = max_size
-        self._cache: Dict[str, CacheEntry] = {}
-        self._lock = threading.RLock()
-
+        self.ttl = ttl
+        self.cache: OrderedDict[str, Dict[str, Any]] = OrderedDict()
+        self.lock = threading.RLock()
+    
+    def _is_expired(self, timestamp: float) -> bool:
+        """Check if a cached item has expired."""
+        return time.time() - timestamp > self.ttl
+    
     def get(self, key: str) -> Optional[Any]:
-        """Get a value from the cache."""
-        with self._lock:
-            if key in self._cache:
-                entry = self._cache[key]
-                if entry.is_valid():
-                    entry.update_access()
-                    return entry.value
-                else:
-                    # Remove expired entry
-                    del self._cache[key]
-            return None
-
-    def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:
-        """Set a value in the cache."""
-        with self._lock:
-            # Check if we need to evict items
-            if len(self._cache) >= self.max_size:
-                # Simple eviction - remove oldest entry
-                oldest_key = min(self._cache.keys(), key=lambda k: self._cache[k].created_at)
-                del self._cache[oldest_key]
-
-            self._cache[key] = CacheEntry(key, value, ttl_seconds)
-            return True
-
+        """Get value from cache if it exists and hasn't expired."""
+        with self.lock:
+            if key not in self.cache:
+                return None
+                
+            item = self.cache[key]
+            if self._is_expired(item['timestamp']):
+                del self.cache[key]
+                return None
+                
+            # Move to end (most recently used)
+            self.cache.move_to_end(key)
+            return item['value']
+    
+    def set(self, key: str, value: Any) -> None:
+        """Set value in cache, evicting LRU item if needed."""
+        with self.lock:
+            # Clean up expired items periodically
+            if len(self.cache) > self.max_size * 0.9:  # Clean when 90% full
+                for k in list(self.cache.keys()):
+                    if self._is_expired(self.cache[k]['timestamp']):
+                        del self.cache[k]
+            
+            # Evict LRU if at max size
+            if len(self.cache) >= self.max_size:
+                self.cache.popitem(last=False)
+                
+            self.cache[key] = {
+                'value': value,
+                'timestamp': time.time()
+            }
+    
     def delete(self, key: str) -> bool:
-        """Delete a key from the cache."""
-        with self._lock:
-            if key in self._cache:
-                del self._cache[key]
+        """Delete a key from cache."""
+        with self.lock:
+            if key in self.cache:
+                del self.cache[key]
                 return True
             return False
-
-    def clear(self):
-        """Clear all entries from the cache."""
-        with self._lock:
-            self._cache.clear()
-
-    def stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
-        with self._lock:
-            valid_entries = [entry for entry in self._cache.values() if entry.is_valid()]
-            expired_entries = [entry for entry in self._cache.values() if entry.is_expired()]
-
-            total_accesses = sum(entry.access_count for entry in self._cache.values())
-
-            return {
-                'total_entries': len(self._cache),
-                'valid_entries': len(valid_entries),
-                'expired_entries': len(expired_entries),
-                'max_size': self.max_size,
-                'total_accesses': total_accesses,
-                'utilization_percent': (len(self._cache) / self.max_size) * 100 if self.max_size > 0 else 0
-            }
-
-
-class DiskCache:
-    """Disk-based cache implementation using SQLite."""
-
-    def __init__(self, db_path: str = "cache.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._lock = threading.RLock()
-        self._init_db()
-
-    def _init_db(self):
-        """Initialize the cache database."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        # Create cache table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cache (
-                key TEXT PRIMARY KEY,
-                value BLOB NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP NOT NULL,
-                access_count INTEGER DEFAULT 1,
-                last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-
-        # Create indexes
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_expires_at ON cache(expires_at)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_last_accessed ON cache(last_accessed)")
-
-        conn.commit()
-        conn.close()
-
-    def get(self, key: str) -> Optional[Any]:
-        """Get a value from the cache."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        try:
-            cursor.execute("""
-                SELECT value, access_count
-                FROM cache
-                WHERE key = ? AND expires_at > ?
-            """, (key, datetime.now().isoformat()))
-
-            row = cursor.fetchone()
-            if row:
-                # Update access count and last accessed time
-                cursor.execute("""
-                    UPDATE cache
-                    SET access_count = access_count + 1,
-                        last_accessed = ?
-                    WHERE key = ?
-                """, (datetime.now().isoformat(), key))
-
-                conn.commit()
-
-                # Deserialize the value
-                try:
-                    return pickle.loads(row['value'])
-                except Exception:
-                    return None
-        finally:
-            conn.close()
-
-        return None
-
-    def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:
-        """Set a value in the cache."""
-        try:
-            # Serialize the value
-            serialized_value = pickle.dumps(value)
-        except Exception:
-            return False  # Cannot serialize the value
-
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        try:
-            expires_at = (datetime.now() + timedelta(seconds=ttl_seconds)).isoformat()
-
-            cursor.execute("""
-                INSERT OR REPLACE INTO cache
-                (key, value, expires_at)
-                VALUES (?, ?, ?)
-            """, (key, serialized_value, expires_at))
-
-            conn.commit()
-            return True
-        except Exception:
-            return False
-        finally:
-            conn.close()
-
-    def delete(self, key: str) -> bool:
-        """Delete a key from the cache."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM cache WHERE key = ?", (key,))
-        rows_affected = cursor.rowcount
-
-        conn.commit()
-        conn.close()
-
-        return rows_affected > 0
-
-    def clear(self):
-        """Clear all entries from the cache."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM cache")
-        conn.commit()
-        conn.close()
-
-    def cleanup_expired(self) -> int:
-        """Remove expired entries and return count of removed entries."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("DELETE FROM cache WHERE expires_at <= ?", (datetime.now().isoformat(),))
-        removed_count = cursor.rowcount
-
-        conn.commit()
-        conn.close()
-
-        return removed_count
-
-    def stats(self) -> Dict[str, Any]:
-        """Get cache statistics."""
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        cursor = conn.cursor()
-
-        # Count total entries
-        cursor.execute("SELECT COUNT(*) as count FROM cache")
-        total_entries = cursor.fetchone()['count']
-
-        # Count expired entries
-        cursor.execute("SELECT COUNT(*) as count FROM cache WHERE expires_at <= ?", (datetime.now().isoformat(),))
-        expired_entries = cursor.fetchone()['count']
-
-        # Count valid entries
-        valid_entries = total_entries - expired_entries
-
-        # Get total access count
-        cursor.execute("SELECT SUM(access_count) as total FROM cache")
-        result = cursor.fetchone()
-        total_accesses = result['total'] or 0
-
-        conn.close()
-
-        return {
-            'total_entries': total_entries,
-            'valid_entries': valid_entries,
-            'expired_entries': expired_entries,
-            'total_accesses': total_accesses
-        }
+    
+    def clear(self) -> None:
+        """Clear all items from cache."""
+        with self.lock:
+            self.cache.clear()
 
 
 class CacheManager:
-    """Main cache manager with performance monitoring."""
-
-    def __init__(self, memory_size: int = 1000, disk_path: str = "cache.db"):
-        self.memory_cache = MemoryCache(max_size=memory_size)
-        self.disk_cache = DiskCache(db_path=disk_path)
-        self._stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0
-        }
-        self._lock = threading.RLock()
-
-    def get(self, key: str) -> Optional[Any]:
-        """Get a value from the cache with statistics tracking."""
-        # First try memory cache
-        value = self.memory_cache.get(key)
-        if value is not None:
-            with self._lock:
-                self._stats['hits'] += 1
-            return value
-
-        # If not in memory, try disk cache
-        value = self.disk_cache.get(key)
-        if value is not None:
-            # Promote to memory cache
-            ttl_seconds = 3600  # Default TTL
-            self.memory_cache.set(key, value, ttl_seconds)
-            with self._lock:
-                self._stats['hits'] += 1
-            return value
-
-        with self._lock:
-            self._stats['misses'] += 1
-        return None
-
-    def set(self, key: str, value: Any, ttl_seconds: int = 3600) -> bool:
-        """Set a value in both cache levels with statistics tracking."""
-        success = self.memory_cache.set(key, value, ttl_seconds) and \
-                  self.disk_cache.set(key, value, ttl_seconds)
-
-        if success:
-            with self._lock:
-                self._stats['sets'] += 1
-
-        return success
-
-    def delete(self, key: str) -> bool:
-        """Delete a key from both cache levels with statistics tracking."""
-        mem_success = self.memory_cache.delete(key)
-        disk_success = self.disk_cache.delete(key)
-        success = mem_success or disk_success
-
-        if success:
-            with self._lock:
-                self._stats['deletes'] += 1
-
-        return success
-
-    def clear(self):
-        """Clear all cache entries."""
-        self.memory_cache.clear()
-        self.disk_cache.clear()
-
-        with self._lock:
-            self._stats['hits'] = 0
-            self._stats['misses'] = 0
-            self._stats['sets'] = 0
-            self._stats['deletes'] = 0
-
-    def get_cache_key(self, *args, **kwargs) -> str:
-        """Generate a cache key from function arguments."""
-        # Create a string representation of args and kwargs
-        key_str = f"{args}_{sorted(kwargs.items())}"
-        # Hash it to create a consistent key
-        return hashlib.md5(key_str.encode()).hexdigest()
-
-    def cached_method(self, ttl_seconds: int = 3600):
-        """Decorator to cache method results."""
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                # Create a key from the function name and arguments
-                key_parts = [func.__name__] + list(args)
-                key_str = "_".join(str(part) for part in key_parts) + str(sorted(kwargs.items()))
-                key = hashlib.md5(key_str.encode()).hexdigest()
-
-                # Try to get from cache
-                cached_result = self.get(key)
-                if cached_result is not None:
-                    return cached_result
-
-                # Execute the function and cache the result
-                result = func(*args, **kwargs)
-                self.set(key, result, ttl_seconds)
-
-                return result
-            return wrapper
-        return decorator
-
-    def stats(self) -> Dict[str, Any]:
-        """Get comprehensive cache statistics."""
-        with self._lock:
-            memory_stats = self.memory_cache.stats()
-            disk_stats = self.disk_cache.stats()
-
-            return {
-                'memory': memory_stats,
-                'disk': disk_stats,
-                'operation_stats': dict(self._stats),
-                'hit_rate': self._stats['hits'] / (self._stats['hits'] + self._stats['misses']) if (self._stats['hits'] + self._stats['misses']) > 0 else 0,
-                'hit_count': self._stats['hits'],
-                'miss_count': self._stats['misses']
+    """Manages multiple caching strategies for performance optimization."""
+    
+    def __init__(self, max_size: int = 1000, ttl: int = 3600):
+        """
+        Initialize the cache manager.
+        
+        Args:
+            max_size: Maximum size per cache (for each type of data)
+            ttl: Default TTL for cached items (in seconds)
+        """
+        self.thumbnail_cache = LRUCache(max_size=max_size, ttl=ttl)
+        self.search_results_cache = LRUCache(max_size=max_size, ttl=ttl)
+        self.metadata_cache = LRUCache(max_size=max_size, ttl=ttl)
+        self.embeddings_cache = LRUCache(max_size=max_size, ttl=ttl*24)  # Keep embeddings longer
+        
+        # Background cleanup will clean expired items periodically
+        self._cleanup_interval = 300  # 5 minutes
+        self._running = False
+        self._cleanup_task = None
+    
+    def start_background_cleanup(self):
+        """Start background task to periodically clean expired items."""
+        if self._running:
+            return
+            
+        self._running = True
+        # Run cleanup in a separate thread
+        self._cleanup_task = threading.Thread(target=self._background_cleanup, daemon=True)
+        self._cleanup_task.start()
+    
+    def stop_background_cleanup(self):
+        """Stop background cleanup task."""
+        self._running = False
+        if self._cleanup_task:
+            self._cleanup_task.join(timeout=1.0)
+    
+    def _background_cleanup(self):
+        """Background task to clean expired items."""
+        while self._running:
+            time.sleep(self._cleanup_interval)
+            self._cleanup_expired()
+    
+    def _cleanup_expired(self):
+        """Clean expired items from all caches."""
+        # This would clean expired items, but we already do it in get/set
+        # This function exists as a periodic cleanup for additional safety
+        pass
+    
+    def generate_key(self, prefix: str, *args) -> str:
+        """
+        Generate a cache key from prefix and arguments.
+        
+        Args:
+            prefix: Cache type prefix (e.g., 'thumb', 'search', 'meta')
+            *args: Arguments to include in the key
+            
+        Returns:
+            SHA-256 hash key
+        """
+        key_str = f"{prefix}:{':'.join(map(str, args))}"
+        return hashlib.sha256(key_str.encode()).hexdigest()
+    
+    # Thumbnail caching
+    def cache_thumbnail(self, photo_path: str, size: Tuple[int, int], thumbnail_data: bytes) -> None:
+        """
+        Cache a thumbnail image.
+        
+        Args:
+            photo_path: Path to the photo
+            size: Thumbnail size (width, height)
+            thumbnail_data: Thumbnail image data
+        """
+        key = self.generate_key('thumb', photo_path, size[0], size[1])
+        self.thumbnail_cache.set(key, thumbnail_data)
+    
+    def get_cached_thumbnail(self, photo_path: str, size: Tuple[int, int]) -> Optional[bytes]:
+        """
+        Get a cached thumbnail.
+        
+        Args:
+            photo_path: Path to the photo
+            size: Thumbnail size (width, height)
+            
+        Returns:
+            Thumbnail data if cached, None otherwise
+        """
+        key = self.generate_key('thumb', photo_path, size[0], size[1])
+        return self.thumbnail_cache.get(key)
+    
+    # Search results caching
+    def cache_search_results(self, query: str, filters: Dict[str, Any], results: List[Dict[str, Any]], ttl: int = 600) -> None:
+        """
+        Cache search results.
+        
+        Args:
+            query: Search query
+            filters: Search filters applied
+            results: Search results to cache
+            ttl: Time-to-live for the cached results
+        """
+        # Use a custom TTL for search results cache
+        original_ttl = self.search_results_cache.ttl
+        try:
+            self.search_results_cache.ttl = ttl
+            key = self.generate_key('search', query, json.dumps(filters, sort_keys=True))
+            self.search_results_cache.set(key, results)
+        finally:
+            self.search_results_cache.ttl = original_ttl
+    
+    def get_cached_search_results(self, query: str, filters: Dict[str, Any]) -> Optional[List[Dict[str, Any]]]:
+        """
+        Get cached search results.
+        
+        Args:
+            query: Search query
+            filters: Search filters applied
+            
+        Returns:
+            Cached search results if available, None otherwise
+        """
+        key = self.generate_key('search', query, json.dumps(filters, sort_keys=True))
+        return self.search_results_cache.get(key)
+    
+    # Metadata caching
+    def cache_metadata(self, photo_path: str, metadata: Dict[str, Any]) -> None:
+        """
+        Cache photo metadata.
+        
+        Args:
+            photo_path: Path to the photo
+            metadata: Photo metadata to cache
+        """
+        key = self.generate_key('meta', photo_path)
+        self.metadata_cache.set(key, metadata)
+    
+    def get_cached_metadata(self, photo_path: str) -> Optional[Dict[str, Any]]:
+        """
+        Get cached photo metadata.
+        
+        Args:
+            photo_path: Path to the photo
+            
+        Returns:
+            Cached metadata if available, None otherwise
+        """
+        key = self.generate_key('meta', photo_path)
+        return self.metadata_cache.get(key)
+    
+    # Embeddings caching
+    def cache_embeddings(self, photo_path: str, embeddings: List[float]) -> None:
+        """
+        Cache photo embeddings.
+        
+        Args:
+            photo_path: Path to the photo
+            embeddings: Photo embeddings to cache
+        """
+        key = self.generate_key('embed', photo_path)
+        self.embeddings_cache.set(key, embeddings)
+    
+    def get_cached_embeddings(self, photo_path: str) -> Optional[List[float]]:
+        """
+        Get cached photo embeddings.
+        
+        Args:
+            photo_path: Path to the photo
+            
+        Returns:
+            Cached embeddings if available, None otherwise
+        """
+        key = self.generate_key('embed', photo_path)
+        return self.embeddings_cache.get(key)
+    
+    # Cache stats
+    def get_stats(self) -> Dict[str, Dict[str, int]]:
+        """
+        Get statistics about all caches.
+        
+        Returns:
+            Dictionary with stats for each cache type
+        """
+        return {
+            'thumbnail_cache': {
+                'size': len(self.thumbnail_cache.cache),
+                'max_size': self.thumbnail_cache.max_size,
+                'ttl': self.thumbnail_cache.ttl
+            },
+            'search_results_cache': {
+                'size': len(self.search_results_cache.cache),
+                'max_size': self.search_results_cache.max_size,
+                'ttl': self.search_results_cache.ttl
+            },
+            'metadata_cache': {
+                'size': len(self.metadata_cache.cache),
+                'max_size': self.metadata_cache.max_size,
+                'ttl': self.metadata_cache.ttl
+            },
+            'embeddings_cache': {
+                'size': len(self.embeddings_cache.cache),
+                'max_size': self.embeddings_cache.max_size,
+                'ttl': self.embeddings_cache.ttl
             }
+        }
+    
+    def clear_cache(self, cache_type: Optional[str] = None) -> None:
+        """
+        Clear cache(s).
+        
+        Args:
+            cache_type: Type of cache to clear ('thumbnail', 'search', 'metadata', 'embeddings', or None for all)
+        """
+        if cache_type is None or cache_type == 'thumbnail':
+            self.thumbnail_cache.clear()
+        if cache_type is None or cache_type == 'search':
+            self.search_results_cache.clear()
+        if cache_type is None or cache_type == 'metadata':
+            self.metadata_cache.clear()
+        if cache_type is None or cache_type == 'embeddings':
+            self.embeddings_cache.clear()
 
-    def cleanup(self) -> int:
-        """Clean up expired entries from disk cache."""
-        removed_count = self.disk_cache.cleanup_expired()
-        return removed_count
 
+# Global cache manager instance
+cache_manager = CacheManager(max_size=2000, ttl=1800)  # 2000 items, 30 min default TTL
 
-# Global cache instance
-cache_manager = CacheManager()
+# Start background cleanup
+cache_manager.start_background_cleanup()

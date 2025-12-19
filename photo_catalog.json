@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-14T14:10:12.081214",
-    "last_update_date": "2025-12-14T14:10:12.081217",
+    "first_scan_date": "2025-12-19T13:28:59.322559",
+    "last_update_date": "2025-12-19T13:28:59.322564",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1060,
-    "total_images": 1058,
+    "total_files": 1061,
+    "total_images": 1059,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -31,8 +31,8 @@
       {
         "name": "food_14.jpg",
         "type": "image",
-        "size": 102750,
-        "mtime": 1765162952.8780987
+        "size": 158853,
+        "mtime": 1766086397.121943
       },
       {
         "name": "benchmark_0211.png",
@@ -4629,6 +4629,12 @@
         "type": "image",
         "size": 4717,
         "mtime": 1765124131.5408523
+      },
+      {
+        "name": "food_14_backup.jpg",
+        "type": "image",
+        "size": 156997,
+        "mtime": 1766086345.192477
       },
       {
         "name": "benchmark_0257.png",

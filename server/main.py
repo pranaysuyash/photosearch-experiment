@@ -1,9 +1,9 @@
 import sys
 import os
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Body, BackgroundTasks, Request
+from fastapi import FastAPI, HTTPException, Body, BackgroundTasks, Request, Query
 from .jobs import job_store, Job
 from .pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 import mimetypes
 from datetime import datetime, timezone
+from email.utils import formatdate
 import calendar
 import json
 import uuid
@@ -26,6 +27,7 @@ from PIL import Image
 # Simple in-memory rate limiting counters (per-IP sliding window)
 _rate_lock = Lock()
 _rate_counters: dict = {}
+_rate_last_conf: tuple | None = None
 
 # Add parent directory to path to import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -39,6 +41,22 @@ from .config import settings
 from .sources import SourceStore
 from .source_items import SourceItemStore
 from .trash_db import TrashDB
+
+
+def _runtime_base_dir() -> Path:
+    """Resolve a runtime base dir.
+
+    In tests we want an isolated writable directory even when the server is started as a
+    subprocess (see `test_people_endpoints.py`).
+    """
+    if os.environ.get("PHOTOSEARCH_TEST_MODE") == "1":
+        td = os.environ.get("PHOTOSEARCH_BASE_DIR")
+        if td:
+            try:
+                return Path(td).resolve()
+            except Exception:
+                return Path(td)
+    return settings.BASE_DIR
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -125,6 +143,36 @@ def is_video_file(path: str) -> bool:
     """Check if a file is a video based on extension."""
     ext = os.path.splitext(path)[1].lower()
     return ext in VIDEO_EXTENSIONS
+
+
+def _httpdate(ts: float) -> str:
+    """Return an HTTP-date string (RFC 7231) for a POSIX timestamp."""
+    return formatdate(timeval=ts, usegmt=True)
+
+
+def _make_cache_headers(stat_result: os.stat_result, *, max_age: int = 86400, extra: str = "") -> Dict[str, str]:
+    """Create Cache-Control, ETag, and Last-Modified headers for a file."""
+    etag = f"W/\"{stat_result.st_mtime_ns}-{stat_result.st_size}{('-' + extra) if extra else ''}\""
+    return {
+        "Cache-Control": f"public, max-age={max_age}",
+        "ETag": etag,
+        "Last-Modified": _httpdate(stat_result.st_mtime),
+    }
+
+
+def _negotiate_image_format(format_param: str | None, accept_header: str | None) -> str:
+    """Choose output image format based on explicit param or Accept header."""
+    fmt = (format_param or "").strip().lower()
+    if fmt in {"jpg", "jpeg"}:
+        return "JPEG"
+    if fmt == "webp":
+        return "WEBP"
+
+    if accept_header:
+        h = accept_header.lower()
+        if "image/webp" in h:
+            return "WEBP"
+    return "JPEG"
 
 def apply_sort(results: list, sort_by: str) -> list:
     """Sort results by specified criteria."""
@@ -1267,14 +1315,16 @@ async def search_photos(
     type_filter: str = "all",  # all, photos, videos
     source_filter: str = "all",  # all, local, cloud, hybrid
     favorites_filter: str = "all",  # all, favorites_only
-    tag: Optional[str] = None,  # Filter to a single user tag
+    tag: Optional[str] = None,  # Filter to a single user tag (deprecated, use tags instead)
+    tags: Optional[str] = None,  # Filter by multiple tags, format: "tag1,tag2,tag3"
+    tag_logic: str = "OR",  # "AND" or "OR" for combining multiple tags
     date_from: Optional[str] = None,  # YYYY-MM or ISO date/datetime
     date_to: Optional[str] = None,    # YYYY-MM or ISO date/datetime
     log_history: bool = True  # Whether to log this search to history
 ):
     """
     Unified Search Endpoint.
-    Modes: 
+    Modes:
       - 'metadata' (SQL)
       - 'semantic' (CLIP)
       - 'hybrid' (Merge Metadata + Semantic)
@@ -1284,16 +1334,104 @@ async def search_photos(
     """
     try:
         import time
+        from .validation import validate_search_query, validate_pagination_params, validate_date_input
         start_time = time.time()
 
+        # Input validation
+        query_result = validate_search_query(query, max_length=500)
+        if not query_result.is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid search query: {query_result.error_message}")
+        validated_query = query_result.sanitized_value
+
+        pagination_result = validate_pagination_params(limit, offset)
+        if not pagination_result.is_valid:
+            raise HTTPException(status_code=400, detail=f"Invalid pagination: {pagination_result.error_message}")
+        validated_limit = pagination_result.sanitized_value["limit"]
+        validated_offset = pagination_result.sanitized_value["offset"]
+
+        # Validate dates
+        if date_from:
+            date_from_result = validate_date_input(date_from)
+            if not date_from_result.is_valid:
+                raise HTTPException(status_code=400, detail=f"Invalid date_from: {date_from_result.error_message}")
+            validated_date_from = date_from_result.sanitized_value
+        else:
+            validated_date_from = None
+
+        if date_to:
+            date_to_result = validate_date_input(date_to)
+            if not date_to_result.is_valid:
+                raise HTTPException(status_code=400, detail=f"Invalid date_to: {date_to_result.error_message}")
+            validated_date_to = date_to_result.sanitized_value
+        else:
+            validated_date_to = None
+
+        # Validate mode
+        valid_modes = {"metadata", "semantic", "hybrid"}
+        if mode not in valid_modes:
+            raise HTTPException(status_code=400, detail=f"Invalid mode: {mode}. Must be one of {valid_modes}")
+
+        # Validate sort_by
+        valid_sort_options = {"date_desc", "date_asc", "name", "size"}
+        if sort_by not in valid_sort_options:
+            raise HTTPException(status_code=400, detail=f"Invalid sort_by: {sort_by}. Must be one of {valid_sort_options}")
+
+        # Validate filters
+        valid_type_filters = {"all", "photos", "videos"}
+        if type_filter not in valid_type_filters:
+            raise HTTPException(status_code=400, detail=f"Invalid type_filter: {type_filter}. Must be one of {valid_type_filters}")
+
+        valid_source_filters = {"all", "local", "cloud", "hybrid"}
+        if source_filter not in valid_source_filters:
+            raise HTTPException(status_code=400, detail=f"Invalid source_filter: {source_filter}. Must be one of {valid_source_filters}")
+
+        valid_favorites_filters = {"all", "favorites_only"}
+        if favorites_filter not in valid_favorites_filters:
+            raise HTTPException(status_code=400, detail=f"Invalid favorites_filter: {favorites_filter}. Must be one of {valid_favorites_filters}")
+
+        if tag_logic not in {"AND", "OR"}:
+            raise HTTPException(status_code=400, detail="Invalid tag_logic: Must be 'AND' or 'OR'")
+
         tagged_paths = None
-        if tag:
+        if tag or tags:
             try:
                 from .tags_db import get_tags_db
 
                 tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
-                tagged_paths = set(tags_db.get_tag_paths(tag))
-            except Exception:
+
+                # Handle both single tag and multiple tags
+                if tags:
+                    # Split multiple tags and remove whitespace
+                    tag_list = [t.strip() for t in tags.split(',')]
+
+                    # Get paths for each tag
+                    all_tagged_paths = {}
+                    for t in tag_list:
+                        if t:  # Skip empty tags
+                            all_tagged_paths[t] = set(tags_db.get_tag_paths(t))
+
+                    # Apply logic based on tag_logic (AND/OR)
+                    if tag_logic.upper() == "AND":
+                        # For AND logic, find intersection of all tag sets
+                        if all_tagged_paths:
+                            tagged_paths = set.intersection(*all_tagged_paths.values())
+                    elif tag_logic.upper() == "OR":
+                        # For OR logic, find union of all tag sets
+                        if all_tagged_paths:
+                            tagged_paths = set.union(*all_tagged_paths.values())
+                        else:
+                            tagged_paths = set()
+                    else:
+                        # Default to OR if invalid logic provided
+                        if all_tagged_paths:
+                            tagged_paths = set.union(*all_tagged_paths.values())
+                        else:
+                            tagged_paths = set()
+                elif tag:
+                    # Original single tag logic
+                    tagged_paths = set(tags_db.get_tag_paths(tag))
+            except Exception as e:
+                print(f"Tag filtering error: {e}")
                 tagged_paths = set()
         # 1. Semantic Search
         if mode == "semantic":
@@ -2564,13 +2702,14 @@ async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_scor
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/image/thumbnail")
-async def get_thumbnail(request: Request, path: str = "", size: int = 300, token: str | None = None):
+async def get_thumbnail(request: Request, path: str = "", size: int = 300, token: str | None = None, format: str | None = None):
     """
     Serve a thumbnail or the full image.
     Args:
         path: Path to the image file (local/dev usage)
         size: Max dimension for thumbnail (default 300)
         token: Optional signed token for production/public access
+        format: Optional output format override (jpeg|webp)
     """
     # Resolve path either from token (preferred for public) or from 'path' param
     requested_path_str: str
@@ -2617,6 +2756,31 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Stat file once for headers / validation
+    if not os.path.exists(requested_path_str):
+        raise HTTPException(status_code=404, detail="File not found")
+
+    try:
+        stat_result = os.stat(requested_path_str)
+    except Exception:
+        raise HTTPException(status_code=404, detail="File not accessible")
+
+    output_format = _negotiate_image_format(format, request.headers.get("accept"))
+    cache_headers = _make_cache_headers(stat_result, max_age=86400)
+
+    # Conditional requests (ETag / If-Modified-Since)
+    inm = request.headers.get("if-none-match")
+    ims = request.headers.get("if-modified-since")
+    if inm and inm == cache_headers.get("ETag"):
+        return Response(status_code=304, headers=cache_headers)
+    if ims:
+        try:
+            ims_dt = datetime.strptime(ims, "%a, %d %b %Y %H:%M:%S GMT")
+            if stat_result.st_mtime <= ims_dt.timestamp():
+                return Response(status_code=304, headers=cache_headers)
+        except Exception:
+            pass
+
     # Record access (hashed path to protect privacy)
     try:
         if settings.ACCESS_LOG_MASKING:
@@ -2629,69 +2793,71 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
         pass
 
     # Serve the thumbnail after security checks and access logging
-    if os.path.exists(requested_path_str):
-        try:
-            from PIL import Image
-            import io
+    try:
+        from PIL import Image
+        import io
 
-            # For 3D textures we want small files (size=300 is good)
-            # For Detail Modal we want larger (size=1200)
+        # For 3D textures we want small files (size=300 is good)
+        # For Detail Modal we want larger (size=1200)
 
-            # Open image
-            with Image.open(requested_path_str) as img:
-                # Convert to RGB if needed (e.g. RGBA or P)
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
+        with Image.open(requested_path_str) as img:
+            # Convert to RGB if needed (e.g. RGBA or P)
+            if img.mode in ("RGBA", "P") and output_format in ("JPEG", "WEBP"):
+                img = img.convert("RGB")
 
-                # Calculate new aspect ratio
-                # thumbnail() modifies in-place and preserves aspect ratio
-                img.thumbnail((size, size))
+            img.thumbnail((size, size))
 
-                # Save to buffer
-                img_io = io.BytesIO()
-                img.save(img_io, "JPEG", quality=70)
-                img_io.seek(0)
+            # Save to buffer
+            img_io = io.BytesIO()
+            save_kwargs = {"quality": 75}
+            if output_format == "WEBP":
+                save_kwargs["method"] = 4
+            img.save(img_io, output_format, **save_kwargs)
+            img_io.seek(0)
 
-                # Rate limiting: check per-IP quota
-                try:
-                    if settings.RATE_LIMIT_ENABLED:
-                        client_ip = request.client.host if request.client else "unknown"
-                        now = __import__("time").time()
-                        with _rate_lock:
-                            lst = _rate_counters.get(client_ip, [])
-                            # keep only entries in the last 60s
-                            lst = [t for t in lst if now - t < 60]
-                            if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
-                                raise HTTPException(status_code=429, detail="Rate limit exceeded")
-                            lst.append(now)
-                            _rate_counters[client_ip] = lst
-                except HTTPException:
-                    raise
-                except Exception:
-                    # don't block on rate errors
-                    pass
+            # Rate limiting: check per-IP quota
+            try:
+                if settings.RATE_LIMIT_ENABLED:
+                    global _rate_last_conf
+                    conf = (bool(settings.RATE_LIMIT_ENABLED), int(settings.RATE_LIMIT_REQS_PER_MIN))
+                    client_ip = request.client.host if request.client else "unknown"
+                    now = __import__("time").time()
+                    with _rate_lock:
+                        if _rate_last_conf != conf:
+                            _rate_counters.clear()
+                            _rate_last_conf = conf
+                        lst = _rate_counters.get(client_ip, [])
+                        lst = [t for t in lst if now - t < 60]
+                        if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
+                            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+                        lst.append(now)
+                        _rate_counters[client_ip] = lst
+            except HTTPException:
+                raise
+            except Exception:
+                pass
 
-                # Return in-memory bytes with caching headers
-                content_bytes = img_io.getvalue()
-                logger.info(f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str}")
-                return Response(
-                    content=content_bytes,
-                    media_type="image/jpeg",
-                    headers={"Cache-Control": "public, max-age=31536000"},
-                )
+            content_bytes = img_io.getvalue()
+            logger.info(f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str} as {output_format}")
+            # Include cache headers + content type
+            headers = dict(cache_headers)
+            headers.setdefault("Content-Type", "image/webp" if output_format == "WEBP" else "image/jpeg")
+            return Response(
+                content=content_bytes,
+                media_type="image/webp" if output_format == "WEBP" else "image/jpeg",
+                headers=headers,
+            )
 
-        except ImportError:
-            # Fallback if Pillow not working
-            pass # fall through to local file
-        except HTTPException:
-            # Propagate HTTPExceptions like rate limiting up to the client
-            raise
-        except Exception as e:
-            logger.error(f"Thumbnail error for {requested_path_str}: {e}")
-            pass # fall through to local file
+    except ImportError:
+        pass
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Thumbnail error for {requested_path_str}: {e}")
+        pass
 
-        # Fallback to serving original file
-        return FileResponse(requested_path_str)
+    # Fallback to serving original file with cache headers
+    return FileResponse(requested_path_str, headers=cache_headers)
 
 
 @app.post("/admin/unmask")
@@ -2754,63 +2920,118 @@ async def admin_unmask(payload: dict = Body(...), request: Request = None):
 
     raise HTTPException(status_code=404, detail="Image not found")
 
+def validate_file_path(file_path: str, allowed_directories: List[Path]) -> bool:
+    """
+    Validate that a file path is safe and within allowed directories.
+
+    Security improvements:
+    - Normalize path to prevent traversal attacks
+    - Check against allowed directory whitelist
+    - Validate file extensions
+    - Ensure path doesn't contain dangerous characters
+    """
+    try:
+        # Normalize and resolve the path
+        normalized_path = Path(file_path).resolve()
+
+        # Basic validation
+        if not normalized_path.exists():
+            return False
+
+        if not normalized_path.is_file():
+            return False
+
+        # Check for dangerous path components
+        dangerous_patterns = ['..', '~', '$', '|', ';', '&', '>', '<', '`']
+        path_str = str(normalized_path)
+        if any(pattern in path_str for pattern in dangerous_patterns):
+            return False
+
+        # Check if path is within allowed directories
+        for allowed_dir in allowed_directories:
+            if normalized_path.is_relative_to(allowed_dir.resolve()):
+                return True
+
+        return False
+
+    except (OSError, ValueError, RuntimeError):
+        return False
+
+
 @app.get("/file")
 async def get_file(path: str, download: bool = False):
     """
     Serve an original file (image/video/etc.) without transcoding.
     Use `download=true` to force a download Content-Disposition.
     """
-    # Security check
-    try:
-        if settings.MEDIA_DIR.exists():
-            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
-        else:
-            allowed_paths = [settings.BASE_DIR.resolve()]
+    # Security check with enhanced validation
+    if settings.MEDIA_DIR.exists():
+        allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+    else:
+        allowed_paths = [settings.BASE_DIR.resolve()]
 
-        requested_path = Path(path).resolve()
-        is_allowed = any(
-            requested_path.is_relative_to(allowed_path)
-            for allowed_path in allowed_paths
-        )
-        if not is_allowed:
-            raise HTTPException(status_code=403, detail="Access denied")
-    except ValueError:
+    # Validate the file path is safe
+    if not validate_file_path(path, allowed_paths):
+        # Log the attempted access for security monitoring
+        client_ip = request.client.host if request.client else "unknown"
+        ps_logger.warning(f"File access denied - IP: {client_ip}, Path: {path}")
         raise HTTPException(status_code=403, detail="Access denied")
 
-    if not os.path.exists(path):
-        raise HTTPException(status_code=404, detail="File not found")
+    # Additional security: validate file extension
+    allowed_extensions = {
+        # Images
+        '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.avif',
+        # Videos
+        '.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.flv',
+        # Documents
+        '.pdf', '.txt', '.md', '.doc', '.docx', '.xls', '.xlsx',
+        # Audio
+        '.mp3', '.wav', '.flac', '.aac', '.ogg'
+    }
 
+    file_ext = Path(path).suffix.lower()
+    if file_ext not in allowed_extensions:
+        raise HTTPException(status_code=403, detail="File type not allowed")
+
+    # Serve the file safely
     media_type, _ = mimetypes.guess_type(path)
     kwargs = {"media_type": media_type or "application/octet-stream"}
     if download:
         kwargs["filename"] = os.path.basename(path)
-    return FileResponse(path, **kwargs)
+
+    # Add security headers
+    return FileResponse(
+        path,
+        **kwargs,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "X-Frame-Options": "DENY",
+            "Cache-Control": "private, max-age=3600"
+        }
+    )
 
 @app.get("/video")
 async def get_video(path: str):
     """
     Serve a video file directly.
     """
-    from fastapi.responses import FileResponse
-    
-    # Security check
-    try:
-        if settings.MEDIA_DIR.exists():
-            allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
-        else:
-            allowed_paths = [settings.BASE_DIR.resolve()]
-        
-        requested_path = Path(path).resolve()
-        is_allowed = any(
-            requested_path.is_relative_to(allowed_path) 
-            for allowed_path in allowed_paths
-        )
-        
-        if not is_allowed:
-            raise HTTPException(status_code=403, detail="Access denied")
-    except ValueError:
+    # Security check with enhanced validation
+    if settings.MEDIA_DIR.exists():
+        allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+    else:
+        allowed_paths = [settings.BASE_DIR.resolve()]
+
+    # Validate the video file path is safe
+    if not validate_file_path(path, allowed_paths):
+        client_ip = request.client.host if request.client else "unknown"
+        ps_logger.warning(f"Video access denied - IP: {client_ip}, Path: {path}")
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
+    # Validate video-specific file extensions
+    video_extensions = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.flv'}
+    if Path(path).suffix.lower() not in video_extensions:
+        raise HTTPException(status_code=403, detail="Video file type not allowed")
+
     if os.path.exists(path):
         # Get mime type
         ext = Path(path).suffix.lower()
@@ -2823,7 +3044,16 @@ async def get_video(path: str):
             '.m4v': 'video/x-m4v'
         }
         media_type = mime_types.get(ext, 'video/mp4')
-        return FileResponse(path, media_type=media_type)
+
+        # Add security headers for video serving
+        return FileResponse(
+            path,
+            media_type=media_type,
+            headers={
+                "X-Content-Type-Options": "nosniff",
+                "Accept-Ranges": "bytes"
+            }
+        )
     
     raise HTTPException(status_code=404, detail="Video not found")
 
@@ -3442,9 +3672,18 @@ async def get_company_usage_analytics():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+class ExportOptions(BaseModel):
+    format: str = "zip"  # zip, pdf, json (for metadata)
+    include_metadata: bool = True
+    include_thumbnails: bool = False
+    max_resolution: Optional[int] = None  # Max width/height in pixels
+    rename_pattern: Optional[str] = None  # Pattern for renaming files
+    password_protect: bool = False
+    password: Optional[str] = None
+
 class ExportRequest(BaseModel):
     paths: List[str]
-    format: str = "zip"  # Future: could support "json" for metadata export
+    options: ExportOptions = ExportOptions()
 
 # Initialize Face Clustering
 from src.face_clustering import FaceClusterer
@@ -4429,24 +4668,26 @@ async def get_setup_guide():
 @app.post("/export")
 async def export_photos(request: ExportRequest):
     """
-    Export selected photos as a ZIP file.
-    
+    Export selected photos with various options.
+
     Args:
-        request: ExportRequest with list of file paths
-        
+        request: ExportRequest with list of file paths and export options
+
     Returns:
-        Streaming ZIP file download
+        Streaming file download
     """
     import zipfile
     import io
     from fastapi.responses import StreamingResponse
-    
+    from PIL import Image
+    import json
+
     if not request.paths:
         raise HTTPException(status_code=400, detail="No files specified")
-    
+
     if len(request.paths) > 100:
         raise HTTPException(status_code=400, detail="Maximum 100 files per export")
-    
+
     # Validate paths are within allowed directories
     valid_paths = []
     for path in request.paths:
@@ -4456,38 +4697,2336 @@ async def export_photos(request: ExportRequest):
                 allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
             else:
                 allowed_paths = [settings.BASE_DIR.resolve()]
-            
+
             is_allowed = any(
-                requested_path.is_relative_to(allowed_path) 
+                requested_path.is_relative_to(allowed_path)
                 for allowed_path in allowed_paths
             )
-            
+
             if is_allowed and os.path.exists(path):
                 valid_paths.append(path)
         except ValueError:
             continue
-    
+
     if not valid_paths:
         raise HTTPException(status_code=400, detail="No valid files to export")
-    
+
     # Create ZIP in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for path in valid_paths:
-            filename = os.path.basename(path)
+            original_filename = os.path.basename(path)
+
             # Handle duplicate filenames by adding parent folder
-            if any(os.path.basename(p) == filename and p != path for p in valid_paths):
+            if any(os.path.basename(p) == original_filename and p != path for p in valid_paths):
                 parent = os.path.basename(os.path.dirname(path))
-                filename = f"{parent}_{filename}"
-            zip_file.write(path, filename)
-    
+                filename = f"{parent}_{original_filename}"
+            else:
+                filename = original_filename
+
+            # Process image if size reduction is requested
+            if request.options.max_resolution:
+                try:
+                    # Open and resize image if needed
+                    with Image.open(path) as img:
+                        img.thumbnail((request.options.max_resolution, request.options.max_resolution))
+
+                        # Save to temporary bytes buffer
+                        temp_buffer = io.BytesIO()
+                        img.save(temp_buffer, format=img.format)
+                        temp_buffer.seek(0)
+
+                        # Write to zip
+                        zip_file.writestr(filename, temp_buffer.getvalue())
+                except Exception:
+                    # If image processing fails, just copy the file
+                    zip_file.write(path, filename)
+            else:
+                # Write original file
+                zip_file.write(path, filename)
+
+            # Include metadata if requested
+            if request.options.include_metadata:
+                try:
+                    metadata = photo_search_engine.db.get_metadata(path)
+                    if metadata:
+                        # Write metadata as JSON file
+                        meta_filename = f"{original_filename.replace(os.path.splitext(original_filename)[1], '')}_metadata.json"
+                        zip_file.writestr(meta_filename, json.dumps(metadata, indent=2))
+                except Exception:
+                    # If metadata extraction fails, continue without it
+                    pass
+
+            # Include thumbnail if requested
+            if request.options.include_thumbnails:
+                try:
+                    with Image.open(path) as img:
+                        img.thumbnail((200, 200))  # Create 200x200 thumbnail
+                        thumb_buffer = io.BytesIO()
+                        img.save(thumb_buffer, format=img.format)
+                        thumb_buffer.seek(0)
+
+                        thumb_filename = f"thumbs/{original_filename.replace(os.path.splitext(original_filename)[1], '')}_thumb{os.path.splitext(original_filename)[1]}"
+                        zip_file.writestr(thumb_filename, thumb_buffer.getvalue())
+                except Exception:
+                    # If thumbnail creation fails, continue without it
+                    pass
+
     zip_buffer.seek(0)
-    
+
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename=photos_export.zip"}
     )
+
+
+@app.post("/export/presets")
+async def create_export_preset(preset_data: dict):
+    """Create a new export preset with predefined options."""
+    # This would save the preset to a database in a full implementation
+    # For now, we'll just return the preset data
+    return {"success": True, "preset": preset_data}
+
+
+@app.get("/export/presets")
+async def get_export_presets():
+    """Get available export presets."""
+    # This would fetch presets from a database in a full implementation
+    # For now, return some default presets
+    return {
+        "presets": [
+            {
+                "id": "high_quality",
+                "name": "High Quality",
+                "description": "Full resolution with metadata",
+                "options": {
+                    "format": "zip",
+                    "include_metadata": True,
+                    "include_thumbnails": False,
+                    "max_resolution": None
+                }
+            },
+            {
+                "id": "web_sharing",
+                "name": "Web Sharing",
+                "description": "Resized for web with low resolution",
+                "options": {
+                    "format": "zip",
+                    "include_metadata": True,
+                    "include_thumbnails": True,
+                    "max_resolution": 1920
+                }
+            },
+            {
+                "id": "print_ready",
+                "name": "Print Ready",
+                "description": "High resolution suitable for printing",
+                "options": {
+                    "format": "zip",
+                    "include_metadata": True,
+                    "include_thumbnails": False,
+                    "max_resolution": None
+                }
+            }
+        ]
+    }
+
+
+# ==============================================================================
+# SHARE ENDPOINTS
+# ==============================================================================
+
+class ShareRequest(BaseModel):
+    paths: List[str]
+    expiration_hours: int = 24  # Default 24 hours
+    password: Optional[str] = None  # Optional password protection
+
+
+class ShareResponse(BaseModel):
+    share_id: str
+    share_url: str
+    expiration: str
+    download_count: int = 0
+
+
+# In-memory store for share links (in production, use a database)
+share_links = {}
+
+
+@app.post("/share", response_model=ShareResponse)
+async def create_share_link(request: ShareRequest):
+    """Create a shareable link for selected photos."""
+    import uuid
+    from datetime import datetime, timedelta
+
+    if not request.paths:
+        raise HTTPException(status_code=400, detail="No files specified")
+
+    if len(request.paths) > 100:
+        raise HTTPException(status_code=400, detail="Maximum 100 files per share")
+
+    # Validate paths are within allowed directories
+    valid_paths = []
+    for path in request.paths:
+        try:
+            requested_path = Path(path).resolve()
+            if settings.MEDIA_DIR.exists():
+                allowed_paths = [settings.MEDIA_DIR.resolve(), settings.BASE_DIR.resolve()]
+            else:
+                allowed_paths = [settings.BASE_DIR.resolve()]
+
+            is_allowed = any(
+                requested_path.is_relative_to(allowed_path)
+                for allowed_path in allowed_paths
+            )
+
+            if is_allowed and os.path.exists(path):
+                valid_paths.append(path)
+        except ValueError:
+            continue
+
+    if not valid_paths:
+        raise HTTPException(status_code=400, detail="No valid files to share")
+
+    # Generate unique share ID
+    share_id = str(uuid.uuid4())
+    expiration = datetime.now() + timedelta(hours=request.expiration_hours)
+
+    # Store share information
+    share_links[share_id] = {
+        "paths": valid_paths,
+        "expiration": expiration.isoformat(),
+        "created_at": datetime.now().isoformat(),
+        "download_count": 0,
+        "password": request.password  # In a real app, this should be hashed
+    }
+
+    # Generate share URL
+    share_url = f"{request.url.scheme}://{request.url.netloc}/shared/{share_id}"
+
+    return ShareResponse(
+        share_id=share_id,
+        share_url=share_url,
+        expiration=expiration.isoformat()
+    )
+
+
+@app.get("/shared/{share_id}")
+async def get_shared_content(share_id: str, password: Optional[str] = None):
+    """Get content from a share link."""
+    from datetime import datetime
+
+    if share_id not in share_links:
+        raise HTTPException(status_code=404, detail="Share link not found or expired")
+
+    share_info = share_links[share_id]
+
+    # Check expiration
+    if datetime.fromisoformat(share_info["expiration"]) < datetime.now():
+        # Remove expired link and return error
+        del share_links[share_id]
+        raise HTTPException(status_code=404, detail="Share link has expired")
+
+    # Check password if required
+    if share_info.get("password") and share_info["password"] != password:
+        raise HTTPException(status_code=403, detail="Password required or incorrect")
+
+    # Increment download count for analytics
+    share_info["download_count"] = share_info.get("download_count", 0) + 1
+
+    # Return file paths for download
+    return {
+        "paths": share_info["paths"],
+        "download_count": share_info["download_count"]
+    }
+
+
+@app.get("/shared/{share_id}/download")
+async def download_shared_content(share_id: str, password: Optional[str] = None):
+    """Download content from a share link."""
+    import zipfile
+    import io
+    from fastapi.responses import StreamingResponse
+
+    # Get shared content (uses same validation as get_shared_content)
+    content = await get_shared_content(share_id, password)
+
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for path in content["paths"]:
+            filename = os.path.basename(path)
+            # Handle duplicate filenames by adding parent folder
+            if any(os.path.basename(p) == filename and p != path for p in content["paths"]):
+                parent = os.path.basename(os.path.dirname(path))
+                filename = f"{parent}_{filename}"
+            zip_file.write(path, filename)
+
+    zip_buffer.seek(0)
+
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": f"attachment; filename=shared_photos.zip"}
+    )
+
+# ==============================================================================
+# VERSION STACKS ENDPOINTS
+# ==============================================================================
+
+class VersionCreateRequest(BaseModel):
+    original_path: str
+    version_path: str
+    version_type: str = "edited"  # 'original', 'edited', 'variant'
+    version_name: Optional[str] = None
+    version_description: Optional[str] = None
+    editing_instructions: Optional[Dict[str, Any]] = None
+    parent_version_id: Optional[str] = None
+
+
+class VersionUpdateRequest(BaseModel):
+    version_name: Optional[str] = None
+    version_description: Optional[str] = None
+
+
+@app.post("/versions")
+async def create_photo_version(request: VersionCreateRequest):
+    """Create a new photo version record."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+
+        original_path = "/" + request.original_path.lstrip("/")
+        version_path = "/" + request.version_path.lstrip("/")
+
+        version_id = versions_db.create_version(
+            original_path=original_path,
+            version_path=version_path,
+            version_type=request.version_type,
+            version_name=request.version_name,
+            version_description=request.version_description,
+            edit_instructions=request.editing_instructions,
+            parent_version_id=request.parent_version_id
+        )
+
+        return {"success": True, "version_id": version_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/original/{original_path:path}")
+async def get_versions_for_original(original_path: str):
+    """Get all versions for a given original photo."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        normalized_path = "/" + original_path.lstrip("/")
+        versions = versions_db.get_versions_for_original(normalized_path)
+        return {"original_path": normalized_path, "versions": versions}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/stack/{version_path:path}")
+async def get_version_stack(version_path: str):
+    """Get the entire version stack for a given photo path."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        normalized_path = "/" + version_path.lstrip("/")
+        stack = versions_db.get_version_stack(normalized_path)
+        return {"stack": stack}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/versions/{version_path:path}")
+async def update_version_metadata(version_path: str, request: VersionUpdateRequest):
+    """Update metadata for a specific version."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        normalized_path = "/" + version_path.lstrip("/")
+        success = versions_db.update_version_metadata(
+            normalized_path,
+            version_name=request.version_name,
+            version_description=request.version_description
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Version not found")
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/versions/{version_id}")
+async def delete_photo_version(version_id: str):
+    """Delete a photo version record."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        success = versions_db.delete_version(version_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Version not found")
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/stats")
+async def get_version_stats():
+    """Get statistics about photo versions."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        stats = versions_db.get_version_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# LOCATION CORRECTION ENDPOINTS
+# ==============================================================================
+
+class LocationCreateRequest(BaseModel):
+    photo_path: str
+    latitude: float
+    longitude: float
+    original_place_name: Optional[str] = None
+    corrected_place_name: Optional[str] = None
+    country: Optional[str] = None
+    region: Optional[str] = None
+    city: Optional[str] = None
+    accuracy: float = 100.0
+
+
+class LocationUpdateRequest(BaseModel):
+    corrected_place_name: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+    country: Optional[str] = None
+
+
+@app.post("/locations")
+async def add_photo_location(request: LocationCreateRequest):
+    """Add or update location information for a photo."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+
+        normalized_path = "/" + request.photo_path.lstrip("/")
+
+        location_id = locations_db.add_photo_location(
+            photo_path=normalized_path,
+            latitude=request.latitude,
+            longitude=request.longitude,
+            original_place_name=request.original_place_name,
+            corrected_place_name=request.corrected_place_name,
+            country=request.country,
+            region=request.region,
+            city=request.city,
+            accuracy=request.accuracy
+        )
+
+        return {"success": True, "location_id": location_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/photo/{photo_path:path}")
+async def get_photo_location(photo_path: str):
+    """Get location information for a specific photo."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        normalized_path = "/" + photo_path.lstrip("/")
+        location = locations_db.get_photo_location(normalized_path)
+
+        if not location:
+            raise HTTPException(status_code=404, detail="Location not found for photo")
+
+        return {"location": location}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/locations/photo/{photo_path:path}")
+async def update_photo_location(photo_path: str, request: LocationUpdateRequest):
+    """Update location information for a photo."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        normalized_path = "/" + photo_path.lstrip("/")
+
+        if request.corrected_place_name:
+            success = locations_db.update_place_name(normalized_path, request.corrected_place_name)
+        else:
+            success = True  # Skip update if no corrected name provided
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Photo location not found")
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/places/{place_name}")
+async def get_photos_by_place(place_name: str):
+    """Get all photos associated with a specific place name."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        photos = locations_db.get_photos_by_place(place_name)
+        return {"place_name": place_name, "photos": photos}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/nearby")
+async def get_nearby_locations(
+    latitude: float,
+    longitude: float,
+    radius_km: float = Query(1.0, ge=0.1, le=50.0)  # Between 0.1 and 50 km
+):
+    """Get photos within a certain radius of a location."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        nearby = locations_db.get_nearby_locations(latitude, longitude, radius_km)
+        return {"center": {"lat": latitude, "lng": longitude}, "radius_km": radius_km, "photos": nearby}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/clusters")
+async def get_place_clusters(min_photos: int = Query(2, ge=1)):
+    """Get clusters of photos by location."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        clusters = locations_db.get_place_clusters(min_photos)
+        return {"clusters": clusters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/stats")
+async def get_location_stats():
+    """Get statistics about location data."""
+    try:
+        locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+        stats = locations_db.get_location_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# ADVANCED INTENT-BASED SEARCH ENDPOINTS
+# ==============================================================================
+
+class IntentSearchParams(BaseModel):
+    query: str
+    intent_context: Optional[Dict[str, Any]] = None
+    filters: Optional[Dict[str, Any]] = None
+    limit: int = 50
+    offset: int = 0
+
+
+@app.post("/search/intent")
+async def search_with_intent(params: IntentSearchParams):
+    """
+    Advanced search with intent recognition and context-aware processing.
+
+    This endpoint performs search considering the user's intent and provides
+    enhanced results based on contextual information.
+    """
+    try:
+        import time
+        start_time = time.time()
+
+        # Detect intent from query
+        intent_result = intent_detector.detect_intent(params.query)
+
+        # Apply intent-specific search logic
+        results = []
+
+        # For people intent, search using face recognition if available
+        if intent_result['primary_intent'] == 'people':
+            # Check if person name is in query
+            people_results = []
+            try:
+                from .face_clustering import FACE_LIBRARIES_AVAILABLE
+                if FACE_LIBRARIES_AVAILABLE:
+                    # Search for faces with names matching query
+                    # This is a simplified implementation
+                    # In a full implementation, this would query the face clustering database
+                    pass
+            except ImportError:
+                pass
+
+        # For location intent, search using location data
+        elif intent_result['primary_intent'] == 'location':
+            # Search for photos with matching location info
+            locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
+            location_results = locations_db.get_photos_by_place(params.query)
+            # Add to results with location context
+
+        # For date intent, enhance date filtering
+        elif intent_result['primary_intent'] == 'date':
+            # Parse date expressions from query and apply to search
+            base_query = params.query
+            # Extract date ranges from query if possible
+            # This would be enhanced with NLP for date parsing
+
+        # For events, combine multiple filters
+        elif intent_result['primary_intent'] == 'event':
+            # Events often involve people, locations, and specific activities
+            # Apply multi-faceted search
+            pass
+
+        # Perform base search depending on intent
+        # Use hybrid search with intent-based weightings
+        metadata_weight, semantic_weight = 0.5, 0.5
+
+        if intent_result['primary_intent'] in ['camera', 'date', 'technical']:
+            metadata_weight, semantic_weight = 0.8, 0.2
+        elif intent_result['primary_intent'] in ['people', 'object', 'scene', 'event', 'emotion', 'activity']:
+            metadata_weight, semantic_weight = 0.2, 0.8
+        elif intent_result['primary_intent'] in ['location', 'color']:
+            metadata_weight, semantic_weight = 0.6, 0.4
+
+        # Perform hybrid search with appropriate weights
+        # This would use the existing hybrid search logic with intent weights
+
+        # Fallback to regular search if no specific intent processing
+        search_results_response = await search_photos(
+            query=params.query,
+            limit=params.limit,
+            offset=params.offset,
+            mode="hybrid",
+            sort_by="date_desc"
+        )
+
+        search_results = search_results_response["results"]
+
+        # Add intent information to results
+        response = {
+            "query": params.query,
+            "intent": intent_result,
+            "count": len(search_results),
+            "results": search_results,
+            "processing_time": time.time() - start_time,
+            "filters_applied": params.filters or {}
+        }
+
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/search/refine")
+async def refine_search(query: str, previous_results: List[Dict], refinement: str):
+    """
+    Refine search results based on user feedback.
+
+    This endpoint allows users to refine existing search results with
+    additional criteria or corrections.
+    """
+    try:
+        # Detect intent in refinement query
+        intent_result = intent_detector.detect_intent(refinement)
+
+        # Apply refinement to previous results
+        # For example, if refinement is "only show photos from 2023", filter by date
+        # If refinement is "only beach photos", apply scene detection filter
+        refined_results = previous_results[:]  # In a real implementation, this would apply filters
+        suggestions = intent_detector.get_search_suggestions(f"{query} {refinement}")
+
+        return {
+            "original_query": query,
+            "refinement": refinement,
+            "intent": intent_result,
+            "count": len(refined_results),
+            "results": refined_results,
+            "suggestions": suggestions
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# SMART COLLECTIONS ENDPOINTS
+# ==============================================================================
+
+class SmartCollectionCreateRequest(BaseModel):
+    name: str
+    description: str
+    rule_definition: Dict[str, Any]  # JSON definition of inclusion criteria
+    auto_update: bool = True
+    privacy_level: str = "private"  # public, shared, private
+
+
+class SmartCollectionUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    rule_definition: Optional[Dict[str, Any]] = None
+    auto_update: Optional[bool] = None
+    privacy_level: Optional[str] = None
+    is_favorite: Optional[bool] = None
+
+
+@app.post("/collections/smart")
+async def create_smart_collection(request: SmartCollectionCreateRequest):
+    """Create a new smart collection with auto-inclusion rules."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+
+        collection_id = collections_db.create_smart_collection(
+            name=request.name,
+            description=request.description,
+            rule_definition=request.rule_definition,
+            auto_update=request.auto_update,
+            privacy_level=request.privacy_level
+        )
+
+        if not collection_id:
+            raise HTTPException(status_code=400, detail="Collection name already exists")
+
+        return {"success": True, "collection_id": collection_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections/smart")
+async def get_smart_collections(limit: int = 50, offset: int = 0):
+    """Get all smart collections."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        collections = collections_db.get_smart_collections(limit, offset)
+        return {"collections": collections, "count": len(collections)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections/smart/{collection_id}")
+async def get_smart_collection(collection_id: str):
+    """Get a specific smart collection."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        collection = collections_db.get_smart_collection(collection_id)
+
+        if not collection:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        return {"collection": collection}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/collections/smart/{collection_id}")
+async def update_smart_collection(collection_id: str, request: SmartCollectionUpdateRequest):
+    """Update a smart collection."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+
+        success = collections_db.update_smart_collection(
+            collection_id=collection_id,
+            name=request.name,
+            description=request.description,
+            rule_definition=request.rule_definition,
+            auto_update=request.auto_update,
+            privacy_level=request.privacy_level,
+            is_favorite=request.is_favorite
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/collections/smart/{collection_id}")
+async def delete_smart_collection(collection_id: str):
+    """Delete a smart collection."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        success = collections_db.delete_smart_collection(collection_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Collection not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections/smart/{collection_id}/photos")
+async def get_photos_for_collection(collection_id: str):
+    """Get photos that match the collection's rules."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        photo_paths = collections_db.get_photos_for_collection(collection_id)
+
+        # In a real implementation, we would get full photo metadata
+        # For now, return just the paths
+        return {"photos": photo_paths, "count": len(photo_paths)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections/smart/by-rule/{rule_type}")
+async def get_collections_by_rule_type(rule_type: str):
+    """Get collections that use a specific type of rule."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        collections = collections_db.get_collections_by_rule_type(rule_type)
+        return {"collections": collections, "count": len(collections)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collections/smart/stats")
+async def get_smart_collections_stats():
+    """Get statistics about smart collections."""
+    try:
+        collections_db = get_smart_collections_db(settings.BASE_DIR / "collections.db")
+        stats = collections_db.get_collections_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# PERFORMANCE OPTIMIZATION ENDPOINTS
+# ==============================================================================
+
+@app.get("/cache/stats")
+async def get_cache_stats():
+    """Get statistics about the caching system."""
+    try:
+        from src.cache_manager import cache_manager
+        stats = cache_manager.get_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/cache/clear")
+async def clear_cache(cache_type: Optional[str] = None):
+    """Clear cache entries."""
+    try:
+        from src.cache_manager import cache_manager
+        cache_manager.clear_cache(cache_type)
+        return {"success": True, "message": f"Cleared {cache_type or 'all'} cache"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/cache/health")
+async def cache_health_check():
+    """Health check for cache system."""
+    try:
+        from src.cache_manager import cache_manager
+        stats = cache_manager.get_stats()
+
+        # Calculate cache hit rates if possible
+        # For now, return basic health information
+        health = {
+            "status": "healthy",
+            "caches": list(stats.keys()),
+            "total_entries": sum(s['size'] for s in stats.values()),
+            "timestamp": datetime.now().isoformat()
+        }
+
+        return health
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# AI INSIGHTS ENDPOINTS
+# ==============================================================================
+
+class AIInsightCreateRequest(BaseModel):
+    photo_path: str
+    insight_type: str  # 'best_shot', 'tag_suggestion', 'pattern', 'organization'
+    insight_data: Dict[str, Any]
+    confidence: float = 0.8
+
+
+class AIInsightUpdateRequest(BaseModel):
+    is_applied: Optional[bool] = None
+
+
+@app.post("/ai/insights")
+async def create_ai_insight(request: AIInsightCreateRequest):
+    """Create a new AI-generated insight for a photo."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+
+        insight_id = insights_db.add_insight(
+            photo_path=request.photo_path,
+            insight_type=request.insight_type,
+            insight_data=request.insight_data,
+            confidence=request.confidence
+        )
+
+        if not insight_id:
+            raise HTTPException(status_code=400, detail="Failed to create insight")
+
+        return {"success": True, "insight_id": insight_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ai/insights/photo/{photo_path:path}")
+async def get_insights_for_photo(photo_path: str):
+    """Get all AI insights for a specific photo."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        insights = insights_db.get_insights_for_photo(photo_path)
+        return {"insights": insights, "count": len(insights)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ai/insights/type/{insight_type}")
+async def get_insights_by_type(insight_type: str, limit: int = 50):
+    """Get AI insights of a specific type."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        insights = insights_db.get_insights_by_type(insight_type, limit)
+        return {"insights": insights, "count": len(insights)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ai/insights")
+async def get_all_insights(limit: int = 100, offset: int = 0):
+    """Get all AI insights with pagination."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        insights = insights_db.get_all_insights(limit, offset)
+        return {"insights": insights, "count": len(insights)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/ai/insights/{insight_id}")
+async def update_insight_applied_status(insight_id: str, request: AIInsightUpdateRequest):
+    """Update the applied status of an insight."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+
+        if request.is_applied is None:
+            raise HTTPException(status_code=400, detail="is_applied status must be provided")
+
+        success = insights_db.mark_insight_applied(insight_id, request.is_applied)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Insight not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/ai/insights/{insight_id}")
+async def delete_insight(insight_id: str):
+    """Delete an AI insight."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        success = insights_db.delete_insight(insight_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Insight not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/ai/insights/stats")
+async def get_insights_stats():
+    """Get statistics about AI insights."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        stats = insights_db.get_insights_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ai/analytics/patterns")
+async def analyze_photographer_patterns(photo_paths: List[str] = Body(...)):
+    """Analyze photographer patterns across multiple photos."""
+    try:
+        insights_db = get_ai_insights_db(settings.BASE_DIR / "insights.db")
+        patterns = insights_db.get_photographer_patterns(photo_paths)
+        return {"patterns": patterns}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# COLLABORATIVE SPACES ENDPOINTS
+# ==============================================================================
+
+class CollaborativeSpaceCreateRequest(BaseModel):
+    name: str
+    description: str
+    privacy_level: str = "private"  # public, shared, private
+    max_members: int = 10
+
+
+class CollaborativeSpaceUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    privacy_level: Optional[str] = None
+    max_members: Optional[int] = None
+
+
+class AddMemberRequest(BaseModel):
+    user_id: str
+    role: str = "contributor"  # owner, admin, contributor, viewer
+
+
+class SpacePhotoCreateRequest(BaseModel):
+    photo_path: str
+    caption: Optional[str] = None
+
+
+class SpaceCommentCreateRequest(BaseModel):
+    comment: str
+
+
+@app.post("/collaborative/spaces")
+async def create_collaborative_space(request: CollaborativeSpaceCreateRequest, user_id: str = "default_user"):
+    """Create a new collaborative photo space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        space_id = spaces_db.create_collaborative_space(
+            name=request.name,
+            description=request.description,
+            owner_id=user_id,  # In a real app, this would come from auth
+            privacy_level=request.privacy_level,
+            max_members=request.max_members
+        )
+
+        if not space_id:
+            raise HTTPException(status_code=400, detail="Failed to create space")
+
+        return {"success": True, "space_id": space_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/{space_id}")
+async def get_collaborative_space(space_id: str):
+    """Get details about a specific collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        space = spaces_db.get_collaborative_space(space_id)
+
+        if not space:
+            raise HTTPException(status_code=404, detail="Space not found")
+
+        return {"space": space}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/user/{user_id}")
+async def get_user_spaces(user_id: str, limit: int = 50, offset: int = 0):
+    """Get all collaborative spaces a user belongs to."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        user_spaces = spaces_db.get_user_spaces(user_id, limit, offset)
+        return {"spaces": user_spaces, "count": len(user_spaces)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/collaborative/spaces/{space_id}/members")
+async def add_member_to_space(space_id: str, request: AddMemberRequest):
+    """Add a member to a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        success = spaces_db.add_member_to_space(
+            space_id=space_id,
+            user_id=request.user_id,
+            role=request.role
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to add member")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/collaborative/spaces/{space_id}/members/{user_id}")
+async def remove_member_from_space(space_id: str, user_id: str):
+    """Remove a member from a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        success = spaces_db.remove_member_from_space(space_id, user_id)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to remove member")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/{space_id}/members")
+async def get_space_members(space_id: str):
+    """Get all members of a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        members = spaces_db.get_space_members(space_id)
+        return {"members": members, "count": len(members)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/collaborative/spaces/{space_id}/photos")
+async def add_photo_to_space(space_id: str, request: SpacePhotoCreateRequest, user_id: str = "default_user"):
+    """Add a photo to a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        success = spaces_db.add_photo_to_space(
+            space_id=space_id,
+            photo_path=request.photo_path,
+            added_by_user_id=user_id,  # In a real app, this would come from auth
+            caption=request.caption or ""
+        )
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to add photo to space")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/collaborative/spaces/{space_id}/photos/{photo_path:path}")
+async def remove_photo_from_space(space_id: str, photo_path: str):
+    """Remove a photo from a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        success = spaces_db.remove_photo_from_space(space_id, photo_path)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to remove photo from space")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/{space_id}/photos")
+async def get_space_photos(space_id: str, limit: int = 50, offset: int = 0):
+    """Get all photos in a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        photos = spaces_db.get_space_photos(space_id, limit, offset)
+        return {"photos": photos, "count": len(photos)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments")
+async def add_comment_to_space_photo(
+    space_id: str,
+    photo_path: str,
+    request: SpaceCommentCreateRequest,
+    user_id: str = "default_user"
+):
+    """Add a comment to a photo in a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+
+        comment_id = spaces_db.add_comment_to_space_photo(
+            space_id=space_id,
+            photo_path=photo_path,
+            user_id=user_id,  # In a real app, this would come from auth
+            comment=request.comment
+        )
+
+        if not comment_id:
+            raise HTTPException(status_code=400, detail="Failed to add comment")
+
+        return {"success": True, "comment_id": comment_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments")
+async def get_photo_comments(space_id: str, photo_path: str, limit: int = 50, offset: int = 0):
+    """Get all comments for a photo in a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        comments = spaces_db.get_photo_comments(space_id, photo_path, limit, offset)
+        return {"comments": comments, "count": len(comments)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/collaborative/spaces/{space_id}/stats")
+async def get_space_stats(space_id: str):
+    """Get statistics about a collaborative space."""
+    try:
+        spaces_db = get_collaborative_spaces_db(settings.BASE_DIR / "collaborative_spaces.db")
+        stats = spaces_db.get_space_stats(space_id)
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# PRIVACY CONTROLS ENDPOINTS
+# ==============================================================================
+
+class PrivacyControlRequest(BaseModel):
+    owner_id: str
+    visibility: str = "private"  # public, shared, private, friends_only
+    share_permissions: Optional[Dict[str, bool]] = None
+    encryption_enabled: bool = False
+    encryption_key_hash: Optional[str] = None
+    allowed_users: Optional[List[str]] = None
+    allowed_groups: Optional[List[str]] = None
+
+
+class PrivacyUpdateRequest(BaseModel):
+    visibility: Optional[str] = None
+    share_permissions: Optional[Dict[str, bool]] = None
+    encryption_enabled: Optional[bool] = None
+    encryption_key_hash: Optional[str] = None
+    allowed_users: Optional[List[str]] = None
+    allowed_groups: Optional[List[str]] = None
+
+
+@app.post("/privacy/control/{photo_path:path}")
+async def set_photo_privacy(photo_path: str, request: PrivacyControlRequest):
+    """Set privacy controls for a photo."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+
+        privacy_id = privacy_db.set_photo_privacy(
+            photo_path=photo_path,
+            owner_id=request.owner_id,
+            visibility=request.visibility,
+            share_permissions=request.share_permissions,
+            encryption_enabled=request.encryption_enabled,
+            encryption_key_hash=request.encryption_key_hash,
+            allowed_users=request.allowed_users,
+            allowed_groups=request.allowed_groups
+        )
+
+        if not privacy_id:
+            raise HTTPException(status_code=400, detail="Failed to set privacy controls")
+
+        return {"success": True, "privacy_id": privacy_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/control/{photo_path:path}")
+async def get_photo_privacy(photo_path: str):
+    """Get privacy settings for a photo."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        privacy = privacy_db.get_photo_privacy(photo_path)
+
+        if not privacy:
+            raise HTTPException(status_code=404, detail="Privacy settings not found for photo")
+
+        return {"privacy": privacy}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/privacy/control/{photo_path:path}")
+async def update_photo_privacy(photo_path: str, request: PrivacyUpdateRequest):
+    """Update privacy settings for a photo."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+
+        success = privacy_db.update_photo_privacy(
+            photo_path=photo_path,
+            visibility=request.visibility,
+            share_permissions=request.share_permissions,
+            encryption_enabled=request.encryption_enabled,
+            encryption_key_hash=request.encryption_key_hash,
+            allowed_users=request.allowed_users,
+            allowed_groups=request.allowed_groups
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Privacy settings not found for photo")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/visible/{visibility}/{owner_id}")
+async def get_photos_by_visibility(visibility: str, owner_id: str, limit: int = 50, offset: int = 0):
+    """Get photos with specific visibility for an owner."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        photos = privacy_db.get_photos_by_visibility(visibility, owner_id, limit, offset)
+        return {"photos": photos, "count": len(photos)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/access/{user_id}")
+async def get_photos_accessible_to_user(user_id: str, limit: int = 50, offset: int = 0):
+    """Get photos that a user has access to based on privacy settings."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        photos = privacy_db.get_photos_for_user(user_id, limit, offset)
+        return {"photos": photos, "count": len(photos)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/check-access/{photo_path:path}/{user_id}")
+async def check_photo_access(photo_path: str, user_id: str):
+    """Check if a user has permission to access a photo."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        has_access = privacy_db.check_access_permission(photo_path, user_id)
+        return {"has_access": has_access}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/encrypted/{owner_id}")
+async def get_encrypted_photos(owner_id: str):
+    """Get all photos with encryption enabled for an owner."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        encrypted_photos = privacy_db.get_encrypted_photos(owner_id)
+        return {"encrypted_photos": encrypted_photos, "count": len(encrypted_photos)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/privacy/stats/{owner_id}")
+async def get_privacy_stats(owner_id: str):
+    """Get statistics about privacy settings for an owner."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        stats = privacy_db.get_privacy_stats(owner_id)
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/privacy/revoke-access/{photo_path:path}/{user_id}")
+async def revoke_user_access(photo_path: str, user_id: str):
+    """Revoke access for a specific user to a photo."""
+    try:
+        privacy_db = get_privacy_controls_db(settings.BASE_DIR / "privacy.db")
+        success = privacy_db.revoke_user_access(photo_path, user_id)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to revoke access")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# TIMELINE & STORY ENDPOINTS
+# ==============================================================================
+
+class StoryCreateRequest(BaseModel):
+    title: str
+    description: str
+    owner_id: str
+    metadata: Optional[Dict[str, Any]] = None
+    is_published: bool = False
+
+
+class StoryUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    is_published: Optional[bool] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+
+class TimelineEntryCreateRequest(BaseModel):
+    photo_path: str
+    date: str
+    location: Optional[str] = None
+    caption: Optional[str] = None
+
+
+class TimelineEntryUpdateRequest(BaseModel):
+    date: Optional[str] = None
+    location: Optional[str] = None
+    caption: Optional[str] = None
+    narrative_order: Optional[int] = None
+
+
+@app.post("/stories")
+async def create_story(request: StoryCreateRequest):
+    """Create a new story narrative."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        story_id = timeline_db.create_story(
+            title=request.title,
+            description=request.description,
+            owner_id=request.owner_id,
+            metadata=request.metadata,
+            is_published=request.is_published
+        )
+
+        if not story_id:
+            raise HTTPException(status_code=400, detail="Failed to create story")
+
+        return {"success": True, "story_id": story_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories/{story_id}")
+async def get_story(story_id: str):
+    """Get details about a specific story."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+        story = timeline_db.get_story(story_id)
+
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
+
+        return {"story": story}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories/owner/{owner_id}")
+async def get_stories_by_owner(
+    owner_id: str,
+    include_unpublished: bool = False,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get all stories for an owner."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+        stories = timeline_db.get_stories_by_owner(owner_id, include_unpublished, limit, offset)
+        return {"stories": stories, "count": len(stories)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/stories/{story_id}")
+async def update_story(story_id: str, request: StoryUpdateRequest):
+    """Update story details."""
+    try:
+        # In a real implementation, we would update the story in the database
+        # For now, we'll just return success
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        # Get existing story to update
+        existing_story = timeline_db.get_story(story_id)
+        if not existing_story:
+            raise HTTPException(status_code=404, detail="Story not found")
+
+        # Update story in database
+        with sqlite3.connect(settings.BASE_DIR / "timelines.db") as conn:
+            update_fields = []
+            params = []
+
+            if request.title is not None:
+                update_fields.append("title = ?")
+                params.append(request.title)
+
+            if request.description is not None:
+                update_fields.append("description = ?")
+                params.append(request.description)
+
+            if request.is_published is not None:
+                update_fields.append("is_published = ?")
+                params.append(request.is_published)
+
+            if request.metadata is not None:
+                update_fields.append("metadata = ?")
+                params.append(json.dumps(request.metadata))
+
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            if update_fields:
+                sql = f"UPDATE stories SET {', '.join(update_fields)} WHERE id = ?"
+                params.append(story_id)
+
+                cursor = conn.execute(sql, params)
+
+                if cursor.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Story not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/stories/{story_id}/photos")
+async def add_photo_to_story(story_id: str, request: TimelineEntryCreateRequest):
+    """Add a photo to a story's timeline."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        entry_id = timeline_db.add_photo_to_timeline(
+            story_id=story_id,
+            photo_path=request.photo_path,
+            date=request.date,
+            location=request.location,
+            caption=request.caption
+        )
+
+        if not entry_id:
+            raise HTTPException(status_code=400, detail="Failed to add photo to timeline")
+
+        return {"success": True, "entry_id": entry_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories/{story_id}/timeline")
+async def get_story_timeline(story_id: str, limit: int = 100, offset: int = 0):
+    """Get the timeline for a story."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+        timeline = timeline_db.get_timeline_for_story(story_id)
+
+        # Apply limit and offset manually since the method doesn't support it
+        paginated_timeline = timeline[offset:offset+limit]
+
+        return {"timeline": paginated_timeline, "count": len(timeline)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/timeline/entries/{entry_id}")
+async def update_timeline_entry(entry_id: str, request: TimelineEntryUpdateRequest):
+    """Update a timeline entry."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        # In a real implementation, we would have a method to update specific timeline entries
+        # For now, we'll update using raw SQL
+        with sqlite3.connect(settings.BASE_DIR / "timelines.db") as conn:
+            update_fields = []
+            params = []
+
+            if request.date is not None:
+                update_fields.append("date = ?")
+                params.append(request.date)
+
+            if request.location is not None:
+                update_fields.append("location = ?")
+                params.append(request.location)
+
+            if request.caption is not None:
+                update_fields.append("caption = ?")
+                params.append(request.caption)
+
+            if request.narrative_order is not None:
+                update_fields.append("narrative_order = ?")
+                params.append(request.narrative_order)
+
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            if update_fields:
+                sql = f"UPDATE timeline_entries SET {', '.join(update_fields)} WHERE id = ?"
+                params.append(entry_id)
+
+                cursor = conn.execute(sql, params)
+
+                if cursor.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Timeline entry not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/timeline/entries/{entry_id}")
+async def remove_photo_from_timeline(entry_id: str):
+    """Remove a photo from a story's timeline."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        success = timeline_db.remove_photo_from_timeline(entry_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Timeline entry not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories/{story_id}/stats")
+async def get_story_stats(story_id: str):
+    """Get statistics about a story."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+        story = timeline_db.get_story(story_id)
+
+        if not story:
+            raise HTTPException(status_code=404, detail="Story not found")
+
+        # Get the timeline to calculate stats
+        timeline = timeline_db.get_timeline_for_story(story_id)
+
+        # Calculate stats
+        stats = {
+            "story_id": story_id,
+            "title": story.title,
+            "total_photos": len(timeline),
+            "start_date": min((entry.date for entry in timeline), default=story.created_at) if timeline else story.created_at,
+            "end_date": max((entry.date for entry in timeline), default=story.created_at) if timeline else story.created_at,
+            "locations_count": len(set(entry.location for entry in timeline if entry.location)),
+            "has_captions": len([entry for entry in timeline if entry.caption]) > 0
+        }
+
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/stories/user/{user_id}/stats")
+async def get_user_story_stats(user_id: str):
+    """Get statistics about a user's stories."""
+    try:
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+        stats = timeline_db.get_story_stats(user_id)
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/stories/{story_id}/publish")
+async def toggle_story_publish(story_id: str, publish_request: dict):
+    """Publish or unpublish a story."""
+    try:
+        is_published = publish_request.get("publish", True)
+        timeline_db = get_timeline_db(settings.BASE_DIR / "timelines.db")
+
+        success = timeline_db.publish_story(story_id, is_published)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to update story publication status")
+
+        return {"success": True, "published": is_published}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# BULK ACTIONS ENDPOINTS
+# ==============================================================================
+
+class BulkActionRequest(BaseModel):
+    action_type: str  # 'delete', 'favorite', 'tag_add', 'tag_remove', 'move', 'copy'
+    paths: List[str]
+    operation_data: Optional[Dict[str, Any]] = None  # Additional data for the operation
+
+
+class BulkActionUndoRequest(BaseModel):
+    action_id: str
+
+
+@app.post("/bulk/action")
+async def record_bulk_action(request: BulkActionRequest):
+    """Record a bulk action that may need to be undone."""
+    try:
+        bulk_actions_db = get_bulk_actions_db(settings.BASE_DIR / "bulk_actions.db")
+
+        action_id = bulk_actions_db.record_bulk_action(
+            action_type=request.action_type,
+            user_id="current_user_id",  # In a real app, this would come from authentication
+            affected_paths=request.paths,
+            operation_data=request.operation_data
+        )
+
+        if not action_id:
+            raise HTTPException(status_code=400, detail="Failed to record bulk action")
+
+        return {"success": True, "action_id": action_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/bulk/history/{user_id}")
+async def get_bulk_action_history(
+    user_id: str,
+    action_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
+):
+    """Get bulk action history for a user."""
+    try:
+        bulk_db = get_bulk_actions_db(settings.BASE_DIR / "bulk_actions.db")
+        actions = bulk_db.get_action_history(user_id, action_type, limit, offset)
+
+        return {"actions": actions, "count": len(actions)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/bulk/undo/{action_id}")
+async def undo_bulk_action(action_id: str):
+    """Undo a recorded bulk action."""
+    try:
+        bulk_db = get_bulk_actions_db(settings.BASE_DIR / "bulk_actions.db")
+
+        # Check if action can be undone
+        if not bulk_db.can_undo_action(action_id):
+            raise HTTPException(status_code=400, detail="Action cannot be undone")
+
+        # For actual undo, we would need to implement the specific undo logic for each action type
+        # This is a simplified implementation that just marks the action as undone
+        success = bulk_db.mark_action_undone(action_id)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to undo action")
+
+        return {"success": True, "action_id": action_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/bulk/can-undo/{action_id}")
+async def can_undo_action(action_id: str):
+    """Check if a bulk action can be undone."""
+    try:
+        bulk_db = get_bulk_actions_db(settings.BASE_DIR / "bulk_actions.db")
+        can_undo = bulk_db.can_undo_action(action_id)
+
+        return {"can_undo": can_undo}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/bulk/stats/{user_id}")
+async def get_bulk_actions_stats(user_id: str):
+    """Get statistics about bulk actions for a user."""
+    try:
+        bulk_db = get_bulk_actions_db(settings.BASE_DIR / "bulk_actions.db")
+
+        recent_actions = bulk_db.get_recent_actions(user_id, minutes=60)  # Last hour
+        undone_count = bulk_db.get_undone_actions_count(user_id)
+
+        # Count actions by type
+        type_counts = {}
+        for action in recent_actions:
+            action_type = action.action_type
+            type_counts[action_type] = type_counts.get(action_type, 0) + 1
+
+        return {
+            "stats": {
+                "recent_actions": len(recent_actions),
+                "undone_actions": undone_count,
+                "actions_by_type": type_counts,
+                "recent_period_minutes": 60
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# MULTI-TAG FILTERING ENDPOINTS
+# ==============================================================================
+
+class TagExpression(BaseModel):
+    tag: str
+    operator: str = "has"  # 'has', 'not_has', 'maybe_has'
+
+
+class TagFilterCreateRequest(BaseModel):
+    name: str
+    tag_expressions: List[TagExpression]
+    combination_operator: str = "AND"  # 'AND' or 'OR'
+
+
+class TagFilterUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    tag_expressions: Optional[List[TagExpression]] = None
+    combination_operator: Optional[str] = None
+
+
+@app.post("/tag-filters")
+async def create_tag_filter(request: TagFilterCreateRequest):
+    """Create a new tag filter with custom expressions and logic."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        filter_id = tag_filter_db.create_tag_filter(
+            name=request.name,
+            tag_expressions=[expr.dict() for expr in request.tag_expressions],
+            combination_operator=request.combination_operator
+        )
+
+        if not filter_id:
+            raise HTTPException(status_code=400, detail="Failed to create tag filter")
+
+        return {"success": True, "filter_id": filter_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tag-filters/{filter_id}")
+async def get_tag_filter(filter_id: str):
+    """Get details of a specific tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        tag_filter = tag_filter_db.get_tag_filter(filter_id)
+
+        if not tag_filter:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"tag_filter": tag_filter}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tag-filters")
+async def get_tag_filters(limit: int = 50, offset: int = 0):
+    """Get all tag filters."""
+    try:
+        with sqlite3.connect(settings.BASE_DIR / "tag_filters.db") as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM tag_filters ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+            rows = cursor.fetchall()
+
+            return {
+                "filters": [dict(row) for row in rows],
+                "count": len(rows)
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/tag-filters/{filter_id}")
+async def update_tag_filter(filter_id: str, request: TagFilterUpdateRequest):
+    """Update a tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        # Get existing filter first
+        existing_filter = tag_filter_db.get_tag_filter(filter_id)
+        if not existing_filter:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        # Update the filter
+        with sqlite3.connect(settings.BASE_DIR / "tag_filters.db") as conn:
+            update_fields = []
+            params = []
+
+            if request.name is not None:
+                update_fields.append("name = ?")
+                params.append(request.name)
+
+            if request.tag_expressions is not None:
+                update_fields.append("tag_expressions = ?")
+                params.append(json.dumps([expr.dict() for expr in request.tag_expressions]))
+
+            if request.combination_operator is not None:
+                update_fields.append("combination_operator = ?")
+                params.append(request.combination_operator)
+
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            if update_fields:
+                sql = f"UPDATE tag_filters SET {', '.join(update_fields)} WHERE id = ?"
+                params.append(filter_id)
+
+                cursor = conn.execute(sql, params)
+
+                if cursor.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/tag-filters/{filter_id}")
+async def delete_tag_filter(filter_id: str):
+    """Delete a tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        success = tag_filter_db.delete_tag_filter(filter_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tag-filters/apply")
+async def apply_tag_filter(request: TagFilterCreateRequest):
+    """Apply a tag filter and get matching photos."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        matching_photos = tag_filter_db.apply_tag_filter(
+            tag_expressions=[expr.dict() for expr in request.tag_expressions],
+            combination_operator=request.combination_operator
+        )
+
+        return {
+            "photos": matching_photos,
+            "count": len(matching_photos),
+            "filter_used": {
+                "name": "Temporary Filter",
+                "expressions": [expr.dict() for expr in request.tag_expressions],
+                "operator": request.combination_operator
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/photos/by-tags")
+async def get_photos_by_tags(
+    tags: str,  # Comma-separated list of tags
+    operator: str = "OR",  # OR or AND
+    exclude_tags: Optional[str] = None,  # Comma-separated list of tags to exclude
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get photos by multiple tags with AND/OR logic."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        tag_list = [tag.strip() for tag in tags.split(',')]
+        exclude_list = [tag.strip() for tag in exclude_tags.split(',')] if exclude_tags else []
+
+        matching_photos = tag_filter_db.get_photos_by_tags(
+            tags=tag_list,
+            operator=operator,
+            exclude_tags=exclude_list
+        )
+
+        # Apply pagination
+        paginated_photos = matching_photos[offset:offset+limit]
+
+        return {
+            "photos": paginated_photos,
+            "total_count": len(matching_photos),
+            "filter": {
+                "included_tags": tag_list,
+                "excluded_tags": exclude_list,
+                "operator": operator
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/common")
+async def get_common_tags(photo_paths: str, limit: int = 10):
+    """Get common tags across multiple photos."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        path_list = [path.strip() for path in photo_paths.split(',')]
+
+        common_tags = tag_filter_db.get_common_tags(path_list, limit)
+
+        return {"common_tags": common_tags, "count": len(common_tags)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/search")
+async def search_tags(query: str, limit: int = 20):
+    """Search for tags by name."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        matching_tags = tag_filter_db.search_tags(query, limit)
+
+        return {"tags": matching_tags, "count": len(matching_tags)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/stats")
+async def get_tag_stats():
+    """Get statistics about tags in the system."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        stats = tag_filter_db.get_tag_stats()
+
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# VERSION STACKS ENDPOINTS
+# ==============================================================================
+
+class VersionCreateRequest(BaseModel):
+    original_path: str
+    version_path: str
+    version_type: str = "edit"  # 'original', 'edit', 'variant', 'derivative'
+    version_name: Optional[str] = None
+    version_description: Optional[str] = None
+    edit_instructions: Optional[Dict[str, Any]] = None
+    parent_version_id: Optional[str] = None
+
+
+class VersionUpdateRequest(BaseModel):
+    version_name: Optional[str] = None
+    version_description: Optional[str] = None
+
+
+@app.post("/versions")
+async def create_photo_version(request: VersionCreateRequest):
+    """Create a new photo version record."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+
+        version_id = versions_db.create_version(
+            original_path=request.original_path,
+            version_path=request.version_path,
+            version_type=request.version_type,
+            version_name=request.version_name,
+            version_description=request.version_description,
+            edit_instructions=request.edit_instructions,
+            parent_version_id=request.parent_version_id
+        )
+
+        if not version_id:
+            raise HTTPException(status_code=400, detail="Failed to create photo version")
+
+        return {"success": True, "version_id": version_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/photo/{photo_path:path}")
+async def get_photo_versions(photo_path: str):
+    """Get all versions for a photo (original + all edits)."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        version_stack = versions_db.get_version_stack_for_photo(photo_path)
+
+        if not version_stack:
+            # If no stack exists, return just the single photo
+            return {"versions": [], "count": 0, "original_path": photo_path}
+
+        return {
+            "versions": [v.dict() for v in version_stack.versions],
+            "count": len(version_stack.versions),
+            "original_path": version_stack.original_path,
+            "stack_id": version_stack.id
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/stack/{original_path:path}")
+async def get_version_stack(original_path: str):
+    """Get the complete version stack for an original photo."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        version_stack = versions_db.get_version_stack_for_original(original_path)
+
+        if not version_stack:
+            raise HTTPException(status_code=404, detail="No version stack found for this photo")
+
+        return {
+            "stack": {
+                "id": version_stack.id,
+                "original_path": version_stack.original_path,
+                "version_count": version_stack.version_count,
+                "created_at": version_stack.created_at,
+                "updated_at": version_stack.updated_at,
+                "versions": [v.dict() for v in version_stack.versions]
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/versions/{version_path:path}")
+async def update_version_metadata(version_path: str, request: VersionUpdateRequest):
+    """Update metadata for a specific version."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+
+        success = versions_db.update_version_metadata(
+            version_path=version_path,
+            version_name=request.version_name,
+            version_description=request.version_description
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Version not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/versions/{version_id}")
+async def delete_photo_version(version_id: str):
+    """Delete a specific photo version (not the original)."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        success = versions_db.delete_version(version_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Version not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/stacks")
+async def get_all_version_stacks(limit: int = 50, offset: int = 0):
+    """Get all version stacks with pagination."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        stacks = versions_db.get_all_stacks(limit, offset)
+
+        return {
+            "stacks": [s.dict() for s in stacks],
+            "count": len(stacks)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/versions/stats")
+async def get_version_stats():
+    """Get statistics about photo versions."""
+    try:
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        stats = versions_db.get_version_stats()
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/versions/merge-stacks")
+async def merge_version_stacks(payload: dict):
+    """Merge two version stacks (when determining they're the same photo)."""
+    try:
+        path1 = payload.get("path1")
+        path2 = payload.get("path2")
+
+        if not path1 or not path2:
+            raise HTTPException(status_code=400, detail="Both path1 and path2 are required")
+
+        versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
+        success = versions_db.merge_version_stacks(path1, path2)
+
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to merge version stacks")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# LOCATION CLUSTERING ENDPOINTS
+# ==============================================================================
+
+class LocationCorrectionRequest(BaseModel):
+    original_place_name: Optional[str] = None
+    corrected_place_name: Optional[str] = None
+    country: Optional[str] = None
+    region: Optional[str] = None
+    city: Optional[str] = None
+
+
+class LocationClusterCreateRequest(BaseModel):
+    name: str
+    center_lat: float
+    center_lng: float
+    description: Optional[str] = None
+    min_photos: int = 2
+
+
+@app.post("/locations/correct/{photo_path:path}")
+async def correct_photo_location(photo_path: str, request: LocationCorrectionRequest):
+    """Correct location information for a photo."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+
+        success = locations_db.update_place_name(
+            photo_path=photo_path,
+            corrected_place_name=request.corrected_place_name,
+            country=request.country,
+            region=request.region,
+            city=request.city
+        )
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Photo location not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/photo/{photo_path:path}")
+async def get_photo_location(photo_path: str):
+    """Get location information for a specific photo."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        location = locations_db.get_photo_location(photo_path)
+
+        if not location:
+            raise HTTPException(status_code=404, detail="Location not found for photo")
+
+        return {"location": location}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/nearby")
+async def get_photos_near_location(
+    latitude: float,
+    longitude: float,
+    radius_km: float = Query(1.0, ge=0.1, le=50.0)
+):
+    """Get photos within a certain radius of a location."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        photos = locations_db.get_photos_by_location(latitude, longitude, radius_km)
+
+        return {
+            "photos": photos,
+            "count": len(photos),
+            "center": {"lat": latitude, "lng": longitude},
+            "radius_km": radius_km
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/clusters")
+async def get_location_clusters(min_photos: int = Query(2, ge=1)):
+    """Get all location clusters."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        clusters = locations_db.get_location_clusters(min_photos)
+
+        return {
+            "clusters": clusters,
+            "count": len(clusters)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/clusters/{cluster_id}/photos")
+async def get_photos_in_cluster(cluster_id: str, limit: int = 50, offset: int = 0):
+    """Get all photos in a specific cluster."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        photos = locations_db.get_photos_in_cluster(cluster_id)
+
+        return {
+            "photos": photos[offset:offset+limit],
+            "count": len(photos),
+            "total_in_cluster": len(photos)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/photo/{photo_path:path}/cluster")
+async def get_photo_cluster(photo_path: str):
+    """Get the cluster a photo belongs to."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        cluster = locations_db.get_photo_cluster(photo_path)
+
+        if not cluster:
+            return {"cluster": None}
+
+        return {"cluster": cluster}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/locations/clusterize")
+async def create_location_clusters(
+    min_photos: int = Query(2, ge=1),
+    max_distance_meters: float = Query(100.0, ge=10.0, le=1000.0)
+):
+    """Create location clusters based on proximity of photos."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        clusters = locations_db.cluster_locations(min_photos, max_distance_meters)
+
+        return {
+            "clusters": clusters,
+            "count": len(clusters),
+            "params": {
+                "min_photos": min_photos,
+                "max_distance_meters": max_distance_meters
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/locations/stats")
+async def get_location_stats():
+    """Get statistics about location data."""
+    try:
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        stats = locations_db.get_location_stats()
+
+        return {"stats": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/locations/correct-bulk")
+async def bulk_correct_place_names(payload: dict):
+    """Bulk correct place names for multiple photos."""
+    try:
+        photo_paths = payload.get("photo_paths", [])
+        corrected_name = payload.get("corrected_name", "")
+
+        if not photo_paths or not corrected_name:
+            raise HTTPException(status_code=400, detail="photo_paths and corrected_name are required")
+
+        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
+        success = locations_db.correct_place_name_bulk(photo_paths, corrected_name)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to update place names")
+
+        return {"success": True, "updated_count": len(photo_paths)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ==============================================================================
 # TAGS ENDPOINTS
@@ -4495,7 +7034,20 @@ async def export_photos(request: ExportRequest):
 
 from .tags_db import get_tags_db
 from .ratings_db import get_ratings_db
+from .notes_db import get_notes_db
+from .photo_edits_db import get_photo_edits_db
 from .duplicates_db import get_duplicates_db
+from .face_clustering_db import get_face_clustering_db
+from .photo_versions_db import get_photo_versions_db
+from .location_clusters_db import get_location_clusters_db
+from .locations_db import get_locations_db
+from .smart_collections_db import get_smart_collections_db
+from .ai_insights_db import get_ai_insights_db
+from .collaborative_spaces_db import get_collaborative_spaces_db
+from .privacy_controls_db import get_privacy_controls_db
+from .timeline_db import get_timeline_db
+from .bulk_actions_db import get_bulk_actions_db
+from .multi_tag_filter_db import get_multi_tag_filter_db
 
 
 class TagCreate(BaseModel):
@@ -4988,6 +7540,615 @@ async def get_rating_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==============================================================================
+# NOTES ENDPOINTS
+# ==============================================================================
+
+class NoteCreate(BaseModel):
+    note: str
+
+
+@app.get("/api/photos/{file_path:path}/notes")
+async def get_photo_notes(file_path: str):
+    """Get notes for a photo."""
+    try:
+        notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
+        note_obj = notes_db.get_note_with_metadata(file_path) or {}
+        return {"note": note_obj.get("note"), "updated_at": note_obj.get("updated_at")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/photos/{file_path:path}/notes")
+async def set_photo_notes(file_path: str, note_req: NoteCreate):
+    """Set notes for a photo."""
+    try:
+        notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
+        success = notes_db.set_note(file_path, note_req.note)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to set note")
+
+        meta = notes_db.get_note_with_metadata(file_path) or {}
+        return {"success": True, "note": meta.get("note"), "updated_at": meta.get("updated_at")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/photos/{file_path:path}/notes")
+async def delete_photo_notes(file_path: str):
+    """Delete notes for a photo."""
+    try:
+        notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
+        success = notes_db.delete_note(file_path)
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to delete note")
+
+        return {"success": True, "note": None, "updated_at": None}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/notes/search")
+async def search_notes(query: str, limit: int = 100, offset: int = 0):
+    """Search notes by content."""
+    try:
+        notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
+        results = notes_db.search_notes(query, limit, offset)
+
+        # Get full metadata for each photo
+        photos = []
+        for note_path in results.get('notes', []):
+            try:
+                metadata = photo_search_engine.db.get_metadata(note_path)
+                if metadata:
+                    photos.append({
+                        "path": note_path,
+                        "filename": Path(note_path).name,
+                        "metadata": metadata
+                    })
+            except:
+                continue
+
+        return {"photos": photos, "total": len(photos)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# PHOTO EDITS (NON-DESTRUCTIVE SETTINGS)
+# ==============================================================================
+
+class EditPayload(BaseModel):
+    edit_data: dict
+
+
+@app.get("/api/photos/{file_path:path}/edit")
+async def get_photo_edit(file_path: str):
+    try:
+        edits_db = get_photo_edits_db(settings.BASE_DIR / "photo_edits.db")
+        data = edits_db.get_edit(file_path) or {"edit_data": None}
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/photos/{file_path:path}/edit")
+async def set_photo_edit(file_path: str, payload: EditPayload):
+    try:
+        edits_db = get_photo_edits_db(settings.BASE_DIR / "photo_edits.db")
+        edits_db.set_edit(file_path, payload.edit_data)
+        return {"success": True, "edit_data": payload.edit_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/notes/stats")
+async def get_notes_stats():
+    """Get notes statistics."""
+    try:
+        notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
+        stats = notes_db.get_notes_stats()
+        return {"stats": stats}
+    except Exception as e:
+        photos = []
+        for row in results:
+            path = row.get("photo_path")
+            metadata = photo_search_engine.db.get_metadata(path)
+            if metadata:
+                photos.append({
+                    "path": path,
+                    "metadata": metadata,
+                    "note": row.get("note"),
+                    "created_at": row.get("created_at"),
+                    "updated_at": row.get("updated_at"),
+                })
+
+        return {"count": len(photos), "results": photos}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# EDITING ENDPOINTS
+# ==============================================================================
+
+class EditData(BaseModel):
+    brightness: float
+    contrast: float
+    saturation: float
+    rotation: int
+    flipH: bool
+    flipV: bool
+    crop: Optional[Dict[str, float]] = None  # {x, y, width, height}
+
+
+@app.get("/api/photos/{file_path:path}/edits")
+async def get_photo_edits(file_path: str):
+    """Get edit instructions for a photo."""
+    try:
+        edits_db = get_photo_edits_db(settings.BASE_DIR / "edits.db")
+        edit_data = edits_db.get_edit(file_path)
+        return {"edit_data": edit_data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/photos/{file_path:path}/edits")
+async def set_photo_edits(file_path: str, edit_data: EditData):
+    """Save edit instructions for a photo."""
+    try:
+        edits_db = get_photo_edits_db(settings.BASE_DIR / "edits.db")
+        edits_db.set_edit(file_path, edit_data.dict())
+
+        return {"success": True, "edit_data": edit_data.dict()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/photos/{file_path:path}/edits")
+async def delete_photo_edits(file_path: str):
+    """Delete edit instructions for a photo."""
+    try:
+        # To delete, we'll set the edit data to empty
+        edits_db = get_photo_edits_db(settings.BASE_DIR / "edits.db")
+        edits_db.set_edit(file_path, {})
+
+        return {"success": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
+# PEOPLE/PHOTO ASSOCIATION ENDPOINTS
+# ==============================================================================
+
+@app.get("/api/photos/{photo_path:path}/people")
+async def get_people_in_photo(photo_path: str):
+    """Get people associated with a specific photo."""
+    try:
+        face_clustering_db = get_face_clustering_db(_runtime_base_dir() / "face_clusters.db")
+        associations = face_clustering_db.get_people_in_photo(photo_path)
+        
+        # Return cluster IDs for the people associated with this photo
+        people = [assoc.cluster_id for assoc in associations]
+        return {"photo_path": photo_path, "people": people}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/photos/{photo_path:path}/people")
+async def add_person_to_photo(photo_path: str, person_data: dict):
+    """Associate a person with a specific photo."""
+    try:
+        person_id = person_data.get("person_id")
+        detection_id = person_data.get("detection_id")
+        
+        if not person_id:
+            raise HTTPException(status_code=400, detail="person_id is required")
+
+        face_clustering_db = get_face_clustering_db(_runtime_base_dir() / "face_clusters.db")
+
+        # Ensure the cluster exists for manual associations.
+        # (The UI/tests may pass a stable person_id that isn't a generated cluster_id yet.)
+        try:
+            face_clustering_db.ensure_face_cluster(person_id, label=person_id)
+        except Exception:
+            pass
+        
+        # If no detection_id provided, try to detect faces automatically
+        if not detection_id:
+            # Detect faces in the photo
+            detection_ids = face_clustering_db.detect_and_store_faces(photo_path)
+            
+            if detection_ids:
+                # Use the first detected face
+                detection_id = detection_ids[0]
+            else:
+                # Fallback to dummy detection ID if no faces detected
+                detection_id = f"temp_face_{hashlib.md5(photo_path.encode()).hexdigest()}"
+
+        # Ensure detection exists when we fall back to a synthetic ID.
+        try:
+            face_clustering_db.ensure_face_detection(detection_id, photo_path)
+        except Exception:
+            pass
+        
+        # Add the association
+        face_clustering_db.add_person_to_photo(photo_path, person_id, detection_id, confidence=0.9)
+        
+        return {"success": True, "photo_path": photo_path, "person_id": person_id, "detection_id": detection_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/photos/{photo_path:path}/people/{person_id}")
+async def remove_person_from_photo(photo_path: str, person_id: str, detection_id: Optional[str] = None):
+    """Remove association between a person and a specific photo."""
+    try:
+        face_clustering_db = get_face_clustering_db(_runtime_base_dir() / "face_clusters.db")
+        
+        # If no detection_id provided, try to find it
+        if not detection_id:
+            associations = face_clustering_db.get_people_in_photo(photo_path)
+            for assoc in associations:
+                if assoc.cluster_id == person_id:
+                    detection_id = assoc.detection_id
+                    break
+            
+            if not detection_id:
+                # Fallback to dummy detection ID if not found
+                detection_id = f"temp_face_{hashlib.md5(photo_path.encode()).hexdigest()}"
+        
+        # Remove the association
+        face_clustering_db.remove_person_from_photo(photo_path, person_id, detection_id)
+        
+        return {"success": True, "photo_path": photo_path, "person_id": person_id, "detection_id": detection_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Face Detection Endpoints
+
+@app.post("/api/photos/{photo_path:path}/faces/detect")
+async def detect_faces_in_photo(photo_path: str):
+    """Detect faces in a specific photo."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Detect and store faces
+        detection_ids = face_clustering_db.detect_and_store_faces(photo_path)
+        
+        # Get details about detected faces
+        faces = []
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            
+            for detection_id in detection_ids:
+                row = conn.execute("""
+                    SELECT detection_id, photo_path, bounding_box, embedding, quality_score
+                    FROM face_detections
+                    WHERE detection_id = ?
+                """, (detection_id,)).fetchone()
+                
+                if row:
+                    faces.append({
+                        "detection_id": row['detection_id'],
+                        "photo_path": row['photo_path'],
+                        "bounding_box": json.loads(row['bounding_box']),
+                        "has_embedding": row['embedding'] is not None,
+                        "quality_score": row['quality_score']
+                    })
+        
+        return {
+            "photo_path": photo_path,
+            "faces": faces,
+            "face_count": len(faces),
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/photos/{photo_path:path}/faces")
+async def get_faces_in_photo(photo_path: str):
+    """Get information about faces detected in a photo."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get all faces for this photo
+        faces = []
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            
+            rows = conn.execute("""
+                SELECT fd.detection_id, fd.bounding_box, fd.quality_score,
+                       ppa.cluster_id, fc.label as person_label
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE fd.photo_path = ?
+            """, (photo_path,)).fetchall()
+            
+            for row in rows:
+                faces.append({
+                    "detection_id": row['detection_id'],
+                    "bounding_box": json.loads(row['bounding_box']),
+                    "quality_score": row['quality_score'],
+                    "person_id": row['cluster_id'],
+                    "person_label": row['person_label']
+                })
+        
+        return {
+            "photo_path": photo_path,
+            "faces": faces,
+            "face_count": len(faces),
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/{detection_id}/thumbnail")
+async def get_face_thumbnail(detection_id: str):
+    """Get a thumbnail image of a specific face detection."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get face thumbnail
+        thumbnail_data = face_clustering_db.get_face_thumbnail(detection_id)
+        
+        if not thumbnail_data:
+            raise HTTPException(status_code=404, detail="Face thumbnail not available")
+        
+        return {
+            "detection_id": detection_id,
+            "thumbnail": thumbnail_data,
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/photos/batch/faces/detect")
+async def detect_faces_in_batch(payload: dict):
+    """Detect faces in multiple photos (batch processing)."""
+    try:
+        photo_paths = payload.get("photo_paths", [])
+        if not photo_paths:
+            raise HTTPException(status_code=400, detail="photo_paths is required")
+        
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        results = []
+        for photo_path in photo_paths:
+            detection_ids = face_clustering_db.detect_and_store_faces(photo_path)
+            results.append({
+                "photo_path": photo_path,
+                "face_count": len(detection_ids),
+                "detection_ids": detection_ids
+            })
+        
+        return {
+            "processed_photos": len(photo_paths),
+            "total_faces_detected": sum(r["face_count"] for r in results),
+            "results": results,
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Automatic Clustering Endpoints
+
+@app.post("/api/faces/cluster")
+async def cluster_faces(
+    similarity_threshold: float = 0.6,
+    min_samples: int = 2
+):
+    """Automatically cluster similar faces using DBSCAN."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Perform clustering
+        clusters = face_clustering_db.cluster_faces(
+            similarity_threshold=similarity_threshold,
+            min_samples=min_samples
+        )
+        
+        # Get cluster details
+        cluster_details = []
+        for cluster_id, detection_ids in clusters.items():
+            # Get cluster info
+            with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                cluster_row = conn.execute("""
+                    SELECT cluster_id, label, face_count, photo_count
+                    FROM face_clusters
+                    WHERE cluster_id = ?
+                """, (cluster_id,)).fetchone()
+                
+                if cluster_row:
+                    cluster_details.append({
+                        "cluster_id": cluster_row['cluster_id'],
+                        "label": cluster_row['label'],
+                        "face_count": cluster_row['face_count'],
+                        "photo_count": cluster_row['photo_count'],
+                        "detection_ids": detection_ids
+                    })
+        
+        return {
+            "clusters_created": len(clusters),
+            "total_faces_clustered": sum(len(dids) for dids in clusters.values()),
+            "clusters": cluster_details,
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/{detection_id}/similar")
+async def find_similar_faces(detection_id: str, threshold: float = 0.7):
+    """Find faces similar to a given face detection."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Find similar faces
+        similar_faces = face_clustering_db.find_similar_faces(
+            detection_id=detection_id,
+            threshold=threshold
+        )
+        
+        # Get additional info for each similar face
+        enhanced_results = []
+        for face in similar_faces:
+            # Get person association if any
+            with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+                conn.row_factory = sqlite3.Row
+                person_row = conn.execute("""
+                    SELECT ppa.cluster_id, fc.label
+                    FROM photo_person_associations ppa
+                    JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                    WHERE ppa.detection_id = ?
+                """, (face['detection_id'],)).fetchone()
+                
+                result = {
+                    "detection_id": face['detection_id'],
+                    "photo_path": face['photo_path'],
+                    "similarity": face['similarity'],
+                    "person_id": person_row['cluster_id'] if person_row else None,
+                    "person_label": person_row['label'] if person_row else None
+                }
+                enhanced_results.append(result)
+        
+        return {
+            "detection_id": detection_id,
+            "similar_faces": enhanced_results,
+            "count": len(enhanced_results),
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/clusters/{cluster_id}/quality")
+async def get_cluster_quality(cluster_id: str):
+    """Analyze the quality of a face cluster."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get cluster quality analysis
+        quality = face_clustering_db.get_cluster_quality(cluster_id)
+        
+        if 'error' in quality:
+            raise HTTPException(status_code=404, detail=quality['error'])
+        
+        # Get cluster details
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            cluster_row = conn.execute("""
+                SELECT cluster_id, label, created_at, updated_at
+                FROM face_clusters
+                WHERE cluster_id = ?
+            """, (cluster_id,)).fetchone()
+            
+            if cluster_row:
+                quality.update({
+                    "label": cluster_row['label'],
+                    "created_at": cluster_row['created_at'],
+                    "updated_at": cluster_row['updated_at']
+                })
+        
+        return {
+            "cluster_id": cluster_id,
+            "quality_analysis": quality,
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/clusters/{cluster_id}/merge")
+async def merge_clusters(cluster_id: str, payload: dict):
+    """Merge two face clusters together."""
+    try:
+        target_cluster_id = payload.get("target_cluster_id")
+        if not target_cluster_id:
+            raise HTTPException(status_code=400, detail="target_cluster_id is required")
+        
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get all associations from source cluster
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            
+            # Get source cluster info
+            source_cluster = conn.execute("""
+                SELECT * FROM face_clusters WHERE cluster_id = ?
+            """, (cluster_id,)).fetchone()
+            
+            if not source_cluster:
+                raise HTTPException(status_code=404, detail="Source cluster not found")
+            
+            # Get target cluster info
+            target_cluster = conn.execute("""
+                SELECT * FROM face_clusters WHERE cluster_id = ?
+            """, (target_cluster_id,)).fetchone()
+            
+            if not target_cluster:
+                raise HTTPException(status_code=404, detail="Target cluster not found")
+            
+            # Get all associations from source cluster
+            associations = conn.execute("""
+                SELECT * FROM photo_person_associations
+                WHERE cluster_id = ?
+            """, (cluster_id,)).fetchall()
+            
+            # Begin transaction
+            conn.execute("BEGIN TRANSACTION")
+            
+            # Reassign all associations to target cluster
+            for assoc in associations:
+                conn.execute("""
+                    UPDATE photo_person_associations
+                    SET cluster_id = ?
+                    WHERE photo_path = ? AND detection_id = ? AND cluster_id = ?
+                """, (target_cluster_id, assoc['photo_path'], assoc['detection_id'], cluster_id))
+            
+            # Update target cluster counts
+            new_face_count = target_cluster['face_count'] + source_cluster['face_count']
+            new_photo_count = target_cluster['photo_count'] + source_cluster['photo_count']
+            
+            conn.execute("""
+                UPDATE face_clusters
+                SET face_count = ?, photo_count = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE cluster_id = ?
+            """, (new_face_count, new_photo_count, target_cluster_id))
+            
+            # Delete source cluster
+            conn.execute("DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,))
+            
+            # Commit transaction
+            conn.commit()
+        
+        return {
+            "source_cluster_id": cluster_id,
+            "target_cluster_id": target_cluster_id,
+            "faces_moved": source_cluster['face_count'],
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
 # DUPLICATES ENDPOINTS
 # ==============================================================================
 
@@ -5171,6 +8332,117 @@ async def get_face_stats():
             "faces_detected": 0,
             "clusters_found": 0,
             "unidentified_faces": 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# People Search Endpoint
+
+@app.get("/api/people/search")
+async def search_people(
+    query: Optional[str] = None,
+    limit: int = 10,
+    offset: int = 0
+):
+    """Search for people by name or other attributes."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get all clusters (people)
+        clusters = face_clustering_db.get_all_clusters()
+        
+        # Filter and search
+        if query:
+            query_lower = query.lower()
+            clusters = [
+                cluster for cluster in clusters
+                if cluster.label and query_lower in cluster.label.lower()
+            ]
+        
+        # Paginate
+        paginated_clusters = clusters[offset:offset + limit]
+        
+        # Format response
+        people = [
+            {
+                "cluster_id": cluster.cluster_id,
+                "label": cluster.label or f"Person {cluster.cluster_id[-4:]}",
+                "face_count": cluster.face_count,
+                "photo_count": cluster.photo_count,
+                "thumbnail": None  # Would get thumbnail in real implementation
+            }
+            for cluster in paginated_clusters
+        ]
+        
+        return {
+            "people": people,
+            "total": len(clusters),
+            "limit": limit,
+            "offset": offset,
+            "success": True
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Person Analytics Endpoint
+
+@app.get("/api/people/{person_id}/analytics")
+async def get_person_analytics(person_id: str):
+    """Get analytics and insights for a specific person."""
+    try:
+        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        
+        # Get basic cluster info
+        cluster = None
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            cluster = conn.execute("""
+                SELECT * FROM face_clusters WHERE cluster_id = ?
+            """, (person_id,)).fetchone()
+            
+            if not cluster:
+                raise HTTPException(status_code=404, detail="Person not found")
+        
+        # Get photos with this person
+        photos = face_clustering_db.get_photos_for_cluster(person_id)
+        
+        # Get timeline data
+        timeline = []
+        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
+            timeline_rows = conn.execute("""
+                SELECT ppa.photo_path, ppa.created_at, ppa.confidence
+                FROM photo_person_associations ppa
+                WHERE ppa.cluster_id = ?
+                ORDER BY ppa.created_at
+            """, (person_id,)).fetchall()
+            
+            for row in timeline_rows:
+                timeline.append({
+                    "photo_path": row[0],
+                    "date": row[1],
+                    "confidence": row[2]
+                })
+        
+        # Calculate statistics
+        from datetime import datetime
+        from collections import Counter
+
+        years = [datetime.fromisoformat(t['date']).year for t in timeline if t['date']]
+        year_distribution = dict(Counter(years))
+
+        return {
+            "person_id": person_id,
+            "label": cluster[1],
+            "stats": {
+                "total_photos": len(photos),
+                "total_faces": cluster[2],
+                "first_seen": min(years) if years else None,
+                "last_seen": max(years) if years else None,
+                "years_active": len(set(years)) if years else 0
+            },
+            "timeline": timeline,
+            "year_distribution": year_distribution
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

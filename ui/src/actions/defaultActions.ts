@@ -1,8 +1,8 @@
-import type { 
-  PhotoAction, 
-  ActionResult, 
-  Photo, 
-  ActionOptions 
+import type {
+  PhotoAction,
+  ActionResult,
+  Photo,
+  ActionOptions,
 } from '../types/actions';
 import { ActionCategory, ActionType } from '../types/actions';
 import { api } from '../api';
@@ -17,13 +17,11 @@ export const copyPathAction: PhotoAction = {
   icon: 'Copy',
   category: ActionCategory.FILE_SYSTEM,
   type: ActionType.COPY_PATH,
-  contextRequirements: [
-    { type: 'fileLocation', value: 'local' }
-  ],
+  contextRequirements: [{ type: 'fileLocation', value: 'local' }],
   priority: 80,
   shortcut: 'Ctrl+C',
   description: 'Copy the full file path to clipboard',
-  
+
   isEnabled: (context) => {
     return context.fileLocation === 'local' && context.systemInfo.hasClipboard;
   },
@@ -33,20 +31,20 @@ export const copyPathAction: PhotoAction = {
       if (!navigator.clipboard) {
         throw new Error('Clipboard API not available');
       }
-      
+
       await navigator.clipboard.writeText(photo.path);
-      
+
       return {
         success: true,
-        message: 'File path copied to clipboard'
+        message: 'File path copied to clipboard',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to copy path'
+        error: error instanceof Error ? error.message : 'Failed to copy path',
       };
     }
-  }
+  },
 };
 
 export const openLocationAction: PhotoAction = {
@@ -57,15 +55,17 @@ export const openLocationAction: PhotoAction = {
   type: ActionType.OPEN_LOCATION,
   contextRequirements: [
     { type: 'fileLocation', value: 'local' },
-    { type: 'capability', value: 'canOpenLocation' }
+    { type: 'capability', value: 'canOpenLocation' },
   ],
   priority: 75,
   description: 'Open the file location in system file manager',
-  
+
   isEnabled: (context) => {
-    return context.fileLocation === 'local' && 
-           context.capabilities.canOpenLocation &&
-           context.systemInfo.canOpenFileManager;
+    return (
+      context.fileLocation === 'local' &&
+      context.capabilities.canOpenLocation &&
+      context.systemInfo.canOpenFileManager
+    );
   },
 
   execute: async (photo: Photo): Promise<ActionResult> => {
@@ -75,7 +75,7 @@ export const openLocationAction: PhotoAction = {
       const response = await fetch('/api/actions/open-location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: photo.path })
+        body: JSON.stringify({ path: photo.path }),
       });
 
       if (!response.ok) {
@@ -84,15 +84,18 @@ export const openLocationAction: PhotoAction = {
 
       return {
         success: true,
-        message: 'File location opened'
+        message: 'File location opened',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to open file location'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to open file location',
       };
     }
-  }
+  },
 };
 
 export const openInNewTabAction: PhotoAction = {
@@ -105,28 +108,29 @@ export const openInNewTabAction: PhotoAction = {
   priority: 70,
   shortcut: 'Ctrl+T',
   description: 'Open photo in a new browser tab',
-  
+
   isEnabled: () => true, // Always available
-  
+
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
-      const url = api.isVideo(photo.path) 
+      const url = api.isVideo(photo.path)
         ? api.getVideoUrl(photo.path)
         : api.getFileUrl(photo.path);
-      
+
       window.open(url, '_blank', 'noopener,noreferrer');
-      
+
       return {
         success: true,
-        message: 'Photo opened in new tab'
+        message: 'Photo opened in new tab',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to open in new tab'
+        error:
+          error instanceof Error ? error.message : 'Failed to open in new tab',
       };
     }
-  }
+  },
 };
 
 export const downloadAction: PhotoAction = {
@@ -138,34 +142,35 @@ export const downloadAction: PhotoAction = {
   contextRequirements: [],
   priority: 85,
   description: 'Download the original file',
-  
+
   isEnabled: () => true, // Always available
-  
+
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
       const downloadUrl = api.getFileUrl(photo.path, { download: true });
-      
+
       // Create a temporary link to trigger download
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = photo.filename;
       link.style.display = 'none';
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       return {
         success: true,
-        message: 'Download started'
+        message: 'Download started',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to start download'
+        error:
+          error instanceof Error ? error.message : 'Failed to start download',
       };
     }
-  }
+  },
 };
 
 export const exportAction: PhotoAction = {
@@ -174,49 +179,51 @@ export const exportAction: PhotoAction = {
   icon: 'Share',
   category: ActionCategory.EXPORT,
   type: ActionType.EXPORT,
-  contextRequirements: [
-    { type: 'capability', value: 'canExport' }
-  ],
+  contextRequirements: [{ type: 'capability', value: 'canExport' }],
   priority: 60,
   description: 'Export photo with format and quality options',
-  
+
   isEnabled: (context) => context.capabilities.canExport,
-  
-  execute: async (photo: Photo, options?: ActionOptions): Promise<ActionResult> => {
+
+  execute: async (
+    photo: Photo,
+    options?: ActionOptions
+  ): Promise<ActionResult> => {
     try {
-      // This would typically open an export dialog or modal
-      // For now, we'll just trigger a basic export
       const exportOptions = {
-        format: options?.format || 'jpeg',
-        quality: options?.quality || 90,
-        ...options
+        format: 'zip',
+        include_metadata: options?.includeMetadata ?? true,
+        include_thumbnails: options?.includeThumbnails ?? false,
+        max_resolution: options?.maxResolution ?? null,
+        password_protect: Boolean(options?.password),
+        password: options?.password,
       };
 
-      const response = await fetch('/api/actions/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          path: photo.path,
-          options: exportOptions
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
+      const blob = await api.exportPhotos([photo.path], exportOptions);
+      const url = URL.createObjectURL(
+        blob instanceof Blob ? blob : new Blob([blob])
+      );
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'photo_export.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       return {
         success: true,
-        message: 'Photo exported successfully',
-        data: exportOptions
+        message: 'Export prepared',
+        data: exportOptions,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to export photo'
+        error:
+          error instanceof Error ? error.message : 'Failed to export photo',
       };
     }
-  }
+  },
 };
 
 export const openWithAction: PhotoAction = {
@@ -227,34 +234,39 @@ export const openWithAction: PhotoAction = {
   type: ActionType.OPEN_WITH,
   contextRequirements: [
     { type: 'fileLocation', value: 'local' },
-    { type: 'app', value: ['photo_editor', 'raw_processor', 'video_editor'] }
+    { type: 'app', value: ['photo_editor', 'raw_processor', 'video_editor'] },
   ],
   priority: 90,
   description: 'Open with installed editing applications',
-  
+
   isEnabled: (context) => {
-    return context.fileLocation === 'local' && 
-           context.availableApps.length > 0 &&
-           context.systemInfo.canLaunchApps;
+    return (
+      context.fileLocation === 'local' &&
+      context.availableApps.length > 0 &&
+      context.systemInfo.canLaunchApps
+    );
   },
-  
-  execute: async (photo: Photo, options?: ActionOptions): Promise<ActionResult> => {
+
+  execute: async (
+    photo: Photo,
+    options?: ActionOptions
+  ): Promise<ActionResult> => {
     try {
       const appId = options?.appId;
       if (!appId) {
         return {
           success: false,
-          error: 'No application specified'
+          error: 'No application specified',
         };
       }
 
       const response = await fetch('/api/actions/launch-app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           appId,
-          filePath: photo.path
-        })
+          filePath: photo.path,
+        }),
       });
 
       if (!response.ok) {
@@ -262,19 +274,22 @@ export const openWithAction: PhotoAction = {
       }
 
       const result = await response.json();
-      
+
       return {
         success: true,
         message: `Opened with ${result.appName || 'application'}`,
-        data: result
+        data: result,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to open with application'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to open with application',
       };
     }
-  }
+  },
 };
 
 // Cloud-specific actions
@@ -284,21 +299,19 @@ export const downloadOriginalAction: PhotoAction = {
   icon: 'CloudDownload',
   category: ActionCategory.FILE_SYSTEM,
   type: ActionType.DOWNLOAD,
-  contextRequirements: [
-    { type: 'fileLocation', value: 'cloud' }
-  ],
+  contextRequirements: [{ type: 'fileLocation', value: 'cloud' }],
   priority: 85,
   description: 'Download original file from cloud storage',
-  
+
   isEnabled: (context) => context.fileLocation === 'cloud',
-  
+
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
       // This would handle cloud-specific download logic
       const response = await fetch('/api/actions/cloud-download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: photo.path })
+        body: JSON.stringify({ path: photo.path }),
       });
 
       if (!response.ok) {
@@ -307,15 +320,18 @@ export const downloadOriginalAction: PhotoAction = {
 
       return {
         success: true,
-        message: 'Download from cloud started'
+        message: 'Download from cloud started',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to download from cloud'
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to download from cloud',
       };
     }
-  }
+  },
 };
 
 export const copyLinkAction: PhotoAction = {
@@ -324,49 +340,44 @@ export const copyLinkAction: PhotoAction = {
   icon: 'Link',
   category: ActionCategory.SHARING,
   type: ActionType.SHARE,
-  contextRequirements: [
-    { type: 'fileLocation', value: 'cloud' }
-  ],
+  contextRequirements: [{ type: 'fileLocation', value: 'cloud' }],
   priority: 70,
   description: 'Copy shareable link to clipboard',
-  
+
   isEnabled: (context) => {
-    return context.fileLocation === 'cloud' && 
-           context.capabilities.canShare &&
-           context.systemInfo.hasClipboard;
+    return (
+      context.fileLocation === 'cloud' &&
+      context.capabilities.canShare &&
+      context.systemInfo.hasClipboard
+    );
   },
-  
+
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
-      const response = await fetch('/api/actions/generate-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: photo.path })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate shareable link');
+      const share = await api.createShareLink([photo.path]);
+      const shareableUrl =
+        share.share_url || share.shareUrl || share.shareableUrl;
+      if (!shareableUrl) {
+        throw new Error('Share link unavailable');
       }
 
-      const { shareableUrl } = await response.json();
-      
       if (!navigator.clipboard) {
         throw new Error('Clipboard API not available');
       }
-      
+
       await navigator.clipboard.writeText(shareableUrl);
-      
+
       return {
         success: true,
-        message: 'Shareable link copied to clipboard'
+        message: 'Shareable link copied to clipboard',
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to copy link'
+        error: error instanceof Error ? error.message : 'Failed to copy link',
       };
     }
-  }
+  },
 };
 
 // Export all default actions
@@ -378,5 +389,5 @@ export const defaultActions: PhotoAction[] = [
   exportAction,
   openWithAction,
   downloadOriginalAction,
-  copyLinkAction
+  copyLinkAction,
 ];

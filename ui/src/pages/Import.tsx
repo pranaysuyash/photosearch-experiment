@@ -3,11 +3,10 @@
  *
  * Dedicated page for photo importing with wizard and quick import options.
  */
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Download,
-  FolderOpen,
   Cloud,
   HardDrive,
   Users,
@@ -184,3 +183,5 @@ export function Import() {
     </div>
   );
 }
+
+export default Import;

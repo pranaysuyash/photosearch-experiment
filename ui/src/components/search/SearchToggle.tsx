@@ -37,7 +37,7 @@ export function SearchToggle({ value, onChange }: SearchToggleProps) {
         className={`btn-glass ${
           value === 'semantic' ? 'btn-glass--primary' : 'btn-glass--muted'
         } text-xs`}
-        title='Search by meaning and visual content (AI)'
+        title='Search by meaning and visual content'
       >
         <Sparkles size={14} />
         Semantic

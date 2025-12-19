@@ -4,7 +4,7 @@
  * Displays face clusters and allows management of people in photos.
  * Uses the glass design system consistent with the rest of the app.
  */
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Users,
@@ -12,7 +12,6 @@ import {
   Search,
   RefreshCw,
   User,
-  UserPlus,
   Tag,
   Clock,
   Image as ImageIcon
@@ -53,7 +52,7 @@ export function People() {
     try {
       setLoading(true);
       setError(null);
-      const response = await api.get('/api/faces/clusters');
+      const response = await api.getFaceClusters();
       setClusters(response.clusters || []);
     } catch (err) {
       console.error('Failed to fetch face clusters:', err);
@@ -65,7 +64,7 @@ export function People() {
 
   const fetchStats = async () => {
     try {
-      const response = await api.get('/api/faces/stats');
+      const response = await api.getFaceStats();
       setStats(response);
     } catch (err) {
       console.error('Failed to fetch face stats:', err);
@@ -75,7 +74,7 @@ export function People() {
   const handleScan = async () => {
     try {
       setScanning(true);
-      const response = await api.post('/api/faces/scan');
+      const response = await api.scanFaces();
       console.log('Face scan completed:', response);
 
       // Refresh data after scan
@@ -91,7 +90,7 @@ export function People() {
 
   const handleSetLabel = async (clusterId: string, newLabel: string) => {
     try {
-      await api.post(`/api/faces/clusters/${clusterId}/label`, { label: newLabel });
+      await api.setFaceClusterLabel(clusterId, newLabel);
 
       // Update local state
       setClusters(clusters.map(cluster =>
@@ -334,3 +333,5 @@ export function People() {
     </div>
   );
 }
+
+export default People;

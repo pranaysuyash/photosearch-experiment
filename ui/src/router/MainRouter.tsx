@@ -39,6 +39,13 @@ const OCRSearch = lazy(() => import('../components/features/OCRSearch'));
 const ModalSystem = lazy(() => import('../components/common/ModalSystem'));
 const CodeSplitting = lazy(() => import('../components/features/CodeSplitting'));
 const TauriIntegration = lazy(() => import('../components/features/TauriIntegration'));
+
+// Lazy load heavy advanced feature components for better performance
+const AnalyticsDashboard = lazy(() => import('../components/advanced/AnalyticsDashboard'));
+const SmartAlbumsBuilder = lazy(() => import('../components/advanced/SmartAlbumsBuilder'));
+const FaceRecognitionPanel = lazy(() => import('../components/advanced/FaceRecognitionPanel'));
+const DuplicateManagementPanel = lazy(() => import('../components/advanced/DuplicateManagementPanel'));
+const OCRTextSearchPanel = lazy(() => import('../components/advanced/OCRTextSearchPanel'));
 const Settings = lazy(() => import('../pages/Settings'));
 const About = lazy(() => import('../pages/About'));
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -94,6 +101,13 @@ const MainRouter = () => {
                 path='/studio/tauri-integration'
                 element={<TauriIntegration />}
               />
+
+              {/* Advanced Analytics Routes */}
+              <Route path='/analytics/dashboard' element={<AnalyticsDashboard />} />
+              <Route path='/analytics/albums' element={<SmartAlbumsBuilder />} />
+              <Route path='/analytics/faces' element={<FaceRecognitionPanel />} />
+              <Route path='/analytics/duplicates' element={<DuplicateManagementPanel />} />
+              <Route path='/analytics/ocr' element={<OCRTextSearchPanel />} />
 
               {/* Utility Routes */}
               <Route path='/settings' element={<Settings />} />

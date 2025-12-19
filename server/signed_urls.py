@@ -44,7 +44,12 @@ def issue_token(path: str, uid: Optional[str] = None, ttl: Optional[int] = None,
     payload_bytes = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     secret = getattr(settings, "SIGNED_URL_SECRET", None)
     if not secret:
-        raise TokenError("SIGNED_URL_SECRET is not configured")
+        # In dev/test it is better to degrade to the default dev secret than to 500.
+        # In production we still fail closed.
+        if getattr(settings, "ENV", "development") == "development":
+            secret = "dev_signed_url_secret_change_me"
+        else:
+            raise TokenError("SIGNED_URL_SECRET is not configured")
 
     sig = hmac.new(str(secret).encode("utf-8"), payload_bytes, hashlib.sha256).digest()
     return f"{_b64url_encode(payload_bytes)}.{_b64url_encode(sig)}"
@@ -62,7 +67,10 @@ def verify_token(token: str, expected_scope: Optional[str] = None) -> Dict[str, 
 
     secret = getattr(settings, "SIGNED_URL_SECRET", None)
     if not secret:
-        raise TokenError("SIGNED_URL_SECRET is not configured")
+        if getattr(settings, "ENV", "development") == "development":
+            secret = "dev_signed_url_secret_change_me"
+        else:
+            raise TokenError("SIGNED_URL_SECRET is not configured")
 
     expected_sig = hmac.new(str(secret).encode("utf-8"), payload_bytes, hashlib.sha256).digest()
     if not hmac.compare_digest(sig_bytes, expected_sig):
