@@ -85,6 +85,14 @@ export function PhotoGrid({
     return () => window.removeEventListener('resize', update);
   }, []);
 
+  // Calculate optimal thumbnail size based on grid zoom and device pixel ratio
+  const getThumbnailSize = () => {
+    const baseSize = gridZoom === 'compact' ? 120 : gridZoom === 'comfortable' ? 180 : 240;
+    // Account for high-DPI displays
+    const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    return Math.round(baseSize * Math.min(pixelRatio, 2)); // Cap at 2x for performance
+  };
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -594,7 +602,7 @@ export function PhotoGrid({
             >
               <SecureLazyImage
                 path={photo.path}
-                size={96}
+                size={getThumbnailSize()}
                 alt={photo.filename}
                 aspectRatio={
                   photo.metadata?.image?.width && photo.metadata?.image?.height

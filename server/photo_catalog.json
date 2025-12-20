@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-20T21:01:17.997907",
-    "last_update_date": "2025-12-20T21:01:17.997913",
+    "first_scan_date": "2025-12-20T21:17:36.699628",
+    "last_update_date": "2025-12-20T21:17:36.699633",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1061,
-    "total_images": 1059,
+    "total_files": 1062,
+    "total_images": 1060,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -2411,6 +2411,12 @@
         "mtime": 1765124131.7090795
       },
       {
+        "name": "people_47_backup.jpg",
+        "type": "image",
+        "size": 110905,
+        "mtime": 1765162952.8918757
+      },
+      {
         "name": "benchmark_0498.png",
         "type": "image",
         "size": 4229,
@@ -3823,8 +3829,8 @@
       {
         "name": "people_47.jpg",
         "type": "image",
-        "size": 110905,
-        "mtime": 1765162952.8918757
+        "size": 166280,
+        "mtime": 1766245085.1749902
       },
       {
         "name": "benchmark_0533.png",

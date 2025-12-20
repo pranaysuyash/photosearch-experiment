@@ -241,6 +241,7 @@ export function PhotoDetail({
   const [tagsLoading, setTagsLoading] = useState(false);
   const viewerRef = useRef<HTMLDivElement | null>(null);
   const [faceClusters, setFaceClusters] = useState<any[]>([]);
+  const [isMetadataPanelVisible, setIsMetadataPanelVisible] = useState(true);
   const [facesLoading, setFacesLoading] = useState(false);
 
   useEffect(() => {
@@ -537,9 +538,6 @@ export function PhotoDetail({
         {photo && (
           <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               onClick={onClose}
               className='absolute inset-0 bg-black/70 backdrop-blur-md'
             />
@@ -550,15 +548,46 @@ export function PhotoDetail({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               className='relative z-10 max-w-6xl w-full max-h-[95vh] flex gap-4 md:gap-6'
+              onClick={(e) => e.stopPropagation()}
             >
-              <button
-                onClick={onClose}
-                className='absolute -top-12 right-0 btn-glass btn-glass--muted w-10 h-10 p-0 justify-center text-white/80'
-                title='Close photo detail'
-                aria-label='Close photo detail'
-              >
-                <X size={24} />
-              </button>
+              {/* Mac-style traffic light buttons */}
+              <div className='absolute top-4 left-4 z-30 flex items-center gap-2 group/traffic-lights'>
+                <button
+                  onClick={onClose}
+                  className='w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center group relative'
+                  aria-label='Close photo detail'
+                >
+                  <X size={8} className='text-red-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                    Close
+                  </span>
+                </button>
+                <button
+                  onClick={() => setIsMetadataPanelVisible(!isMetadataPanelVisible)}
+                  className='w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors flex items-center justify-center group relative'
+                  aria-label={isMetadataPanelVisible ? 'Hide metadata panel' : 'Show metadata panel'}
+                >
+                  <Minus size={8} className='text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                    {isMetadataPanelVisible ? 'Hide Info' : 'Show Info'}
+                  </span>
+                </button>
+                <button
+                  onClick={toggleFullscreen}
+                  disabled={busy}
+                  className='w-3 h-3 rounded-full bg-green-500 hover:bg-green-600 transition-colors flex items-center justify-center group relative'
+                  aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <Minimize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                  ) : (
+                    <Maximize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                  )}
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                    {isFullscreen ? 'Exit Full' : 'Fullscreen'}
+                  </span>
+                </button>
+              </div>
 
               {/* Navigation - Previous */}
               {hasPrev && (
@@ -618,39 +647,50 @@ export function PhotoDetail({
               </div>
 
               {/* Metadata Panel */}
-              <div className='w-80 glass-surface rounded-2xl p-5 overflow-y-auto max-h-[85vh]'>
+              {isMetadataPanelVisible && (
+                <div className='w-80 glass-surface rounded-2xl p-5 overflow-y-auto max-h-[85vh]'>
                 <h3 className='text-white text-lg font-semibold mb-1 truncate'>
                   {photo.filename}
                 </h3>
                 <div className='mb-6'>
-                  <p
-                    className='text-white/40 text-xs truncate select-text'
-                    title={photo.path}
-                  >
-                    <a
-                      href={originalOpenUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='hover:text-white/70 hover:underline underline-offset-4 cursor-pointer'
-                      onClick={(e) => {
-                        const sel = window.getSelection?.()?.toString() ?? '';
-                        if (sel.trim().length > 0) e.preventDefault();
-                      }}
-                      title='Open original in new tab'
-                    >
-                      {photo.path}
-                    </a>
-                  </p>
-                  <div className='mt-2 flex items-center gap-2 flex-wrap'>
+                  <div className='flex items-center gap-2 group'>
+                    <div className='flex-1 overflow-hidden'>
+                      <p className='text-white/40 text-xs select-text whitespace-nowrap transition-transform duration-2000 ease-linear group-hover:animate-scroll-text'>
+                        <a
+                          href={originalOpenUrl}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='hover:text-white/70 hover:underline underline-offset-4 cursor-pointer'
+                          onClick={(e) => {
+                            const sel = window.getSelection?.()?.toString() ?? '';
+                            if (sel.trim().length > 0) e.preventDefault();
+                          }}
+                          title='Open original in new tab'
+                        >
+                          {photo.path}
+                        </a>
+                      </p>
+                    </div>
+                    {/* Desktop: Hover-revealed copy icon */}
                     <button
                       onClick={copyPath}
-                      className='btn-glass btn-glass--muted text-xs px-3 py-2'
+                      className='hidden md:flex opacity-0 group-hover:opacity-100 transition-opacity btn-glass btn-glass--muted w-6 h-6 p-0 justify-center flex-shrink-0'
+                      title='Copy file path'
+                      aria-label='Copy file path'
+                    >
+                      <Copy size={12} />
+                    </button>
+                    {/* Mobile: Always visible copy icon */}
+                    <button
+                      onClick={copyPath}
+                      className='md:hidden btn-glass btn-glass--muted w-8 h-8 p-0 justify-center flex-shrink-0'
                       title='Copy file path'
                       aria-label='Copy file path'
                     >
                       <Copy size={14} />
-                      Copy path
                     </button>
+                  </div>
+                  <div className='mt-2 flex items-center gap-2 flex-wrap'>
                     <a
                       href={originalOpenUrl}
                       target='_blank'
@@ -1471,6 +1511,7 @@ export function PhotoDetail({
                   </MetadataSection>
                 )}
               </div>
+              )}
             </motion.div>
           </div>
         )}
