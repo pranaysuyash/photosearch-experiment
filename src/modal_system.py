@@ -77,13 +77,14 @@ class DialogManager:
             db_path: Path to SQLite database for storing dialog data
         """
         self.db_path = db_path
-        self.conn = None
+        self.conn: Optional[sqlite3.Connection] = None
         self._initialize_database()
     
     def _initialize_database(self):
         """Initialize database and create tables."""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        self.conn = conn
         
         # Create dialogs table
         self.conn.execute("""
@@ -131,24 +132,32 @@ class DialogManager:
         """)
         
         # Create indexes
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_type ON dialogs(dialog_type)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_user ON dialogs(user_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_priority ON dialogs(priority)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_history_dialog ON dialog_history(dialog_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_type ON dialogs(dialog_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_user ON dialogs(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_dialogs_priority ON dialogs(priority)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_history_dialog ON dialog_history(dialog_id)")
         
-        self.conn.commit()
+        conn.commit()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return an initialized SQLite connection (reinitializing if needed)."""
+        if self.conn is None:
+            self._initialize_database()
+        if self.conn is None:
+            raise RuntimeError("DialogManager database connection not initialized")
+        return self.conn
     
     def create_dialog(
         self,
         dialog_type: str,
         title: str = "",
         message: str = "",
-        actions: List[str] = None,
-        data: Dict = None,
+        actions: Optional[List[str]] = None,
+        data: Optional[Dict[str, Any]] = None,
         user_id: str = "system",
         context: str = "general",
         priority: int = 0,
-        expires_in: int = None
+        expires_in: Optional[int] = None
     ) -> str:
         """
         Create a new dialog.
@@ -180,10 +189,11 @@ class DialogManager:
         
         # Calculate expiration time
         expires_at = None
-        if expires_in:
+        if expires_in is not None:
             expires_at = datetime.now().timestamp() + expires_in
         
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO dialogs 
             (id, dialog_type, title, message, actions, data, user_id, context, priority, expires_at)
@@ -208,10 +218,10 @@ class DialogManager:
             VALUES (?, TRUE, FALSE)
         """, (dialog_id,))
         
-        self.conn.commit()
+        conn.commit()
         return dialog_id
-    
-    def get_dialog(self, dialog_id: str) -> Optional[Dict]:
+
+    def get_dialog(self, dialog_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a dialog by ID.
         
@@ -221,7 +231,7 @@ class DialogManager:
         Returns:
             Dictionary with dialog data or None if not found
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         cursor.execute("""
             SELECT d.*, ds.is_open, ds.is_dismissed, ds.current_step, ds.state_data
             FROM dialogs d
@@ -242,10 +252,10 @@ class DialogManager:
     
     def get_active_dialogs(
         self,
-        user_id: str = None,
-        context: str = None,
+        user_id: Optional[str] = None,
+        context: Optional[str] = None,
         limit: int = 100
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get active (open) dialogs.
         
@@ -257,7 +267,7 @@ class DialogManager:
         Returns:
             List of active dialogs
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         query = """
             SELECT d.*, ds.is_open, ds.is_dismissed, ds.current_step, ds.state_data
@@ -266,7 +276,7 @@ class DialogManager:
             WHERE ds.is_open = TRUE AND ds.is_dismissed = FALSE
         """
         
-        params = []
+        params: List[Any] = []
         
         if user_id:
             query += " AND d.user_id = ?"
@@ -301,7 +311,7 @@ class DialogManager:
         is_open: Optional[bool] = None,
         is_dismissed: Optional[bool] = None,
         current_step: Optional[int] = None,
-        state_data: Optional[Dict] = None
+        state_data: Optional[Dict[str, Any]] = None
     ) -> bool:
         """
         Update dialog state.
@@ -316,7 +326,8 @@ class DialogManager:
         Returns:
             True if updated, False if dialog not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Get current state
         cursor.execute("SELECT * FROM dialog_state WHERE dialog_id = ?", (dialog_id,))
@@ -326,8 +337,8 @@ class DialogManager:
             return False
         
         # Update fields
-        updates = []
-        params = []
+        updates: List[str] = []
+        params: List[Any] = []
         
         if is_open is not None:
             updates.append("is_open = ?")
@@ -350,7 +361,7 @@ class DialogManager:
             query = f"UPDATE dialog_state SET {', '.join(updates)} WHERE dialog_id = ?"
             params.append(dialog_id)
             cursor.execute(query, params)
-            self.conn.commit()
+            conn.commit()
         
         return True
 
@@ -359,13 +370,14 @@ class DialogManager:
         self,
         dialog_id: str,
         action: str,
-        action_data: Dict = None,
+        action_data: Optional[Dict[str, Any]] = None,
         user_id: str = "system"
     ) -> bool:
         """
         Record a dialog action in history (convenience method for DialogManager).
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         try:
             cursor.execute("""
                 INSERT INTO dialog_history 
@@ -377,12 +389,12 @@ class DialogManager:
                 json.dumps(action_data) if action_data else None,
                 user_id
             ))
-            self.conn.commit()
+            conn.commit()
             return True
         except Exception:
             return False
 
-    def close_dialog(self, dialog_id: str, action: str = None, user_id: str = "system") -> bool:
+    def close_dialog(self, dialog_id: str, action: Optional[str] = None, user_id: str = "system") -> bool:
         """
         Close a dialog (convenience wrapper).
         """
@@ -403,7 +415,7 @@ class DialogManager:
         message: str,
         confirm_action: str = "confirm",
         cancel_action: str = "cancel",
-        data: Dict = None,
+        data: Optional[Dict[str, Any]] = None,
         user_id: str = "system"
     ) -> str:
         """
@@ -470,18 +482,19 @@ class DialogManager:
         dialog_id: str,
         progress: float,
         status: str = "processing",
-        message: str = None
+        message: Optional[str] = None
     ) -> bool:
         """
         Update progress dialog (convenience wrapper).
         """
         if message:
-            cursor = self.conn.cursor()
+            conn = self._get_conn()
+            cursor = conn.cursor()
             cursor.execute("""
                 UPDATE dialogs SET message = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (message, dialog_id))
-            self.conn.commit()
+            conn.commit()
         return self.update_dialog_state(
             dialog_id,
             state_data={"progress": progress, "status": status}
@@ -496,7 +509,8 @@ class DialogManager:
         """
         Complete a progress dialog (convenience wrapper).
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             UPDATE dialogs SET message = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -509,7 +523,7 @@ class DialogManager:
         cursor.execute("""
             UPDATE dialogs SET actions = ? WHERE id = ?
         """, (json.dumps([action]), dialog_id))
-        self.conn.commit()
+        conn.commit()
         return state_updated
 
     def create_input_dialog(
@@ -544,11 +558,16 @@ class DialogManager:
             self.conn.close()
             self.conn = None
 
-    def get_dialog_history(self, dialog_id: str = None, user_id: str = None, limit: int = 50) -> List[Dict]:
+    def get_dialog_history(
+        self,
+        dialog_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
         """
         Convenience wrapper to get dialog history from DialogManager.
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         query = """
             SELECT dh.*, d.dialog_type, d.title, d.message
@@ -556,8 +575,8 @@ class DialogManager:
             JOIN dialogs d ON dh.dialog_id = d.id
         """
         
-        params = []
-        conditions = []
+        params: List[Any] = []
+        conditions: List[str] = []
         
         if dialog_id:
             conditions.append("dh.dialog_id = ?")
@@ -583,11 +602,11 @@ class DialogManager:
         
         return history
 
-    def get_dialog_statistics(self) -> Dict:
+    def get_dialog_statistics(self) -> Dict[str, Any]:
         """
         Convenience wrapper to get dialog statistics from DialogManager.
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         # Total dialogs created
         cursor.execute("SELECT COUNT(*) as count FROM dialogs")
@@ -666,7 +685,7 @@ class ModalSystem(DialogManager):
         self,
         dialog_id: str,
         action: str,
-        action_data: Dict = None,
+        action_data: Optional[Dict[str, Any]] = None,
         user_id: str = "system"
     ) -> bool:
         """
@@ -681,7 +700,8 @@ class ModalSystem(DialogManager):
         Returns:
             True if recorded, False if failed
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         try:
             cursor.execute("""
@@ -695,13 +715,13 @@ class ModalSystem(DialogManager):
                 user_id
             ))
             
-            self.conn.commit()
+            conn.commit()
             return True
             
         except Exception:
             return False
     
-    def close_dialog(self, dialog_id: str, action: str = None, user_id: str = "system") -> bool:
+    def close_dialog(self, dialog_id: str, action: Optional[str] = None, user_id: str = "system") -> bool:
         """
         Close a dialog.
         
@@ -743,7 +763,7 @@ class ModalSystem(DialogManager):
         message: str,
         confirm_action: str = "confirm",
         cancel_action: str = "cancel",
-        data: Dict = None,
+        data: Optional[Dict[str, Any]] = None,
         user_id: str = "system"
     ) -> str:
         """
@@ -841,7 +861,7 @@ class ModalSystem(DialogManager):
         dialog_id: str,
         progress: float,
         status: str = "processing",
-        message: str = None
+        message: Optional[str] = None
     ) -> bool:
         """
         Update a progress dialog.
@@ -857,12 +877,13 @@ class ModalSystem(DialogManager):
         """
         # Update dialog message if provided
         if message:
-            cursor = self.conn.cursor()
+            conn = self._get_conn()
+            cursor = conn.cursor()
             cursor.execute("""
                 UPDATE dialogs SET message = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """, (message, dialog_id))
-            self.conn.commit()
+            conn.commit()
         
         # Update state
         return self.update_dialog_state(
@@ -888,7 +909,8 @@ class ModalSystem(DialogManager):
             True if completed, False if failed
         """
         # Update message
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             UPDATE dialogs SET message = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -906,7 +928,7 @@ class ModalSystem(DialogManager):
             UPDATE dialogs SET actions = ? WHERE id = ?
         """, (json.dumps([action]), dialog_id))
         
-        self.conn.commit()
+        conn.commit()
         return state_updated
     
     def create_input_dialog(
@@ -948,10 +970,10 @@ class ModalSystem(DialogManager):
     
     def get_dialog_history(
         self,
-        dialog_id: str = None,
-        user_id: str = None,
+        dialog_id: Optional[str] = None,
+        user_id: Optional[str] = None,
         limit: int = 50
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get dialog history.
         
@@ -963,7 +985,7 @@ class ModalSystem(DialogManager):
         Returns:
             List of dialog history records
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         query = """
             SELECT dh.*, d.dialog_type, d.title, d.message
@@ -971,8 +993,8 @@ class ModalSystem(DialogManager):
             JOIN dialogs d ON dh.dialog_id = d.id
         """
         
-        params = []
-        conditions = []
+        params: List[Any] = []
+        conditions: List[str] = []
         
         if dialog_id:
             conditions.append("dh.dialog_id = ?")
@@ -998,14 +1020,14 @@ class ModalSystem(DialogManager):
         
         return history
 
-    def get_dialog_statistics(self) -> Dict:
+    def get_dialog_statistics(self) -> Dict[str, Any]:
         """
         Get statistics about dialog usage.
         
         Returns:
             Dictionary with dialog statistics
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         # Total dialogs created
         cursor.execute("SELECT COUNT(*) as count FROM dialogs")
@@ -1068,76 +1090,6 @@ class ModalSystem(DialogManager):
             'recent_dialogs': recent_dialogs,
             'last_updated': datetime.now().isoformat()
         }    
-    def get_dialog_statistics(self) -> Dict:
-        """
-        Get statistics about dialog usage.
-        
-        Returns:
-            Dictionary with dialog statistics
-        """
-        cursor = self.conn.cursor()
-        
-        # Total dialogs created
-        cursor.execute("SELECT COUNT(*) as count FROM dialogs")
-        total_dialogs = cursor.fetchone()['count']
-        
-        # Active dialogs
-        cursor.execute("""
-            SELECT COUNT(*) as count 
-            FROM dialog_state 
-            WHERE is_open = TRUE AND is_dismissed = FALSE
-        """)
-        active_dialogs = cursor.fetchone()['count']
-        
-        # Dialogs by type
-        cursor.execute("""
-            SELECT dialog_type, COUNT(*) as count
-            FROM dialogs
-            GROUP BY dialog_type
-            ORDER BY count DESC
-        """)
-        
-        type_distribution = {}
-        for row in cursor.fetchall():
-            type_distribution[row['dialog_type']] = row['count']
-        
-        # Dialog actions
-        cursor.execute("""
-            SELECT action, COUNT(*) as count
-            FROM dialog_history
-            GROUP BY action
-            ORDER BY count DESC
-        """)
-        
-        action_distribution = {}
-        for row in cursor.fetchall():
-            action_distribution[row['action']] = row['count']
-        
-        # Recent dialogs
-        cursor.execute("""
-            SELECT id, dialog_type, title, created_at
-            FROM dialogs
-            ORDER BY created_at DESC
-            LIMIT 10
-        """)
-        
-        recent_dialogs = []
-        for row in cursor.fetchall():
-            recent_dialogs.append({
-                'id': row['id'],
-                'type': row['dialog_type'],
-                'title': row['title'],
-                'created_at': row['created_at']
-            })
-        
-        return {
-            'total_dialogs': total_dialogs,
-            'active_dialogs': active_dialogs,
-            'type_distribution': type_distribution,
-            'action_distribution': action_distribution,
-            'recent_dialogs': recent_dialogs,
-            'last_updated': datetime.now().isoformat()
-        }
     
     def cleanup_expired_dialogs(self) -> int:
         """
@@ -1146,7 +1098,7 @@ class ModalSystem(DialogManager):
         Returns:
             Number of dialogs cleaned up
         """
-        cursor = self.conn.cursor()
+        cursor = self._get_conn().cursor()
         
         # Find expired dialogs
         cursor.execute("""
@@ -1165,12 +1117,6 @@ class ModalSystem(DialogManager):
         
         return len(expired_ids)
 
-    def close(self):
-        """Close database connection."""
-        if self.conn:
-            self.conn.close()
-            self.conn = None
-    
     def close(self):
         """Close database connection."""
         if self.conn:
@@ -1298,5 +1244,5 @@ def main():
             print(f"  Data: {dialog['data']}")
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()

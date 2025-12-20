@@ -15,7 +15,7 @@ import {
   Unlock,
   Check
 } from 'lucide-react';
-import { api } from '../api';
+import { api, type ExportOptions } from '../api';
 import { glass } from '../design/glass';
 
 interface ExportDialogProps {
@@ -110,14 +110,13 @@ export function ExportDialog({ isOpen, onClose, photoPaths }: ExportDialogProps)
       }
 
       // Prepare export options
-      const exportOptions = {
+      const exportOptions: ExportOptions = {
         format: 'zip',
         include_metadata: includeMetadata,
         include_thumbnails: includeThumbnails,
-        max_resolution: maxResolution,
-        rename_pattern: null,
+        max_resolution: maxResolution || undefined,
         password_protect: false,
-        password: null
+        password: password || undefined
       };
 
       // Actually perform the export

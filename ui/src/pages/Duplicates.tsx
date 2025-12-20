@@ -144,7 +144,7 @@ export function Duplicates() {
 
     // Search in file paths
     return group.files.some((file) =>
-      file.path.toLowerCase().includes(searchTerm.toLowerCase())
+      file.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
 
@@ -387,7 +387,7 @@ export function Duplicates() {
                   <div className='flex items-center gap-3'>
                     <div className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Clock size={12} />
-                      {new Date(group.created_at).toLocaleDateString()}
+                      {group.created_at ? new Date(group.created_at).toLocaleDateString() : 'Unknown date'}
                     </div>
 
                     {group.resolved_at ? (

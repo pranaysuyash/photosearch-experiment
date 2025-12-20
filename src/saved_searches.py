@@ -49,13 +49,14 @@ class SavedSearchManager:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path
-        self.conn = None
+        # Keep the connection non-Optional for callers.
+        self.conn: sqlite3.Connection = sqlite3.connect(self.db_path)
+        self.conn.row_factory = sqlite3.Row
         self._initialize_database()
     
     def _initialize_database(self):
         """Initialize database and create tables if they don't exist."""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
+        # Connection is created in __init__.
         
         # Create saved searches table
         self.conn.execute("""
@@ -431,6 +432,166 @@ class SavedSearchManager:
             'intent_distribution': intent_distribution,
             'last_updated': datetime.now().isoformat()
         }
+
+    def get_detailed_analytics(self, days: int = 30) -> Dict[str, Any]:
+        """Return detailed analytics over the last N days.
+
+        This complements `get_overall_analytics()` by focusing on time-bounded
+        behavior: daily volume, top queries, intent/mode breakdown, and
+        performance.
+        """
+        if days <= 0:
+            days = 1
+
+        cursor = self.conn.cursor()
+        window = f"-{int(days)} days"
+
+        # Daily volume (history includes all searches, not only saved ones)
+        cursor.execute(
+            """
+            SELECT date(executed_at) AS day, COUNT(*) AS count
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            GROUP BY day
+            ORDER BY day ASC
+            """,
+            (window,),
+        )
+        daily_volume = [dict(row) for row in cursor.fetchall()]
+
+        # Top queries in the window
+        cursor.execute(
+            """
+            SELECT query, mode, intent, COUNT(*) AS executions,
+                   AVG(execution_time_ms) AS avg_execution_time_ms,
+                   AVG(results_count) AS avg_results_count
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            GROUP BY query, mode, intent
+            ORDER BY executions DESC
+            LIMIT 20
+            """,
+            (window,),
+        )
+        top_queries = [dict(row) for row in cursor.fetchall()]
+
+        # Mode distribution in the window
+        cursor.execute(
+            """
+            SELECT mode, COUNT(*) AS count
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            GROUP BY mode
+            """,
+            (window,),
+        )
+        mode_distribution = {row["mode"]: row["count"] for row in cursor.fetchall()}
+
+        # Intent distribution in the window
+        cursor.execute(
+            """
+            SELECT intent, COUNT(*) AS count
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            GROUP BY intent
+            """,
+            (window,),
+        )
+        intent_distribution = {row["intent"]: row["count"] for row in cursor.fetchall()}
+
+        # Performance summary
+        cursor.execute(
+            """
+            SELECT
+                COUNT(*) AS total,
+                AVG(execution_time_ms) AS avg_execution_time_ms,
+                MIN(execution_time_ms) AS min_execution_time_ms,
+                MAX(execution_time_ms) AS max_execution_time_ms
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            """,
+            (window,),
+        )
+        perf = cursor.fetchone()
+        performance = dict(perf) if perf else {}
+
+        return {
+            "window_days": int(days),
+            "daily_volume": daily_volume,
+            "top_queries": top_queries,
+            "mode_distribution": mode_distribution,
+            "intent_distribution": intent_distribution,
+            "performance": performance,
+            "generated_at": datetime.now().isoformat(),
+        }
+
+    def get_search_trends(self, days: int = 90) -> Dict[str, Any]:
+        """Return trend-oriented time series over the last N days."""
+        if days <= 0:
+            days = 1
+        cursor = self.conn.cursor()
+        window = f"-{int(days)} days"
+
+        cursor.execute(
+            """
+            SELECT date(executed_at) AS day,
+                   COUNT(*) AS searches,
+                   AVG(results_count) AS avg_results,
+                   AVG(execution_time_ms) AS avg_execution_time_ms
+            FROM search_history
+            WHERE executed_at >= datetime('now', ?)
+            GROUP BY day
+            ORDER BY day ASC
+            """,
+            (window,),
+        )
+        series = [dict(row) for row in cursor.fetchall()]
+        return {
+            "window_days": int(days),
+            "series": series,
+            "generated_at": datetime.now().isoformat(),
+        }
+
+    def export_analytics(self, format_type: str = "json", days: int = 30) -> str:
+        """Export analytics in json/csv/text formats."""
+        fmt = (format_type or "json").lower()
+        data = {
+            "overall": self.get_overall_analytics(),
+            "detailed": self.get_detailed_analytics(days=days),
+            "trends": self.get_search_trends(days=max(days, 1)),
+        }
+
+        if fmt == "json":
+            return json.dumps(data, indent=2, default=str)
+
+        if fmt == "text":
+            overall = data["overall"]
+            detailed = data["detailed"]
+            lines = [
+                "Search Analytics Export",
+                f"Generated: {datetime.now().isoformat()}",
+                "",
+                f"Total saved searches: {overall.get('total_saved_searches')}",
+                f"Total executions: {overall.get('total_executions')}",
+                f"Total history entries: {overall.get('total_history_entries')}",
+                "",
+                f"Window (days): {detailed.get('window_days')}",
+                f"Daily points: {len(detailed.get('daily_volume', []))}",
+                f"Top queries: {len(detailed.get('top_queries', []))}",
+            ]
+            return "\n".join(lines)
+
+        if fmt == "csv":
+            # Simple CSV for the daily trend series.
+            rows = data["trends"].get("series", [])
+            out_lines = ["day,searches,avg_results,avg_execution_time_ms"]
+            for r in rows:
+                out_lines.append(
+                    f"{r.get('day','')},{r.get('searches','')},{r.get('avg_results','')},{r.get('avg_execution_time_ms','')}"
+                )
+            return "\n".join(out_lines)
+
+        raise ValueError("format_type must be one of: json, csv, text")
     
     def get_search_history(
         self,

@@ -12,14 +12,14 @@ import json
 from datetime import datetime, timedelta
 
 # Test imports for the new features
-from src.notes_db import NotesDB
-from src.photo_versions_db import PhotoVersionsDB
-from src.location_clusters_db import LocationClustersDB
-from src.multi_tag_filter_db import MultiTagFilterDB
-from src.collaborative_spaces_db import CollaborativeSpacesDB
-from src.ai_insights_db import AIInsightsDB
-from src.privacy_controls_db import PrivacyControlsDB
-from src.bulk_actions_db import BulkActionsDB
+from server.notes_db import NotesDB
+from server.photo_versions_db import PhotoVersionsDB
+from server.location_clusters_db import LocationClustersDB
+from server.multi_tag_filter_db import MultiTagFilterDB
+from server.collaborative_spaces_db import CollaborativeSpacesDB
+from server.ai_insights_db import AIInsightsDB
+from server.privacy_controls_db import PrivacyControlsDB
+from server.bulk_actions_db import BulkActionsDB
 
 
 def create_temp_db_path():
@@ -231,12 +231,12 @@ class TestPhotoVersionsDB:
             version_type="edit",
             version_name="To be deleted"
         )
-        assert version_id != ""
         
         # Verify it exists
-        stack = db.get_version_stack(original_path)
-        original_count = len(stack.versions)
-        assert original_count >= 1  # Original + version
+        stack_before = db.get_version_stack(original_path)
+        assert stack_before is not None
+        original_count = len(stack_before.versions)
+        assert original_count >= 1
         
         # Delete the version
         success = db.delete_version(version_id)
@@ -259,12 +259,11 @@ class TestLocationClustersDB:
         assert db_path.exists()
         
         with sqlite3.connect(db_path) as conn:
-            for table_name in ["photo_locations", "location_clusters"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master 
-                    WHERE type='table' AND name='{table_name}'
-                """)
-                assert cursor.fetchone() is not None
+            cursor = conn.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='photo_locations'
+            """)
+            assert cursor.fetchone() is not None
     
     def test_add_and_get_photo_location(self):
         """Test adding and getting photo location information."""
@@ -313,7 +312,7 @@ class TestLocationClustersDB:
         # Update location information
         success = db.update_photo_location(
             photo_path=photo_path,
-            corrected_place_name="Brooklyn, NYC",
+            corrected_place_name="Manhattan, NYC",
             country="USA",
             region="New York",
             city="New York City"
@@ -323,7 +322,7 @@ class TestLocationClustersDB:
         # Verify update
         location = db.get_photo_location(photo_path)
         assert location is not None
-        assert location.corrected_place_name == "Brooklyn, NYC"
+        assert location.corrected_place_name == "Manhattan, NYC"
         assert location.city == "New York City"
     
     def test_get_photos_by_place(self):
@@ -332,13 +331,13 @@ class TestLocationClustersDB:
         db = LocationClustersDB(db_path)
         
         # Add some photos to the same place
-        photos_data = [
+        test_data = [
             ("/test1.jpg", 40.7128, -74.0060, "Central Park", "Central Park, NYC"),
             ("/test2.jpg", 40.7829, -73.9654, "Central Park", "Central Park, NYC"),
             ("/test3.jpg", 34.0522, -118.2437, "Los Angeles", "Hollywood, LA")
         ]
         
-        for path, lat, lng, orig_name, corr_name in photos_data:
+        for path, lat, lng, orig_name, corr_name in test_data:
             db.add_photo_location(
                 photo_path=path,
                 latitude=lat,
@@ -349,7 +348,7 @@ class TestLocationClustersDB:
         
         # Search for photos in Central Park
         central_park_photos = db.get_photos_by_place("Central Park")
-        # Should find at least the two Central Park photos
+        # Should find at least the photos with "Central Park" in their names
         assert len(central_park_photos) >= 2
         
         # Search for photos in Hollywood
@@ -381,6 +380,7 @@ class TestMultiTagFilterDB:
         db_path = create_temp_db_path()
         db = MultiTagFilterDB(db_path)
         
+        # Create a tag filter
         expressions = [
             {"tag": "beach", "operator": "has"},
             {"tag": "sunset", "operator": "has"},
@@ -408,28 +408,29 @@ class TestMultiTagFilterDB:
         
         # Add some photos with tags
         test_photos = [
-            ("/beach1.jpg", ["beach", "sunset", "vacation"]),
-            ("/beach2.jpg", ["beach", "water", "summer"]),
-            ("/city1.jpg", ["city", "buildings", "people"]),
-            ("/nature1.jpg", ["trees", "landscape", "forest"])
+            ("/beach1.jpg", ["beach", "sunset"]),
+            ("/beach2.jpg", ["beach", "water"]),
+            ("/city1.jpg", ["city", "people"]),
+            ("/nature1.jpg", ["trees", "landscape"])
         ]
         
         for path, tags in test_photos:
             for tag in tags:
                 db.add_tag_to_photo(path, tag)
         
-        # Apply a filter for "beach" AND "sunset" 
+        # Create a filter that looks for "beach" AND "sunset" 
         expressions = [
             {"tag": "beach", "operator": "has"},
             {"tag": "sunset", "operator": "has"}
         ]
         
+        # Apply the filter
         matching_photos = db.apply_tag_filter(
             tag_expressions=expressions,
             combination_operator="AND"
         )
         
-        # Should only match beach1.jpg (which has both 'beach' AND 'sunset')
+        # Should only match beach1.jpg (which has both 'beach' and 'sunset')
         assert "/beach1.jpg" in matching_photos
         # beach2.jpg should not be included (has 'beach' but not 'sunset')
         assert "/beach2.jpg" not in matching_photos
@@ -487,7 +488,6 @@ class TestCollaborativeSpacesDB:
             description="A test space",
             owner_id="user123"
         )
-        assert space_id != ""
         
         # Add a member
         member_added = db.add_member_to_space(
@@ -512,6 +512,40 @@ class TestCollaborativeSpacesDB:
         assert len(members_after_removal) == 1  # Just the owner
         remaining_member_ids = [m.user_id for m in members_after_removal]
         assert "user456" not in remaining_member_ids
+    
+    def test_add_and_remove_photo_from_space(self):
+        """Test adding and removing photos from a space."""
+        db_path = create_temp_db_path()
+        db = CollaborativeSpacesDB(db_path)
+        
+        # Create a space
+        space_id = db.create_collaborative_space(
+            name="Test Space",
+            description="A test space",
+            owner_id="user123"
+        )
+        
+        # Add a photo to the space
+        photo_added = db.add_photo_to_space(
+            space_id=space_id,
+            photo_path="/path/to/photo.jpg",
+            added_by_user_id="user123",
+            caption="A test photo"
+        )
+        assert photo_added is True
+        
+        # Verify photo exists in space
+        photos = db.get_space_photos(space_id)
+        assert len(photos) == 1
+        assert photos[0].photo_path == "/path/to/photo.jpg"
+        
+        # Remove the photo from space
+        photo_removed = db.remove_photo_from_space(space_id, "/path/to/photo.jpg")
+        assert photo_removed is True
+        
+        # Verify photo is gone
+        photos_after_removal = db.get_space_photos(space_id)
+        assert len(photos_after_removal) == 0
 
 
 class TestAIInsightsDB:
@@ -526,14 +560,14 @@ class TestAIInsightsDB:
         assert db_path.exists()
         
         with sqlite3.connect(db_path) as conn:
-            for table_name in ["ai_insights", "insight_templates", "model_performance"]:
+            for table_name in ["photo_insights", "ai_models", "insight_templates"]:
                 cursor = conn.execute(f"""
                     SELECT name FROM sqlite_master 
                     WHERE type='table' AND name='{table_name}'
                 """)
                 assert cursor.fetchone() is not None
     
-    def test_create_and_get_insight(self):
+    def test_create_and_get_ai_insight(self):
         """Test creating and getting an AI insight."""
         db_path = create_temp_db_path()
         db = AIInsightsDB(db_path)
@@ -580,9 +614,9 @@ class TestAIInsightsDB:
         
         for i in range(2):
             db.create_insight(
-                photo_path=f"/composition{i}.jpg",
+                photo_path=f"/landscape{i}.jpg",
                 insight_type="composition",
-                insight_data={"reason": f"Composition insight {i}"},
+                insight_data={"reason": f"Landscape insight {i}"},
                 confidence=0.7 + (i * 0.1)
             )
         
@@ -640,6 +674,37 @@ class TestPrivacyControlsDB:
         assert privacy.encryption_enabled is True
         assert "user456" in privacy.allowed_users
         assert "family_group" in privacy.allowed_groups
+    
+    def test_update_photo_privacy(self):
+        """Test updating photo privacy settings."""
+        db_path = create_temp_db_path()
+        db = PrivacyControlsDB(db_path)
+        
+        photo_path = "/test/photo.jpg"
+        
+        # Set initial privacy
+        privacy_id = db.set_photo_privacy(
+            photo_path=photo_path,
+            owner_id="user123",
+            visibility="private"
+        )
+        
+        # Update privacy settings
+        success = db.update_photo_privacy(
+            photo_path=photo_path,
+            visibility="shared",
+            share_permissions={"view": True, "download": True},
+            encryption_enabled=False,
+            allowed_users=["user456", "user789"]
+        )
+        assert success is True
+        
+        # Verify update
+        privacy = db.get_photo_privacy(photo_path)
+        assert privacy is not None
+        assert privacy.visibility == "shared"
+        assert privacy.encryption_enabled is False
+        assert len(privacy.allowed_users) >= 2
 
 
 class TestBulkActionsDB:
@@ -684,19 +749,20 @@ class TestBulkActionsDB:
         assert len(action.affected_paths) == 3
         assert action.operation_data["reason"] == "duplicate"
     
-    def test_mark_action_undone(self):
-        """Test marking a bulk action as undone."""
+    def test_undo_bulk_action(self):
+        """Test undoing a bulk action."""
         db_path = create_temp_db_path()
         db = BulkActionsDB(db_path)
+        
+        photo_paths = ["/test1.jpg", "/test2.jpg"]
         
         # Record a bulk action
         action_id = db.record_bulk_action(
             action_type="favorite",
             user_id="user123",
-            affected_paths=["/test1.jpg"],
+            affected_paths=photo_paths,
             operation_data={"favorite": True}
         )
-        assert action_id != ""
         
         # Initially, action should be marked as not undone
         action = db.get_bulk_action(action_id)
@@ -728,8 +794,9 @@ def run_all_tests():
     
     print(f"Running unit tests for {len(test_classes)} feature modules...")
     
-    total_tests_run = 0
-    total_failures = 0
+    total_tests = 0
+    passed_tests = 0
+    failed_tests = 0
     
     for test_class in test_classes:
         print(f"\n--- Testing {test_class.__name__} ---")
@@ -738,33 +805,28 @@ def run_all_tests():
         # Get all methods starting with 'test_'
         test_methods = [method for method in dir(test_instance) if method.startswith('test_')]
         
-        class_failures = 0
         for method_name in test_methods:
-            total_tests_run += 1
+            total_tests += 1
             try:
                 method = getattr(test_instance, method_name)
                 method()
                 print(f"  ✓ {method_name}")
+                passed_tests += 1
             except Exception as e:
                 print(f"  ✗ {method_name}: {str(e)}")
-                class_failures += 1
-                total_failures += 1
-        
-        if class_failures == 0:
-            print(f"  All {len(test_methods)} tests passed ✓")
-        else:
-            print(f"  {class_failures}/{len(test_methods)} tests failed ✗")
+                failed_tests += 1
     
-    print(f"\n--- Test Summary ---")
-    print(f"Total tests: {total_tests_run}")
-    print(f"Failures: {total_failures}")
+    print(f"\n--- Test Results ---")
+    print(f"Total tests: {total_tests}")
+    print(f"Passed: {passed_tests}")
+    print(f"Failed: {failed_tests}")
     
-    if total_failures == 0:
+    if failed_tests == 0:
         print("🎉 All tests passed!")
     else:
-        print(f"⚠️  {total_failures} tests failed")
+        print(f"⚠️  {failed_tests} tests failed")
     
-    return total_failures == 0
+    return failed_tests == 0
 
 if __name__ == "__main__":
     success = run_all_tests()

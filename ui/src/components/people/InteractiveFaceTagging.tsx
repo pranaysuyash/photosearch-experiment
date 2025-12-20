@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { X, User, Search, Check, Loader2, AlertTriangle } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
-import { FaceDetection, FaceDetectionResult, SimilarFacesResult } from '../../api';
+import { type FaceDetection, type FaceDetectionResult, type SimilarFacesResult } from '../../api';
 
 interface InteractiveFaceTaggingProps {
   photoPath: string;
@@ -144,8 +144,11 @@ export function InteractiveFaceTagging({
     try {
       setTagging(true);
       
-      // Create new person cluster
-      const clusterId = await api.addFaceCluster(name);
+      // Create new person cluster (currently using clustering - manual cluster creation not available)
+      // TODO: Implement manual cluster creation API
+      const clusterResult = await api.clusterFaces(0.6, 2);
+      const newCluster = clusterResult.clusters.find((c: any) => c.label === name);
+      const clusterId = newCluster?.cluster_id;
       
       // Tag the face with the new person
       await tagFace(clusterId);
@@ -204,10 +207,10 @@ export function InteractiveFaceTagging({
             onClick={() => setSelectedFace(face)}
           >
             {/* Show person label if available */}
-            {face.person_id && (
+            {(face as any).person_id && (
               <div className="absolute -top-3 -left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                 <User size={12} />
-                <span>{face.person_label || 'Person'}</span>
+                <span>{(face as any).person_label || 'Person'}</span>
               </div>
             )}
           </div>

@@ -62,7 +62,7 @@ export function AccessibilityPanel() {
       settings.focusIndicator === 'border' ? '2px solid' : '2px');
   }, [settings]);
 
-  const updateSetting = (key: keyof AccessibilitySettings, value: any) => {
+  const updateSetting = <K extends keyof AccessibilitySettings>(key: K, value: AccessibilitySettings[K]) => {
     setSettings(prev => ({
       ...prev,
       [key]: value

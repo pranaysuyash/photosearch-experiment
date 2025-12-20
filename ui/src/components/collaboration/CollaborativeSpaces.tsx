@@ -22,8 +22,8 @@ import {
   Edit3,
   Trash2
 } from 'lucide-react';
-import { api } from '../api';
-import { glass } from '../design/glass';
+import { api } from '../../api';
+import { glass } from '../../design/glass';
 
 interface CollaborativeSpace {
   id: string;

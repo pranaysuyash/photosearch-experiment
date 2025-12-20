@@ -28,7 +28,7 @@ Usage:
 """
 
 import re
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 from collections import defaultdict
 
 class IntentDetector:
@@ -162,18 +162,20 @@ class IntentDetector:
         confidence = primary_score / max(total_score, 1.0) if total_score > 0 else 0.0
         
         # Find secondary intents (scores > 0 but < primary)
-        secondary_intents = []
+        secondary_intent_entries: List[Dict[str, Any]] = []
         for intent_name, score in intent_scores.items():
             if intent_name != primary_intent and score > 0:
-                secondary_intents.append({
-                    'intent': intent_name,
-                    'score': score,
-                    'confidence': score / max(total_score, 1.0)
-                })
-        
+                secondary_intent_entries.append(
+                    {
+                        'intent': intent_name,
+                        'score': score,
+                        'confidence': score / max(total_score, 1.0),
+                    }
+                )
+
         # Sort secondary intents by score
-        secondary_intents.sort(key=lambda x: x['score'], reverse=True)
-        secondary_intents = [intent['intent'] for intent in secondary_intents]
+        secondary_intent_entries.sort(key=lambda x: cast(float, x['score']), reverse=True)
+        secondary_intents: List[str] = [cast(str, intent['intent']) for intent in secondary_intent_entries]
         
         # Generate suggestions based on intent
         suggestions = self._generate_suggestions(primary_intent, query_clean)

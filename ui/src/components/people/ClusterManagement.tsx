@@ -9,7 +9,13 @@ import React, { useState, useEffect } from 'react';
 import { User, Search, Edit, Trash2, Loader2, AlertTriangle, Check, X } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
-import { FaceCluster, ClusteringResult, ClusterQualityResult, MergeClustersResult } from '../../api';
+import {
+  type FaceCluster,
+  type ClusteringResult,
+  type ClusterQuality,
+  type ClusterQualityResult,
+  type MergeClustersResult
+} from '../../api';
 
 interface ClusterManagementProps {
   onClusterSelected?: (clusterId: string) => void;
@@ -91,7 +97,6 @@ export function ClusterManagement({ onClusterSelected, showControls = true }: Cl
           cluster_id: person.cluster_id,
           label: person.label,
           face_count: person.face_count,
-          photo_count: person.photo_count,
           detection_ids: []
         }));
         setClusters(foundClusters);
@@ -256,7 +261,7 @@ export function ClusterManagement({ onClusterSelected, showControls = true }: Cl
                   </div>
                   <div>
                     <div className="text-muted-foreground text-xs">Photos</div>
-                    <div className="font-medium text-foreground">{cluster.photo_count}</div>
+                    <div className="font-medium text-foreground">{cluster.face_count}</div>
                   </div>
                 </div>
 
@@ -323,7 +328,7 @@ export function ClusterManagement({ onClusterSelected, showControls = true }: Cl
               </div>
               <div className="text-center p-3 bg-white/5 rounded-lg">
                 <div className="text-2xl font-bold text-foreground">
-                  {qualityAnalysis.quality_analysis.photo_count}
+                  {qualityAnalysis.quality_analysis.face_count}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">Total Photos</div>
               </div>
@@ -391,28 +396,6 @@ export function ClusterManagement({ onClusterSelected, showControls = true }: Cl
                     </>
                   )}
                 </button>
-              </div>
-            )}
-
-            {/* Timeline */}
-            {qualityAnalysis.timeline && qualityAnalysis.timeline.length > 0 && (
-              <div className="mb-4">
-                <h3 className="text-sm font-medium text-foreground mb-2">Timeline</h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {qualityAnalysis.timeline.slice(0, 5).map((item: any, index: number) => (
-                    <div key={index} className="flex items-center gap-2 p-2 bg-white/5 rounded text-sm">
-                      <div className="text-muted-foreground w-20">
-                        {new Date(item.date).toLocaleDateString()}
-                      </div>
-                      <div className="text-foreground truncate flex-1">
-                        {item.photo_path.split('/').pop()}
-                      </div>
-                      <div className={`text-xs ${item.confidence > 0.9 ? 'text-green-400' : item.confidence > 0.7 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {(item.confidence * 100).toFixed(0)}% confidence
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </div>

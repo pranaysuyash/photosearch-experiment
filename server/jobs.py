@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Literal
+from typing import Any, Dict, Optional, Literal
 from pydantic import BaseModel
 import uuid
 import time
@@ -42,7 +42,7 @@ class EnhancedJobStore:
         else:
             print("Using in-memory job store (fallback)")
 
-    def create_job(self, type: str, payload: dict = None, priority: str = "medium") -> str:
+    def create_job(self, type: str, payload: Optional[Dict[str, Any]] = None, priority: str = "medium") -> str:
         """Create a new job with optional payload and priority"""
         if USE_PERSISTENT_STORE and self.persistent_store:
             job_id = self.persistent_store.create_job(
@@ -128,7 +128,7 @@ class EnhancedJobStore:
             return self.persistent_store.get_job_statistics()
         
         # Fallback statistics for memory store
-        status_counts = {}
+        status_counts: Dict[str, int] = {}
         for job in self._jobs.values():
             status = job.status
             status_counts[status] = status_counts.get(status, 0) + 1

@@ -8,9 +8,9 @@ This module provides:
 - API endpoints for pricing information
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 
@@ -42,7 +42,9 @@ class PricingManager:
     def __init__(self):
         """Initialize pricing manager with default tiers."""
         self.tiers = self._load_default_tiers()
-        self.usage_cache = {}  # Simple in-memory cache for demo
+        self.usage_cache: Dict[str, Dict[str, Any]] = {}  # Simple in-memory cache for demo
+        # Minimal in-memory time series. In production this should live in a DB.
+        self.usage_history: Dict[str, List[Dict[str, Any]]] = {}
     
     def _load_default_tiers(self) -> Dict[str, PricingTier]:
         """Load default pricing tiers."""
@@ -151,6 +153,19 @@ class PricingManager:
         
         # Update image count
         self.usage_cache[user_id]["image_count"] = image_count
+
+        # Record history snapshot
+        hist = self.usage_history.setdefault(user_id, [])
+        hist.append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "tier": self.usage_cache[user_id]["tier"],
+                "image_count": int(image_count),
+            }
+        )
+        # Keep history bounded to avoid unbounded growth in long-running processes.
+        if len(hist) > 5000:
+            del hist[:-1000]
         
         # Get current tier
         current_tier = self.usage_cache[user_id]["tier"]
@@ -168,6 +183,99 @@ class PricingManager:
             billing_cycle_end=None,  # Would be calculated in real implementation
             days_remaining=30  # Placeholder
         )
+
+    def get_usage_history(self, user_id: str, days: int = 30) -> List[Dict[str, Any]]:
+        """Return recent usage history snapshots for a user."""
+        if days <= 0:
+            days = 1
+        cutoff = datetime.now() - timedelta(days=int(days))
+        history = self.usage_history.get(user_id, [])
+        out: List[Dict[str, Any]] = []
+        for item in history:
+            ts = item.get("timestamp")
+            try:
+                dt = datetime.fromisoformat(str(ts))
+            except Exception:
+                continue
+            if dt >= cutoff:
+                out.append(item)
+        return out
+
+    def get_user_growth_rate(self, user_id: str, days: int = 30) -> Dict[str, Any]:
+        """Compute a simple growth rate for a user's image count over time."""
+        history = self.get_usage_history(user_id, days=days)
+        if not history:
+            return {
+                "user_id": user_id,
+                "days": int(days),
+                "start": None,
+                "end": None,
+                "delta_images": 0,
+                "avg_images_per_day": 0.0,
+            }
+
+        # Use first/last snapshot in window.
+        start = history[0]
+        end = history[-1]
+        start_count = int(start.get("image_count", 0) or 0)
+        end_count = int(end.get("image_count", 0) or 0)
+        delta = end_count - start_count
+        days_f = float(max(int(days), 1))
+        return {
+            "user_id": user_id,
+            "days": int(days),
+            "start": start,
+            "end": end,
+            "delta_images": delta,
+            "avg_images_per_day": delta / days_f,
+        }
+
+    def get_tier_averages(self) -> Dict[str, Dict[str, Any]]:
+        """Return average image counts per tier for currently tracked users."""
+        by_tier: Dict[str, List[int]] = {}
+        for uid, rec in self.usage_cache.items():
+            tier = str(rec.get("tier", "free"))
+            cnt = int(rec.get("image_count", 0) or 0)
+            by_tier.setdefault(tier, []).append(cnt)
+
+        out: Dict[str, Dict[str, Any]] = {}
+        for tier, counts in by_tier.items():
+            if counts:
+                out[tier] = {
+                    "users": len(counts),
+                    "avg_image_count": sum(counts) / float(len(counts)),
+                    "min_image_count": min(counts),
+                    "max_image_count": max(counts),
+                }
+            else:
+                out[tier] = {"users": 0, "avg_image_count": 0.0, "min_image_count": 0, "max_image_count": 0}
+        return out
+
+    def get_company_usage_analytics(self) -> Dict[str, Any]:
+        """Return a lightweight company-wide snapshot across all tracked users."""
+        total_users = len(self.usage_cache)
+        total_images = 0
+        tier_distribution: Dict[str, int] = {}
+        top_users: List[Dict[str, Any]] = []
+
+        for uid, rec in self.usage_cache.items():
+            tier = str(rec.get("tier", "free"))
+            cnt = int(rec.get("image_count", 0) or 0)
+            total_images += cnt
+            tier_distribution[tier] = tier_distribution.get(tier, 0) + 1
+            top_users.append({"user_id": uid, "tier": tier, "image_count": cnt})
+
+        top_users.sort(key=lambda r: int(r.get("image_count", 0) or 0), reverse=True)
+        top_users = top_users[:10]
+
+        return {
+            "total_users": total_users,
+            "total_images": total_images,
+            "tier_distribution": tier_distribution,
+            "tier_averages": self.get_tier_averages(),
+            "top_users": top_users,
+            "generated_at": datetime.now().isoformat(),
+        }
     
     def check_limit(self, user_id: str, additional_images: int = 0) -> bool:
         """Check if user can add more images without exceeding limit."""

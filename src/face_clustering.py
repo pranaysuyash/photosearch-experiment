@@ -48,7 +48,7 @@ from datetime import datetime
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 from cryptography.fernet import Fernet
-import requests
+import requests  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 
@@ -64,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 # Face detection libraries
 try:
-    from insightface.app import FaceAnalysis
+    from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
     import cv2
     FACE_LIBRARIES_AVAILABLE = True
 
@@ -137,7 +137,7 @@ class FaceDetection:
     landmarks: List[Tuple[int, int]]
     age_estimate: Optional[float] = None
     gender: Optional[str] = None
-    created_at: str = None
+    created_at: Optional[str] = None
 
 @dataclass
 class FaceCluster:
@@ -181,8 +181,8 @@ class FaceClusterer:
         # Threading and performance
         self.model_lock = threading.Lock()
         self.cache_lock = threading.Lock()
-        self.face_cache = {}
-        self.cluster_cache = {}
+        self.face_cache: Dict[str, FaceDetection] = {}
+        self.cluster_cache: Dict[str, FaceCluster] = {}
 
         # Model management
         self.face_detector = None
@@ -277,9 +277,7 @@ class FaceClusterer:
         # Import schema extensions
         schema_ext = Path(__file__).parent.parent / 'server' / 'schema_extensions.py'
         if schema_ext.exists():
-            import sys
-            sys.path.append(str(schema_ext.parent))
-            from schema_extensions import SchemaExtensions
+            from server.schema_extensions import SchemaExtensions
 
             schema = SchemaExtensions(Path(self.db_path))
             schema.extend_schema()
@@ -542,7 +540,7 @@ class FaceClusterer:
             }
         
         try:
-            from sklearn.cluster import DBSCAN
+            from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
             
             all_embeddings = []
             face_records = []

@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import type { Photo } from '../../api';
+import { api } from '../../api';
 import { Copy, RotateCcw } from 'lucide-react';
 
 interface ImageAnalysis {
@@ -237,4 +238,4 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
   );
 };
 
-export default AIAnalysis;
+export default ImageAnalysis;

@@ -31,7 +31,7 @@ Usage:
 import sqlite3
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
 from pathlib import Path
 from enum import Enum
@@ -64,16 +64,24 @@ class PersistentJobStore:
             db_path: Path to SQLite database
         """
         self.db_path = db_path
-        self.conn = None
+        self.conn: Optional[sqlite3.Connection] = None
         self._initialize_database()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return a live DB connection (initializing if needed)."""
+        if self.conn is None:
+            self._initialize_database()
+        # mypy/pylance: self.conn is ensured above
+        assert self.conn is not None
+        return self.conn
     
     def _initialize_database(self):
         """Initialize database and create tables."""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
         
         # Create jobs table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY,
                 job_type TEXT NOT NULL,
@@ -97,7 +105,7 @@ class PersistentJobStore:
         """)
         
         # Create job history table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS job_history (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 job_id TEXT,
@@ -109,7 +117,7 @@ class PersistentJobStore:
         """)
         
         # Create job metrics table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS job_metrics (
                 job_id TEXT PRIMARY KEY,
                 execution_time_ms INTEGER,
@@ -120,18 +128,19 @@ class PersistentJobStore:
         """)
         
         # Create indexes
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(job_type)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_history_job ON job_history(job_id)")
-        
-        self.conn.commit()
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(job_type)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_user ON jobs(user_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_history_job ON job_history(job_id)")
+
+        conn.commit()
+        self.conn = conn
     
     def create_job(
         self,
         job_type: str,
-        payload: Dict,
+        payload: Dict[str, Any],
         priority: str = "medium",
         max_retries: int = 3,
         timeout: int = 3600,
@@ -165,7 +174,8 @@ class PersistentJobStore:
             except Exception:
                 priority_enum = JobPriority.MEDIUM
         
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO jobs 
             (id, job_type, payload, status, priority, max_retries, timeout, user_id, context)
@@ -189,10 +199,10 @@ class PersistentJobStore:
             VALUES (?, ?, ?)
         """, (job_id, JobStatus.PENDING.value, "Job created"))
         
-        self.conn.commit()
+        conn.commit()
         return job_id
     
-    def get_job(self, job_id: str) -> Optional[Dict]:
+    def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         """
         Get a job by ID.
         
@@ -202,7 +212,8 @@ class PersistentJobStore:
         Returns:
             Dictionary with job data or None if not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
         
         row = cursor.fetchone()
@@ -224,7 +235,7 @@ class PersistentJobStore:
         user_id: Optional[str] = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[Dict]:
+    ) -> List[Dict[str, Any]]:
         """
         Get multiple jobs with filtering.
         
@@ -239,11 +250,12 @@ class PersistentJobStore:
         Returns:
             List of job dictionaries
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         query = "SELECT * FROM jobs"
-        conditions = []
-        params = []
+        conditions: List[str] = []
+        params: List[Any] = []
         
         if status:
             conditions.append("status = ?")
@@ -314,7 +326,8 @@ class PersistentJobStore:
         Returns:
             True if updated, False if job not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Get current job to preserve existing values
         cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
@@ -384,7 +397,7 @@ class PersistentJobStore:
                 VALUES (?, ?, ?)
             """, (job_id, status, message or f"Status changed to {status}"))
         
-        self.conn.commit()
+        conn.commit()
         return True
     
     def record_job_metrics(
@@ -406,7 +419,8 @@ class PersistentJobStore:
         Returns:
             True if recorded, False if failed
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         try:
             cursor.execute("""
@@ -420,7 +434,7 @@ class PersistentJobStore:
                 cpu_usage_percent
             ))
             
-            self.conn.commit()
+            conn.commit()
             return True
             
         except Exception:
@@ -437,7 +451,8 @@ class PersistentJobStore:
         Returns:
             List of history records
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             SELECT * FROM job_history 
             WHERE job_id = ?
@@ -461,7 +476,8 @@ class PersistentJobStore:
         Returns:
             Dictionary with job metrics or None if not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("SELECT * FROM job_metrics WHERE job_id = ?", (job_id,))
         
         row = cursor.fetchone()
@@ -554,7 +570,8 @@ class PersistentJobStore:
         Returns:
             Dictionary with job statistics
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Total jobs
         cursor.execute("SELECT COUNT(*) as count FROM jobs")
@@ -668,7 +685,8 @@ class PersistentJobStore:
         Returns:
             Number of jobs deleted
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Calculate cutoff date
         cutoff_date = (datetime.now() - timedelta(days=older_than_days)).isoformat()
@@ -680,7 +698,7 @@ class PersistentJobStore:
         """, (cutoff_date,))
         
         deleted_count = cursor.rowcount
-        self.conn.commit()
+        conn.commit()
         
         return deleted_count
     

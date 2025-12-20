@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -86,6 +86,100 @@ export interface Photo {
   score: number;
   metadata: PhotoMetadata;
   matchExplanation?: MatchExplanation;
+}
+
+export interface PhotoEdit {
+  brightness: number;
+  contrast: number;
+  saturation: number;
+  rotation: number;
+  flipH: boolean;
+  flipV: boolean;
+  crop?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+export interface ExportOptions {
+  format?: string;
+  include_metadata?: boolean;
+  include_thumbnails?: boolean;
+  max_resolution?: number;
+  rename_pattern?: string;
+  password_protect?: boolean;
+  password?: string;
+}
+
+export interface IntentSearchParams {
+  query: string;
+  intent_context?: Record<string, any>;
+  filters?: Record<string, any>;
+  limit?: number;
+  offset?: number;
+}
+
+export interface SearchResult {
+  [key: string]: any;
+}
+
+export interface SmartCollectionRule {
+  [key: string]: any;
+}
+
+export interface SmartCollectionUpdate {
+  name?: string;
+  description?: string;
+  rule_definition?: SmartCollectionRule;
+  auto_update?: boolean;
+  privacy_level?: string;
+  is_favorite?: boolean;
+}
+
+export interface AIInsightData {
+  [key: string]: any;
+}
+
+export interface StoryUpdate {
+  title?: string;
+  description?: string;
+  is_published?: boolean;
+  metadata?: Record<string, any>;
+}
+
+export interface StoryPhotoData {
+  photo_path: string;
+  date?: string;
+  location?: string;
+  caption?: string;
+}
+
+export interface TimelineEntryUpdate {
+  date?: string;
+  location?: string;
+  caption?: string;
+  narrative_order?: number;
+}
+
+export interface BulkActionOperationData {
+  [key: string]: any;
+}
+
+export interface TagExpression {
+  tag: string;
+  operator?: string; // 'has', 'not_has', 'maybe_has'
+}
+
+export interface TagFilterUpdate {
+  name?: string;
+  tag_expressions?: TagExpression[];
+  combination_operator?: string;
+}
+
+export interface EditInstructions {
+  [key: string]: any;
 }
 
 export interface TimelineData {
@@ -285,6 +379,41 @@ export interface TrashItem {
 }
 
 export const api = {
+  /**
+   * Raw axios client (rarely needed).
+   *
+   * Most UI code expects `api.get/post/...` to resolve to the JSON payload directly
+   * (not an AxiosResponse). Keep this escape hatch for the few cases that need
+   * headers/status/etc.
+   */
+  http: apiClient,
+
+  // Low-level helpers that resolve to `response.data` (payload-first ergonomics).
+  get: async <T = any>(url: string, config?: AxiosRequestConfig) => {
+    const res = await apiClient.get<T>(url, config);
+    return res.data;
+  },
+  post: async <T = any, D = any>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig
+  ) => {
+    const res = await apiClient.post<T>(url, data, config);
+    return res.data;
+  },
+  put: async <T = any, D = any>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig
+  ) => {
+    const res = await apiClient.put<T>(url, data, config);
+    return res.data;
+  },
+  delete: async <T = any>(url: string, config?: AxiosRequestConfig) => {
+    const res = await apiClient.delete<T>(url, config);
+    return res.data;
+  },
+
   scan: async (path: string, background: boolean = true) => {
     const res = await apiClient.post('/scan', { path, background });
     return res.data; // Returns { job_id, status } if background=true
@@ -669,16 +798,19 @@ export const api = {
     return res.data;
   },
 
-  scanDuplicatesWithPath: async (directoryPath: string, similarityThreshold: number = 5.0) => {
+  scanDuplicatesWithPath: async (
+    directoryPath: string,
+    similarityThreshold: number = 5.0
+  ) => {
     const res = await apiClient.post('/api/duplicates/scan', {
       directory_path: directoryPath,
-      similarity_threshold: similarityThreshold
+      similarity_threshold: similarityThreshold,
     });
     return res.data;
   },
 
   // Photo edits (non-destructive settings)
-  savePhotoEdit: async (photoPath: string, editData: any) => {
+  savePhotoEdit: async (photoPath: string, editData: PhotoEdit) => {
     const res = await apiClient.post(
       `/api/photos/${encodeURIComponent(photoPath)}/edit`,
       { edit_data: editData }
@@ -743,6 +875,37 @@ export const api = {
     const res = await apiClient.post('/bulk/favorite', {
       file_paths: filePaths,
       action,
+    });
+    return res.data;
+  },
+
+  bulkTag: async (filePaths: string[], tag: string) => {
+    const res = await apiClient.post('/bulk/tag', {
+      file_paths: filePaths,
+      tag
+    });
+    return res.data;
+  },
+
+  bulkArchive: async (filePaths: string[]) => {
+    const res = await apiClient.post('/bulk/archive', {
+      file_paths: filePaths
+    });
+    return res.data;
+  },
+
+  bulkMove: async (filePaths: string[], destination: string) => {
+    const res = await apiClient.post('/bulk/move', {
+      file_paths: filePaths,
+      destination
+    });
+    return res.data;
+  },
+
+  bulkCopy: async (filePaths: string[], destination: string) => {
+    const res = await apiClient.post('/bulk/copy', {
+      file_paths: filePaths,
+      destination
     });
     return res.data;
   },
@@ -935,6 +1098,7 @@ export const api = {
 
   getRatingStats: async () => {
     const res = await apiClient.get('/api/ratings/stats');
+    return res.data.stats;
   },
 
   // Notes management
@@ -973,6 +1137,7 @@ export const api = {
 
   getNotesStats: async () => {
     const res = await apiClient.get('/api/notes/stats');
+    return res.data.stats;
   },
 
   // Editing
@@ -984,7 +1149,7 @@ export const api = {
   },
 
   // Export and Share
-  exportPhotos: async (paths: string[], options: any) => {
+  exportPhotos: async (paths: string[], options: ExportOptions) => {
     const res = await apiClient.post(
       '/export',
       { paths, options },
@@ -1015,7 +1180,12 @@ export const api = {
     const params: any = {};
     if (password) params.password = password;
 
-    return res.data.photos;
+    const res = await apiClient.get(`/shared/${encodeURIComponent(shareId)}`, {
+      params,
+    });
+
+    // Backend returns { paths: string[], download_count: number }
+    return res.data;
   },
 
   getNearbyLocations: async (
@@ -1036,17 +1206,15 @@ export const api = {
     return res.data.clusters;
   },
 
-  },
-
   // Intent-based search
-  searchWithIntent: async (params: any) => {
+  searchWithIntent: async (params: IntentSearchParams) => {
     const res = await apiClient.post('/search/intent', params);
     return res.data;
   },
 
   refineSearch: async (
     query: string,
-    previousResults: any[],
+    previousResults: SearchResult[],
     refinement: string
   ) => {
     const res = await apiClient.post('/search/refine', {
@@ -1078,7 +1246,7 @@ export const api = {
   createSmartCollection: async (
     name: string,
     description: string,
-    ruleDefinition: any,
+    ruleDefinition: SmartCollectionRule,
     autoUpdate: boolean = true,
     privacyLevel: string = 'private'
   ) => {
@@ -1106,7 +1274,10 @@ export const api = {
     return res.data.collection;
   },
 
-  updateSmartCollection: async (collectionId: string, updates: any) => {
+  updateSmartCollection: async (
+    collectionId: string,
+    updates: SmartCollectionUpdate
+  ) => {
     const res = await apiClient.put(
       `/collections/smart/${encodeURIComponent(collectionId)}`,
       updates
@@ -1137,6 +1308,7 @@ export const api = {
 
   getSmartCollectionStats: async () => {
     const res = await apiClient.get('/collections/smart/stats');
+    return res.data.stats;
   },
 
   // Performance and caching (getCacheStats already defined above)
@@ -1161,7 +1333,7 @@ export const api = {
   createAIInsight: async (
     photoPath: string,
     insightType: string,
-    insightData: any,
+    insightData: AIInsightData,
     confidence: number = 0.8
   ) => {
     const res = await apiClient.post('/ai/insights', {
@@ -1216,6 +1388,7 @@ export const api = {
 
   getInsightsStats: async () => {
     const res = await apiClient.get('/ai/insights/stats');
+    return res.data.stats;
   },
 
   // analyzePhotographerPatterns already defined above
@@ -1363,6 +1536,7 @@ export const api = {
     const res = await apiClient.get(
       `/collaborative/spaces/${encodeURIComponent(spaceId)}/stats`
     );
+    return res.data;
   },
 
   // setPhotoEdits and deletePhotoEdits already defined above
@@ -1375,14 +1549,33 @@ export const api = {
     return res.data.people;
   },
 
-  addPersonToPhoto: async (path: string, personId: string) => {
+  addPersonToPhoto: async (
+    path: string,
+    personId: string,
+    detectionId?: string
+  ) => {
     const res = await apiClient.post(
       `/api/photos/${encodeURIComponent(path)}/people`,
       {
         person_id: personId,
+        detection_id: detectionId,
       }
     );
     return res.data;
+  },
+
+  // Explicit alias for callers that want to be clear about intent.
+  addPersonToPhotoWithDetection: async (
+    path: string,
+    personId: string,
+    detectionId: string
+  ) => {
+    return await api.addPersonToPhoto(path, personId, detectionId);
+  },
+
+  // Compatibility alias used by some People/Cluster components
+  getAllClusters: async () => {
+    return await api.getFaceClusters();
   },
 
   removePersonFromPhoto: async (path: string, personId: string) => {
@@ -1396,7 +1589,7 @@ export const api = {
 
   searchPeople: async (query: string, limit: number = 10) => {
     const res = await apiClient.get('/api/people/search', {
-      params: { query, limit }
+      params: { query, limit },
     });
     return res.data;
   },
@@ -1471,7 +1664,10 @@ export const api = {
   },
 
   setFaceClusterLabel: async (clusterId: string, label: string) => {
-    const res = await apiClient.post(`/api/faces/clusters/${encodeURIComponent(clusterId)}/label`, { label });
+    const res = await apiClient.post(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/label`,
+      { label }
+    );
     return res.data;
   },
 
@@ -1503,20 +1699,25 @@ export const api = {
     allowedUsers?: string[],
     allowedGroups?: string[]
   ) => {
-    const res = await apiClient.post(`/privacy/control/${encodeURIComponent(photoPath)}`, {
-      owner_id: ownerId,
-      visibility,
-      share_permissions: sharePermissions,
-      encryption_enabled: encryptionEnabled,
-      encryption_key_hash: encryptionKeyHash,
-      allowed_users: allowedUsers,
-      allowed_groups: allowedGroups
-    });
+    const res = await apiClient.post(
+      `/privacy/control/${encodeURIComponent(photoPath)}`,
+      {
+        owner_id: ownerId,
+        visibility,
+        share_permissions: sharePermissions,
+        encryption_enabled: encryptionEnabled,
+        encryption_key_hash: encryptionKeyHash,
+        allowed_users: allowedUsers,
+        allowed_groups: allowedGroups,
+      }
+    );
     return res.data;
   },
 
   getPhotoPrivacy: async (photoPath: string) => {
-    const res = await apiClient.get(`/privacy/control/${encodeURIComponent(photoPath)}`);
+    const res = await apiClient.get(
+      `/privacy/control/${encodeURIComponent(photoPath)}`
+    );
     return res.data.privacy;
   },
 
@@ -1531,49 +1732,86 @@ export const api = {
       allowed_groups?: string[];
     }
   ) => {
-    const res = await apiClient.put(`/privacy/control/${encodeURIComponent(photoPath)}`, updates);
+    const res = await apiClient.put(
+      `/privacy/control/${encodeURIComponent(photoPath)}`,
+      updates
+    );
     return res.data;
   },
 
-  getPhotosByVisibility: async (visibility: string, ownerId: string, limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get(`/privacy/visible/${encodeURIComponent(visibility)}/${encodeURIComponent(ownerId)}`, {
-      params: { limit, offset }
-    });
+  getPhotosByVisibility: async (
+    visibility: string,
+    ownerId: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/privacy/visible/${encodeURIComponent(visibility)}/${encodeURIComponent(
+        ownerId
+      )}`,
+      {
+        params: { limit, offset },
+      }
+    );
     return res.data.photos;
   },
 
-  getPhotosAccessibleToUser: async (userId: string, limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get(`/privacy/access/${encodeURIComponent(userId)}`, {
-      params: { limit, offset }
-    });
+  getPhotosAccessibleToUser: async (
+    userId: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/privacy/access/${encodeURIComponent(userId)}`,
+      {
+        params: { limit, offset },
+      }
+    );
     return res.data.photos;
   },
 
   checkPhotoAccess: async (photoPath: string, userId: string) => {
-    const res = await apiClient.get(`/privacy/check-access/${encodeURIComponent(photoPath)}/${encodeURIComponent(userId)}`);
+    const res = await apiClient.get(
+      `/privacy/check-access/${encodeURIComponent(
+        photoPath
+      )}/${encodeURIComponent(userId)}`
+    );
     return res.data.has_access;
   },
 
   getEncryptedPhotos: async (ownerId: string) => {
-    const res = await apiClient.get(`/privacy/encrypted/${encodeURIComponent(ownerId)}`);
+    const res = await apiClient.get(
+      `/privacy/encrypted/${encodeURIComponent(ownerId)}`
+    );
     return res.data.encrypted_photos;
   },
 
   getPrivacyStats: async (ownerId: string) => {
-    const res = await apiClient.get(`/privacy/stats/${encodeURIComponent(ownerId)}`);
+    const res = await apiClient.get(
+      `/privacy/stats/${encodeURIComponent(ownerId)}`
+    );
+    return res.data.stats;
   },
 
   revokeUserAccess: async (photoPath: string, userId: string) => {
-    const res = await apiClient.delete(`/privacy/revoke-access/${encodeURIComponent(photoPath)}/${encodeURIComponent(userId)}`);
+    const res = await apiClient.delete(
+      `/privacy/revoke-access/${encodeURIComponent(
+        photoPath
+      )}/${encodeURIComponent(userId)}`
+    );
     return res.data;
   },
 
   // Timeline & Story Creation
-  createStory: async (title: string, description: string, privacyLevel: string = 'private') => {
+  createStory: async (
+    title: string,
+    description: string,
+    privacyLevel: string = 'private'
+  ) => {
     const res = await apiClient.post('/stories', {
       title,
       description,
-      privacy_level: privacyLevel
+      privacy_level: privacyLevel,
     });
     return res.data;
   },
@@ -1583,125 +1821,196 @@ export const api = {
     return res.data.story;
   },
 
-  getStoriesByOwner: async (ownerId: string, includeUnpublished: boolean = false, limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get(`/stories/owner/${encodeURIComponent(ownerId)}`, {
-      params: { include_unpublished: includeUnpublished, limit, offset }
-    });
+  getStoriesByOwner: async (
+    ownerId: string,
+    includeUnpublished: boolean = false,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/stories/owner/${encodeURIComponent(ownerId)}`,
+      {
+        params: { include_unpublished: includeUnpublished, limit, offset },
+      }
+    );
     return res.data.stories;
   },
 
-  updateStory: async (storyId: string, updates: any) => {
-    const res = await apiClient.put(`/stories/${encodeURIComponent(storyId)}`, updates);
+  updateStory: async (storyId: string, updates: StoryUpdate) => {
+    const res = await apiClient.put(
+      `/stories/${encodeURIComponent(storyId)}`,
+      updates
+    );
     return res.data;
   },
 
-  addPhotoToStory: async (storyId: string, photoData: any) => {
-    const res = await apiClient.post(`/stories/${encodeURIComponent(storyId)}/photos`, photoData);
+  addPhotoToStory: async (storyId: string, photoData: StoryPhotoData) => {
+    const res = await apiClient.post(
+      `/stories/${encodeURIComponent(storyId)}/photos`,
+      photoData
+    );
     return res.data;
   },
 
   getStoryTimeline: async (storyId: string) => {
-    const res = await apiClient.get(`/stories/${encodeURIComponent(storyId)}/timeline`);
+    const res = await apiClient.get(
+      `/stories/${encodeURIComponent(storyId)}/timeline`
+    );
     return res.data.timeline;
   },
 
-  updateTimelineEntry: async (entryId: string, updates: any) => {
-    const res = await apiClient.put(`/timeline/entries/${encodeURIComponent(entryId)}`, updates);
+  updateTimelineEntry: async (
+    entryId: string,
+    updates: TimelineEntryUpdate
+  ) => {
+    const res = await apiClient.put(
+      `/timeline/entries/${encodeURIComponent(entryId)}`,
+      updates
+    );
     return res.data;
   },
 
   removePhotoFromTimeline: async (entryId: string) => {
-    const res = await apiClient.delete(`/timeline/entries/${encodeURIComponent(entryId)}`);
+    const res = await apiClient.delete(
+      `/timeline/entries/${encodeURIComponent(entryId)}`
+    );
     return res.data;
   },
 
   getStoryStats: async (storyId: string) => {
-    const res = await apiClient.get(`/stories/${encodeURIComponent(storyId)}/stats`);
+    const res = await apiClient.get(
+      `/stories/${encodeURIComponent(storyId)}/stats`
+    );
+    return res.data.stats;
   },
 
   getUserStoryStats: async (userId: string) => {
-    const res = await apiClient.get(`/stories/user/${encodeURIComponent(userId)}/stats`);
+    const res = await apiClient.get(
+      `/stories/user/${encodeURIComponent(userId)}/stats`
+    );
+    return res.data.stats;
   },
 
   toggleStoryPublish: async (storyId: string, publish: boolean) => {
-    const res = await apiClient.post(`/stories/${encodeURIComponent(storyId)}/publish`, { publish });
+    const res = await apiClient.post(
+      `/stories/${encodeURIComponent(storyId)}/publish`,
+      { publish }
+    );
     return res.data;
   },
 
   // Bulk Actions with Undo
-  recordBulkAction: async (actionType: string, paths: string[], operationData?: any) => {
+  recordBulkAction: async (
+    actionType: string,
+    paths: string[],
+    operationData?: BulkActionOperationData
+  ) => {
     const res = await apiClient.post('/bulk/action', {
       action_type: actionType,
       paths,
-      operation_data: operationData
+      operation_data: operationData,
     });
     return res.data;
   },
 
-  getBulkActionHistory: async (userId: string, actionType?: string, limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get(`/bulk/history/${encodeURIComponent(userId)}`, {
-      params: { action_type: actionType, limit, offset }
-    });
+  getBulkActionHistory: async (
+    userId: string,
+    actionType?: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/bulk/history/${encodeURIComponent(userId)}`,
+      {
+        params: { action_type: actionType, limit, offset },
+      }
+    );
     return res.data;
   },
 
   undoBulkAction: async (actionId: string) => {
-    const res = await apiClient.post(`/bulk/undo/${encodeURIComponent(actionId)}`);
+    const res = await apiClient.post(
+      `/bulk/undo/${encodeURIComponent(actionId)}`
+    );
     return res.data;
   },
 
   canUndoBulkAction: async (actionId: string) => {
-    const res = await apiClient.get(`/bulk/can-undo/${encodeURIComponent(actionId)}`);
+    const res = await apiClient.get(
+      `/bulk/can-undo/${encodeURIComponent(actionId)}`
+    );
     return res.data;
   },
 
   getBulkActionsStats: async (userId: string) => {
-    const res = await apiClient.get(`/bulk/stats/${encodeURIComponent(userId)}`);
+    const res = await apiClient.get(
+      `/bulk/stats/${encodeURIComponent(userId)}`
+    );
     return res.data;
   },
 
   // Multi-tag Filtering
-  createTagFilter: async (name: string, tagExpressions: any[], combinationOperator: string = 'AND') => {
+  createTagFilter: async (
+    name: string,
+    tagExpressions: TagExpression[],
+    combinationOperator: string = 'AND'
+  ) => {
     const res = await apiClient.post('/tag-filters', {
       name,
       tag_expressions: tagExpressions,
-      combination_operator: combinationOperator
+      combination_operator: combinationOperator,
     });
     return res.data;
   },
 
   getTagFilter: async (filterId: string) => {
-    const res = await apiClient.get(`/tag-filters/${encodeURIComponent(filterId)}`);
+    const res = await apiClient.get(
+      `/tag-filters/${encodeURIComponent(filterId)}`
+    );
     return res.data.tag_filter;
   },
 
   getTagFilters: async (limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get('/tag-filters', { params: { limit, offset } });
+    const res = await apiClient.get('/tag-filters', {
+      params: { limit, offset },
+    });
     return res.data.filters;
   },
 
-  updateTagFilter: async (filterId: string, updates: any) => {
-    const res = await apiClient.put(`/tag-filters/${encodeURIComponent(filterId)}`, updates);
+  updateTagFilter: async (filterId: string, updates: TagFilterUpdate) => {
+    const res = await apiClient.put(
+      `/tag-filters/${encodeURIComponent(filterId)}`,
+      updates
+    );
     return res.data;
   },
 
   deleteTagFilter: async (filterId: string) => {
-    const res = await apiClient.delete(`/tag-filters/${encodeURIComponent(filterId)}`);
+    const res = await apiClient.delete(
+      `/tag-filters/${encodeURIComponent(filterId)}`
+    );
     return res.data;
   },
 
-  applyTagFilter: async (tagExpressions: any[], combinationOperator: string = 'AND') => {
+  applyTagFilter: async (
+    tagExpressions: TagExpression[],
+    combinationOperator: string = 'AND'
+  ) => {
     const res = await apiClient.post('/tag-filters/apply', {
       tag_expressions: tagExpressions,
-      combination_operator: combinationOperator
+      combination_operator: combinationOperator,
     });
     return res.data;
   },
 
-  getPhotosByTags: async (tags: string[], operator: string = 'OR', excludeTags?: string[]) => {
+  getPhotosByTags: async (
+    tags: string[],
+    operator: string = 'OR',
+    excludeTags?: string[]
+  ) => {
     const params: any = {
       tags: tags.join(','),
-      operator
+      operator,
     };
 
     if (excludeTags) {
@@ -1714,20 +2023,21 @@ export const api = {
 
   getCommonTags: async (photoPaths: string[], limit: number = 10) => {
     const res = await apiClient.get('/tags/common', {
-      params: { photo_paths: photoPaths.join(','), limit }
+      params: { photo_paths: photoPaths.join(','), limit },
     });
     return res.data.common_tags;
   },
 
   searchTags: async (query: string, limit: number = 20) => {
     const res = await apiClient.get('/tags/search', {
-      params: { query, limit }
+      params: { query, limit },
     });
     return res.data.tags;
   },
 
   getTagStats: async () => {
     const res = await apiClient.get('/tags/stats');
+    return res.data.stats;
   },
 
   // Version Stacks
@@ -1737,7 +2047,7 @@ export const api = {
     versionType: string = 'edit',
     versionName?: string,
     versionDescription?: string,
-    editInstructions?: any,
+    editInstructions?: EditInstructions,
     parentVersionId?: string
   ) => {
     const res = await apiClient.post('/versions', {
@@ -1747,42 +2057,60 @@ export const api = {
       version_name: versionName,
       version_description: versionDescription,
       edit_instructions: editInstructions,
-      parent_version_id: parentVersionId
+      parent_version_id: parentVersionId,
     });
     return res.data;
   },
 
   getPhotoVersions: async (photoPath: string) => {
-    const res = await apiClient.get(`/versions/photo/${encodeURIComponent(photoPath)}`);
+    const res = await apiClient.get(
+      `/versions/photo/${encodeURIComponent(photoPath)}`
+    );
     return res.data;
   },
 
   getVersionStack: async (originalPath: string) => {
-    const res = await apiClient.get(`/versions/stack/${encodeURIComponent(originalPath)}`);
+    const res = await apiClient.get(
+      `/versions/stack/${encodeURIComponent(originalPath)}`
+    );
     return res.data.stack;
   },
 
-  updateVersionMetadata: async (versionPath: string, updates: { versionName?: string; versionDescription?: string }) => {
-    const res = await apiClient.put(`/versions/${encodeURIComponent(versionPath)}`, updates);
+  updateVersionMetadata: async (
+    versionPath: string,
+    updates: { versionName?: string; versionDescription?: string }
+  ) => {
+    const res = await apiClient.put(
+      `/versions/${encodeURIComponent(versionPath)}`,
+      updates
+    );
     return res.data;
   },
 
   deleteVersion: async (versionId: string) => {
-    const res = await apiClient.delete(`/versions/${encodeURIComponent(versionId)}`);
+    const res = await apiClient.delete(
+      `/versions/${encodeURIComponent(versionId)}`
+    );
     return res.data;
   },
 
   getAllVersionStacks: async (limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get('/versions/stacks', { params: { limit, offset } });
+    const res = await apiClient.get('/versions/stacks', {
+      params: { limit, offset },
+    });
     return res.data.stacks;
   },
 
   getVersionStats: async () => {
     const res = await apiClient.get('/versions/stats');
+    return res.data.stats;
   },
 
   mergeVersionStacks: async (path1: string, path2: string) => {
-    const res = await apiClient.post('/versions/merge-stacks', { path1, path2 });
+    const res = await apiClient.post('/versions/merge-stacks', {
+      path1,
+      path2,
+    });
     return res.data;
   },
 
@@ -1796,44 +2124,65 @@ export const api = {
       city?: string | null;
     }
   ) => {
-    const res = await apiClient.post(`/locations/correct/${encodeURIComponent(photoPath)}`, correction);
+    const res = await apiClient.post(
+      `/locations/correct/${encodeURIComponent(photoPath)}`,
+      correction
+    );
     return res.data;
   },
 
   getPhotoLocation: async (photoPath: string) => {
-    const res = await apiClient.get(`/locations/photo/${encodeURIComponent(photoPath)}`);
+    const res = await apiClient.get(
+      `/locations/photo/${encodeURIComponent(photoPath)}`
+    );
     return res.data.location;
   },
 
-  getPhotosNearby: async (latitude: number, longitude: number, radiusKm: number = 1.0) => {
+  getPhotosNearby: async (
+    latitude: number,
+    longitude: number,
+    radiusKm: number = 1.0
+  ) => {
     const res = await apiClient.get('/locations/nearby', {
-      params: { latitude, longitude, radius_km: radiusKm }
+      params: { latitude, longitude, radius_km: radiusKm },
     });
     return res.data;
   },
 
   getLocationClusters: async (minPhotos: number = 2) => {
     const res = await apiClient.get('/locations/clusters', {
-      params: { min_photos: minPhotos }
+      params: { min_photos: minPhotos },
     });
     return res.data;
   },
 
-  getPhotosInCluster: async (clusterId: string, limit: number = 50, offset: number = 0) => {
-    const res = await apiClient.get(`/locations/clusters/${encodeURIComponent(clusterId)}/photos`, {
-      params: { limit, offset }
-    });
+  getPhotosInCluster: async (
+    clusterId: string,
+    limit: number = 50,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get(
+      `/locations/clusters/${encodeURIComponent(clusterId)}/photos`,
+      {
+        params: { limit, offset },
+      }
+    );
     return res.data;
   },
 
   getPhotoCluster: async (photoPath: string) => {
-    const res = await apiClient.get(`/locations/photo/${encodeURIComponent(photoPath)}/cluster`);
+    const res = await apiClient.get(
+      `/locations/photo/${encodeURIComponent(photoPath)}/cluster`
+    );
     return res.data.cluster;
   },
 
-  createLocationClusters: async (minPhotos: number = 2, maxDistanceMeters: number = 100) => {
+  createLocationClusters: async (
+    minPhotos: number = 2,
+    maxDistanceMeters: number = 100
+  ) => {
     const res = await apiClient.post('/locations/clusterize', null, {
-      params: { min_photos: minPhotos, max_distance_meters: maxDistanceMeters }
+      params: { min_photos: minPhotos, max_distance_meters: maxDistanceMeters },
     });
     return res.data;
   },
@@ -1843,10 +2192,13 @@ export const api = {
     return res.data;
   },
 
-  bulkCorrectPlaceNames: async (photoPaths: string[], correctedName: string) => {
+  bulkCorrectPlaceNames: async (
+    photoPaths: string[],
+    correctedName: string
+  ) => {
     const res = await apiClient.post('/locations/correct-bulk', {
       photo_paths: photoPaths,
-      corrected_name: correctedName
+      corrected_name: correctedName,
     });
     return res.data;
   },

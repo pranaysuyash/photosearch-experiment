@@ -116,13 +116,12 @@ export function NotesEditor({
 
   const textSizeClass =
     size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-lg' : 'text-sm';
-  const paddingClass = size === 'sm' ? 'p-2' : size === 'lg' ? 'p-4' : 'p-3';
   const textareaRows = size === 'sm' ? 2 : size === 'lg' ? 6 : 3;
 
   return (
-    <div className='w-full'>
+    <div className="w-full">
       {showLabel && (
-        <div className='flex items-center justify-between gap-2 mb-2'>
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div
             className={`uppercase tracking-wider text-white/60 flex items-center gap-2 ${textSizeClass}`}
           >
@@ -131,7 +130,7 @@ export function NotesEditor({
           </div>
 
           {!isEditing && note && (
-            <div className='flex items-center gap-1 text-xs text-white/50'>
+            <div className="flex items-center gap-1 text-xs text-white/50">
               <Clock size={10} />
               <span>
                 {lastUpdated
@@ -151,16 +150,16 @@ export function NotesEditor({
             value={note}
             onChange={handleNoteChange}
             onKeyDown={handleKeyDown}
-            placeholder='Add notes about this photo...'
+            placeholder="Add notes about this photo..."
             className={`w-full bg-transparent border border-white/10 rounded-lg p-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary ${textSizeClass}`}
             rows={textareaRows}
             autoFocus
           />
-          <div className='flex items-center justify-end gap-2 mt-2'>
+          <div className="flex items-center justify-end gap-2 mt-2">
             <button
               onClick={handleCancel}
               disabled={isLoading}
-              className='btn-glass btn-glass--muted text-xs px-2 py-1'
+              className="btn-glass btn-glass--muted text-xs px-2 py-1"
             >
               <X size={12} />
             </button>
@@ -168,7 +167,7 @@ export function NotesEditor({
               <button
                 onClick={handleDelete}
                 disabled={isLoading}
-                className='btn-glass btn-glass--muted text-xs px-2 py-1'
+                className="btn-glass btn-glass--muted text-xs px-2 py-1"
               >
                 <Trash2 size={12} />
               </button>
@@ -176,10 +175,10 @@ export function NotesEditor({
             <button
               onClick={handleSave}
               disabled={isLoading || !note.trim()}
-              className='btn-glass btn-glass--primary text-xs px-3 py-1 flex items-center gap-1'
+              className="btn-glass btn-glass--primary text-xs px-3 py-1 flex items-center gap-1"
             >
               {isLoading ? (
-                <span className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
+                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <Save size={12} />
@@ -189,7 +188,7 @@ export function NotesEditor({
             </button>
           </div>
           {error && (
-            <div className='text-xs text-destructive mt-2'>{error}</div>
+            <div className="text-xs text-destructive mt-2">{error}</div>
           )}
         </div>
       ) : (
@@ -211,10 +210,10 @@ export function NotesEditor({
             </div>
           )}
 
-          <div className='flex justify-end mt-2'>
+          <div className="flex justify-end mt-2">
             <button
               onClick={handleEdit}
-              className='btn-glass btn-glass--muted text-xs px-2 py-1 flex items-center gap-1'
+              className="btn-glass btn-glass--muted text-xs px-2 py-1 flex items-center gap-1"
             >
               <Edit3 size={12} />
               {note ? 'Edit' : 'Add Note'}

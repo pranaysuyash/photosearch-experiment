@@ -42,13 +42,13 @@ import numpy as np
 import hashlib
 import threading
 import logging
-from typing import List, Dict, Optional, Any, Tuple, Callable
+from typing import List, Dict, Optional, Any, Tuple, Callable, cast
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
 from dataclasses import dataclass, asdict
 from cryptography.fernet import Fernet
-import requests
+import requests  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import cv2
@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 
 # Face detection libraries
 try:
-    from insightface.app import FaceAnalysis
+    from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
     FACE_LIBRARIES_AVAILABLE = True
 
     # Hardware detection for optimal providers
@@ -130,7 +130,7 @@ class FaceDetection:
     landmarks: List[Tuple[int, int]]
     age_estimate: Optional[float] = None
     gender: Optional[str] = None
-    created_at: str = None
+    created_at: Optional[str] = None
 
 @dataclass
 class FaceCluster:
@@ -174,8 +174,8 @@ class EnhancedFaceClusterer:
         # Threading and performance
         self.model_lock = threading.Lock()
         self.cache_lock = threading.Lock()
-        self.face_cache = {}
-        self.cluster_cache = {}
+        self.face_cache: Dict[str, FaceDetection] = {}
+        self.cluster_cache: Dict[str, FaceCluster] = {}
 
         # Model management
         self.face_detector = None
@@ -183,11 +183,11 @@ class EnhancedFaceClusterer:
         self.models_loaded = False
 
         # Performance tracking
-        self.stats = {
-            'faces_processed': 0,
-            'clusters_created': 0,
-            'processing_time_ms': 0,
-            'accuracy_improvements': 0
+        self.stats: Dict[str, float] = {
+            'faces_processed': 0.0,
+            'clusters_created': 0.0,
+            'processing_time_ms': 0.0,
+            'accuracy_improvements': 0.0,
         }
 
         # Initialize components
@@ -272,13 +272,13 @@ class EnhancedFaceClusterer:
 
     def _initialize_database(self):
         """Initialize enhanced database with new schema"""
-        # Import schema extensions
-        schema_ext = Path(__file__).parent.parent / 'server' / 'schema_extensions.py'
-        if schema_ext.exists():
-            import sys
-            sys.path.append(str(schema_ext.parent))
-            from schema_extensions import SchemaExtensions
+        # Import schema extensions (optional)
+        try:
+            from server.schema_extensions import SchemaExtensions
+        except Exception:
+            SchemaExtensions = None  # type: ignore[assignment]
 
+        if SchemaExtensions is not None:
             schema = SchemaExtensions(Path(self.db_path))
             schema.extend_schema()
             schema.insert_default_data()
@@ -455,24 +455,24 @@ class EnhancedFaceClusterer:
             Dictionary with processing results
         """
         start_time = time.time()
-        results = {
+        results: Dict[str, Any] = {
             'total_images': 0,
             'processed_images': 0,
             'faces_detected': 0,
             'clusters_updated': 0,
-            'errors': []
+            'errors': cast(List[str], [])
         }
 
         # Get all image files
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-        image_files = []
+        image_files: List[Path] = []
         for ext in image_extensions:
             image_files.extend(Path(directory_path).glob(f'*{ext}'))
             image_files.extend(Path(directory_path).glob(f'*{ext.upper()}'))
 
         results['total_images'] = len(image_files)
 
-        if show_progress:
+        if show_progress and self.progress_callback:
             self.progress_callback(f"Processing {len(image_files)} images for faces...")
 
         # Process images in parallel
@@ -493,17 +493,21 @@ class EnhancedFaceClusterer:
 
                     if show_progress and (i + 1) % 10 == 0:
                         progress = ((i + 1) / len(image_files)) * 100
-                        self.progress_callback(f"Progress: {progress:.1f}% - {results['faces_detected']} faces found")
+                        if self.progress_callback:
+                            self.progress_callback(
+                                f"Progress: {progress:.1f}% - {results['faces_detected']} faces found"
+                            )
 
                 except Exception as e:
                     error_msg = f"Error processing {img_path}: {e}"
                     logger.error(error_msg)
-                    results['errors'].append(error_msg)
+                    cast(List[str], results['errors']).append(error_msg)
 
         # Update clustering
         if results['faces_detected'] > 0:
             if show_progress:
-                self.progress_callback("Updating face clusters...")
+                if self.progress_callback:
+                    self.progress_callback("Updating face clusters...")
             results['clusters_updated'] = self._update_clustering()
 
         # Calculate processing time
@@ -511,8 +515,10 @@ class EnhancedFaceClusterer:
         self.stats['processing_time_ms'] += processing_time
         results['processing_time_ms'] = int(processing_time)
 
-        if show_progress:
-            self.progress_callback(f"Completed: {results['processed_images']} images, {results['faces_detected']} faces")
+        if show_progress and self.progress_callback:
+            self.progress_callback(
+                f"Completed: {results['processed_images']} images, {results['faces_detected']} faces"
+            )
 
         return results
 
@@ -575,8 +581,8 @@ class EnhancedFaceClusterer:
                 face_ids.append(face['id'])
 
             # Perform DBSCAN clustering
-            from sklearn.cluster import DBSCAN
-            from sklearn.metrics.pairwise import cosine_similarity
+            from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
+            from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
 
             # Compute similarity matrix
             similarity_matrix = cosine_similarity(embeddings)
@@ -698,7 +704,7 @@ class EnhancedFaceClusterer:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get processing statistics"""
-        stats = self.stats.copy()
+        stats: Dict[str, Any] = dict(self.stats)
 
         # Add database stats
         try:

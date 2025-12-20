@@ -45,7 +45,7 @@ import time
 import uuid
 from typing import Dict, List, Optional, Any, Callable
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 class JobStatus(Enum):
@@ -66,7 +66,7 @@ class Job:
         self,
         job_id: str,
         job_type: str,
-        payload: Dict,
+        payload: Dict[str, Any],
         priority: JobPriority = JobPriority.MEDIUM,
         max_retries: int = 3,
         timeout: int = 3600
@@ -88,7 +88,7 @@ class Job:
         self.started_at = None
         self.completed_at = None
     
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert job to dictionary for storage."""
         return {
             'id': self.id,
@@ -109,7 +109,7 @@ class Job:
             'completed_at': self.completed_at
         }
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
         """Allow dict-like access (job['status']) for tests and legacy code.
 
         Returns underlying enum values as strings for 'status' and 'priority'.
@@ -125,7 +125,7 @@ class Job:
         return val
     
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Job':
+    def from_dict(cls, data: Dict[str, Any]) -> 'Job':
         """Create job from dictionary."""
         job = cls(
             job_id=data['id'],
@@ -162,19 +162,27 @@ class JobQueue:
         """
         self.db_path = db_path
         self.num_workers = num_workers
-        self.conn = None
-        self.workers = []
+        self.conn: Optional[sqlite3.Connection] = None
+        self.workers: List[threading.Thread] = []
         self.running = False
-        self.job_handlers = {}
+        self.job_handlers: Dict[str, Callable[..., Any]] = {}
         self._initialize_database()
+
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return a non-Optional SQLite connection, initializing if needed."""
+        if self.conn is None:
+            self._initialize_database()
+        if self.conn is None:
+            raise RuntimeError("JobQueue database connection could not be initialized")
+        return self.conn
     
     def _initialize_database(self):
         """Initialize database and create tables."""
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        self.conn.row_factory = sqlite3.Row
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
         
         # Create jobs table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS jobs (
                 id TEXT PRIMARY KEY,
                 type TEXT NOT NULL,
@@ -196,13 +204,14 @@ class JobQueue:
         """)
         
         # Create job index for faster lookups
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(type)")
-        
-        self.conn.commit()
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_priority ON jobs(priority)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_type ON jobs(type)")
+
+        conn.commit()
+        self.conn = conn
     
-    def register_handler(self, job_type: str, handler: Callable):
+    def register_handler(self, job_type: str, handler: Callable[..., Any]):
         """
         Register a handler function for a specific job type.
         
@@ -215,7 +224,7 @@ class JobQueue:
     def add_job(
         self,
         job_type: str,
-        payload: Dict,
+        payload: Dict[str, Any],
         priority: str = "medium",
         max_retries: int = 3,
         timeout: int = 3600
@@ -255,7 +264,8 @@ class JobQueue:
         )
         
         # Store job in database
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("""
             INSERT INTO jobs 
             (id, type, payload, priority, status, max_retries, timeout)
@@ -270,7 +280,7 @@ class JobQueue:
             job.timeout
         ))
         
-        self.conn.commit()
+        conn.commit()
         
         # If workers are running, the job will be picked up automatically
         return job_id
@@ -285,7 +295,8 @@ class JobQueue:
         Returns:
             Job object or None if not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
         row = cursor.fetchone()
         
@@ -315,11 +326,12 @@ class JobQueue:
         Returns:
             List of Job objects
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         query = "SELECT * FROM jobs"
-        conditions = []
-        params = []
+        conditions: List[str] = []
+        params: List[Any] = []
         
         if status:
             conditions.append("status = ?")
@@ -361,7 +373,7 @@ class JobQueue:
         status: Optional[str] = None,
         progress: Optional[int] = None,
         message: Optional[str] = None,
-        result: Optional[Dict] = None,
+        result: Optional[Dict[str, Any]] = None,
         error: Optional[str] = None
     ) -> bool:
         """
@@ -378,7 +390,8 @@ class JobQueue:
         Returns:
             True if updated, False if job not found
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Get current job to preserve existing values
         cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
@@ -435,7 +448,7 @@ class JobQueue:
             job_id
         ))
         
-        self.conn.commit()
+        conn.commit()
         return True
     
     def _process_job(self, job: Job):
@@ -449,7 +462,7 @@ class JobQueue:
             status: Optional[str] = None,
             progress: Optional[int] = None,
             message: Optional[str] = None,
-            result: Optional[Dict] = None,
+            result: Optional[Dict[str, Any]] = None,
             error: Optional[str] = None
         ):
             """Callback to update job status."""
@@ -503,7 +516,8 @@ class JobQueue:
         while self.running:
             try:
                 # Get next job to process
-                cursor = self.conn.cursor()
+                conn = self._get_conn()
+                cursor = conn.cursor()
                 cursor.execute("""
                     SELECT * FROM jobs 
                     WHERE status = 'pending' 
@@ -575,7 +589,8 @@ class JobQueue:
         Returns:
             Dictionary with queue statistics
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Count jobs by status
         cursor.execute("SELECT status, COUNT(*) as count FROM jobs GROUP BY status")
@@ -643,7 +658,8 @@ class JobQueue:
         Returns:
             Number of jobs deleted
         """
-        cursor = self.conn.cursor()
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
         # Calculate cutoff date
         cutoff_date = (datetime.now() - timedelta(days=older_than_days)).isoformat()
@@ -655,16 +671,17 @@ class JobQueue:
         """, (cutoff_date,))
         
         deleted_count = cursor.rowcount
-        self.conn.commit()
+        conn.commit()
         
         return deleted_count
     
     def close(self):
         """Close database connection."""
         self.stop_workers()
-        if self.conn:
-            self.conn.close()
-            self.conn = None
+        conn = self.conn
+        if conn is not None:
+            conn.close()
+        self.conn = None
     
     def __enter__(self):
         """Context manager entry."""
@@ -688,9 +705,6 @@ def main():
     parser.add_argument('--test', action='store_true', help='Run test jobs')
     
     args = parser.parse_args()
-    
-    # Import here to avoid circular imports
-    from datetime import timedelta
     
     with JobQueue(args.db, args.workers) as job_queue:
         

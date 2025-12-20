@@ -44,19 +44,19 @@ for f in $STAGED_FILES; do
   AI_RE='\\bAI(?:[- ]?(?:powered|driven|assisted|generated|detected|analysis))?\\b'
 
   # 1) JSX text nodes (between > and <)
-  echo "$ADDED" | perl -0777 -ne "
-    my \$re = qr/${AI_RE}/i;
-    if (/>[^<]*\$re[^<]*</s) { exit 0 } else { exit 1 }
-  " >/dev/null 2>&1 && FOUND=1
+  echo "$ADDED" | AI_RE="$AI_RE" perl -0777 -ne '
+    my $ai = qr/$ENV{AI_RE}/i;
+    exit((/>[^<]*$ai[^<]*</s) ? 0 : 1);
+  ' >/dev/null 2>&1 && FOUND=1
 
   # 2) Common UI-facing JSX props and object fields
   #    Examples: title="...", aria-label='...', placeholder=`...`
   #              { label: "...", description: "..." }
-  echo "$ADDED" | perl -0777 -ne "
-    my \$ai = qr/${AI_RE}/i;
-    my \$keys = qr/(?:title|label|description|subtitle|placeholder|alt|aria-label|ariaLabel|tooltip|helperText|helpText|message|text)/i;
-    if (/\b\$keys\b\s*(?:=|:)\s*(?:\"[^\"\n]*\$ai[^\"\n]*\"|'[^'\n]*\$ai[^'\n]*'|`[^`\n]*\$ai[^`\n]*`)/s) { exit 0 } else { exit 1 }
-  " >/dev/null 2>&1 && FOUND=1
+  echo "$ADDED" | AI_RE="$AI_RE" perl -0777 -ne '
+    my $ai = qr/$ENV{AI_RE}/i;
+    my $keys = qr/(?:title|label|description|subtitle|placeholder|alt|aria-label|ariaLabel|tooltip|helperText|helpText|message|text)/i;
+    exit((/\b$keys\b\s*(?:=|:)\s*(?:"[^"\n]*$ai[^"\n]*"|'"'"'[^'"'"'\n]*$ai[^'"'"'\n]*'"'"'|`[^`\n]*$ai[^`\n]*`)/s) ? 0 : 1);
+  ' >/dev/null 2>&1 && FOUND=1
 
 done
 

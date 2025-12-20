@@ -4,16 +4,16 @@
  * Provides insights and controls for the caching and performance optimization system.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Activity, 
-  HardDrive, 
-  Zap, 
-  Clock, 
-  Trash2, 
+import {
+  Activity,
+  HardDrive,
+  Zap,
+  Clock,
+  Trash2,
   RefreshCw,
   BarChart3,
   Database,
-  Memory
+  Cpu
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -158,7 +158,7 @@ export function PerformanceDashboard() {
         </div>
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Memory size={16} className="text-muted-foreground" />
+            <Cpu size={16} className="text-muted-foreground" />
             <span>Total Entries: {health.total_entries}</span>
           </div>
           <div className="flex items-center gap-2">

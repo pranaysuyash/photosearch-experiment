@@ -236,36 +236,21 @@ describe('Face Detection API Integration', () => {
       const error = new Error('Internal server error');
       vi.spyOn(api, 'detectFaces').mockRejectedValue(error);
 
-      try {
-        await api.detectFaces('/test/photo.jpg');
-        fail('Should have thrown an error');
-      } catch (err) {
-        expect(err).toBe(error);
-      }
+      await expect(api.detectFaces('/test/photo.jpg')).rejects.toThrow('Internal server error');
     });
 
     test('should handle network errors', async () => {
       const error = new Error('Network Error');
       vi.spyOn(api, 'getFaceThumbnail').mockRejectedValue(error);
 
-      try {
-        await api.getFaceThumbnail('nonexistent');
-        fail('Should have thrown an error');
-      } catch (err) {
-        expect(err).toBe(error);
-      }
+      await expect(api.getFaceThumbnail('nonexistent')).rejects.toThrow('Network Error');
     });
 
     test('should handle 404 errors', async () => {
       const error = new Error('404 Not Found');
       vi.spyOn(api, 'getFacesInPhoto').mockRejectedValue(error);
 
-      try {
-        await api.getFacesInPhoto('/nonexistent/photo.jpg');
-        fail('Should have thrown an error');
-      } catch (err) {
-        expect(err).toBe(error);
-      }
+      await expect(api.getFacesInPhoto('/nonexistent/photo.jpg')).rejects.toThrow('404 Not Found');
     });
   });
 

@@ -1,14 +1,23 @@
 import sys
 import os
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING, Literal, cast
 from pathlib import Path
+
+# Ensure the project root (parent of `server/`) is importable.
+# This matters when running via `python server/main.py` (supervisord/Docker),
+# and it also helps static tooling resolve `server.*` imports consistently.
+_PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Body, BackgroundTasks, Request, Query
-from .jobs import job_store, Job
-from .pricing import pricing_manager, PricingTier, UsageStats
+from server.jobs import job_store, Job
+from server.pricing import pricing_manager, PricingTier, UsageStats
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
+import logging
 import mimetypes
 from datetime import datetime, timezone
 from email.utils import formatdate
@@ -19,7 +28,8 @@ import hashlib
 import hmac
 import re
 from urllib.parse import urlencode, urlparse, parse_qsl
-import requests
+import requests  # type: ignore
+import sqlite3
 import shutil
 from threading import Lock
 from PIL import Image
@@ -29,18 +39,28 @@ _rate_lock = Lock()
 _rate_counters: dict = {}
 _rate_last_conf: tuple | None = None
 
-# Add parent directory to path to import backend modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from src.photo_search import PhotoSearch
 from src.api_versioning import api_version_manager, APIResponseHandler
 from src.cache_manager import cache_manager
 from src.logging_config import setup_logging, log_search_operation, log_indexing_operation, log_error
 
-from .config import settings
-from .sources import SourceStore
-from .source_items import SourceItemStore
-from .trash_db import TrashDB
+from server.config import settings
+from server.sources import SourceStore
+from server.source_items import SourceItemStore
+from server.trash_db import TrashDB
+from server.multi_tag_filter_db import get_multi_tag_filter_db, MultiTagFilterDB
+
+
+if TYPE_CHECKING:
+    from src.logging_config import PerformanceTracker
+
+
+# These are initialized properly inside lifespan(), but are referenced throughout the
+# module. Provide safe defaults so type-checkers (mypy) and editors can resolve them.
+ps_logger: logging.Logger = logging.getLogger("PhotoSearch")
+perf_tracker: "PerformanceTracker | None" = None
+embedding_generator: Any | None = None
+file_watcher: Any | None = None
 
 
 def _runtime_base_dir() -> Path:
@@ -303,11 +323,11 @@ def apply_date_filter(results: list, date_from: Optional[str], date_to: Optional
 photo_search_engine = PhotoSearch()
 
 # Initialize Semantic Search Components
-from .lancedb_store import LanceDBStore
-from .embedding_generator import EmbeddingGenerator
-from .image_loader import load_image
+from server.lancedb_store import LanceDBStore
+from server.embedding_generator import EmbeddingGenerator
+from server.image_loader import load_image
 
-from .watcher import start_watcher
+from server.watcher import start_watcher
 
 # Initialize Intent Recognition
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -1176,7 +1196,7 @@ def process_semantic_indexing(files_to_index: List[str]):
             
             img = None
             if is_video:
-                from image_loader import extract_video_frame
+                from server.image_loader import extract_video_frame
                 # Extract frame
                 try:
                     img = extract_video_frame(file_path)
@@ -1395,7 +1415,7 @@ async def search_photos(
         tagged_paths = None
         if tag or tags:
             try:
-                from .tags_db import get_tags_db
+                from server.tags_db import get_tags_db
 
                 tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
 
@@ -1724,7 +1744,7 @@ async def search_photos(
             
             # Log search to history if enabled
             if log_history:
-                execution_time_ms = round((time.time() - start_time) * 1000, 2)
+                execution_time_ms = int(round((time.time() - start_time) * 1000))
                 intent_result = intent_detector.detect_intent(query)
                 saved_search_manager.log_search_history(
                     query=query,
@@ -1855,12 +1875,13 @@ async def bulk_export(payload: dict = Body(...)):
                         filename = os.path.basename(file_path)
                         zipf.write(file_path, filename)
         
-        # Return the ZIP file
+        cleanup = BackgroundTasks()
+        cleanup.add_task(os.unlink, zip_path)
         return FileResponse(
             path=zip_path,
             filename=f"photos_export_{len(file_paths)}_files.zip",
-            media_type='application/zip',
-            background=BackgroundTasks([lambda: os.unlink(zip_path)])  # Delete temp file after response
+            media_type="application/zip",
+            background=cleanup,
         )
         
     except Exception as e:
@@ -2249,10 +2270,10 @@ async def bulk_favorite(payload: dict = Body(...)):
 def generate_metadata_match_explanation(query: str, result: dict) -> dict:
     """Generate match explanation for metadata search results with detailed breakdown"""
     reasons = []
-    breakdown = {
-        "filename_score": 0,
-        "metadata_score": 0,
-        "content_score": 0
+    breakdown: dict[str, float] = {
+        "filename_score": 0.0,
+        "metadata_score": 0.0,
+        "content_score": 0.0,
     }
     
     # Analyze the query to understand what matched
@@ -2261,12 +2282,12 @@ def generate_metadata_match_explanation(query: str, result: dict) -> dict:
     filename = result.get('filename', result.get('file_path', '').split('/')[-1])
     
     # Check for filename matches (most common case)
-    filename_match_score = 0
+    filename_match_score: float = 0.0
     if query_lower in filename.lower():
         # Calculate confidence based on how much of the filename matches
         match_ratio = len(query_lower) / len(filename.lower())
         confidence = min(0.95, 0.7 + (match_ratio * 0.25))  # 70-95% based on match ratio
-        filename_match_score = confidence * 100
+        filename_match_score = confidence * 100.0
         breakdown["filename_score"] = filename_match_score
         
         reasons.append({
@@ -2344,7 +2365,7 @@ def generate_metadata_match_explanation(query: str, result: dict) -> dict:
     
     # Calculate metadata score
     if metadata_total > 0:
-        breakdown["metadata_score"] = (metadata_matches / metadata_total) * 100
+        breakdown["metadata_score"] = (metadata_matches / metadata_total) * 100.0
     
     # If no specific matches found, provide generic match with lower confidence
     if not reasons:
@@ -2528,7 +2549,7 @@ def generate_semantic_match_explanation(query: str, result: dict, score: float) 
     }
 
 @app.get("/api/intent/detect")
-async def detect_intent(query: str):
+async def detect_intent_api(query: str):
     """
     Detect user intent from search query for auto-mode switching.
     """
@@ -2718,7 +2739,10 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
         # Verify token and extract path
         try:
             payload = verify_token(token, expected_scope="thumbnail")
-            requested_path_str = payload.get("path")
+            _p = payload.get("path")
+            if not isinstance(_p, str) or not _p:
+                raise HTTPException(status_code=401, detail="Invalid token payload")
+            requested_path_str = _p
         except TokenError as te:
             raise HTTPException(status_code=401, detail=f"Invalid token: {str(te)}")
     else:
@@ -2861,7 +2885,7 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
 
 
 @app.post("/admin/unmask")
-async def admin_unmask(payload: dict = Body(...), request: Request = None):
+async def admin_unmask(payload: dict = Body(...), request: Request | None = None):
     """Admin-only: Given a hashed path (as in access logs), attempt to find the real path.
 
     This endpoint is gated by `ACCESS_LOG_UNMASK_ENABLED` and requires admin JWT (JWT_AUTH_ENABLED + claim is_admin).
@@ -2911,7 +2935,8 @@ async def admin_unmask(payload: dict = Body(...), request: Request = None):
                 candidate = Path(root) / f
                 if hash_for_logs(str(candidate)) == h:
                     # Audit log
-                    logger.warning(f"UNMASK used by {request.client.host if request.client else 'unknown'} for hash={h}")
+                    client_host = request.client.host if request and request.client else "unknown"
+                    logger.warning(f"UNMASK used by {client_host} for hash={h}")
                     return {"path": str(candidate)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -2959,7 +2984,7 @@ def validate_file_path(file_path: str, allowed_directories: List[Path]) -> bool:
 
 
 @app.get("/file")
-async def get_file(path: str, download: bool = False):
+async def get_file(request: Request, path: str, download: bool = False):
     """
     Serve an original file (image/video/etc.) without transcoding.
     Use `download=true` to force a download Content-Disposition.
@@ -2995,23 +3020,21 @@ async def get_file(path: str, download: bool = False):
 
     # Serve the file safely
     media_type, _ = mimetypes.guess_type(path)
-    kwargs = {"media_type": media_type or "application/octet-stream"}
-    if download:
-        kwargs["filename"] = os.path.basename(path)
+    filename = os.path.basename(path) if download else None
 
-    # Add security headers
     return FileResponse(
         path,
-        **kwargs,
+        media_type=media_type or "application/octet-stream",
+        filename=filename,
         headers={
             "X-Content-Type-Options": "nosniff",
             "X-Frame-Options": "DENY",
-            "Cache-Control": "private, max-age=3600"
-        }
+            "Cache-Control": "private, max-age=3600",
+        },
     )
 
 @app.get("/video")
-async def get_video(path: str):
+async def get_video(request: Request, path: str):
     """
     Serve a video file directly.
     """
@@ -3072,7 +3095,7 @@ async def get_stats():
 # ========== INTENT RECOGNITION ENDPOINTS ==========
 
 @app.get("/intent/detect")
-async def detect_intent(query: str):
+async def detect_intent_v2(query: str):
     """
     Detect search intent from a query.
     
@@ -3724,7 +3747,7 @@ class ClusterLabelRequest(BaseModel):
     label: str
 
 @app.post("/faces/cluster")
-async def cluster_faces(request: FaceClusterRequest):
+async def cluster_faces_v1(request: FaceClusterRequest):
     """
     Cluster faces in the specified images
     
@@ -3832,7 +3855,7 @@ async def delete_cluster(cluster_id: int):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/faces/stats")
-async def get_face_stats():
+async def get_face_stats_v1():
     """
     Get statistics about face clusters
     
@@ -3860,7 +3883,7 @@ async def server_config():
 
 
 @app.post("/image/token")
-async def issue_image_token(payload: dict = Body(...), request: Request = None):
+async def issue_image_token(payload: dict = Body(...), request: Request | None = None):
     """Issue a signed token for image access. Body: { path: string, ttl?: int, scope?: 'thumbnail'|'file' }
 
     This endpoint should be protected in production (JWT auth or IMAGE_TOKEN_ISSUER_KEY).
@@ -4075,14 +4098,17 @@ async def create_dialog(request: DialogRequest):
         Dictionary with dialog ID
     """
     try:
-        dialog_id = modal_system.create_dialog(
-            dialog_type=request.dialog_type,
-            title=request.title,
-            message=request.message,
-            options=request.options or [],
-            timeout=request.timeout,
-            user_id=request.user_id
-        )
+        create_kwargs: dict[str, Any] = {
+            "dialog_type": request.dialog_type,
+            "title": request.title,
+            "message": request.message,
+            "actions": request.options or [],
+            "user_id": request.user_id,
+        }
+        if request.timeout is not None:
+            create_kwargs["expires_in"] = int(request.timeout)
+
+        dialog_id = modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4141,7 +4167,8 @@ async def dialog_action(dialog_id: str, request: DialogActionRequest):
         success = modal_system.record_dialog_action(
             dialog_id,
             request.action,
-            request.user_id
+            action_data={},
+            user_id=request.user_id
         )
         return {"status": "success" if success else "failed", "recorded": success}
     except Exception as e:
@@ -4199,13 +4226,18 @@ async def create_confirmation_dialog(request: DialogRequest):
         Dictionary with dialog ID
     """
     try:
-        dialog_id = modal_system.create_confirmation_dialog(
-            title=request.title,
-            message=request.message,
-            options=request.options or ["Yes", "No"],
-            timeout=request.timeout,
-            user_id=request.user_id
-        )
+        create_kwargs: dict[str, Any] = {
+            "dialog_type": "confirmation",
+            "title": request.title,
+            "message": request.message,
+            "actions": request.options or ["Yes", "No"],
+            "user_id": request.user_id,
+            "context": "confirmation",
+        }
+        if request.timeout is not None:
+            create_kwargs["expires_in"] = int(request.timeout)
+
+        dialog_id = modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4222,12 +4254,19 @@ async def create_error_dialog(request: DialogRequest):
         Dictionary with dialog ID
     """
     try:
-        dialog_id = modal_system.create_error_dialog(
-            title=request.title,
-            message=request.message,
-            timeout=request.timeout,
-            user_id=request.user_id
-        )
+        create_kwargs: dict[str, Any] = {
+            "dialog_type": "error",
+            "title": request.title,
+            "message": request.message,
+            "data": {"details": ""},
+            "user_id": request.user_id,
+            "context": "error",
+            "priority": 10,
+        }
+        if request.timeout is not None:
+            create_kwargs["expires_in"] = int(request.timeout)
+
+        dialog_id = modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4247,10 +4286,16 @@ async def create_progress_dialog(request: ProgressDialogRequest):
         dialog_id = modal_system.create_progress_dialog(
             title=request.title,
             message=request.message,
-            max_value=request.max_value,
-            current_value=request.current_value,
+            total_steps=request.max_value,
             user_id=request.user_id
         )
+        # Best-effort initial progress update based on current_value/max_value.
+        try:
+            denom = float(request.max_value) if request.max_value else 100.0
+            pct = (float(request.current_value) / denom) * 100.0
+            modal_system.update_progress_dialog(dialog_id, progress=pct, message=request.message)
+        except Exception:
+            pass
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4268,11 +4313,9 @@ async def update_progress_dialog(dialog_id: str, request: ProgressDialogRequest)
         Dictionary with update status
     """
     try:
-        success = modal_system.update_progress_dialog(
-            dialog_id,
-            request.current_value,
-            request.message
-        )
+        denom = float(request.max_value) if request.max_value else 100.0
+        pct = (float(request.current_value) / denom) * 100.0
+        success = modal_system.update_progress_dialog(dialog_id, progress=pct, message=request.message)
         return {"status": "success" if success else "failed", "updated": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4290,7 +4333,7 @@ async def complete_progress_dialog(dialog_id: str, user_id: str = "system"):
         Dictionary with completion status
     """
     try:
-        success = modal_system.complete_progress_dialog(dialog_id, user_id)
+        success = modal_system.complete_progress_dialog(dialog_id, success=True)
         return {"status": "success" if success else "failed", "completed": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4307,12 +4350,13 @@ async def create_input_dialog(request: InputDialogRequest):
         Dictionary with dialog ID
     """
     try:
-        dialog_id = modal_system.create_input_dialog(
+        dialog_id = modal_system.create_dialog(
+            dialog_type="input",
             title=request.title,
             message=request.message,
-            input_type=request.input_type,
-            default_value=request.default_value,
-            user_id=request.user_id
+            data={"input_type": request.input_type, "default_value": request.default_value},
+            user_id=request.user_id,
+            context="input",
         )
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
@@ -4331,7 +4375,7 @@ async def get_dialog_history(user_id: str = "system", limit: int = 50):
         Dictionary with dialog history
     """
     try:
-        history = modal_system.get_dialog_history(user_id, limit)
+        history = modal_system.get_dialog_history(user_id=user_id, limit=limit)
         return {"status": "success", "history": history}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -4459,18 +4503,17 @@ async def record_lazy_load_performance(request: PerformanceRecordRequest):
     """
     try:
         lazy_load_tracker.record_lazy_load(
-            request.component_name,
-            request.chunk_name,
-            request.load_time_ms,
-            request.size_kb,
-            request.timestamp
+            component_name=request.component_name,
+            load_time_ms=request.load_time_ms,
+            chunk_name=request.chunk_name,
+            success=True,
         )
         return {"status": "success", "recorded": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/code-splitting/performance")
-async def get_lazy_load_performance(component_name: str = None):
+async def get_lazy_load_performance(component_name: str | None = None):
     """
     Get lazy load performance statistics
     
@@ -4851,24 +4894,24 @@ class ShareResponse(BaseModel):
 
 
 # In-memory store for share links (in production, use a database)
-share_links = {}
+share_links: dict[str, dict[str, Any]] = {}
 
 
 @app.post("/share", response_model=ShareResponse)
-async def create_share_link(request: ShareRequest):
+async def create_share_link(payload: ShareRequest, request: Request):
     """Create a shareable link for selected photos."""
     import uuid
     from datetime import datetime, timedelta
 
-    if not request.paths:
+    if not payload.paths:
         raise HTTPException(status_code=400, detail="No files specified")
 
-    if len(request.paths) > 100:
+    if len(payload.paths) > 100:
         raise HTTPException(status_code=400, detail="Maximum 100 files per share")
 
     # Validate paths are within allowed directories
     valid_paths = []
-    for path in request.paths:
+    for path in payload.paths:
         try:
             requested_path = Path(path).resolve()
             if settings.MEDIA_DIR.exists():
@@ -4891,7 +4934,7 @@ async def create_share_link(request: ShareRequest):
 
     # Generate unique share ID
     share_id = str(uuid.uuid4())
-    expiration = datetime.now() + timedelta(hours=request.expiration_hours)
+    expiration = datetime.now() + timedelta(hours=payload.expiration_hours)
 
     # Store share information
     share_links[share_id] = {
@@ -4899,7 +4942,7 @@ async def create_share_link(request: ShareRequest):
         "expiration": expiration.isoformat(),
         "created_at": datetime.now().isoformat(),
         "download_count": 0,
-        "password": request.password  # In a real app, this should be hashed
+        "password": payload.password  # In a real app, this should be hashed
     }
 
     # Generate share URL
@@ -4923,7 +4966,8 @@ async def get_shared_content(share_id: str, password: Optional[str] = None):
     share_info = share_links[share_id]
 
     # Check expiration
-    if datetime.fromisoformat(share_info["expiration"]) < datetime.now():
+    exp_raw = share_info.get("expiration")
+    if datetime.fromisoformat(str(exp_raw)) < datetime.now():
         # Remove expired link and return error
         del share_links[share_id]
         raise HTTPException(status_code=404, detail="Share link has expired")
@@ -4933,7 +4977,22 @@ async def get_shared_content(share_id: str, password: Optional[str] = None):
         raise HTTPException(status_code=403, detail="Password required or incorrect")
 
     # Increment download count for analytics
-    share_info["download_count"] = share_info.get("download_count", 0) + 1
+    raw_count: Any = share_info.get("download_count", 0)
+    if isinstance(raw_count, bool):
+        count_int = int(raw_count)
+    elif isinstance(raw_count, int):
+        count_int = raw_count
+    elif isinstance(raw_count, float):
+        count_int = int(raw_count)
+    elif isinstance(raw_count, str):
+        try:
+            count_int = int(raw_count)
+        except ValueError:
+            count_int = 0
+    else:
+        count_int = 0
+
+    share_info["download_count"] = count_int + 1
 
     # Return file paths for download
     return {
@@ -4975,7 +5034,7 @@ async def download_shared_content(share_id: str, password: Optional[str] = None)
 # VERSION STACKS ENDPOINTS
 # ==============================================================================
 
-class VersionCreateRequest(BaseModel):
+class LegacyVersionCreateRequest(BaseModel):
     original_path: str
     version_path: str
     version_type: str = "edited"  # 'original', 'edited', 'variant'
@@ -4985,13 +5044,13 @@ class VersionCreateRequest(BaseModel):
     parent_version_id: Optional[str] = None
 
 
-class VersionUpdateRequest(BaseModel):
+class LegacyVersionUpdateRequest(BaseModel):
     version_name: Optional[str] = None
     version_description: Optional[str] = None
 
 
-@app.post("/versions")
-async def create_photo_version(request: VersionCreateRequest):
+@app.post("/versions-legacy")
+async def create_photo_version_legacy(request: LegacyVersionCreateRequest):
     """Create a new photo version record."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5014,8 +5073,8 @@ async def create_photo_version(request: VersionCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/versions/original/{original_path:path}")
-async def get_versions_for_original(original_path: str):
+@app.get("/versions-legacy/original/{original_path:path}")
+async def get_versions_for_original_legacy(original_path: str):
     """Get all versions for a given original photo."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5026,8 +5085,8 @@ async def get_versions_for_original(original_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/versions/stack/{version_path:path}")
-async def get_version_stack(version_path: str):
+@app.get("/versions-legacy/stack/{version_path:path}")
+async def get_version_stack_legacy(version_path: str):
     """Get the entire version stack for a given photo path."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5038,8 +5097,8 @@ async def get_version_stack(version_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.put("/versions/{version_path:path}")
-async def update_version_metadata(version_path: str, request: VersionUpdateRequest):
+@app.put("/versions-legacy/{version_path:path}")
+async def update_version_metadata_legacy(version_path: str, request: LegacyVersionUpdateRequest):
     """Update metadata for a specific version."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5060,8 +5119,8 @@ async def update_version_metadata(version_path: str, request: VersionUpdateReque
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/versions/{version_id}")
-async def delete_photo_version(version_id: str):
+@app.delete("/versions-legacy/{version_id}")
+async def delete_photo_version_legacy(version_id: str):
     """Delete a photo version record."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5077,8 +5136,8 @@ async def delete_photo_version(version_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/versions/stats")
-async def get_version_stats():
+@app.get("/versions-legacy/stats")
+async def get_version_stats_legacy():
     """Get statistics about photo versions."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -5110,8 +5169,8 @@ class LocationUpdateRequest(BaseModel):
     country: Optional[str] = None
 
 
-@app.post("/locations")
-async def add_photo_location(request: LocationCreateRequest):
+@app.post("/locations-legacy")
+async def add_photo_location_legacy(request: LocationCreateRequest):
     """Add or update location information for a photo."""
     try:
         locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
@@ -5135,8 +5194,8 @@ async def add_photo_location(request: LocationCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/locations/photo/{photo_path:path}")
-async def get_photo_location(photo_path: str):
+@app.get("/locations-legacy/photo/{photo_path:path}")
+async def get_photo_location_legacy(photo_path: str):
     """Get location information for a specific photo."""
     try:
         locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
@@ -5153,8 +5212,8 @@ async def get_photo_location(photo_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.put("/locations/photo/{photo_path:path}")
-async def update_photo_location(photo_path: str, request: LocationUpdateRequest):
+@app.put("/locations-legacy/photo/{photo_path:path}")
+async def update_photo_location_legacy(photo_path: str, request: LocationUpdateRequest):
     """Update location information for a photo."""
     try:
         locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
@@ -5212,8 +5271,8 @@ async def get_place_clusters(min_photos: int = Query(2, ge=1)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/locations/stats")
-async def get_location_stats():
+@app.get("/locations-legacy/stats")
+async def get_location_stats_legacy():
     """Get statistics about location data."""
     try:
         locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
@@ -5250,14 +5309,14 @@ async def search_with_intent(params: IntentSearchParams):
         intent_result = intent_detector.detect_intent(params.query)
 
         # Apply intent-specific search logic
-        results = []
+        results: List[Dict[str, Any]] = []
 
         # For people intent, search using face recognition if available
         if intent_result['primary_intent'] == 'people':
             # Check if person name is in query
-            people_results = []
+            people_results: List[Dict[str, Any]] = []
             try:
-                from .face_clustering import FACE_LIBRARIES_AVAILABLE
+                from src.face_clustering import FACE_LIBRARIES_AVAILABLE
                 if FACE_LIBRARIES_AVAILABLE:
                     # Search for faces with names matching query
                     # This is a simplified implementation
@@ -6147,8 +6206,8 @@ async def update_story(story_id: str, request: StoryUpdateRequest):
 
         # Update story in database
         with sqlite3.connect(settings.BASE_DIR / "timelines.db") as conn:
-            update_fields = []
-            params = []
+            update_fields: list[str] = []
+            params: list[object] = []
 
             if request.title is not None:
                 update_fields.append("title = ?")
@@ -6228,8 +6287,8 @@ async def update_timeline_entry(entry_id: str, request: TimelineEntryUpdateReque
         # In a real implementation, we would have a method to update specific timeline entries
         # For now, we'll update using raw SQL
         with sqlite3.connect(settings.BASE_DIR / "timelines.db") as conn:
-            update_fields = []
-            params = []
+            update_fields: list[str] = []
+            params: list[object] = []
 
             if request.date is not None:
                 update_fields.append("date = ?")
@@ -6293,14 +6352,35 @@ async def get_story_stats(story_id: str):
         timeline = timeline_db.get_timeline_for_story(story_id)
 
         # Calculate stats
+        # `timeline_db` implementations may return dict rows; normalize access defensively.
+        story_title = story.get("title") if isinstance(story, dict) else getattr(story, "title", None)
+        story_created_at = story.get("created_at") if isinstance(story, dict) else getattr(story, "created_at", None)
+
+        def _entry_field(entry: Any, key: str) -> Any:
+            if isinstance(entry, dict):
+                return entry.get(key)
+            return getattr(entry, key, None)
+
+        dates = [
+            _entry_field(e, "date")
+            for e in timeline
+            if _entry_field(e, "date")
+        ]
+        locations = [
+            _entry_field(e, "location")
+            for e in timeline
+            if _entry_field(e, "location")
+        ]
+        has_captions = any(bool(_entry_field(e, "caption")) for e in timeline)
+
         stats = {
             "story_id": story_id,
-            "title": story.title,
+            "title": story_title,
             "total_photos": len(timeline),
-            "start_date": min((entry.date for entry in timeline), default=story.created_at) if timeline else story.created_at,
-            "end_date": max((entry.date for entry in timeline), default=story.created_at) if timeline else story.created_at,
-            "locations_count": len(set(entry.location for entry in timeline if entry.location)),
-            "has_captions": len([entry for entry in timeline if entry.caption]) > 0
+            "start_date": min(dates) if dates else story_created_at,
+            "end_date": max(dates) if dates else story_created_at,
+            "locations_count": len(set(locations)),
+            "has_captions": has_captions,
         }
 
         return {"stats": stats}
@@ -6431,7 +6511,7 @@ async def get_bulk_actions_stats(user_id: str):
         undone_count = bulk_db.get_undone_actions_count(user_id)
 
         # Count actions by type
-        type_counts = {}
+        type_counts: dict[str, int] = {}
         for action in recent_actions:
             action_type = action.action_type
             type_counts[action_type] = type_counts.get(action_type, 0) + 1
@@ -6451,25 +6531,25 @@ async def get_bulk_actions_stats(user_id: str):
 # MULTI-TAG FILTERING ENDPOINTS
 # ==============================================================================
 
-class TagExpression(BaseModel):
+class Legacy2TagExpression(BaseModel):
     tag: str
     operator: str = "has"  # 'has', 'not_has', 'maybe_has'
 
 
-class TagFilterCreateRequest(BaseModel):
+class Legacy2TagFilterCreateRequest(BaseModel):
     name: str
-    tag_expressions: List[TagExpression]
+    tag_expressions: List[Legacy2TagExpression]
     combination_operator: str = "AND"  # 'AND' or 'OR'
 
 
-class TagFilterUpdateRequest(BaseModel):
+class Legacy2TagFilterUpdateRequest(BaseModel):
     name: Optional[str] = None
-    tag_expressions: Optional[List[TagExpression]] = None
+    tag_expressions: Optional[List[Legacy2TagExpression]] = None
     combination_operator: Optional[str] = None
 
 
-@app.post("/tag-filters")
-async def create_tag_filter(request: TagFilterCreateRequest):
+@app.post("/tag-filters/legacy2")
+async def create_tag_filter_legacy2(request: Legacy2TagFilterCreateRequest):
     """Create a new tag filter with custom expressions and logic."""
     try:
         tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
@@ -6488,8 +6568,8 @@ async def create_tag_filter(request: TagFilterCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/tag-filters/{filter_id}")
-async def get_tag_filter(filter_id: str):
+@app.get("/tag-filters/legacy2/{filter_id}")
+async def get_tag_filter_legacy2(filter_id: str):
     """Get details of a specific tag filter."""
     try:
         tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
@@ -6503,8 +6583,8 @@ async def get_tag_filter(filter_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/tag-filters")
-async def get_tag_filters(limit: int = 50, offset: int = 0):
+@app.get("/tag-filters/legacy2")
+async def get_tag_filters_legacy2(limit: int = 50, offset: int = 0):
     """Get all tag filters."""
     try:
         with sqlite3.connect(settings.BASE_DIR / "tag_filters.db") as conn:
@@ -6523,8 +6603,8 @@ async def get_tag_filters(limit: int = 50, offset: int = 0):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.put("/tag-filters/{filter_id}")
-async def update_tag_filter(filter_id: str, request: TagFilterUpdateRequest):
+@app.put("/tag-filters/legacy2/{filter_id}")
+async def update_tag_filter_legacy2(filter_id: str, request: Legacy2TagFilterUpdateRequest):
     """Update a tag filter."""
     try:
         tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
@@ -6567,8 +6647,8 @@ async def update_tag_filter(filter_id: str, request: TagFilterUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.delete("/tag-filters/{filter_id}")
-async def delete_tag_filter(filter_id: str):
+@app.delete("/tag-filters/legacy2/{filter_id}")
+async def delete_tag_filter_legacy2(filter_id: str):
     """Delete a tag filter."""
     try:
         tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
@@ -6582,8 +6662,8 @@ async def delete_tag_filter(filter_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/tag-filters/apply")
-async def apply_tag_filter(request: TagFilterCreateRequest):
+@app.post("/tag-filters/legacy2/apply")
+async def apply_tag_filter_legacy2(request: Legacy2TagFilterCreateRequest):
     """Apply a tag filter and get matching photos."""
     try:
         tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
@@ -6606,8 +6686,8 @@ async def apply_tag_filter(request: TagFilterCreateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/photos/by-tags")
-async def get_photos_by_tags(
+@app.get("/photos/by-tags/legacy2")
+async def get_photos_by_tags_legacy2(
     tags: str,  # Comma-separated list of tags
     operator: str = "OR",  # OR or AND
     exclude_tags: Optional[str] = None,  # Comma-separated list of tags to exclude
@@ -6621,10 +6701,15 @@ async def get_photos_by_tags(
         tag_list = [tag.strip() for tag in tags.split(',')]
         exclude_list = [tag.strip() for tag in exclude_tags.split(',')] if exclude_tags else []
 
+        op_upper = operator.upper()
+        if op_upper not in ("AND", "OR"):
+            op_upper = "OR"
+        operator_literal = cast(Literal["AND", "OR"], op_upper)
+
         matching_photos = tag_filter_db.get_photos_by_tags(
             tags=tag_list,
-            operator=operator,
-            exclude_tags=exclude_list
+            operator=operator_literal,
+            exclude_tags=exclude_list or None,
         )
 
         # Apply pagination
@@ -6647,12 +6732,18 @@ async def get_photos_by_tags(
 async def get_common_tags(photo_paths: str, limit: int = 10):
     """Get common tags across multiple photos."""
     try:
-        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        tag_filter_db: MultiTagFilterDB = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
 
         path_list = [path.strip() for path in photo_paths.split(',')]
 
-        common_tags = tag_filter_db.get_common_tags(path_list, limit)
+        common: set[str] | None = None
+        for p in path_list:
+            if not p:
+                continue
+            tags = set(tag_filter_db.get_tags_for_photo(p))
+            common = tags if common is None else (common & tags)
 
+        common_tags = sorted(common or [])[:limit]
         return {"common_tags": common_tags, "count": len(common_tags)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -7029,25 +7120,285 @@ async def bulk_correct_place_names(payload: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==============================================================================
+# MULTI-TAG FILTERING ENDPOINTS
+# ==============================================================================
+
+class TagExpression(BaseModel):
+    tag: str
+    operator: str = "has"  # 'has', 'not_has', 'maybe_has'
+
+
+class TagFilterCreateRequest(BaseModel):
+    name: str
+    tag_expressions: List[TagExpression]
+    combination_operator: str = "AND"  # 'AND' or 'OR'
+
+
+class TagFilterUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    tag_expressions: Optional[List[TagExpression]] = None
+    combination_operator: Optional[str] = None
+
+
+@app.post("/tag-filters")
+async def create_tag_filter(request: TagFilterCreateRequest):
+    """Create a new tag filter with custom expressions and logic."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        filter_id = tag_filter_db.create_tag_filter(
+            name=request.name,
+            tag_expressions=[expr.dict() for expr in request.tag_expressions],
+            combination_operator=request.combination_operator
+        )
+
+        if not filter_id:
+            raise HTTPException(status_code=400, detail="Failed to create tag filter")
+
+        return {"success": True, "filter_id": filter_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tag-filters/{filter_id}")
+async def get_tag_filter(filter_id: str):
+    """Get details of a specific tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        tag_filter = tag_filter_db.get_tag_filter(filter_id)
+
+        if not tag_filter:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"tag_filter": tag_filter}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tag-filters")
+async def get_tag_filters(limit: int = 50, offset: int = 0):
+    """Get all tag filters."""
+    try:
+        with sqlite3.connect(settings.BASE_DIR / "tag_filters.db") as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.execute(
+                "SELECT * FROM tag_filters ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+            rows = cursor.fetchall()
+
+            return {
+                "filters": [dict(row) for row in rows],
+                "count": len(rows)
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/tag-filters/{filter_id}")
+async def update_tag_filter(filter_id: str, request: TagFilterUpdateRequest):
+    """Update a tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        # Get existing filter first
+        existing_filter = tag_filter_db.get_tag_filter(filter_id)
+        if not existing_filter:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        # Update the filter
+        with sqlite3.connect(settings.BASE_DIR / "tag_filters.db") as conn:
+            update_fields = []
+            params = []
+
+            if request.name is not None:
+                update_fields.append("name = ?")
+                params.append(request.name)
+
+            if request.tag_expressions is not None:
+                update_fields.append("tag_expressions = ?")
+                params.append(json.dumps([expr.dict() for expr in request.tag_expressions]))
+
+            if request.combination_operator is not None:
+                update_fields.append("combination_operator = ?")
+                params.append(request.combination_operator)
+
+            update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+            if update_fields:
+                sql = f"UPDATE tag_filters SET {', '.join(update_fields)} WHERE id = ?"
+                params.append(filter_id)
+
+                cursor = conn.execute(sql, params)
+
+                if cursor.rowcount == 0:
+                    raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/tag-filters/{filter_id}")
+async def delete_tag_filter(filter_id: str):
+    """Delete a tag filter."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        success = tag_filter_db.delete_tag_filter(filter_id)
+
+        if not success:
+            raise HTTPException(status_code=404, detail="Tag filter not found")
+
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/tag-filters/apply")
+async def apply_tag_filter(request: TagFilterCreateRequest):
+    """Apply a tag filter and get matching photos."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        matching_photos = tag_filter_db.apply_tag_filter(
+            tag_expressions=[expr.dict() for expr in request.tag_expressions],
+            combination_operator=request.combination_operator
+        )
+
+        return {
+            "photos": matching_photos,
+            "count": len(matching_photos),
+            "filter_used": {
+                "name": "Temporary Filter",
+                "expressions": [expr.dict() for expr in request.tag_expressions],
+                "operator": request.combination_operator
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/photos/by-tags")
+async def get_photos_by_tags(
+    tags: str,  # Comma-separated list of tags
+    operator: str = "OR",  # OR or AND
+    exclude_tags: Optional[str] = None,  # Comma-separated list of tags to exclude
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get photos by multiple tags with AND/OR logic."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        tag_list = [tag.strip() for tag in tags.split(',')]
+        exclude_list = [tag.strip() for tag in exclude_tags.split(',')] if exclude_tags else []
+
+        op_upper = operator.upper()
+        if op_upper not in ("AND", "OR"):
+            op_upper = "OR"
+        operator_literal = cast(Literal["AND", "OR"], op_upper)
+
+        matching_photos = tag_filter_db.get_photos_by_tags(
+            tags=tag_list,
+            operator=operator_literal,
+            exclude_tags=exclude_list or None,
+        )
+
+        # Apply pagination
+        paginated_photos = matching_photos[offset:offset+limit]
+
+        return {
+            "photos": paginated_photos,
+            "total_count": len(matching_photos),
+            "filter": {
+                "included_tags": tag_list,
+                "excluded_tags": exclude_list,
+                "operator": operator
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/common/legacy2")
+async def get_common_tags_legacy2(photo_paths: str, limit: int = 10):
+    """Get common tags across multiple photos."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        path_list = [path.strip() for path in photo_paths.split(',')]
+
+        # In a real implementation, we would find common tags across all these photos
+        # For now, we'll just return an example implementation
+        common_tags = []
+        all_tags = []
+
+        for path in path_list:
+            tags = tag_filter_db.get_tags_for_photo(path)
+            all_tags.extend(tags)
+
+        # Count occurrences and return most frequent
+        from collections import Counter
+        tag_counts = Counter(all_tags)
+        common_tags = [tag for tag, count in tag_counts.most_common(limit)]
+
+        return {"common_tags": common_tags, "count": len(common_tags)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/search/legacy2")
+async def search_tags_legacy2(query: str, limit: int = 20):
+    """Search for tags by name."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+        matching_tags = tag_filter_db.search_tags(query, limit)
+
+        return {"tags": matching_tags, "count": len(matching_tags)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tags/stats/legacy2")
+async def get_tag_stats_legacy2():
+    """Get statistics about tags in the system."""
+    try:
+        tag_filter_db = get_multi_tag_filter_db(settings.BASE_DIR / "tag_filters.db")
+
+        # This would include stats about tag usage, most popular tags, etc.
+        # In a full implementation, we'd return comprehensive statistics
+        tag_counts = tag_filter_db.get_photo_tags_with_counts()
+
+        return {
+            "stats": {
+                "total_tags": len(tag_counts),
+                "top_tags": tag_counts[:10],  # Top 10 most used tags
+                "total_tagged_photos": sum(tc['photo_count'] for tc in tag_counts)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==============================================================================
 # TAGS ENDPOINTS
 # ==============================================================================
 
-from .tags_db import get_tags_db
-from .ratings_db import get_ratings_db
-from .notes_db import get_notes_db
-from .photo_edits_db import get_photo_edits_db
-from .duplicates_db import get_duplicates_db
-from .face_clustering_db import get_face_clustering_db
-from .photo_versions_db import get_photo_versions_db
-from .location_clusters_db import get_location_clusters_db
-from .locations_db import get_locations_db
-from .smart_collections_db import get_smart_collections_db
-from .ai_insights_db import get_ai_insights_db
-from .collaborative_spaces_db import get_collaborative_spaces_db
-from .privacy_controls_db import get_privacy_controls_db
-from .timeline_db import get_timeline_db
-from .bulk_actions_db import get_bulk_actions_db
-from .multi_tag_filter_db import get_multi_tag_filter_db
+from server.tags_db import get_tags_db
+from server.ratings_db import get_ratings_db
+from server.notes_db import get_notes_db
+from server.photo_edits_db import get_photo_edits_db
+from server.duplicates_db import get_duplicates_db
+from server.face_clustering_db import get_face_clustering_db
+from server.photo_versions_db import get_photo_versions_db
+from server.location_clusters_db import get_location_clusters_db
+from server.locations_db import get_locations_db
+from server.smart_collections_db import get_smart_collections_db
+from server.ai_insights_db import get_ai_insights_db
+from server.collaborative_spaces_db import get_collaborative_spaces_db
+from server.privacy_controls_db import get_privacy_controls_db
+from server.timeline_db import get_timeline_db
+from server.bulk_actions_db import get_bulk_actions_db
+from server.multi_tag_filter_db import get_multi_tag_filter_db
 
 
 class TagCreate(BaseModel):
@@ -7135,8 +7486,8 @@ async def get_photo_tags(path: str):
 # ALBUMS ENDPOINTS
 # ==============================================================================
 
-from .albums_db import get_albums_db, Album as AlbumModel
-from .smart_albums import initialize_predefined_smart_albums, populate_smart_album
+from server.albums_db import get_albums_db, Album as AlbumModel
+from server.smart_albums import initialize_predefined_smart_albums, populate_smart_album
 import uuid
 
 class AlbumCreate(BaseModel):
@@ -7185,7 +7536,7 @@ async def get_album(album_id: str, include_photos: bool = True):
     if not album:
         raise HTTPException(status_code=404, detail="Album not found")
 
-    result = {"album": album}
+    result: dict[str, Any] = {"album": album}
 
     if include_photos:
         photo_paths = albums_db.get_album_photos(album_id)
@@ -7340,11 +7691,11 @@ async def rotate_photo(path: str = Body(...), degrees: int = Body(...), backup: 
         # Rotate (negative degrees for clockwise rotation in PIL)
         # PIL's rotate is counter-clockwise, so we negate for intuitive clockwise rotation
         if degrees == 90:
-            rotated = img.transpose(Image.ROTATE_270)  # 90° CW
+            rotated = img.transpose(Image.Transpose.ROTATE_270)  # 90° CW
         elif degrees == -90 or degrees == 270:
-            rotated = img.transpose(Image.ROTATE_90)   # 90° CCW
+            rotated = img.transpose(Image.Transpose.ROTATE_90)   # 90° CCW
         elif degrees == 180:
-            rotated = img.transpose(Image.ROTATE_180)
+            rotated = img.transpose(Image.Transpose.ROTATE_180)
         else:
             rotated = img.rotate(-degrees, expand=True)
 
@@ -7392,9 +7743,9 @@ async def flip_photo(path: str = Body(...), direction: str = Body(...), backup: 
 
         # Flip
         if direction == 'horizontal':
-            flipped = img.transpose(Image.FLIP_LEFT_RIGHT)
+            flipped = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
         else:  # vertical
-            flipped = img.transpose(Image.FLIP_TOP_BOTTOM)
+            flipped = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 
         # Save with original format and quality
         save_kwargs = {}
@@ -7423,13 +7774,13 @@ async def get_api_schema():
     return schema
 
 @app.get("/api/cache/stats")
-async def get_cache_stats():
+async def get_api_cache_stats():
     """Get cache statistics and performance metrics."""
     stats = cache_manager.stats()
     return stats
 
 @app.post("/api/cache/clear")
-async def clear_cache():
+async def clear_api_cache():
     """Clear all cache entries."""
     cache_manager.clear()
     return {"message": "Cache cleared successfully"}
@@ -7602,7 +7953,10 @@ async def search_notes(query: str, limit: int = 100, offset: int = 0):
 
         # Get full metadata for each photo
         photos = []
-        for note_path in results.get('notes', []):
+        for row in results:
+            note_path = row.get("photo_path")
+            if not note_path:
+                continue
             try:
                 metadata = photo_search_engine.db.get_metadata(note_path)
                 if metadata:
@@ -7950,7 +8304,7 @@ async def detect_faces_in_batch(payload: dict):
 # Automatic Clustering Endpoints
 
 @app.post("/api/faces/cluster")
-async def cluster_faces(
+async def cluster_faces_api(
     similarity_threshold: float = 0.6,
     min_samples: int = 2
 ):
@@ -8199,7 +8553,8 @@ async def resolve_duplicates(group_id: str, resolution: DuplicateResolution):
     """Resolve a duplicate group."""
     try:
         duplicates_db = get_duplicates_db(settings.BASE_DIR / "duplicates.db")
-        success = duplicates_db.resolve_duplicates(group_id, resolution.resolution, resolution.keep_files)
+        keep_files = resolution.keep_files or []
+        success = duplicates_db.resolve_duplicates(group_id, resolution.resolution, keep_files)
         return {"success": success, "group_id": group_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -8319,7 +8674,7 @@ async def get_photos_by_person(person_name: str, limit: int = 100, offset: int =
 
 
 @app.get("/api/faces/stats")
-async def get_face_stats():
+async def get_face_stats_api():
     """Get face recognition statistics."""
     try:
         cursor = photo_search_engine.db.conn.cursor()

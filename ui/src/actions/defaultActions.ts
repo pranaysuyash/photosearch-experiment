@@ -5,7 +5,7 @@ import type {
   ActionOptions,
 } from '../types/actions';
 import { ActionCategory, ActionType } from '../types/actions';
-import { api } from '../api';
+import { api, type ExportOptions } from '../api';
 
 /**
  * Default photo actions that are registered with the ActionRegistry
@@ -190,13 +190,13 @@ export const exportAction: PhotoAction = {
     options?: ActionOptions
   ): Promise<ActionResult> => {
     try {
-      const exportOptions = {
+      const exportOptions: ExportOptions = {
         format: 'zip',
-        include_metadata: options?.includeMetadata ?? true,
-        include_thumbnails: options?.includeThumbnails ?? false,
-        max_resolution: options?.maxResolution ?? null,
+        include_metadata: options?.includeMetadata as boolean | undefined,
+        include_thumbnails: options?.includeThumbnails as boolean | undefined,
+        max_resolution: options?.maxResolution as number | undefined,
         password_protect: Boolean(options?.password),
-        password: options?.password,
+        password: options?.password as string | undefined,
       };
 
       const blob = await api.exportPhotos([photo.path], exportOptions);

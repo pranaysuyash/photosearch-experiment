@@ -3,18 +3,20 @@
  *
  * Provides advanced tag filtering with AND/OR logic for photo searches.
  */
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Tags, 
   Plus, 
   X, 
   Search, 
-  Filter,
+  Filter, 
   CircleEllipsis,
   CircleCheck,
   CircleX,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Hash,
+  CheckCircle,
+  MinusCircle
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -55,6 +57,7 @@ export function MultiTagFilter({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<TagFilter[]>([]);
+  const [showSavedFilters, setShowSavedFilters] = useState(false);
 
   // Load saved filters
   useEffect(() => {
@@ -63,7 +66,7 @@ export function MultiTagFilter({
 
   const loadSavedFilters = async () => {
     try {
-      const response = await api.get('/tag-filters');
+      const response = await api.getTagFilters();
       setSavedFilters(response.filters || []);
     } catch (err) {
       console.error('Failed to load saved filters:', err);
@@ -76,7 +79,7 @@ export function MultiTagFilter({
     const newExpression: TagExpression = {
       id: Date.now().toString(),
       tag: newTag.trim(),
-      operator: 'has'
+      operator: 'has' // Default to 'has' (include)
     };
 
     setExpressions([...expressions, newExpression]);
@@ -112,7 +115,12 @@ export function MultiTagFilter({
   };
 
   const applyFilter = async () => {
-    if (expressions.length === 0) return;
+    if (expressions.length === 0) {
+      // If no expressions, clear the filter
+      onFilterChange([], operator);
+      onSearch([]);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -134,14 +142,10 @@ export function MultiTagFilter({
 
       // In a real implementation, we would call an API endpoint that supports
       // multi-tag filtering with the specified operator
-      const response = await api.searchPhotos({
-        tags: tagList.join(','),
-        tag_operator: operator,
-        exclude_tags: excludeTags.join(',')
-      });
-
+      const response = await api.getPhotosByTags(tagList.join(','), operator, excludeTags.join(','));
+      
       onFilterChange(tagList, operator);
-      onSearch(response.results || []);
+      onSearch(response.photos || []);
     } catch (err) {
       console.error('Failed to apply filter:', err);
       setError('Failed to apply filter');
@@ -173,6 +177,14 @@ export function MultiTagFilter({
   const loadFilter = (filter: TagFilter) => {
     setExpressions(filter.tag_expressions);
     setOperator(filter.combination_operator);
+    setShowSavedFilters(false);
+  };
+
+  const clearFilter = () => {
+    setExpressions([]);
+    setNewTag('');
+    onFilterChange([], operator);
+    onSearch([]);
   };
 
   const operatorOptions = [
@@ -187,9 +199,31 @@ export function MultiTagFilter({
 
   return (
     <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
-      <div className="flex items-center gap-2 mb-4">
-        <Tags size={20} className="text-foreground" />
-        <h3 className="font-medium text-foreground">Multi-Tag Filter</h3>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <Tags size={20} className="text-foreground" />
+          <h3 className="font-medium text-foreground">Multi-Tag Filter</h3>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={saveFilter}
+            disabled={expressions.length === 0}
+            className="btn-glass btn-glass--muted text-xs px-2 py-1.5 flex items-center gap-1"
+            title="Save this filter for later"
+          >
+            <Hash size={14} />
+            Save
+          </button>
+          
+          <button
+            onClick={() => setShowSavedFilters(!showSavedFilters)}
+            className="btn-glass btn-glass--muted text-xs px-2 py-1.5"
+            title="Saved filters"
+          >
+            <CircleEllipsis size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Operator Selection */}
@@ -231,7 +265,7 @@ export function MultiTagFilter({
               value={newTag}
               onChange={(e) => handleTagInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && newTag.trim()) {
                   e.preventDefault();
                   addTagExpression();
                 } else if (e.key === 'Escape') {
@@ -278,18 +312,19 @@ export function MultiTagFilter({
                 <select
                   value={expr.operator}
                   onChange={(e) => updateTagExpression(expr.id, { operator: e.target.value as any })}
-                  className="px-2 py-1 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="px-2 py-1 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm"
                 >
                   <option value="has">Include</option>
                   <option value="not_has">Exclude</option>
                   <option value="maybe_has">Optional</option>
                 </select>
                 
-                <span className="text-foreground flex-1">#{expr.tag}</span>
+                <span className="text-foreground flex-1 text-sm">#{expr.tag}</span>
                 
                 <button
                   onClick={() => removeTagExpression(expr.id)}
                   className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"
+                  title="Remove tag"
                 >
                   <X size={14} />
                 </button>
@@ -303,7 +338,7 @@ export function MultiTagFilter({
       <div className="flex flex-wrap gap-2">
         <button
           onClick={applyFilter}
-          disabled={loading || expressions.length === 0}
+          disabled={loading || (expressions.length === 0)}
           className="btn-glass btn-glass--primary flex items-center gap-2 px-3 py-2"
         >
           {loading ? (
@@ -315,21 +350,7 @@ export function MultiTagFilter({
         </button>
         
         <button
-          onClick={saveFilter}
-          disabled={expressions.length === 0}
-          className="btn-glass btn-glass--muted flex items-center gap-2 px-3 py-2"
-        >
-          <Tags size={16} />
-          Save Filter
-        </button>
-        
-        <button
-          onClick={() => {
-            setExpressions([]);
-            setNewTag('');
-            onFilterChange([], operator);
-            onSearch([]);
-          }}
+          onClick={clearFilter}
           className="btn-glass btn-glass--muted flex items-center gap-2 px-3 py-2"
         >
           <X size={16} />
@@ -337,28 +358,54 @@ export function MultiTagFilter({
         </button>
       </div>
 
-      {/* Saved Filters */}
-      {savedFilters.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-white/10">
-          <h4 className="text-sm font-medium text-foreground mb-2">Saved Filters</h4>
-          <div className="flex flex-wrap gap-2">
-            {savedFilters.map(filter => (
-              <button
-                key={filter.id}
-                onClick={() => loadFilter(filter)}
-                className="btn-glass btn-glass--muted text-xs px-2 py-1.5"
-                title={`${filter.tag_expressions.length} tags, ${filter.combination_operator} logic`}
+      {/* Saved Filters Dropdown */}
+      {showSavedFilters && (
+        <div className={`${glass.surfaceStrong} absolute z-[1000] mt-1 w-64 border border-white/10 rounded-lg shadow-lg right-4 top-full`}>
+          <div className="p-2 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-foreground">Saved Filters</h4>
+              <button 
+                onClick={() => setShowSavedFilters(false)}
+                className="btn-glass btn-glass--muted w-6 h-6 p-0"
               >
-                {filter.name}
+                <X size={12} />
               </button>
-            ))}
+            </div>
           </div>
+          
+          {savedFilters.length === 0 ? (
+            <div className="p-4 text-center text-sm text-muted-foreground">
+              No saved filters
+            </div>
+          ) : (
+            <div className="max-h-60 overflow-y-auto">
+              {savedFilters.map(filter => (
+                <button
+                  key={filter.id}
+                  onClick={() => loadFilter(filter)}
+                  className="w-full text-left px-3 py-2 hover:bg-white/5 text-foreground text-sm flex items-center justify-between"
+                >
+                  <span>{filter.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {filter.combination_operator} • {filter.tag_expressions.length} tags
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
+      {/* Error Display */}
       {error && (
-        <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-2">
+        <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {error}
+          <button 
+            className="ml-2" 
+            onClick={() => setError(null)}
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>

@@ -19,7 +19,7 @@ import {
   Undo,
 } from 'lucide-react';
 import { glass } from '../../design/glass';
-import { api } from '../../api';
+import { api, type PhotoEdit } from '../../api';
 
 interface PhotoEditorProps {
   photoPath: string;
@@ -271,7 +271,7 @@ export function PhotoEditor({
     setIsProcessing(true);
     try {
       // Save edit instructions to server
-      await api.savePhotoEdit(photoPath, settings);
+      await api.savePhotoEdit(photoPath, settings as PhotoEdit);
 
       // For now, we'll still generate a local preview
       // In a full implementation, we could generate the edited image on the server

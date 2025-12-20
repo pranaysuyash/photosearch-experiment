@@ -4,15 +4,16 @@
  * Provides UI for creating photo stories and managing photo timelines.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  BookOpen, 
-  Calendar, 
-  MapPin, 
-  Image, 
-  Plus, 
-  X, 
-  Edit3, 
-  Share2, 
+import {
+  BookOpen,
+  Calendar,
+  MapPin,
+  Image,
+  Plus,
+  X,
+  Edit3,
+  Check,
+  Share2,
   Eye,
   EyeOff,
   Lock,
@@ -65,6 +66,7 @@ export function StoryCreator({
   const [privacyLevel, setPrivacyLevel] = useState<'private' | 'shared' | 'public'>('private');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [storyId, setStoryId] = useState<string | null>(null);
   const [currentPrivacy, setCurrentPrivacy] = useState<'private' | 'shared' | 'public'>('private');
   const [newCaption, setNewCaption] = useState('');
@@ -83,11 +85,7 @@ export function StoryCreator({
 
     try {
       // Create the story
-      const newStory = await api.createStory({
-        title,
-        description,
-        privacy_level: privacyLevel
-      });
+      const newStory = await api.createStory(title, description, privacyLevel);
 
       const storyId = newStory.story_id;
 
@@ -137,7 +135,7 @@ export function StoryCreator({
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
       <div 
         className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
-        onClick={onCancel}
+        onClick={onClose}
       />
       
       <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}>
@@ -152,7 +150,7 @@ export function StoryCreator({
             </div>
           </div>
           <button
-            onClick={onCancel}
+            onClick={onClose}
             className="btn-glass btn-glass--muted w-10 h-10 p-0 flex items-center justify-center"
             aria-label="Close"
           >

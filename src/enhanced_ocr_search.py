@@ -39,7 +39,8 @@ import sqlite3
 import numpy as np
 import threading
 import logging
-from typing import List, Dict, Optional, Any, Tuple, Callable
+import hashlib
+from typing import List, Dict, Optional, Any, Tuple, Callable, Set, cast
 from pathlib import Path
 from datetime import datetime
 from collections import defaultdict
@@ -48,28 +49,29 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import cv2
 from PIL import Image
-import requests
+import requests  # type: ignore[import-untyped]
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Optional OCR dependency (handled gracefully if missing)
 try:
-    import pytesseract
+    import pytesseract  # type: ignore[import-not-found]
     PYTESSERACT_AVAILABLE = True
 except ImportError:
     PYTESSERACT_AVAILABLE = False
     pytesseract = None  # type: ignore
     logger.warning("pytesseract not available. Install with: pip install pytesseract and ensure Tesseract OCR is installed on the system")
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer  # type: ignore[import-untyped]
+from sklearn.metrics.pairwise import cosine_similarity  # type: ignore[import-untyped]
 
 # Handwriting recognition libraries (optional)
 try:
-    import easyocr
+    import easyocr  # type: ignore[import-not-found]
     HANDWRITING_AVAILABLE = True
 except ImportError:
     HANDWRITING_AVAILABLE = False
+    easyocr = None  # type: ignore
     logger.warning("EasyOCR not available. Install with: pip install easyocr")
 
 # Language support configuration
@@ -141,19 +143,20 @@ class EnhancedOCRSearch:
 
         # Threading and caching
         self.cache_lock = threading.Lock()
-        self.ocr_cache = {}
-        self.language_models = {}
+        self.ocr_cache: Dict[str, OCRResult] = {}
+        self.language_models: Dict[str, Any] = {}
 
         # OCR engines
         self.tesseract_available = False
         self.easyocr_reader = None
 
         # Performance tracking
-        self.stats = {
-            'images_processed': 0,
-            'text_regions_extracted': 0,
-            'total_characters': 0,
-            'processing_time_ms': 0
+        # Use float values internally to avoid numpy scalar and int/float mixing.
+        self.stats: Dict[str, float] = {
+            'images_processed': 0.0,
+            'text_regions_extracted': 0.0,
+            'total_characters': 0.0,
+            'processing_time_ms': 0.0
         }
 
         # Initialize components
@@ -166,9 +169,7 @@ class EnhancedOCRSearch:
         # Import schema extensions
         schema_ext = Path(__file__).parent.parent / 'server' / 'schema_extensions.py'
         if schema_ext.exists():
-            import sys
-            sys.path.append(str(schema_ext.parent))
-            from schema_extensions import SchemaExtensions
+            from server.schema_extensions import SchemaExtensions
 
             schema = SchemaExtensions(Path(self.db_path))
             schema.extend_schema()
@@ -274,10 +275,11 @@ class EnhancedOCRSearch:
         detected_langs = [lang for lang, score in language_scores.items() if score > 0]
         return detected_langs if detected_langs else ['unknown']
 
-    def _extract_text_tesseract(self, image_path: str, languages: List[str] = None) -> List[TextRegion]:
+    def _extract_text_tesseract(self, image_path: str, languages: Optional[List[str]] = None) -> List[TextRegion]:
         """Extract text using Tesseract OCR with region detection"""
-        if not self.tesseract_available:
+        if not self.tesseract_available or not PYTESSERACT_AVAILABLE or pytesseract is None:
             return []
+        assert pytesseract is not None
 
         try:
             # Configure Tesseract
@@ -287,7 +289,7 @@ class EnhancedOCRSearch:
             img = Image.open(image_path)
             data = pytesseract.image_to_data(img, lang=lang_string, output_type=pytesseract.Output.DICT)
 
-            text_regions = []
+            text_regions: List[TextRegion] = []
             current_text = ""
             current_conf = 0
             bbox_start = None
@@ -342,7 +344,7 @@ class EnhancedOCRSearch:
         try:
             results = self.easyocr_reader.readtext(image_path)
 
-            text_regions = []
+            text_regions: List[TextRegion] = []
             for (bbox, text, confidence) in results:
                 if confidence > 0.5:  # Filter low confidence results
                     # bbox is in format [[x1,y1], [x2,y2], [x3,y3], [x4,y4]]
@@ -372,7 +374,7 @@ class EnhancedOCRSearch:
             logger.error(f"Error extracting handwriting from {image_path}: {e}")
             return []
 
-    def extract_text(self, image_path: str, languages: List[str] = None) -> OCRResult:
+    def extract_text(self, image_path: str, languages: Optional[List[str]] = None) -> OCRResult:
         """
         Extract text from a single image with multiple engines.
 
@@ -412,7 +414,7 @@ class EnhancedOCRSearch:
                 detected_langs = self._detect_language(full_text)
 
             # Calculate average confidence
-            avg_confidence = np.mean([region.confidence_score for region in all_regions]) if all_regions else 0.0
+            avg_confidence = float(np.mean([region.confidence_score for region in all_regions])) if all_regions else 0.0
 
             processing_time = (time.time() - start_time) * 1000
 
@@ -427,10 +429,10 @@ class EnhancedOCRSearch:
             )
 
             # Update stats
-            self.stats['images_processed'] += 1
-            self.stats['text_regions_extracted'] += len(all_regions)
-            self.stats['total_characters'] += len(full_text)
-            self.stats['processing_time_ms'] += processing_time
+            self.stats['images_processed'] += 1.0
+            self.stats['text_regions_extracted'] += float(len(all_regions))
+            self.stats['total_characters'] += float(len(full_text))
+            self.stats['processing_time_ms'] += float(processing_time)
 
             return result
 
@@ -450,7 +452,7 @@ class EnhancedOCRSearch:
                           directory_path: str,
                           max_workers: int = 4,
                           show_progress: bool = False,
-                          languages: List[str] = None) -> Dict[str, Any]:
+                          languages: Optional[List[str]] = None) -> Dict[str, Any]:
         """
         Extract text from all images in a directory.
 
@@ -464,25 +466,25 @@ class EnhancedOCRSearch:
             Dictionary with batch processing results
         """
         start_time = time.time()
-        results = {
+        results: Dict[str, Any] = {
             'total_images': 0,
             'processed_images': 0,
             'text_regions_found': 0,
             'total_characters': 0,
-            'languages_detected': set(),
-            'errors': []
+            'languages_detected': cast(Set[str], set()),
+            'errors': cast(List[str], [])
         }
 
         # Get all image files
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-        image_files = []
+        image_files: List[Path] = []
         for ext in image_extensions:
             image_files.extend(Path(directory_path).glob(f'*{ext}'))
             image_files.extend(Path(directory_path).glob(f'*{ext.upper()}'))
 
         results['total_images'] = len(image_files)
 
-        if show_progress:
+        if show_progress and self.progress_callback:
             self.progress_callback(f"Processing {len(image_files)} images for text extraction...")
 
         # Process images in parallel
@@ -506,7 +508,8 @@ class EnhancedOCRSearch:
 
                     if show_progress and (i + 1) % 10 == 0:
                         progress = ((i + 1) / len(image_files)) * 100
-                        self.progress_callback(f"Progress: {progress:.1f}% - {results['text_regions_found']} text regions")
+                        if self.progress_callback:
+                            self.progress_callback(f"Progress: {progress:.1f}% - {results['text_regions_found']} text regions")
 
                 except Exception as e:
                     error_msg = f"Error processing {img_path}: {e}"
@@ -517,7 +520,7 @@ class EnhancedOCRSearch:
         results['languages_detected'] = list(results['languages_detected'])
         results['processing_time_ms'] = int((time.time() - start_time) * 1000)
 
-        if show_progress:
+        if show_progress and self.progress_callback:
             self.progress_callback(f"Completed: {results['processed_images']} images, {results['text_regions_found']} text regions")
 
         return results
@@ -587,8 +590,8 @@ class EnhancedOCRSearch:
         """
         try:
             # Build query conditions
-            conditions = ["MATCH(text_content) AGAINST(? IN NATURAL LANGUAGE MODE)"]
-            params = [query]
+            conditions: List[str] = ["MATCH(text_content) AGAINST(? IN NATURAL LANGUAGE MODE)"]
+            params: List[Any] = [query]
 
             if language:
                 conditions.append("language_code = ?")
@@ -709,15 +712,15 @@ class EnhancedOCRSearch:
 
     def get_stats(self) -> Dict[str, Any]:
         """Get OCR processing statistics"""
-        stats = self.stats.copy()
+        stats: Dict[str, Any] = self.stats.copy()
 
         # Add database stats
         try:
             cursor = self.conn.execute("SELECT COUNT(*) FROM ocr_text_regions")
-            stats['total_text_regions_in_db'] = cursor.fetchone()[0]
+            stats['total_text_regions_in_db'] = int(cursor.fetchone()[0])
 
             cursor = self.conn.execute("SELECT COUNT(DISTINCT photo_path) FROM ocr_text_regions")
-            stats['images_with_text_in_db'] = cursor.fetchone()[0]
+            stats['images_with_text_in_db'] = int(cursor.fetchone()[0])
 
             # Language distribution
             cursor = self.conn.execute("""
@@ -733,6 +736,14 @@ class EnhancedOCRSearch:
 
         stats['tesseract_available'] = self.tesseract_available
         stats['handwriting_available'] = self.enable_handwriting
+
+        # Cast known counters to ints for nicer API output.
+        for key in ('images_processed', 'text_regions_extracted', 'total_characters', 'processing_time_ms'):
+            if key in stats:
+                try:
+                    stats[key] = int(stats[key])
+                except Exception:
+                    pass
 
         return stats
 

@@ -62,20 +62,20 @@ class MetadataDatabase:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path
-        self.conn = None
-        self._init_database()
-    
-    def _init_database(self):
-        """Create database tables if they don't exist."""
-        # Use connection with proper settings for concurrent access
-        self.conn = sqlite3.connect(
-            self.db_path, 
+        # Establish the connection up-front so `conn` is never Optional for callers.
+        # (This avoids pervasive `None` checks throughout the codebase and matches
+        # the actual runtime behavior, since initialization always opens a DB.)
+        self.conn: sqlite3.Connection = sqlite3.connect(
+            self.db_path,
             check_same_thread=False,
             timeout=30.0,  # 30 second timeout for database locks
             isolation_level=None  # Autocommit mode for better concurrency
         )
         self.conn.row_factory = sqlite3.Row  # Return rows as dictionaries
-        
+        self._init_database()
+    
+    def _init_database(self):
+        """Create database tables if they don't exist."""
         # Enable WAL mode for better concurrent access
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")

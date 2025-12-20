@@ -208,6 +208,7 @@ export function PhotoDetail({
   const { setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
   const [showExplanation, setShowExplanation] = useState(false);
+  const [photoNote, setPhotoNote] = useState<string | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [rating, setRating] = useState(0);
@@ -276,6 +277,12 @@ export function PhotoDetail({
       .getPhotoRating(photo.path)
       .then(setRating)
       .catch(() => setRating(0));
+
+    // Load note
+    api
+      .getPhotoNote(photo.path)
+      .then((res) => setPhotoNote(res.note))
+      .catch(() => setPhotoNote(null));
 
     setTagsLoading(true);
     api
@@ -747,7 +754,7 @@ export function PhotoDetail({
                   <div className='mt-3'>
                     <NotesEditor
                       photoPath={photo.path}
-                      initialNote={photo.note || ''}
+                      initialNote={photoNote || ''}
                       size='md'
                       showLabel={true}
                     />

@@ -3,7 +3,7 @@
  *
  * Manages global toast notifications with undo functionality.
  */
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, type ReactNode } from 'react';
 import { Toast } from './Toast';
 
 type ToastType = 'info' | 'success' | 'warning' | 'error' | 'undo';

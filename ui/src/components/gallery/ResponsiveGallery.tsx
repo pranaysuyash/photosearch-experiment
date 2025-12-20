@@ -4,16 +4,16 @@
  * A mobile-optimized gallery with touch-friendly controls and swipe gestures.
  */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
+import {
   Grid3X3,
   List,
-  ArrowsPointingOut,
-  MagnifyingGlassMinus,
-  MagnifyingGlassPlus,
+  Maximize,
+  ZoomOut,
+  ZoomIn,
   X,
   ChevronLeft,
   ChevronRight,
-  ArrowPath
+  RotateCcw
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -180,7 +180,7 @@ export function ResponsiveGallery({
           onClick={() => window.location.reload()}
           className="btn-glass btn-glass--primary mt-4 text-sm px-4 py-2 flex items-center gap-2 mx-auto"
         >
-          <ArrowPath size={16} />
+          <RotateCcw size={16} />
           Reload Gallery
         </button>
       </div>
@@ -313,7 +313,7 @@ export function ResponsiveGallery({
                 onClick={() => setZoomLevel(prev => Math.max(prev - 0.25, 1))}
                 className="btn-glass btn-glass--primary p-2"
               >
-                <MagnifyingGlassMinus size={20} />
+                <ZoomOut size={20} />
               </button>
               <div className="btn-glass flex items-center px-3">
                 <span className="text-sm">{Math.round(zoomLevel * 100)}%</span>
@@ -322,7 +322,7 @@ export function ResponsiveGallery({
                 onClick={() => setZoomLevel(prev => Math.min(prev + 0.25, 3))}
                 className="btn-glass btn-glass--primary p-2"
               >
-                <MagnifyingGlassPlus size={20} />
+                <ZoomIn size={20} />
               </button>
             </div>
             

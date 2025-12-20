@@ -9,7 +9,7 @@ import hashlib
 import os
 import logging
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple
+from typing import Any, Optional, List, Dict, Tuple, cast
 from dataclasses import dataclass
 from datetime import datetime
 import json
@@ -27,7 +27,7 @@ class FaceDetection:
     bounding_box: Dict[str, float]  # {x, y, width, height}
     embedding: Optional[List[float]] = None  # Face embedding vector
     quality_score: Optional[float] = None  # 0-1 quality score
-    created_at: str = None
+    created_at: Optional[str] = None
 
 
 @dataclass
@@ -37,8 +37,8 @@ class FaceCluster:
     label: Optional[str] = None  # User-provided name
     face_count: int = 0
     photo_count: int = 0
-    created_at: str = None
-    updated_at: str = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 @dataclass
@@ -48,7 +48,7 @@ class PhotoPersonAssociation:
     cluster_id: str
     detection_id: str
     confidence: float  # Confidence that this face belongs to the cluster
-    created_at: str = None
+    created_at: Optional[str] = None
 
 
 class FaceClusteringDB:
@@ -511,7 +511,7 @@ class FaceClusteringDB:
             # Use DBSCAN for clustering
             # eps = similarity_threshold (1 - cosine similarity)
             # min_samples = minimum number of faces to form a cluster
-            from sklearn.cluster import DBSCAN
+            from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
             
             # DBSCAN uses distance, so we convert similarity threshold
             # Cosine similarity of 0.6 ≈ distance of 0.894 (1 - 0.6^2, but simplified)
@@ -527,7 +527,7 @@ class FaceClusteringDB:
             labels = clustering.fit_predict(embedding_array)
             
             # Create clusters
-            clusters = {}  # cluster_id -> list of detection_ids
+            clusters: Dict[int, Dict[str, Any]] = {}  # label -> {'cluster_id': str, 'detection_ids': List[str]}
             noise_detections = []  # Detections not in any cluster
             
             for detection_id, label in zip(detection_ids, labels):
@@ -539,16 +539,16 @@ class FaceClusteringDB:
                         cluster_id = self.add_face_cluster(label=f"Auto Cluster {label}")
                         clusters[label] = {
                             'cluster_id': cluster_id,
-                            'detection_ids': []
+                            'detection_ids': cast(List[str], []),
                         }
                     
-                    clusters[label]['detection_ids'].append(detection_id)
+                    cast(List[str], clusters[label]['detection_ids']).append(detection_id)
             
             # Associate faces with their clusters
             for cluster_label, cluster_data in clusters.items():
-                cluster_id = cluster_data['cluster_id']
+                cluster_id = cast(str, cluster_data['cluster_id'])
                 
-                for detection_id in cluster_data['detection_ids']:
+                for detection_id in cast(List[str], cluster_data['detection_ids']):
                     # Get the photo path for this detection
                     with sqlite3.connect(str(self.db_path)) as conn:
                         row = conn.execute("""
@@ -568,9 +568,10 @@ class FaceClusteringDB:
                             )
             
             # Return clustering results
-            result = {}
+            result: Dict[str, List[str]] = {}
             for cluster_label, cluster_data in clusters.items():
-                result[cluster_data['cluster_id']] = cluster_data['detection_ids']
+                cid = cast(str, cluster_data['cluster_id'])
+                result[cid] = cast(List[str], cluster_data['detection_ids'])
             
             logger.info(f"Created {len(clusters)} clusters from {len(detection_ids)} faces")
             logger.info(f"Noise detections (not clustered): {len(noise_detections)}")

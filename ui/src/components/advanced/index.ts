@@ -4,37 +4,31 @@
  * Exports all advanced features components for easy integration
  */
 
-export { FaceRecognitionPanel } from './FaceRecognitionPanel';
-export { DuplicateManagementPanel } from './DuplicateManagementPanel';
-export { OCRTextSearchPanel } from './OCRTextSearchPanel';
-export { SmartAlbumsBuilder } from './SmartAlbumsBuilder';
-export { AnalyticsDashboard } from './AnalyticsDashboard';
+export { default as FaceRecognitionPanel } from './FaceRecognitionPanel';
+export { default as DuplicateManagementPanel } from './DuplicateManagementPanel';
+export { default as OCRTextSearchPanel } from './OCRTextSearchPanel';
+export { default as SmartAlbumsBuilder } from './SmartAlbumsBuilder';
+export { default as AnalyticsDashboard } from './AnalyticsDashboard';
 
 // Re-export types for external use
-export type {
-  FaceCluster,
-  FaceDetection
-} from './FaceRecognitionPanel';
+export type { FaceCluster, FaceDetection } from './FaceRecognitionPanel';
 
 export type {
   DuplicateGroup,
-  ResolutionSuggestion
+  ResolutionSuggestion,
 } from './DuplicateManagementPanel';
 
-export type {
-  TextRegion,
-  OCRResult
-} from './OCRTextSearchPanel';
+export type { TextRegion, OCRResult } from './OCRTextSearchPanel';
 
 export type {
   AlbumRule,
   AlbumTemplate,
-  SmartAlbum
+  SmartAlbum,
 } from './SmartAlbumsBuilder';
 
 export type {
   LibraryAnalytics,
   ContentInsight,
   SearchAnalytics,
-  PerformanceMetric
+  PerformanceMetric,
 } from './AnalyticsDashboard';

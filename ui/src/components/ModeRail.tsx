@@ -4,7 +4,6 @@ import { Film, Globe, Grid3x3 } from 'lucide-react';
 import { ModeSwitcher } from './layout/ModeSwitcher';
 
 type Mode = 'grid' | 'globe' | 'story';
-type Variant = 'standalone' | 'inline';
 
 function getMode(pathname: string): Mode {
   if (pathname.startsWith('/globe')) return 'globe';

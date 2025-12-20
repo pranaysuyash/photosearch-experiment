@@ -143,7 +143,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
       ...prev,
       sharePermissions: {
         ...prev.sharePermissions,
-        [permission]: !prev.sharePermissions[permission]
+        [permission]: !(prev.sharePermissions as Record<string, boolean>)[permission]
       }
     }));
   };

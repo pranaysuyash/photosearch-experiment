@@ -19,7 +19,7 @@ import os
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -60,11 +60,11 @@ class InsightFaceBackend(FaceBackend):
     def __init__(self, models_dir: Path, providers: Optional[List[str]] = None):
         self._models_dir = models_dir
         self._providers = providers
-        self._analyzer = None
+        self._analyzer: Optional[Any] = None
 
     def is_available(self) -> bool:
         try:
-            import insightface  # noqa: F401
+            import insightface  # type: ignore[import-untyped]
             import cv2  # noqa: F401
         except Exception:
             return False
@@ -74,24 +74,29 @@ class InsightFaceBackend(FaceBackend):
         if self._analyzer is not None:
             return
 
-        from insightface.app import FaceAnalysis
+        from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
 
         self._models_dir.mkdir(parents=True, exist_ok=True)
 
         # buffalo_l includes detection + recognition (embeddings)
-        self._analyzer = FaceAnalysis(
+        analyzer = FaceAnalysis(
             name="buffalo_l",
             root=str(self._models_dir),
             providers=self._providers or ["CPUExecutionProvider"],
         )
         # ctx_id=-1 => first available device
-        self._analyzer.prepare(ctx_id=-1, det_thresh=0.5)
+        analyzer.prepare(ctx_id=-1, det_thresh=0.5)
+        self._analyzer = analyzer
 
     def detect_bgr(self, img_bgr: np.ndarray) -> List[Dict]:
         if self._analyzer is None:
             self.load()
 
-        faces = self._analyzer.get(img_bgr)
+        analyzer = self._analyzer
+        if analyzer is None:
+            raise RuntimeError("InsightFace backend failed to initialize")
+
+        faces = analyzer.get(img_bgr)
         results: List[Dict] = []
         for face in faces:
             x1, y1, x2, y2 = face.bbox
@@ -110,11 +115,11 @@ class MediaPipeBackend(FaceBackend):
     name = "mediapipe"
 
     def __init__(self):
-        self._detector = None
+        self._detector: Optional[Any] = None
 
     def is_available(self) -> bool:
         try:
-            import mediapipe as mp  # noqa: F401
+            import mediapipe as mp  # type: ignore[import-not-found]
         except Exception:
             return False
         return True
@@ -123,7 +128,7 @@ class MediaPipeBackend(FaceBackend):
         if self._detector is not None:
             return
 
-        import mediapipe as mp
+        import mediapipe as mp  # type: ignore[import-not-found]
 
         # model_selection=1 generally favors more accurate model
         self._detector = mp.solutions.face_detection.FaceDetection(
@@ -134,11 +139,15 @@ class MediaPipeBackend(FaceBackend):
         if self._detector is None:
             self.load()
 
+        detector = self._detector
+        if detector is None:
+            raise RuntimeError("MediaPipe backend failed to initialize")
+
         # MediaPipe expects RGB
         img_rgb = img_bgr[:, :, ::-1]
         h, w = img_rgb.shape[:2]
 
-        res = self._detector.process(img_rgb)
+        res = detector.process(img_rgb)
         if not res.detections:
             return []
 
@@ -165,11 +174,11 @@ class UltralyticsYoloBackend(FaceBackend):
 
     def __init__(self, weights_path: Path):
         self._weights_path = weights_path
-        self._model = None
+        self._model: Optional[Any] = None
 
     def is_available(self) -> bool:
         try:
-            import ultralytics  # noqa: F401
+            import ultralytics  # type: ignore[import-not-found]
         except Exception:
             return False
         return self._weights_path.exists()
@@ -178,7 +187,7 @@ class UltralyticsYoloBackend(FaceBackend):
         if self._model is not None:
             return
 
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # type: ignore[import-not-found]
 
         self._model = YOLO(str(self._weights_path))
 
@@ -186,8 +195,12 @@ class UltralyticsYoloBackend(FaceBackend):
         if self._model is None:
             self.load()
 
+        model = self._model
+        if model is None:
+            raise RuntimeError("YOLO backend failed to initialize")
+
         # Ultralytics can accept numpy arrays (BGR is typically fine)
-        preds = self._model.predict(img_bgr, verbose=False)
+        preds = model.predict(img_bgr, verbose=False)
         if not preds:
             return []
 

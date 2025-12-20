@@ -24,7 +24,7 @@ Usage:
 
 import json
 import time
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 from datetime import datetime
 
 class CodeSplittingConfig:
@@ -115,7 +115,8 @@ class LazyLoadMonitor:
     def __init__(self, storage_path: str = "lazy_load_performance.json"):
         """Initialize lazy load monitor."""
         self.storage_path = storage_path
-        self.load_times = {}
+        # component_name -> stats dict
+        self.load_times: Dict[str, Dict[str, Any]] = {}
         self._load_performance_data()
     
     def _load_performance_data(self) -> None:
@@ -181,7 +182,7 @@ class LazyLoadMonitor:
         
         self._save_performance_data()
     
-    def get_performance_stats(self, component_name: str = None) -> Dict:
+    def get_performance_stats(self, component_name: str | None = None) -> Dict[str, Any]:
         """Get performance statistics for lazy-loaded components."""
         if component_name:
             if component_name in self.load_times:
@@ -221,9 +222,9 @@ class LazyLoadMonitor:
             'components': list(self.load_times.keys())
         }
     
-    def get_chunk_performance(self) -> Dict:
+    def get_chunk_performance(self) -> Dict[str, Dict[str, Any]]:
         """Get performance statistics by chunk."""
-        chunk_stats = {}
+        chunk_stats: Dict[str, Dict[str, Any]] = {}
         
         for component_name, component_data in self.load_times.items():
             for chunk_name, chunk_data in component_data['chunks'].items():
@@ -231,20 +232,23 @@ class LazyLoadMonitor:
                     chunk_stats[chunk_name] = {
                         'components': [],
                         'total_loads': 0,
-                        'total_time_ms': 0,
-                        'avg_time_ms': 0
+                        'total_time_ms': 0.0,
+                        'avg_time_ms': 0.0,
                     }
-                
-                chunk_stats[chunk_name]['components'].append(component_name)
-                chunk_stats[chunk_name]['total_loads'] += chunk_data['count']
-                chunk_stats[chunk_name]['total_time_ms'] += chunk_data['total_time_ms']
+
+                stats = chunk_stats[chunk_name]
+                components = cast(List[str], stats['components'])
+                components.append(component_name)
+
+                # Keep numeric fields well-typed
+                stats['total_loads'] = int(stats.get('total_loads', 0)) + int(chunk_data.get('count', 0))
+                stats['total_time_ms'] = float(stats.get('total_time_ms', 0.0)) + float(chunk_data.get('total_time_ms', 0.0))
         
         # Calculate averages
-        for chunk_name, stats in chunk_stats.items():
-            if stats['total_loads'] > 0:
-                stats['avg_time_ms'] = stats['total_time_ms'] / stats['total_loads']
-            else:
-                stats['avg_time_ms'] = 0
+        for _chunk_name, stats in chunk_stats.items():
+            total_loads = int(stats.get('total_loads', 0))
+            total_time = float(stats.get('total_time_ms', 0.0))
+            stats['avg_time_ms'] = (total_time / total_loads) if total_loads > 0 else 0.0
         
         return chunk_stats
 

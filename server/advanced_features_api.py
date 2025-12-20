@@ -103,7 +103,7 @@ class AdvancedFeaturesManager:
         self.ocr_search = None
 
         # Progress tracking
-        self.active_jobs = {}
+        self.active_jobs: Dict[str, Dict[str, Any]] = {}
 
     async def initialize(self):
         """Initialize all feature modules"""
@@ -148,7 +148,7 @@ class AdvancedFeaturesManager:
         }
         return job_id
 
-    def update_job_status(self, job_id: str, status: str, message: str, progress: float = None):
+    def update_job_status(self, job_id: str, status: str, message: str, progress: Optional[float] = None):
         """Update job status"""
         if job_id in self.active_jobs:
             self.active_jobs[job_id].update({
@@ -516,7 +516,7 @@ async def get_library_analytics(request: AnalyticsRequest) -> JSONResponse:
     try:
         manager = await get_features_manager()
 
-        analytics = {
+        analytics: Dict[str, Any] = {
             'face_recognition': {},
             'duplicate_detection': {},
             'ocr_processing': {},

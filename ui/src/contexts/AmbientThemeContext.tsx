@@ -3,6 +3,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -10,6 +11,8 @@ import React, {
 import { useAmbientTheme } from '../hooks/useAmbientTheme';
 
 type AmbientThemeContextValue = {
+  /** Whether the OS/browser currently prefers a dark color scheme. */
+  isDark: boolean;
   setBaseAccentUrl: (url: string | null) => void;
   setOverrideAccentUrl: (key: string, url: string | null) => void;
   clearOverrideAccent: (key: string) => void;
@@ -30,6 +33,16 @@ export function AmbientThemeProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
+      return false;
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
   const [baseAccentUrl, setBaseAccentUrl] = useState<string | null>(null);
   const overridesRef = useRef<Map<string, string>>(new Map());
   const [lastOverrideUrl, setLastOverrideUrl] = useState<string | null>(null);
@@ -39,6 +52,34 @@ export function AmbientThemeProvider({
   }, [baseAccentUrl, lastOverrideUrl]);
 
   useAmbientTheme(effectiveAccentUrl);
+
+  // Keep a simple signal available to components that want to tweak styling.
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      typeof window.matchMedia !== 'function'
+    ) {
+      return;
+    }
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const onChange = () => setIsDark(media.matches);
+    onChange();
+
+    // Modern browsers
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    }
+
+    // Legacy Safari
+    const legacy = media as unknown as {
+      addListener: (cb: () => void) => void;
+      removeListener: (cb: () => void) => void;
+    };
+    legacy.addListener(onChange);
+    return () => legacy.removeListener(onChange);
+  }, []);
 
   const setOverrideAccentUrl = useCallback(
     (key: string, url: string | null) => {
@@ -67,11 +108,12 @@ export function AmbientThemeProvider({
 
   const value = useMemo<AmbientThemeContextValue>(
     () => ({
+      isDark,
       setBaseAccentUrl,
       setOverrideAccentUrl,
       clearOverrideAccent,
     }),
-    [setOverrideAccentUrl, clearOverrideAccent]
+    [isDark, setOverrideAccentUrl, clearOverrideAccent]
   );
 
   return (
