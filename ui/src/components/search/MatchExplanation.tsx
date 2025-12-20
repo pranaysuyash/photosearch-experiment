@@ -90,22 +90,19 @@ export const MatchExplanation = ({
 }: MatchExplanationProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Close modal on escape key and manage body scroll
+  // Close modal on escape key and manage body scroll (optimized)
   useEffect(() => {
+    if (!isExpanded) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsExpanded(false);
       }
     };
 
-    if (isExpanded) {
-      document.addEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'hidden';
-      console.log('Modal opened, body scroll disabled');
-    } else {
-      document.body.style.overflow = 'unset';
-      console.log('Modal closed, body scroll restored');
-    }
+    // Only manage body scroll when modal is actually expanded
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
@@ -141,7 +138,6 @@ export const MatchExplanation = ({
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Match explanation clicked! Opening modal...');
             setIsExpanded(true);
           }}
           type="button"

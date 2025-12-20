@@ -275,7 +275,7 @@ def detect_changes(old_catalog: Dict, new_scan: Dict) -> Dict:
         >>> print(changes['files_added'])
         ['/Users/pranay/Pictures/new_photo.jpg']
     """
-    changes = {
+    changes: Dict[str, List[str]] = {
         'files_added': [],
         'files_removed': [],
         'folders_added': [],
@@ -685,8 +685,8 @@ def interactive_mode(catalog_file: str = 'media_catalog.json'):
         choice = input("\nEnter your choice (1-7): ").strip()
         
         if choice == '1':
-            path = input("Enter path to scan (press Enter for user home): ").strip()
-            path = path if path else None
+            path_input = input("Enter path to scan (press Enter for user home): ").strip()
+            path: Optional[str] = path_input if path_input else None
             
             print("\nStarting full scan...")
             scan_result = scan_directories(path)
@@ -723,7 +723,7 @@ def interactive_mode(catalog_file: str = 'media_catalog.json'):
                 continue
             
             # Use the original scan path from the catalog
-            scan_path = existing.get('metadata', {}).get('scan_root')
+            scan_path: Optional[str] = existing.get('metadata', {}).get('scan_root')
             
             print("\nStarting incremental update...")
             new_scan = scan_directories(scan_path, incremental=True, existing_catalog=existing)

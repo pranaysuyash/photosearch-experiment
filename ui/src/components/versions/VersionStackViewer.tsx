@@ -4,18 +4,18 @@
  * Provides a UI for managing photo version stacks (originals and edited copies).
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Layers, 
-  Edit3, 
-  Copy, 
-  RotateCcw, 
-  History, 
-  Trash2, 
-  X, 
+import {
+  Layers,
+  Edit3,
+  Copy,
+  RotateCcw,
+  History,
+  Trash2,
+  X,
   Save,
   Eye,
   Download,
-  MoreVertical
+  MoreVertical,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -50,11 +50,11 @@ interface VersionStackProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export function VersionStackViewer({ 
-  photoPath, 
-  currentVersionPath, 
+export function VersionStackViewer({
+  photoPath,
+  currentVersionPath,
   onVersionChange,
-  size = 'md'
+  size = 'md',
 }: VersionStackProps) {
   const [versionStack, setVersionStack] = useState<VersionStack | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export function VersionStackViewer({
     try {
       setLoading(true);
       setError(null);
-      
+
       const stack = await api.getVersionStack(photoPath);
       setVersionStack(stack);
     } catch (err) {
@@ -88,7 +88,7 @@ export function VersionStackViewer({
 
   const createNewVersion = async (editInstructions: any) => {
     if (!versionStack) return;
-    
+
     try {
       // In a real implementation, this would apply edits to create a new version
       // For now, we'll simulate creating a new version
@@ -100,7 +100,7 @@ export function VersionStackViewer({
         'Version created from edits',
         editInstructions
       );
-      
+
       loadVersionStack(); // Refresh the stack
     } catch (err) {
       console.error('Failed to create new version:', err);
@@ -109,12 +109,16 @@ export function VersionStackViewer({
   };
 
   const deleteVersion = async (versionId: string) => {
-    if (!window.confirm('Are you sure you want to delete this version? This cannot be undone.')) {
+    if (
+      !window.confirm(
+        'Are you sure you want to delete this version? This cannot be undone.'
+      )
+    ) {
       return;
     }
-    
+
     try {
-      await api.deletePhotoVersion(versionId);
+      await api.deleteVersion(versionId);
       loadVersionStack(); // Refresh the stack
     } catch (err) {
       console.error('Failed to delete version:', err);
@@ -125,12 +129,12 @@ export function VersionStackViewer({
   if (loading) {
     return (
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
-        <div className="flex items-center gap-2 mb-2">
-          <Layers size={16} className="text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Versions</span>
+        <div className='flex items-center gap-2 mb-2'>
+          <Layers size={16} className='text-muted-foreground' />
+          <span className='text-sm font-medium text-foreground'>Versions</span>
         </div>
-        <div className="flex items-center justify-center h-20">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className='flex items-center justify-center h-20'>
+          <div className='w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin' />
         </div>
       </div>
     );
@@ -139,11 +143,11 @@ export function VersionStackViewer({
   if (error) {
     return (
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
-        <div className="flex items-center gap-2 mb-2">
-          <Layers size={16} className="text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Versions</span>
+        <div className='flex items-center gap-2 mb-2'>
+          <Layers size={16} className='text-muted-foreground' />
+          <span className='text-sm font-medium text-foreground'>Versions</span>
         </div>
-        <div className="text-sm text-destructive">{error}</div>
+        <div className='text-sm text-destructive'>{error}</div>
       </div>
     );
   }
@@ -151,13 +155,13 @@ export function VersionStackViewer({
   if (!versionStack || versionStack.versions.length <= 1) {
     return (
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
-        <div className="flex items-center gap-2 mb-2">
-          <Layers size={16} className="text-muted-foreground" />
-          <span className="text-sm font-medium text-foreground">Versions</span>
+        <div className='flex items-center gap-2 mb-2'>
+          <Layers size={16} className='text-muted-foreground' />
+          <span className='text-sm font-medium text-foreground'>Versions</span>
         </div>
-        <div className="text-sm text-muted-foreground italic">
-          {versionStack?.versions.length === 1 
-            ? 'No edited versions yet' 
+        <div className='text-sm text-muted-foreground italic'>
+          {versionStack?.versions.length === 1
+            ? 'No edited versions yet'
             : 'No versions found for this photo'}
         </div>
       </div>
@@ -172,8 +176,9 @@ export function VersionStackViewer({
   });
 
   // Find the current version in the stack
-  const currentVersion = versionStack.versions.find(v => v.version_path === currentVersionPath) || 
-                         versionStack.versions[0]; // Default to first version
+  const currentVersion =
+    versionStack.versions.find((v) => v.version_path === currentVersionPath) ||
+    versionStack.versions[0]; // Default to first version
 
   // Format file size
   const formatFileSize = (bytes: number): string => {
@@ -185,16 +190,18 @@ export function VersionStackViewer({
   };
 
   return (
-    <div className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden`}>
+    <div
+      className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden`}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <Layers size={16} className="text-foreground" />
-          <span className="text-sm font-medium text-foreground">Versions</span>
+      <div className='flex items-center justify-between p-3 border-b border-white/10'>
+        <div className='flex items-center gap-2'>
+          <Layers size={16} className='text-foreground' />
+          <span className='text-sm font-medium text-foreground'>Versions</span>
         </div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"
+          className='btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center'
           title={expanded ? 'Collapse' : 'Expand'}
         >
           <MoreVertical size={16} />
@@ -203,54 +210,62 @@ export function VersionStackViewer({
 
       {/* Current Version Preview */}
       {!expanded && (
-        <div className="p-3">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="relative">
+        <div className='p-3'>
+          <div className='flex items-center gap-3 mb-2'>
+            <div className='relative'>
               <img
                 src={api.getImageUrl(currentVersion.version_path, 80)}
-                alt="Current version"
-                className="w-16 h-16 object-cover rounded border border-white/10"
-                loading="lazy"
+                alt='Current version'
+                className='w-16 h-16 object-cover rounded border border-white/10'
+                loading='lazy'
               />
               {currentVersion.version_type === 'original' && (
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                  <Edit3 size={10} className="text-white" />
+                <div className='absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center'>
+                  <Edit3 size={10} className='text-white' />
                 </div>
               )}
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <div className="font-medium text-foreground truncate">
+            <div className='flex-1 min-w-0'>
+              <div className='flex items-center gap-2'>
+                <div className='font-medium text-foreground truncate'>
                   {currentVersion.version_name || 'Current Version'}
                 </div>
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                  currentVersion.version_type === 'original' 
-                    ? 'bg-blue-500/20 text-blue-400' 
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    currentVersion.version_type === 'original'
+                      ? 'bg-blue-500/20 text-blue-400'
+                      : currentVersion.version_type === 'edit'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-purple-500/20 text-purple-400'
+                  }`}
+                >
+                  {currentVersion.version_type === 'original'
+                    ? 'Original'
                     : currentVersion.version_type === 'edit'
-                    ? 'bg-green-500/20 text-green-400'
-                    : 'bg-purple-500/20 text-purple-400'
-                }`}>
-                  {currentVersion.version_type === 'original' ? 'Original' : 
-                   currentVersion.version_type === 'edit' ? 'Edit' : 
-                   currentVersion.version_type === 'variant' ? 'Variant' : 'Derivative'}
+                    ? 'Edit'
+                    : currentVersion.version_type === 'variant'
+                    ? 'Variant'
+                    : 'Derivative'}
                 </span>
               </div>
-              <div className="text-xs text-muted-foreground truncate">
-                {currentVersion.dimensions.width}×{currentVersion.dimensions.height} • {formatFileSize(currentVersion.size_bytes)}
+              <div className='text-xs text-muted-foreground truncate'>
+                {currentVersion.dimensions.width}×
+                {currentVersion.dimensions.height} •{' '}
+                {formatFileSize(currentVersion.size_bytes)}
               </div>
               {currentVersion.version_description && (
-                <div className="text-xs text-muted-foreground truncate mt-1">
+                <div className='text-xs text-muted-foreground truncate mt-1'>
                   {currentVersion.version_description}
                 </div>
               )}
             </div>
           </div>
-          
+
           <button
             onClick={() => handleVersionSelect(currentVersion.version_path)}
-            className="btn-glass btn-glass--primary w-full text-sm py-1.5"
+            className='btn-glass btn-glass--primary w-full text-sm py-1.5'
           >
-            <Eye size={14} className="mr-1" />
+            <Eye size={14} className='mr-1' />
             View This Version
           </button>
         </div>
@@ -258,94 +273,109 @@ export function VersionStackViewer({
 
       {/* Expanded View - Full Version Stack */}
       {expanded && (
-        <div className="p-3 space-y-3 max-h-80 overflow-y-auto">
+        <div className='p-3 space-y-3 max-h-80 overflow-y-auto'>
           {sortedVersions.map((version, index) => (
-            <div 
-              key={version.id} 
+            <div
+              key={version.id}
               className={`p-3 rounded-lg border flex items-center gap-3 ${
-                version.version_path === currentVersionPath 
-                  ? 'border-primary bg-primary/10' 
+                version.version_path === currentVersionPath
+                  ? 'border-primary bg-primary/10'
                   : 'border-white/10 hover:border-white/20'
               }`}
             >
-              <div className="relative">
+              <div className='relative'>
                 <img
                   src={api.getImageUrl(version.version_path, 100)}
                   alt={`Version ${index + 1}`}
-                  className="w-20 h-20 object-cover rounded border border-white/10"
-                  loading="lazy"
+                  className='w-20 h-20 object-cover rounded border border-white/10'
+                  loading='lazy'
                 />
                 {version.version_type === 'original' && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                    <Edit3 size={10} className="text-white" />
+                  <div className='absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center'>
+                    <Edit3 size={10} className='text-white' />
                   </div>
                 )}
               </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="font-medium text-foreground truncate">
+
+              <div className='flex-1 min-w-0'>
+                <div className='flex items-center justify-between mb-1'>
+                  <div className='font-medium text-foreground truncate'>
                     {version.version_name || `Version ${index + 1}`}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className='flex items-center gap-2'>
                     {version.is_current && (
-                      <span className="text-xs px-1 py-0.5 rounded bg-green-500/20 text-green-400">
+                      <span className='text-xs px-1 py-0.5 rounded bg-green-500/20 text-green-400'>
                         Current
                       </span>
                     )}
                     <button
-                      onClick={() => setShowActions(showActions === version.id ? null : version.id)}
-                      className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"
+                      onClick={() =>
+                        setShowActions(
+                          showActions === version.id ? null : version.id
+                        )
+                      }
+                      className='btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center'
                     >
                       <MoreVertical size={14} />
                     </button>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mb-1">
+
+                <div className='flex items-center gap-4 text-xs text-muted-foreground mb-1'>
                   <span>{version.version_type}</span>
-                  <span>{new Date(version.created_at).toLocaleDateString()}</span>
+                  <span>
+                    {new Date(version.created_at).toLocaleDateString()}
+                  </span>
                   <span>{formatFileSize(version.size_bytes)}</span>
                 </div>
-                
+
                 {version.version_description && (
-                  <div className="text-xs text-muted-foreground line-clamp-2">
+                  <div className='text-xs text-muted-foreground line-clamp-2'>
                     {version.version_description}
                   </div>
                 )}
               </div>
-              
-              <div className="flex flex-col gap-1">
+
+              <div className='flex flex-col gap-1'>
                 <button
                   onClick={() => handleVersionSelect(version.version_path)}
-                  className="btn-glass btn-glass--primary w-8 h-8 p-0 flex items-center justify-center"
-                  title="View version"
+                  className='btn-glass btn-glass--primary w-8 h-8 p-0 flex items-center justify-center'
+                  title='View version'
                 >
                   <Eye size={14} />
                 </button>
-                
+
                 <button
-                  onClick={() => api.downloadFile(version.version_path)}
-                  className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"
-                  title="Download version"
+                  onClick={() =>
+                    window.open(api.getFileUrl(version.version_path), '_blank')
+                  }
+                  className='btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center'
+                  title='Download version'
                 >
                   <Download size={14} />
                 </button>
               </div>
-              
+
               {/* Action menu for each version */}
               {showActions === version.id && (
-                <div className={`${glass.surfaceStrong} absolute right-24 top-3 z-10 border border-white/10 rounded-lg shadow-lg`}>
+                <div
+                  className={`${glass.surfaceStrong} absolute right-24 top-3 z-10 border border-white/10 rounded-lg shadow-lg`}
+                >
                   <button
                     onClick={() => handleVersionSelect(version.version_path)}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-white/5"
+                    className='flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-white/5'
                   >
                     <Eye size={12} />
                     View
                   </button>
                   <button
-                    onClick={() => api.downloadFile(version.version_path)}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-white/5"
+                    onClick={() =>
+                      window.open(
+                        api.getFileUrl(version.version_path),
+                        '_blank'
+                      )
+                    }
+                    className='flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-white/5'
                   >
                     <Download size={12} />
                     Download
@@ -353,7 +383,7 @@ export function VersionStackViewer({
                   {version.version_type !== 'original' && (
                     <button
                       onClick={() => deleteVersion(version.id)}
-                      className="flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-destructive/10 text-destructive"
+                      className='flex items-center gap-2 w-full px-3 py-2 text-xs hover:bg-destructive/10 text-destructive'
                     >
                       <Trash2 size={12} />
                       Delete
@@ -367,12 +397,19 @@ export function VersionStackViewer({
       )}
 
       {/* Stack Stats */}
-      <div className={`${glass.surfaceStrong} p-3 border-t border-white/10 text-xs text-muted-foreground`}>
-        <div className="flex justify-between">
-          <span>{sortedVersions.length} version{sortedVersions.length !== 1 ? 's' : ''}</span>
+      <div
+        className={`${glass.surfaceStrong} p-3 border-t border-white/10 text-xs text-muted-foreground`}
+      >
+        <div className='flex justify-between'>
           <span>
-            {sortedVersions.filter(v => v.version_type === 'original').length} original,{' '}
-            {sortedVersions.filter(v => v.version_type === 'edit').length} edited
+            {sortedVersions.length} version
+            {sortedVersions.length !== 1 ? 's' : ''}
+          </span>
+          <span>
+            {sortedVersions.filter((v) => v.version_type === 'original').length}{' '}
+            original,{' '}
+            {sortedVersions.filter((v) => v.version_type === 'edit').length}{' '}
+            edited
           </span>
         </div>
       </div>

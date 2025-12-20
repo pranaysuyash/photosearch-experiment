@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, X, Database } from 'lucide-react';
+import { Sparkles, X, Database, Zap } from 'lucide-react';
 import { localGetItem, localSetItem } from '../../utils/storage';
 
 interface FirstRunModalProps {
@@ -101,7 +101,7 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
             }}
             className='w-full py-3 rounded-xl border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium text-sm flex items-center justify-center gap-2'
           >
-            <span>⚡️</span> Connect a Source
+            <Zap size={16} /> Connect a Source
           </button>
         </div>
 

@@ -59,6 +59,22 @@ class FaceClusteringDB:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
 
+    @staticmethod
+    def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+        try:
+            rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+        except sqlite3.OperationalError:
+            return set()
+        return {row[1] for row in rows}
+
+    @classmethod
+    def _is_legacy_schema(cls, conn: sqlite3.Connection) -> bool:
+        face_clusters_cols = cls._table_columns(conn, "face_clusters")
+        if "cluster_id" in face_clusters_cols:
+            return False
+        legacy_cols = cls._table_columns(conn, "clusters")
+        return "id" in face_clusters_cols or bool(legacy_cols)
+
     def _init_db(self):
         """Initialize the face clustering database."""
         with sqlite3.connect(str(self.db_path)) as conn:
@@ -124,6 +140,20 @@ class FaceClusteringDB:
         if not cluster_id:
             return
         with sqlite3.connect(str(self.db_path)) as conn:
+            if self._is_legacy_schema(conn):
+                try:
+                    cluster_id_int = int(cluster_id)
+                except (TypeError, ValueError):
+                    return
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO clusters (id, label, size)
+                    VALUES (?, ?, 0)
+                    """,
+                    (cluster_id_int, label),
+                )
+                return
+
             conn.execute(
                 """
                 INSERT OR IGNORE INTO face_clusters (cluster_id, label)
@@ -150,6 +180,8 @@ class FaceClusteringDB:
             bounding_box = {"x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0}
 
         with sqlite3.connect(str(self.db_path)) as conn:
+            if self._is_legacy_schema(conn):
+                return
             conn.execute(
                 """
                 INSERT OR IGNORE INTO face_detections (detection_id, photo_path, bounding_box, embedding, quality_score)
@@ -230,23 +262,49 @@ class FaceClusteringDB:
         """Get all people associated with a specific photo."""
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
-            
-            rows = conn.execute("""
+
+            if self._is_legacy_schema(conn):
+                rows = conn.execute(
+                    """
+                    SELECT f.image_path as photo_path, f.cluster_id, f.id as detection_id,
+                           f.confidence, f.created_at
+                    FROM faces f
+                    WHERE f.image_path = ? AND f.cluster_id IS NOT NULL
+                    ORDER BY f.confidence DESC
+                    """,
+                    (photo_path,),
+                ).fetchall()
+
+                return [
+                    PhotoPersonAssociation(
+                        photo_path=row["photo_path"],
+                        cluster_id=str(row["cluster_id"]),
+                        detection_id=str(row["detection_id"]),
+                        confidence=row["confidence"] or 0.0,
+                        created_at=row["created_at"],
+                    )
+                    for row in rows
+                ]
+
+            rows = conn.execute(
+                """
                 SELECT ppa.photo_path, ppa.cluster_id, ppa.detection_id, ppa.confidence, ppa.created_at,
                        fc.label as cluster_label
                 FROM photo_person_associations ppa
                 JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
                 WHERE ppa.photo_path = ?
                 ORDER BY ppa.confidence DESC
-            """, (photo_path,)).fetchall()
-            
+                """,
+                (photo_path,),
+            ).fetchall()
+
             return [
                 PhotoPersonAssociation(
-                    photo_path=row['photo_path'],
-                    cluster_id=row['cluster_id'],
-                    detection_id=row['detection_id'],
-                    confidence=row['confidence'],
-                    created_at=row['created_at']
+                    photo_path=row["photo_path"],
+                    cluster_id=row["cluster_id"],
+                    detection_id=row["detection_id"],
+                    confidence=row["confidence"],
+                    created_at=row["created_at"],
                 )
                 for row in rows
             ]
@@ -306,21 +364,44 @@ class FaceClusteringDB:
         """Get all face clusters (people)."""
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
-            
-            rows = conn.execute("""
+
+            if self._is_legacy_schema(conn):
+                rows = conn.execute(
+                    """
+                    SELECT id, label, size, created_at, updated_at
+                    FROM clusters
+                    ORDER BY label COLLATE NOCASE, created_at DESC
+                    """
+                ).fetchall()
+
+                return [
+                    FaceCluster(
+                        cluster_id=str(row["id"]),
+                        label=row["label"],
+                        face_count=row["size"] or 0,
+                        photo_count=row["size"] or 0,
+                        created_at=row["created_at"],
+                        updated_at=row["updated_at"],
+                    )
+                    for row in rows
+                ]
+
+            rows = conn.execute(
+                """
                 SELECT cluster_id, label, face_count, photo_count, created_at, updated_at
                 FROM face_clusters
                 ORDER BY label COLLATE NOCASE, created_at DESC
-            """).fetchall()
-            
+                """
+            ).fetchall()
+
             return [
                 FaceCluster(
-                    cluster_id=row['cluster_id'],
-                    label=row['label'],
-                    face_count=row['face_count'],
-                    photo_count=row['photo_count'],
-                    created_at=row['created_at'],
-                    updated_at=row['updated_at']
+                    cluster_id=row["cluster_id"],
+                    label=row["label"],
+                    face_count=row["face_count"],
+                    photo_count=row["photo_count"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
                 )
                 for row in rows
             ]
@@ -328,23 +409,52 @@ class FaceClusteringDB:
     def get_photos_for_cluster(self, cluster_id: str) -> List[str]:
         """Get all photos associated with a cluster."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            rows = conn.execute("""
+            if self._is_legacy_schema(conn):
+                rows = conn.execute(
+                    """
+                    SELECT DISTINCT image_path
+                    FROM faces
+                    WHERE cluster_id = ?
+                    ORDER BY image_path
+                    """,
+                    (cluster_id,),
+                ).fetchall()
+                return [row[0] for row in rows]
+
+            rows = conn.execute(
+                """
                 SELECT DISTINCT photo_path
                 FROM photo_person_associations
                 WHERE cluster_id = ?
                 ORDER BY photo_path
-            """, (cluster_id,)).fetchall()
-            
+                """,
+                (cluster_id,),
+            ).fetchall()
+
             return [row[0] for row in rows]
 
     def update_cluster_label(self, cluster_id: str, label: str):
         """Update the label (name) of a cluster."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            conn.execute("""
+            if self._is_legacy_schema(conn):
+                conn.execute(
+                    """
+                    UPDATE clusters
+                    SET label = ?, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (label, cluster_id),
+                )
+                return
+
+            conn.execute(
+                """
                 UPDATE face_clusters
                 SET label = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE cluster_id = ?
-            """, (label, cluster_id))
+                """,
+                (label, cluster_id),
+            )
 
     def cleanup_missing_photos(self) -> int:
         """Remove associations for photos that no longer exist."""

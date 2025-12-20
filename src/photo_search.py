@@ -127,11 +127,12 @@ class PhotoSearch:
             Summary statistics
         """
         # Lazy import to avoid circular deps if running standalone
-        job_store = None
+        job_store_ref: Any = None
         if job_id:
             try:
-                from server.jobs import job_store
-                job_store.update_job(job_id, status="processing", message="Discovering files...", progress=10)
+                from server.jobs import job_store as server_job_store
+                job_store_ref = server_job_store
+                server_job_store.update_job(job_id, status="processing", message="Discovering files...", progress=10)
             except ImportError:
                 logger.warning("Could not import job_store")
 
@@ -148,12 +149,12 @@ class PhotoSearch:
         if not files_by_dir:
             msg = "No files found"
             logger.error(msg)
-            if job_store and job_id:
-                job_store.update_job(job_id, status="failed", message=msg)
+            if job_store_ref and job_id:
+                job_store_ref.update_job(job_id, status="failed", message=msg)
             return {}
         
-        if job_store and job_id:
-            job_store.update_job(job_id, message="Creating catalog...", progress=30)
+        if job_store_ref and job_id:
+            job_store_ref.update_job(job_id, message="Creating catalog...", progress=30)
 
         
         # Create comprehensive catalog
@@ -169,8 +170,8 @@ class PhotoSearch:
         print(f"    - Videos: {catalog['metadata']['total_videos']}")
         print(f"    - Animated: {catalog['metadata']['total_animated']}\n")
         
-        if job_store and job_id:
-            job_store.update_job(job_id, message=f"Found {file_count} files. Extracting metadata...", progress=40)
+        if job_store_ref and job_id:
+            job_store_ref.update_job(job_id, message=f"Found {file_count} files. Extracting metadata...", progress=40)
 
         # Stage 2: Extract metadata
         print("Stage 2/3: Extracting metadata...")
@@ -180,8 +181,8 @@ class PhotoSearch:
         print(f"  ✓ Skipped: {stats.get('skipped', 0)}")
         print(f"  ✓ Errors: {stats.get('errors', 0)}\n")
         
-        if job_store and job_id:
-            job_store.update_job(job_id, message="Building index...", progress=90)
+        if job_store_ref and job_id:
+            job_store_ref.update_job(job_id, message="Building index...", progress=90)
 
         # Stage 3: Build search index (already done by extractor)
         print("Stage 3/3: Building search index...")
@@ -212,8 +213,8 @@ class PhotoSearch:
             **stats
         }
 
-        if job_store and job_id:
-            job_store.update_job(job_id, status="completed", message="Scan complete", progress=100, result=result)
+        if job_store_ref and job_id:
+            job_store_ref.update_job(job_id, status="completed", message="Scan complete", progress=100, result=result)
             
         return result
     

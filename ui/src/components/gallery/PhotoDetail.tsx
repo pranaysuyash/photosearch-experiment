@@ -11,6 +11,7 @@ import {
   Copy,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Star,
   StarOff,
   FolderPlus,
@@ -152,22 +153,36 @@ function MetadataSection({
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
-    <details
-      className='group mb-2 border border-white/5 bg-white/5 rounded-lg overflow-hidden'
-      open={defaultOpen}
-    >
-      <summary className='flex items-center gap-2 p-3 cursor-pointer hover:bg-white/5 transition-colors select-none list-none text-white/80 font-medium text-xs uppercase tracking-wider'>
-        <Icon size={14} className='text-primary/70' />
-        <span>{title}</span>
-        <div className='ml-auto transition-transform group-open:rotate-180 opacity-50'>
-          <ChevronLeft size={14} className='-rotate-90' />
+    <div className='mb-3 glass-surface rounded-xl overflow-hidden'>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className='w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors text-left'
+      >
+        <div className='flex items-center gap-3'>
+          <div className='glass-surface rounded-lg p-2'>
+            <Icon size={14} className='text-primary/70' />
+          </div>
+          <span className='text-white/80 font-medium text-sm uppercase tracking-wider'>
+            {title}
+          </span>
         </div>
-      </summary>
-      <div className='px-3 pb-3 pt-0 space-y-1 text-sm border-t border-white/5 mt-1'>
-        {children}
-      </div>
-    </details>
+        <div 
+          className='transition-transform duration-200'
+          style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        >
+          <ChevronDown size={16} className='text-white/50' />
+        </div>
+      </button>
+      
+      {isOpen && (
+        <div className='px-3 pb-3 space-y-1 text-sm border-t border-white/5'>
+          {children}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1033,9 +1048,6 @@ export function PhotoDetail({
                     />
                   </MetadataSection>
                 )}
-
-                {/* Image Analysis Section */}
-                <ImageAnalysis photo={photo} isOpen={currentIndex !== null} />
 
                 {/* Image Properties */}
                 {img.width && (

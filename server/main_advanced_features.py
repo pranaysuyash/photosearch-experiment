@@ -37,11 +37,13 @@ from .main import (
     ps_logger,
     perf_tracker,
     photo_search_engine,
-    sources,
-    source_items_store,
+    process_semantic_indexing,
     trash_db,
-    .config as settings
 )
+from .config import settings
+from .watcher import start_watcher
+from .embedding_generator import EmbeddingGenerator
+from src.logging_config import setup_logging
 
 # Import advanced features
 from .advanced_features_api import setup_advanced_features_routes, AdvancedFeaturesManager
@@ -204,7 +206,7 @@ async def scan_directory_with_all_features(
     if not Path(directory_path).exists():
         raise HTTPException(status_code=400, detail="Directory does not exist")
 
-    job_ids = []
+    job_ids: list[str] = []
 
     try:
         # Start face scanning if requested

@@ -14,3 +14,31 @@ global.fetch = vi.fn();
 
 // Mock window.open for tests
 window.open = vi.fn();
+
+// Mock IntersectionObserver (jsdom doesn't implement it)
+class MockIntersectionObserver {
+  root: any;
+  rootMargin: string;
+  thresholds: any;
+  callback: any;
+  constructor(callback: any, options?: any) {
+    this.callback = callback;
+    this.root = options?.root || null;
+    this.rootMargin = options?.rootMargin || '';
+    this.thresholds = options?.threshold || [];
+  }
+  observe() {
+    // No-op
+  }
+  unobserve() {
+    // No-op
+  }
+  disconnect() {
+    // No-op
+  }
+  takeRecords() {
+    return [];
+  }
+}
+
+(global as any).IntersectionObserver = MockIntersectionObserver as any;

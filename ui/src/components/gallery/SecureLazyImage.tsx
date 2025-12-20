@@ -10,6 +10,7 @@ interface SecureLazyImageProps {
   alt?: string;
   placeholder?: string;
   showBadge?: boolean;
+  aspectRatio?: number;
 }
 
 export function SecureLazyImage({
@@ -19,6 +20,7 @@ export function SecureLazyImage({
   alt,
   placeholder,
   showBadge = true,
+  aspectRatio,
 }: SecureLazyImageProps) {
   const [src, setSrc] = useState<string>(() => api.getImageUrl(path, size));
   const [badge, setBadge] = useState<'local' | 'cloud' | 'hybrid'>('local');
@@ -72,6 +74,7 @@ export function SecureLazyImage({
         alt={alt || ''}
         placeholder={placeholder}
         className={className}
+        aspectRatio={aspectRatio}
       />
       {showBadge && (
         <div

@@ -2,6 +2,13 @@ import axios, { type AxiosRequestConfig } from 'axios';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
+const SERVER_CONFIG_TTL_MS = 60_000;
+let serverConfigCache: {
+  value: any | null;
+  timestamp: number;
+  promise: Promise<any> | null;
+} = { value: null, timestamp: 0, promise: null };
+
 // Create axios instance with proper configuration
 const apiClient = axios.create({
   baseURL: API_BASE,
@@ -571,25 +578,135 @@ export const api = {
   },
 
   getServerConfig: async () => {
-    const res = await apiClient.get('/server/config');
-    return res.data;
+    const now = Date.now();
+    if (
+      serverConfigCache.value &&
+      now - serverConfigCache.timestamp < SERVER_CONFIG_TTL_MS
+    ) {
+      return serverConfigCache.value;
+    }
+    if (serverConfigCache.promise) {
+      return serverConfigCache.promise;
+    }
+    serverConfigCache.promise = apiClient
+      .get('/server/config')
+      .then((res) => {
+        serverConfigCache = {
+          value: res.data,
+          timestamp: Date.now(),
+          promise: null,
+        };
+        return res.data;
+      })
+      .catch((err) => {
+        serverConfigCache.promise = null;
+        throw err;
+      });
+    return serverConfigCache.promise;
   },
 
-  // Obtain a signed thumbnail URL from the server (server must support /image/token and require auth)
+  // Obtain a signed thumbnail URL from the server (server must support /image/token and require auth).
+  // Optimizations:
+  // - Cache server config to avoid redundant /server/config calls.
+  // - Short-circuit for local file paths (no token needed).
+  // - Cache recently issued tokens per path until expiry to reduce duplicate token issuance.
   getSignedImageUrl: async (path: string, size?: number, ttl?: number) => {
-    try {
-      const res = await apiClient.post('/image/token', {
-        path,
-        ttl,
-        scope: 'thumbnail',
-      });
-      const token = res.data?.token;
-      if (!token) return null;
-      return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(token)}${
+    // Simple local path detection (same heuristic as ContextAnalyzer.isLocalFile)
+    const isLocal = (() => {
+      const localPatterns = [
+        /^[A-Za-z]:\\/,
+        /^\/[^\/]/,
+        /^~\//,
+        /^\.\//,
+        /^file:\/\//,
+      ];
+      return localPatterns.some((r) => r.test(path));
+    })();
+
+    // If local, no need to request a token
+    if (isLocal) {
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
         size ? `&size=${size}` : ''
       }`;
-    } catch {
-      // If token issuance failed (unauthenticated or server error), fall back to regular image URL
+    }
+
+    // Cached flags and token map (module-level singletons)
+    // Implement lazy initialization
+    if (!(api as any)._signedUrlEnabledCache)
+      (api as any)._signedUrlEnabledCache = null;
+    if (!(api as any)._tokenCache)
+      (api as any)._tokenCache = new Map<
+        string,
+        { token: string; expiresAt: number }
+      >();
+
+    // Resolve whether server supports signed URLs (cache for 30s)
+    if ((api as any)._signedUrlEnabledCache === null) {
+      try {
+        const cfg = await api.getServerConfig();
+        (api as any)._signedUrlEnabledCache = !!cfg?.signed_url_enabled;
+        (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+      } catch {
+        (api as any)._signedUrlEnabledCache = false;
+        (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+      }
+    } else if (Date.now() > (api as any)._signedUrlEnabledCacheExpires) {
+      // Refresh cache asynchronously (don't block); start refresh but proceed with current value
+      (async () => {
+        try {
+          const cfg = await api.getServerConfig();
+          (api as any)._signedUrlEnabledCache = !!cfg?.signed_url_enabled;
+          (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        } catch {
+          (api as any)._signedUrlEnabledCache =
+            (api as any)._signedUrlEnabledCache || false;
+          (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        }
+      })();
+    }
+
+    const signedEnabled = !!(api as any)._signedUrlEnabledCache;
+    if (!signedEnabled) {
+      // Signed URLs are disabled, fall back to direct path
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+        size ? `&size=${size}` : ''
+      }`;
+    }
+
+    // If we already have a cached token that is still valid, return it
+    const existing = (api as any)._tokenCache.get(path);
+    if (existing && existing.expiresAt > Date.now()) {
+      return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(
+        existing.token
+      )}${size ? `&size=${size}` : ''}`;
+    }
+
+    // Otherwise, request a new token from the server
+    try {
+      const res = await apiClient.post<{ token?: string; expires_in?: number }>(
+        '/image/token',
+        { path, ttl, scope: 'thumbnail' }
+      );
+      const token = res?.data?.token ?? null;
+      const expiresIn = res?.data?.expires_in ?? ttl ?? undefined;
+
+      if (token) {
+        const expireMs = expiresIn ? expiresIn * 1000 : 60 * 60 * 1000;
+        (api as any)._tokenCache.set(path, {
+          token,
+          expiresAt: Date.now() + expireMs,
+        });
+        return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(token)}${
+          size ? `&size=${size}` : ''
+        }`;
+      }
+
+      // Fallback
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+        size ? `&size=${size}` : ''
+      }`;
+    } catch (e) {
+      // On error, return path-based URL
       return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
         size ? `&size=${size}` : ''
       }`;
@@ -743,6 +860,11 @@ export const api = {
       file_path: filePath,
       notes,
     });
+    // Invalidate cached favorite for this file
+    try {
+      if ((api as any)._favoriteCache)
+        (api as any)._favoriteCache.delete(filePath);
+    } catch {}
     return res.data;
   },
 
@@ -840,9 +962,30 @@ export const api = {
   },
 
   checkFavorite: async (filePath: string) => {
+    // Simple in-memory cache to prevent duplicate per-photo requests within short window
+    if (!(api as any)._favoriteCache)
+      (api as any)._favoriteCache = new Map<
+        string,
+        { is_favorited: boolean; expiresAt: number }
+      >();
+
+    const cached = (api as any)._favoriteCache.get(filePath);
+    if (cached && cached.expiresAt > Date.now()) {
+      return { is_favorited: cached.is_favorited };
+    }
+
     const res = await apiClient.get('/favorites/check', {
       params: { file_path: filePath },
     });
+
+    // Cache for 30s
+    try {
+      (api as any)._favoriteCache.set(filePath, {
+        is_favorited: res.data.is_favorited,
+        expiresAt: Date.now() + 30 * 1000,
+      });
+    } catch {}
+
     return res.data;
   },
 
@@ -882,14 +1025,14 @@ export const api = {
   bulkTag: async (filePaths: string[], tag: string) => {
     const res = await apiClient.post('/bulk/tag', {
       file_paths: filePaths,
-      tag
+      tag,
     });
     return res.data;
   },
 
   bulkArchive: async (filePaths: string[]) => {
     const res = await apiClient.post('/bulk/archive', {
-      file_paths: filePaths
+      file_paths: filePaths,
     });
     return res.data;
   },
@@ -897,7 +1040,7 @@ export const api = {
   bulkMove: async (filePaths: string[], destination: string) => {
     const res = await apiClient.post('/bulk/move', {
       file_paths: filePaths,
-      destination
+      destination,
     });
     return res.data;
   },
@@ -905,7 +1048,7 @@ export const api = {
   bulkCopy: async (filePaths: string[], destination: string) => {
     const res = await apiClient.post('/bulk/copy', {
       file_paths: filePaths,
-      destination
+      destination,
     });
     return res.data;
   },

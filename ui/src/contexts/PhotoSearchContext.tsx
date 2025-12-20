@@ -74,6 +74,11 @@ export function PhotoSearchProvider({
   const [dateTo, setDateTo] = useState<string | null>(null);
   const [timelineData, setTimelineData] = useState<TimelineData[]>([]);
   const [timelineLoading, setTimelineLoading] = useState(true);
+  const getPageSize = () => {
+    if (typeof window === 'undefined') return 50;
+    return window.innerWidth < 640 ? 20 : 50;
+  };
+  const [pageSize, setPageSize] = useState(getPageSize);
 
   // Grid zoom with localStorage persistence
   const [gridZoom, setGridZoomState] = useState<GridZoomLevel>(() => {
@@ -99,6 +104,12 @@ export function PhotoSearchProvider({
   const lastSearchParamsRef = useRef<string>('');
   const timelineFetchedRef = useRef(false);
   const searchAbortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const onResize = () => setPageSize(getPageSize());
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   // Refs for search parameters to avoid dependency issues
   const searchModeRef = useRef(searchMode);
@@ -150,7 +161,76 @@ export function PhotoSearchProvider({
     dateToRef.current = dateTo;
   }, [dateTo]);
 
-  const LIMIT = 50;
+  // Intelligent search mode detection
+  const detectSearchMode = useCallback((query: string): SearchMode => {
+    if (!query.trim()) {
+      return 'metadata'; // Empty query - use metadata for browsing
+    }
+
+    // Metadata patterns (field:value, structured queries)
+    const metadataPatterns = [
+      /\w+:\w+/,                    // field:value patterns
+      /\b(camera|lens|iso|aperture|shutter|focal|exposure):/i,  // camera metadata
+      /\b(date|time|year|month|day):/i,                         // date metadata
+      /\b(location|city|country|gps):/i,                        // location metadata
+      /\b(tag|keyword|category):/i,                             // tag metadata
+      /\b(size|width|height|resolution):/i,                     // size metadata
+      /\b(format|type|extension):/i,                            // format metadata
+    ];
+
+    // Natural language patterns (semantic search)
+    const semanticPatterns = [
+      /\b(show me|find|looking for|search for)\b/i,
+      /\b(photos? of|images? of|pictures? of)\b/i,
+      /\b(contains?|with|having|featuring)\b/i,
+      /\b(people|person|faces?|portraits?)\b/i,
+      /\b(animals?|dogs?|cats?|birds?)\b/i,
+      /\b(nature|landscape|sunset|sunrise|beach|mountain)\b/i,
+      /\b(food|meal|restaurant|cooking)\b/i,
+      /\b(travel|vacation|trip|holiday)\b/i,
+      /\b(indoor|outdoor|inside|outside)\b/i,
+      /\b(colors?|red|blue|green|yellow|black|white)\b/i,
+      /\b(emotions?|happy|sad|smiling|laughing)\b/i,
+    ];
+
+    // Check for metadata patterns first
+    const hasMetadataPattern = metadataPatterns.some(pattern => pattern.test(query));
+    if (hasMetadataPattern) {
+      return 'metadata';
+    }
+
+    // Check for semantic patterns
+    const hasSemanticPattern = semanticPatterns.some(pattern => pattern.test(query));
+    if (hasSemanticPattern) {
+      return 'semantic';
+    }
+
+    // Mixed queries or ambiguous - use hybrid
+    const words = query.trim().split(/\s+/);
+    if (words.length > 3) {
+      return 'hybrid'; // Longer queries often benefit from hybrid approach
+    }
+
+    // Default to semantic for short natural language queries
+    return 'semantic';
+  }, []);
+
+  // Auto-switch search mode based on query
+  const autoSwitchSearchMode = useCallback((query: string) => {
+    const detectedMode = detectSearchMode(query);
+    if (detectedMode !== searchMode) {
+      console.log(`[PhotoSearchContext] Auto-switching from ${searchMode} to ${detectedMode} for query: "${query}"`);
+      setSearchMode(detectedMode);
+    }
+  }, [detectSearchMode, searchMode]);
+
+  // Update search mode when query changes (with debounce)
+  useEffect(() => {
+    if (debouncedSearchQuery !== searchQuery) return; // Wait for debounce
+    autoSwitchSearchMode(debouncedSearchQuery);
+  }, [debouncedSearchQuery, autoSwitchSearchMode, searchQuery]);
+
+  const LIMIT = pageSize;
 
   const doSearch = useCallback(
     async (query: string, isLoadMore: boolean = false) => {
@@ -288,7 +368,7 @@ export function PhotoSearchProvider({
         }
       }
     },
-    [CACHE_DURATION, endSearch, recordApiCall, recordCacheHit, startSearch]
+    [CACHE_DURATION, LIMIT, endSearch, recordApiCall, recordCacheHit, startSearch]
   );
 
   const loadMore = useCallback(() => {

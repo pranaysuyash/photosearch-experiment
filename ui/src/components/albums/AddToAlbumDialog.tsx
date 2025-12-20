@@ -107,8 +107,8 @@ export function AddToAlbumDialog({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <FolderPlus size={20} className="text-white" />
+              <div className="w-10 h-10 rounded-lg glass-surface flex items-center justify-center">
+                <FolderPlus size={20} className="text-primary" />
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-white">Add to Albums</h2>
@@ -151,21 +151,19 @@ export function AddToAlbumDialog({
                       key={album.id}
                       onClick={() => toggleAlbum(album.id)}
                       disabled={isSubmitting}
-                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
-                        isSelected
+                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${isSelected
                           ? 'bg-blue-500/20 border-blue-500/50'
                           : 'bg-white/5 border-white/10 hover:bg-white/10'
-                      } disabled:opacity-50`}
+                        } disabled:opacity-50`}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                     >
                       {/* Checkbox */}
                       <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                          isSelected
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected
                             ? 'bg-blue-500 border-blue-500'
                             : 'border-white/30'
-                        }`}
+                          }`}
                       >
                         {isSelected && <Check size={14} className="text-white" />}
                       </div>
@@ -218,7 +216,7 @@ export function AddToAlbumDialog({
               type="button"
               onClick={handleSubmit}
               disabled={isSubmitting || selectedAlbumIds.size === 0 || albums.length === 0}
-              className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="flex-1 btn-glass btn-glass--primary px-6 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>

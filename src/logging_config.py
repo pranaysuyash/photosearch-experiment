@@ -105,7 +105,7 @@ class PerformanceTracker:
 
     def __init__(self, logger: logging.Logger):
         self.logger = logger
-        self.metrics = {}
+        self.metrics: dict[str, float] = {}
 
     def measure(self, operation_name: str):
         """Decorator to measure execution time of functions."""

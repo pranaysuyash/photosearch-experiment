@@ -8,6 +8,7 @@ tqdm>=4.66.0            # Progress bars for file scanning
 Pillow>=10.0.0          # Image processing and basic EXIF
 exifread>=3.0.0         # Detailed EXIF extraction (ALL tags including MakerNote)
 ffmpeg-python>=0.2.0    # Video metadata via ffprobe (ALL fields)
+opencv-python>=4.8.0    # Video processing and frame extraction
 python-magic>=0.4.27    # MIME type detection via libmagic
 mutagen>=1.47.0         # Audio/video metadata
 pillow-heif>=1.1.0      # HEIF/HEIC image support

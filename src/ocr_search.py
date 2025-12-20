@@ -65,16 +65,22 @@ class OCRSearch:
             db_path: Path to SQLite database for storing OCR data
         """
         self.db_path = db_path
-        self.conn = None
+        self.conn: Optional[sqlite3.Connection] = None
         self._initialize_database()
+
+    def _conn(self) -> sqlite3.Connection:
+        """Ensure a sqlite connection is available."""
+        if self.conn is None:
+            self.conn = sqlite3.connect(self.db_path)
+            self.conn.row_factory = sqlite3.Row
+        return self.conn
     
     def _initialize_database(self):
         """Initialize database and create tables."""
-        self.conn = sqlite3.connect(self.db_path)
-        self.conn.row_factory = sqlite3.Row
+        conn = self._conn()
         
         # Create OCR text table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS ocr_text (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 image_path TEXT NOT NULL,
@@ -88,7 +94,7 @@ class OCRSearch:
         """)
         
         # Create OCR search index table
-        self.conn.execute("""
+        conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS ocr_search_index 
             USING fts5(
                 image_path,
@@ -99,7 +105,7 @@ class OCRSearch:
         """)
         
         # Create OCR statistics table
-        self.conn.execute("""
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS ocr_stats (
                 image_path TEXT PRIMARY KEY,
                 word_count INTEGER DEFAULT 0,
@@ -111,10 +117,10 @@ class OCRSearch:
         """)
         
         # Create indexes
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_ocr_path ON ocr_text(image_path)")
-        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_ocr_language ON ocr_text(language)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ocr_path ON ocr_text(image_path)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_ocr_language ON ocr_text(language)")
         
-        self.conn.commit()
+        conn.commit()
     
     def _preprocess_image(self, image_path: str) -> Optional[Image.Image]:
         """
@@ -128,7 +134,7 @@ class OCRSearch:
         """
         try:
             # Open image
-            img = Image.open(image_path)
+            img: Any = Image.open(image_path)
             
             # Convert to RGB if needed
             if img.mode != 'RGB':
@@ -251,7 +257,7 @@ class OCRSearch:
                 'failed': 0
             }
         
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         processed = 0
         successful = 0
@@ -335,7 +341,7 @@ class OCRSearch:
                 failed += 1
                 processed += 1
         
-        self.conn.commit()
+        self._conn().commit()
         
         return {
             'status': 'completed',
@@ -364,14 +370,14 @@ class OCRSearch:
         Returns:
             Dictionary with search results
         """
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         try:
             # Build FTS5 query
             fts_query = f'"{query}"'
             
-            params = []
-            where_clauses = []
+            params: List[Any] = []
+            where_clauses: List[str] = []
             
             if language:
                 where_clauses.append("language = ?")
@@ -396,9 +402,9 @@ class OCRSearch:
                 LIMIT ? OFFSET ?
             """
             
-            params = [fts_query, limit, offset] if not language else [language, fts_query, limit, offset]
+            search_params = params + [fts_query, limit, offset]
             
-            cursor.execute(search_query, params)
+            cursor.execute(search_query, search_params)
             rows = cursor.fetchall()
             
             results = []
@@ -419,7 +425,7 @@ class OCRSearch:
                 WHERE ocr_search_index MATCH ?
             """
             
-            count_params = [fts_query] if not language else [language, fts_query]
+            count_params = params + [fts_query]
             cursor.execute(count_query, count_params)
             total = cursor.fetchone()['count']
             
@@ -451,7 +457,7 @@ class OCRSearch:
         Returns:
             Dictionary with OCR statistics
         """
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         # Get OCR text
         cursor.execute("""
@@ -503,7 +509,7 @@ class OCRSearch:
         Returns:
             Dictionary with OCR summary
         """
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         # Total images processed
         cursor.execute("SELECT COUNT(*) as count FROM ocr_text")
@@ -547,10 +553,10 @@ class OCRSearch:
         
         # Recent OCR processing
         cursor.execute("""
-            SELECT image_path, extracted_at, word_count
+            SELECT ocr_text.image_path, ocr_text.extracted_at, ocr_stats.word_count
             FROM ocr_text
             JOIN ocr_stats ON ocr_text.image_path = ocr_stats.image_path
-            ORDER BY extracted_at DESC
+            ORDER BY ocr_text.extracted_at DESC
             LIMIT 5
         """)
         
@@ -583,7 +589,7 @@ class OCRSearch:
         Returns:
             True if deleted, False if not found
         """
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         # Delete from all tables
         cursor.execute("DELETE FROM ocr_text WHERE image_path = ?", (image_path,))
@@ -591,7 +597,7 @@ class OCRSearch:
         cursor.execute("DELETE FROM ocr_stats WHERE image_path = ?", (image_path,))
         
         deleted_count = cursor.rowcount
-        self.conn.commit()
+        self._conn().commit()
         
         return deleted_count > 0
     
@@ -602,7 +608,7 @@ class OCRSearch:
         Returns:
             Number of records deleted
         """
-        cursor = self.conn.cursor()
+        cursor = self._conn().cursor()
         
         # Delete from all tables
         cursor.execute("DELETE FROM ocr_text")
@@ -610,7 +616,7 @@ class OCRSearch:
         cursor.execute("DELETE FROM ocr_stats")
         
         deleted_count = cursor.rowcount
-        self.conn.commit()
+        self._conn().commit()
         
         return deleted_count
     

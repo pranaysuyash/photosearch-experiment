@@ -76,6 +76,14 @@ export function PhotoGrid({
   const { setBaseAccentUrl, setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
   const { gridZoom, refresh } = usePhotoSearchContext();
+  const [useUniformSpan, setUseUniformSpan] = useState(false);
+
+  useEffect(() => {
+    const update = () => setUseUniformSpan(window.innerWidth < 768);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -267,25 +275,26 @@ export function PhotoGrid({
   // Load favorites status for visible photos
   useEffect(() => {
     const loadFavoritesStatus = async () => {
-      const photoPaths = photos.map((p) => p.path);
-      const newFavorites = new Set<string>();
-
-      for (const path of photoPaths) {
-        try {
-          const result = await api.checkFavorite(path);
-          if (result.is_favorited) {
-            newFavorites.add(path);
-          }
-        } catch (e) {
-          console.error(`Failed to check favorite status for ${path}:`, e);
+      try {
+        // Fetch all favorites in a single call and compute which visible photos are favorited
+        const res = await api.getFavorites(Math.max(1000, photos.length));
+        const favoriteSet = new Set<string>(
+          (res.results || []).map((f: any) => f.file_path || f.path || f)
+        );
+        const newFavorites = new Set<string>();
+        for (const p of photos) {
+          if (favoriteSet.has(p.path)) newFavorites.add(p.path);
         }
+        setFavorites(newFavorites);
+      } catch (e) {
+        console.error('Failed to load favorites list:', e);
       }
-
-      setFavorites(newFavorites);
     };
 
     if (photos.length > 0) {
       loadFavoritesStatus();
+    } else {
+      setFavorites(new Set());
     }
   }, [photos]);
 
@@ -315,7 +324,7 @@ export function PhotoGrid({
           1280: 6,
           1024: 5,
           768: 4,
-          640: 3,
+          640: 1,
         };
       case 'comfortable':
         return {
@@ -524,6 +533,9 @@ export function PhotoGrid({
       >
         {photos.map((photo, i) => {
           const isSelected = selectedPaths.has(photo.path);
+          const rowSpan = useUniformSpan
+            ? 2
+            : Math.floor(Math.random() * 2) + 2;
           return (
             <motion.div
               key={photo.path}
@@ -534,7 +546,7 @@ export function PhotoGrid({
               style={
                 {
                   '--item-index': i,
-                  '--row-span': Math.floor(Math.random() * 2) + 2, // Random row span for varied layout
+                  '--row-span': rowSpan,
                 } as React.CSSProperties
               }
               initial={{ opacity: 0, y: 30 }}
@@ -584,6 +596,11 @@ export function PhotoGrid({
                 path={photo.path}
                 size={96}
                 alt={photo.filename}
+                aspectRatio={
+                  photo.metadata?.image?.width && photo.metadata?.image?.height
+                    ? photo.metadata.image.width / photo.metadata.image.height
+                    : undefined
+                }
                 className='gallery-image w-full h-auto object-cover rounded-xl'
               />
 

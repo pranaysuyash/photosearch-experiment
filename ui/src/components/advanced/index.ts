@@ -9,6 +9,7 @@ export { default as DuplicateManagementPanel } from './DuplicateManagementPanel'
 export { default as OCRTextSearchPanel } from './OCRTextSearchPanel';
 export { default as SmartAlbumsBuilder } from './SmartAlbumsBuilder';
 export { default as AnalyticsDashboard } from './AnalyticsDashboard';
+export { default as VideoAnalysisPanel } from '../video/VideoAnalysisPanel';
 
 // Re-export types for external use
 export type { FaceCluster, FaceDetection } from './FaceRecognitionPanel';

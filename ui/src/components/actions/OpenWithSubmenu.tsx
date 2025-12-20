@@ -1,6 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Edit, Loader2, AlertCircle } from 'lucide-react';
+import { 
+  ChevronDown, 
+  Edit, 
+  Loader2, 
+  AlertCircle, 
+  Palette, 
+  Camera, 
+  Video, 
+  Eye, 
+  FolderOpen,
+  Smartphone 
+} from 'lucide-react';
 import type { Photo, InstalledApp, ActionResult } from '../../types/actions';
 
 interface OpenWithSubmenuProps {
@@ -21,14 +32,15 @@ interface AppItemProps {
 
 const AppItem: React.FC<AppItemProps> = ({ app, onSelect, isExecuting }) => {
   const getCategoryIcon = (category: string) => {
-    const icons = {
-      photo_editor: '🎨',
-      raw_processor: '📸',
-      video_editor: '🎬',
-      viewer: '👁️',
-      organizer: '📁'
+    const iconMap = {
+      photo_editor: Palette,
+      raw_processor: Camera,
+      video_editor: Video,
+      viewer: Eye,
+      organizer: FolderOpen
     };
-    return icons[category as keyof typeof icons] || '📱';
+    const IconComponent = iconMap[category as keyof typeof iconMap] || Smartphone;
+    return <IconComponent size={16} className="text-white/70" />;
   };
 
   return (
@@ -37,9 +49,9 @@ const AppItem: React.FC<AppItemProps> = ({ app, onSelect, isExecuting }) => {
       disabled={isExecuting}
       className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50 text-left"
     >
-      <span className="text-base flex-shrink-0">
+      <div className="flex-shrink-0">
         {getCategoryIcon(app.category)}
-      </span>
+      </div>
       <div className="flex-1 min-w-0">
         <div className="font-medium truncate">{app.displayName}</div>
         {app.version && (

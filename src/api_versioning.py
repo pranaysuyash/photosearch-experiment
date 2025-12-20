@@ -88,7 +88,7 @@ class APIResponseHandler:
         ).dict()
 
     @staticmethod
-    def error(message: str, error_code: str = None) -> Dict[str, Any]:
+    def error(message: str, error_code: str | None = None) -> Dict[str, Any]:
         """Create an error response."""
         return StandardResponse(
             success=False,

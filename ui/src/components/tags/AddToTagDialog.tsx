@@ -96,8 +96,8 @@ export function AddToTagDialog({
         >
           <div className='flex items-center justify-between mb-6'>
             <div className='flex items-center gap-3'>
-              <div className='w-10 h-10 rounded-lg bg-gradient-to-br from-fuchsia-500 to-violet-600 flex items-center justify-center'>
-                <Hash size={18} className='text-white' />
+              <div className='w-10 h-10 rounded-lg glass-surface flex items-center justify-center'>
+                <Hash size={18} className='text-primary' />
               </div>
               <div>
                 <h2 className='text-xl font-semibold text-white'>Add Tags</h2>
@@ -158,20 +158,18 @@ export function AddToTagDialog({
                       key={t.name}
                       onClick={() => toggle(t.name)}
                       disabled={isSubmitting}
-                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${
-                        isSelected
+                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${isSelected
                           ? 'bg-fuchsia-500/20 border-fuchsia-500/40'
                           : 'bg-white/5 border-white/10 hover:bg-white/10'
-                      } disabled:opacity-50`}
+                        } disabled:opacity-50`}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                     >
                       <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                          isSelected
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isSelected
                             ? 'bg-fuchsia-500 border-fuchsia-500'
                             : 'border-white/30'
-                        }`}
+                          }`}
                       >
                         {isSelected && <Check size={14} className='text-white' />}
                       </div>

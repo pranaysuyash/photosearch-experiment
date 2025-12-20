@@ -37,7 +37,7 @@ import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Any, Tuple
-from tqdm import tqdm
+from tqdm import tqdm  # type: ignore[import-untyped]
 
 # Import from previous tasks
 from src.file_discovery import load_catalog
@@ -92,7 +92,8 @@ class MetadataDatabase:
                 file_hash TEXT NOT NULL,
                 metadata_json TEXT NOT NULL,
                 extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                version INTEGER DEFAULT 1
+                version INTEGER DEFAULT 1,
+                deleted_at TIMESTAMP
             )
         """)
         
@@ -137,6 +138,15 @@ class MetadataDatabase:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_file_path ON metadata(file_path)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_file_path ON favorites(file_path)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_favorites_favorited_at ON favorites(favorited_at)")
+
+        # Lightweight migration: older DBs may not have deleted_at column.
+        try:
+            cols = [row[1] for row in cursor.execute("PRAGMA table_info(metadata)").fetchall()]
+            if "deleted_at" not in cols:
+                cursor.execute("ALTER TABLE metadata ADD COLUMN deleted_at TIMESTAMP")
+        except Exception:
+            # If migration fails, keep compatibility and allow runtime queries to surface issues.
+            pass
         
         self.conn.commit()
         logger.info(f"Database initialized: {self.db_path}")
@@ -624,7 +634,7 @@ class QueryEngine:
         """
         try:
             parts = field_path.split('.')
-            value = metadata
+            value: Any = metadata
             for part in parts:
                 if isinstance(value, dict):
                     value = value.get(part)
@@ -791,7 +801,7 @@ class QueryEngine:
         
         return conditions
     
-    def search(self, query: str, limit: int = 100, sort_by: str = None) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = 100, sort_by: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Search metadata using query string.
         
@@ -864,7 +874,7 @@ class QueryEngine:
         query = f"{field}{operator}{value}"
         return self.search(query)
     
-    def search_by_size(self, min_size: int = None, max_size: int = None) -> List[Dict[str, Any]]:
+    def search_by_size(self, min_size: Optional[int] = None, max_size: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search files by size range."""
         conditions = []
         if min_size:
@@ -875,7 +885,7 @@ class QueryEngine:
         query = " AND ".join(conditions) if conditions else "filesystem.size_bytes>0"
         return self.search(query)
     
-    def search_by_resolution(self, min_width: int = None, min_height: int = None) -> List[Dict[str, Any]]:
+    def search_by_resolution(self, min_width: Optional[int] = None, min_height: Optional[int] = None) -> List[Dict[str, Any]]:
         """Search images by resolution."""
         conditions = []
         if min_width:

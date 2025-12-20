@@ -594,3 +594,16 @@
     background-position: -200% 0;
   }
 }
+
+.sonic-timeline {
+  pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .sonic-timeline {
+    left: 0.75rem !important;
+    right: 0.75rem !important;
+    bottom: 0.75rem !important;
+    width: auto !important;
+  }
+}

@@ -119,7 +119,7 @@ const JobMonitor = () => {
   }, []);
 
   return (
-    <div className='mx-auto w-full max-w-6xl'>
+    <div className='mx-auto w-full max-w-6xl px-1 sm:px-0'>
       <div className='mb-6'>
         <h1 className='text-2xl font-semibold tracking-tight text-foreground'>
           Jobs
@@ -152,12 +152,14 @@ const JobMonitor = () => {
       </div>
 
       <div className='glass-surface rounded-2xl p-4 sm:p-6 space-y-4'>
-        <div className='flex flex-wrap items-center gap-3'>
-          <div className='flex items-center gap-2'>
+        {/* Controls row - stacks on mobile */}
+        <div className='flex flex-col sm:flex-row sm:items-center gap-3'>
+          <div className='flex items-center gap-2 flex-wrap'>
             <button
               onClick={() => refreshAll()}
-              className='btn-glass btn-glass--muted text-xs px-3 py-2'
+              className='btn-glass btn-glass--muted text-xs px-3 py-2 min-h-[44px]'
               title='Refresh all'
+              aria-label='Refresh all jobs'
             >
               <RefreshCw size={14} />
               Refresh
@@ -165,36 +167,42 @@ const JobMonitor = () => {
 
             <button
               onClick={() => writeRecentJobIds([])}
-              className='btn-glass btn-glass--danger text-xs px-3 py-2'
+              className='btn-glass btn-glass--danger text-xs px-3 py-2 min-h-[44px]'
               title='Clear recent jobs'
+              aria-label='Clear all recent jobs'
             >
               <Trash2 size={14} />
               Clear
             </button>
           </div>
 
-          <div className='ml-auto flex items-center gap-2'>
-            <label className='flex items-center gap-2 text-xs text-muted-foreground'>
+          <div className='sm:ml-auto flex items-center gap-2'>
+            <label className='flex items-center gap-2 text-xs text-muted-foreground cursor-pointer min-h-[44px]'>
               <input
                 type='checkbox'
                 checked={autoRefresh}
                 onChange={(e) => setAutoRefresh(e.target.checked)}
+                className='w-4 h-4'
               />
               Auto-refresh
             </label>
           </div>
         </div>
 
-        <div className='flex flex-wrap items-center gap-2'>
+        {/* Job ID input - responsive width */}
+        <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-2'>
           <input
             value={manualId}
             onChange={(e) => setManualId(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addManualId()}
             placeholder='Paste a job ID…'
-            className='flex-1 min-w-[240px] glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none'
+            className='flex-1 min-w-0 sm:min-w-[240px] glass-surface rounded-full px-4 py-3 text-sm bg-transparent outline-none focus:ring-2 focus:ring-primary/30'
+            aria-label='Job ID input'
           />
           <button
             onClick={addManualId}
-            className='btn-glass btn-glass--primary text-sm px-4 py-2'
+            className='btn-glass btn-glass--primary text-sm px-4 py-3 min-h-[44px]'
+            aria-label='Track job'
           >
             Track
           </button>
@@ -255,10 +263,11 @@ const JobMonitor = () => {
                       )}
                     </div>
 
-                    <div className='flex items-center gap-2'>
+                    {/* Action buttons - larger touch targets */}
+                    <div className='flex items-center gap-2 flex-shrink-0'>
                       <button
                         onClick={() => refreshOne(id)}
-                        className='btn-glass btn-glass--muted w-9 h-9 p-0 justify-center'
+                        className='btn-glass btn-glass--muted w-10 h-10 sm:w-9 sm:h-9 p-0 justify-center min-w-[44px] min-h-[44px]'
                         title='Refresh job status'
                         aria-label='Refresh job status'
                       >
@@ -268,7 +277,7 @@ const JobMonitor = () => {
                         onClick={() =>
                           writeRecentJobIds(jobIds.filter((x) => x !== id))
                         }
-                        className='btn-glass btn-glass--danger w-9 h-9 p-0 justify-center'
+                        className='btn-glass btn-glass--danger w-10 h-10 sm:w-9 sm:h-9 p-0 justify-center min-w-[44px] min-h-[44px]'
                         title='Stop tracking this job'
                         aria-label='Stop tracking job'
                       >

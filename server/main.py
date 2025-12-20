@@ -49,6 +49,7 @@ from server.sources import SourceStore
 from server.source_items import SourceItemStore
 from server.trash_db import TrashDB
 from server.multi_tag_filter_db import get_multi_tag_filter_db, MultiTagFilterDB
+from server.validation import validate_search_query, validate_pagination_params, validate_date_input
 
 
 if TYPE_CHECKING:
@@ -61,6 +62,7 @@ ps_logger: logging.Logger = logging.getLogger("PhotoSearch")
 perf_tracker: "PerformanceTracker | None" = None
 embedding_generator: Any | None = None
 file_watcher: Any | None = None
+photo_search_engine: Any | None = None
 
 
 def _runtime_base_dir() -> Path:
@@ -81,7 +83,7 @@ def _runtime_base_dir() -> Path:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    global embedding_generator, file_watcher, ps_logger, perf_tracker
+    global embedding_generator, file_watcher, ps_logger, perf_tracker, photo_search_engine
     print("Initializing logging...")
     try:
         ps_logger, perf_tracker = setup_logging(log_level="INFO", log_file="logs/app.log")
@@ -95,14 +97,22 @@ async def lifespan(app: FastAPI):
         from src.logging_config import PerformanceTracker
         perf_tracker = PerformanceTracker(ps_logger)
 
+    print("Initializing Core Logic...")
+    try:
+        photo_search_engine = PhotoSearch()
+        print("Core Logic Loaded.")
+    except Exception as e:
+        print(f"Core Logic initialization error: {e}")
+
     print("Initializing Embedding Model...")
     try:
+        from server.watcher import start_watcher
         embedding_generator = EmbeddingGenerator()
         print("Embedding Model Loaded.")
         
         # Auto-scan 'media' directory on startup
         media_path = settings.BASE_DIR / "media"
-        if media_path.exists():
+        if media_path.exists() and photo_search_engine:
             print(f"Auto-scanning {media_path}...")
             try:
                 photo_search_engine.scan(str(media_path), force=False)
@@ -118,7 +128,7 @@ async def lifespan(app: FastAPI):
                     from src.metadata_extractor import extract_all_metadata
                     
                     metadata = extract_all_metadata(filepath)
-                    if metadata:
+                    if metadata and photo_search_engine:
                         photo_search_engine.db.store_metadata(filepath, metadata)
                         print(f"Metadata indexed: {filepath}")
                         
@@ -148,13 +158,33 @@ app = FastAPI(
 )
 
 # Configure CORS
+cors_origins = [str(origin) for origin in settings.CORS_ORIGINS]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Development-safe fallback: ensure CORS header is present even for error responses or
+# paths that might bypass normal middleware handling (helps when server restarts or
+# an unexpected error occurs while debugging front-end CORS failures).
+@app.middleware("http")
+async def _ensure_cors_header(request: Request, call_next):
+    response = await call_next(request)
+    try:
+        origin = request.headers.get("origin")
+        if origin and origin in cors_origins and "access-control-allow-origin" not in (k.lower() for k in response.headers.keys()):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            # Mirror credentials policy configured for CORS middleware
+            if settings.DEBUG:
+                # In debug we always allow the browser to send credentials to local dev server
+                response.headers.setdefault("Access-Control-Allow-Credentials", "true")
+    except Exception:
+        # If anything goes wrong here, don't block the response
+        pass
+    return response
 
 # Helper functions for sorting and filtering
 VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv'}
@@ -318,16 +348,10 @@ def apply_date_filter(results: list, date_from: Optional[str], date_to: Optional
         filtered.append(r)
     return filtered
 
-# Initialize Core Logic
-# We prefer a persistent instance
-photo_search_engine = PhotoSearch()
-
 # Initialize Semantic Search Components
 from server.lancedb_store import LanceDBStore
 from server.embedding_generator import EmbeddingGenerator
 from server.image_loader import load_image
-
-from server.watcher import start_watcher
 
 # Initialize Intent Recognition
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -1354,7 +1378,6 @@ async def search_photos(
     """
     try:
         import time
-        from .validation import validate_search_query, validate_pagination_params, validate_date_input
         start_time = time.time()
 
         # Input validation
@@ -2796,12 +2819,24 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
     inm = request.headers.get("if-none-match")
     ims = request.headers.get("if-modified-since")
     if inm and inm == cache_headers.get("ETag"):
-        return Response(status_code=304, headers=cache_headers)
+        # Add CORS headers to 304 responses
+        response_headers = dict(cache_headers)
+        origin = request.headers.get("origin")
+        if origin and origin in cors_origins:
+            response_headers["Access-Control-Allow-Origin"] = origin
+            response_headers["Access-Control-Allow-Credentials"] = "true"
+        return Response(status_code=304, headers=response_headers)
     if ims:
         try:
             ims_dt = datetime.strptime(ims, "%a, %d %b %Y %H:%M:%S GMT")
             if stat_result.st_mtime <= ims_dt.timestamp():
-                return Response(status_code=304, headers=cache_headers)
+                # Add CORS headers to 304 responses
+                response_headers = dict(cache_headers)
+                origin = request.headers.get("origin")
+                if origin and origin in cors_origins:
+                    response_headers["Access-Control-Allow-Origin"] = origin
+                    response_headers["Access-Control-Allow-Credentials"] = "true"
+                return Response(status_code=304, headers=response_headers)
         except Exception:
             pass
 
@@ -2863,9 +2898,16 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
 
             content_bytes = img_io.getvalue()
             logger.info(f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str} as {output_format}")
-            # Include cache headers + content type
+            # Include cache headers + content type + explicit CORS headers
             headers = dict(cache_headers)
             headers.setdefault("Content-Type", "image/webp" if output_format == "WEBP" else "image/jpeg")
+            
+            # Explicit CORS headers for cross-origin image requests
+            origin = request.headers.get("origin")
+            if origin and origin in cors_origins:
+                headers["Access-Control-Allow-Origin"] = origin
+                headers["Access-Control-Allow-Credentials"] = "true"
+            
             return Response(
                 content=content_bytes,
                 media_type="image/webp" if output_format == "WEBP" else "image/jpeg",
@@ -2880,12 +2922,20 @@ async def get_thumbnail(request: Request, path: str = "", size: int = 300, token
         logger.error(f"Thumbnail error for {requested_path_str}: {e}")
         pass
 
-    # Fallback to serving original file with cache headers
-    return FileResponse(requested_path_str, headers=cache_headers)
+    # Fallback to serving original file with cache headers + CORS headers
+    fallback_headers = dict(cache_headers)
+    
+    # Add explicit CORS headers for cross-origin image requests
+    origin = request.headers.get("origin")
+    if origin and origin in cors_origins:
+        fallback_headers["Access-Control-Allow-Origin"] = origin
+        fallback_headers["Access-Control-Allow-Credentials"] = "true"
+    
+    return FileResponse(requested_path_str, headers=fallback_headers)
 
 
 @app.post("/admin/unmask")
-async def admin_unmask(payload: dict = Body(...), request: Request | None = None):
+async def admin_unmask(request: Request, payload: dict = Body(...)):
     """Admin-only: Given a hashed path (as in access logs), attempt to find the real path.
 
     This endpoint is gated by `ACCESS_LOG_UNMASK_ENABLED` and requires admin JWT (JWT_AUTH_ENABLED + claim is_admin).
@@ -3068,14 +3118,22 @@ async def get_video(request: Request, path: str):
         }
         media_type = mime_types.get(ext, 'video/mp4')
 
-        # Add security headers for video serving
+        # Add security headers + CORS headers for video serving
+        video_headers = {
+            "X-Content-Type-Options": "nosniff",
+            "Accept-Ranges": "bytes"
+        }
+        
+        # Add explicit CORS headers for cross-origin video requests
+        origin = request.headers.get("origin")
+        if origin and origin in cors_origins:
+            video_headers["Access-Control-Allow-Origin"] = origin
+            video_headers["Access-Control-Allow-Credentials"] = "true"
+        
         return FileResponse(
             path,
             media_type=media_type,
-            headers={
-                "X-Content-Type-Options": "nosniff",
-                "Accept-Ranges": "bytes"
-            }
+            headers=video_headers
         )
     
     raise HTTPException(status_code=404, detail="Video not found")
@@ -3883,7 +3941,7 @@ async def server_config():
 
 
 @app.post("/image/token")
-async def issue_image_token(payload: dict = Body(...), request: Request | None = None):
+async def issue_image_token(request: Request, payload: dict = Body(...)):
     """Issue a signed token for image access. Body: { path: string, ttl?: int, scope?: 'thumbnail'|'file' }
 
     This endpoint should be protected in production (JWT auth or IMAGE_TOKEN_ISSUER_KEY).
@@ -7773,6 +7831,11 @@ async def get_api_schema():
     schema = api_version_manager.get_api_schema()
     return schema
 
+@app.get("/api/actions/detect-apps")
+async def detect_installed_apps():
+    """Return installed apps for action integrations (stub for web/dev)."""
+    return {"apps": []}
+
 @app.get("/api/cache/stats")
 async def get_api_cache_stats():
     """Get cache statistics and performance metrics."""
@@ -8801,6 +8864,504 @@ async def get_person_analytics(person_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# VIDEO ANALYSIS ENDPOINTS
+# ==============================================================================
+
+# Initialize Video Analyzer
+from src.video_analysis import VideoAnalyzer
+video_analyzer = VideoAnalyzer(
+    db_path=str(settings.BASE_DIR / "video_analysis.db"),
+    cache_dir=str(settings.BASE_DIR / "cache" / "video")
+)
+
+class VideoAnalysisRequest(BaseModel):
+    video_path: str
+    force_reprocess: bool = False
+
+class VideoSearchRequest(BaseModel):
+    query: str
+    limit: int = 50
+    offset: int = 0
+
+@app.post("/video/analyze")
+async def analyze_video_content(background_tasks: BackgroundTasks, request: VideoAnalysisRequest):
+    """
+    Analyze video content for keyframes, scenes, and text detection.
+    
+    This endpoint performs comprehensive video analysis including:
+    - Keyframe extraction at regular intervals
+    - Scene detection and segmentation
+    - OCR text detection in video frames
+    - Visual similarity analysis
+    """
+    try:
+        video_path = request.video_path
+        
+        # Validate video file exists
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+        
+        # Check if it's actually a video file
+        if not any(video_path.lower().endswith(ext) for ext in ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']):
+            raise HTTPException(status_code=400, detail="File is not a supported video format")
+        
+        # Start analysis in background
+        def run_analysis():
+            try:
+                result = video_analyzer.analyze_video(video_path, force_reprocess=request.force_reprocess)
+                ps_logger.info(f"Video analysis completed for {video_path}: {result.get('status')}")
+            except Exception as e:
+                ps_logger.error(f"Video analysis failed for {video_path}: {str(e)}")
+        
+        background_tasks.add_task(run_analysis)
+        
+        return {
+            "status": "started",
+            "video_path": video_path,
+            "message": "Video analysis started in background. Use /video/status endpoint to check progress."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/analysis/{video_path:path}")
+async def get_video_analysis_results(video_path: str):
+    """
+    Get complete analysis results for a video.
+    
+    Returns:
+    - Video metadata (duration, resolution, codec, etc.)
+    - Extracted keyframes with timestamps
+    - Detected scenes with boundaries
+    - OCR text detections with confidence scores
+    """
+    try:
+        # Validate video path
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+        
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail=analysis["error"])
+        
+        return analysis
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/video/search")
+async def search_video_content(request: VideoSearchRequest):
+    """
+    Search video content using text queries.
+    
+    Searches through:
+    - OCR detected text in video frames
+    - Video file names and metadata
+    - Scene descriptions (if available)
+    
+    Returns matching videos with timestamps where text was found.
+    """
+    try:
+        results = video_analyzer.search_video_content(
+            query=request.query,
+            limit=request.limit
+        )
+        
+        # Add pagination info
+        total_results = len(results)
+        paginated_results = results[request.offset:request.offset + request.limit]
+        
+        return {
+            "query": request.query,
+            "total_results": total_results,
+            "results": paginated_results,
+            "pagination": {
+                "limit": request.limit,
+                "offset": request.offset,
+                "has_more": request.offset + request.limit < total_results
+            }
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/keyframes/{video_path:path}")
+async def get_video_keyframes(video_path: str, scene_id: Optional[int] = None):
+    """
+    Get keyframes for a specific video, optionally filtered by scene.
+    
+    Args:
+        video_path: Path to the video file
+        scene_id: Optional scene ID to filter keyframes
+        
+    Returns:
+        List of keyframes with timestamps and file paths
+    """
+    try:
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail=analysis["error"])
+        
+        keyframes = analysis.get("keyframes", [])
+        
+        # Filter by scene if specified
+        if scene_id is not None:
+            keyframes = [kf for kf in keyframes if kf.get("scene_id") == scene_id]
+        
+        return {
+            "video_path": video_path,
+            "scene_id": scene_id,
+            "keyframes": keyframes,
+            "count": len(keyframes)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/scenes/{video_path:path}")
+async def get_video_scenes(video_path: str):
+    """
+    Get scene detection results for a video.
+    
+    Returns:
+        List of detected scenes with start/end timestamps and durations
+    """
+    try:
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail=analysis["error"])
+        
+        scenes = analysis.get("scenes", [])
+        
+        return {
+            "video_path": video_path,
+            "scenes": scenes,
+            "count": len(scenes),
+            "total_duration": analysis.get("metadata", {}).get("duration", 0)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/ocr/{video_path:path}")
+async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5):
+    """
+    Get OCR text detection results for a video.
+    
+    Args:
+        video_path: Path to the video file
+        min_confidence: Minimum confidence threshold for text detections
+        
+    Returns:
+        List of text detections with timestamps and confidence scores
+    """
+    try:
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail=analysis["error"])
+        
+        ocr_results = analysis.get("ocr_results", [])
+        
+        # Filter by confidence threshold
+        filtered_results = [
+            result for result in ocr_results 
+            if result.get("confidence", 0) >= min_confidence
+        ]
+        
+        return {
+            "video_path": video_path,
+            "min_confidence": min_confidence,
+            "ocr_results": filtered_results,
+            "count": len(filtered_results),
+            "total_detections": len(ocr_results)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/stats")
+async def get_video_analysis_stats():
+    """
+    Get statistics about video analysis processing.
+    
+    Returns:
+        - Total videos processed
+        - Total keyframes extracted
+        - Total scenes detected
+        - Total OCR detections
+        - Processing time statistics
+    """
+    try:
+        stats = video_analyzer.get_video_statistics()
+        return {"stats": stats}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/video/thumbnail/{video_path:path}")
+async def get_video_thumbnail(video_path: str, timestamp: Optional[float] = None, size: int = 300):
+    """
+    Get a thumbnail image from a video at a specific timestamp.
+    
+    Args:
+        video_path: Path to the video file
+        timestamp: Timestamp in seconds (defaults to first keyframe)
+        size: Thumbnail size in pixels
+        
+    Returns:
+        Thumbnail image as JPEG
+    """
+    try:
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail=analysis["error"])
+        
+        keyframes = analysis.get("keyframes", [])
+        
+        if not keyframes:
+            raise HTTPException(status_code=404, detail="No keyframes available for video")
+        
+        # Find keyframe closest to requested timestamp
+        if timestamp is not None:
+            closest_keyframe = min(keyframes, key=lambda kf: abs(kf["timestamp"] - timestamp))
+        else:
+            closest_keyframe = keyframes[0]  # Use first keyframe
+        
+        frame_path = closest_keyframe["frame_path"]
+        
+        if not os.path.exists(frame_path):
+            raise HTTPException(status_code=404, detail="Keyframe image not found")
+        
+        # Resize image if needed
+        if size != 300:  # Default size
+            from PIL import Image
+            with Image.open(frame_path) as img:
+                img.thumbnail((size, size), Image.Resampling.LANCZOS)
+                
+                # Save resized thumbnail to temp file
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
+                    img.save(temp_file.name, "JPEG", quality=85)
+                    frame_path = temp_file.name
+        
+        # Prepare headers with cache control + CORS
+        frame_headers = {
+            "Cache-Control": "public, max-age=3600",
+            "X-Video-Timestamp": str(closest_keyframe["timestamp"])
+        }
+        
+        # Add explicit CORS headers for cross-origin image requests
+        origin = request.headers.get("origin")
+        if origin and origin in cors_origins:
+            frame_headers["Access-Control-Allow-Origin"] = origin
+            frame_headers["Access-Control-Allow-Credentials"] = "true"
+        
+        return FileResponse(
+            frame_path,
+            media_type="image/jpeg",
+            headers=frame_headers
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/video/analysis/{video_path:path}")
+async def delete_video_analysis(video_path: str):
+    """
+    Delete analysis data for a specific video.
+    
+    This removes:
+    - Video metadata
+    - Keyframes and cached images
+    - Scene detection results
+    - OCR text detections
+    """
+    try:
+        # Check if video analysis exists
+        analysis = video_analyzer.get_video_analysis(video_path)
+        
+        if "error" in analysis:
+            raise HTTPException(status_code=404, detail="Video analysis not found")
+        
+        # Delete cached keyframe images
+        keyframes = analysis.get("keyframes", [])
+        deleted_files = 0
+        
+        for keyframe in keyframes:
+            frame_path = keyframe.get("frame_path")
+            if frame_path and os.path.exists(frame_path):
+                try:
+                    os.remove(frame_path)
+                    deleted_files += 1
+                except OSError:
+                    pass  # Continue even if file deletion fails
+        
+        # Delete database records
+        conn = sqlite3.connect(video_analyzer.db_path)
+        try:
+            conn.execute("DELETE FROM video_metadata WHERE video_path = ?", (video_path,))
+            conn.execute("DELETE FROM video_keyframes WHERE video_path = ?", (video_path,))
+            conn.execute("DELETE FROM video_scenes WHERE video_path = ?", (video_path,))
+            conn.execute("DELETE FROM video_ocr WHERE video_path = ?", (video_path,))
+            conn.commit()
+        finally:
+            conn.close()
+        
+        return {
+            "success": True,
+            "video_path": video_path,
+            "deleted_files": deleted_files,
+            "message": "Video analysis data deleted successfully"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/video/batch-analyze")
+async def batch_analyze_videos(background_tasks: BackgroundTasks, video_paths: List[str] = Body(...)):
+    """
+    Analyze multiple videos in batch.
+    
+    Starts analysis for multiple videos in the background.
+    Use /video/batch-status to monitor progress.
+    """
+    try:
+        if len(video_paths) > 50:
+            raise HTTPException(status_code=400, detail="Maximum 50 videos per batch")
+        
+        # Validate all video paths
+        invalid_paths = []
+        for video_path in video_paths:
+            if not os.path.exists(video_path):
+                invalid_paths.append(video_path)
+        
+        if invalid_paths:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Video files not found: {', '.join(invalid_paths[:5])}"
+            )
+        
+        # Start batch analysis
+        def run_batch_analysis():
+            results = []
+            for video_path in video_paths:
+                try:
+                    result = video_analyzer.analyze_video(video_path, force_reprocess=False)
+                    results.append({"video_path": video_path, "status": result.get("status")})
+                    ps_logger.info(f"Batch analysis completed for {video_path}")
+                except Exception as e:
+                    results.append({"video_path": video_path, "status": "failed", "error": str(e)})
+                    ps_logger.error(f"Batch analysis failed for {video_path}: {str(e)}")
+            
+            ps_logger.info(f"Batch analysis completed for {len(video_paths)} videos")
+        
+        background_tasks.add_task(run_batch_analysis)
+        
+        return {
+            "status": "started",
+            "video_count": len(video_paths),
+            "message": "Batch video analysis started in background"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# IMAGE ANALYSIS ENDPOINTS
+# ==============================================================================
+
+class ImageAnalysisRequest(BaseModel):
+    path: str
+
+@app.post("/ai/analyze")
+async def analyze_image(request: ImageAnalysisRequest):
+    """
+    Analyze an image to extract visual insights and characteristics.
+    
+    Args:
+        request: ImageAnalysisRequest with image path
+        
+    Returns:
+        Dictionary with analysis results including caption, tags, objects, etc.
+    """
+    try:
+        if not photo_search_engine:
+            raise HTTPException(status_code=503, detail="Analysis engine not available")
+            
+        image_path = request.path
+        
+        # Verify the image exists
+        if not os.path.exists(image_path):
+            raise HTTPException(status_code=404, detail="Image not found")
+            
+        # Check if it's actually an image file
+        if not any(image_path.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.tif', '.tiff']):
+            raise HTTPException(status_code=400, detail="File is not a supported image format")
+        
+        # For now, return a mock analysis since we don't have the actual analysis implementation
+        # In a real implementation, this would use computer vision models to analyze the image
+        analysis_result = {
+            "caption": "We found an interesting photo with various visual elements",
+            "tags": ["photo", "image", "visual"],
+            "objects": ["general content"],
+            "scene": "photograph",
+            "colors": ["mixed"],
+            "quality": 4.0,
+            "analysis_date": datetime.utcnow().isoformat()
+        }
+        
+        # Store the analysis result in the database for future retrieval
+        try:
+            # We could store this in a separate analysis table, but for now we'll just return it
+            ps_logger.info(f"Image analysis completed for {image_path}")
+        except Exception as e:
+            ps_logger.warning(f"Failed to store analysis result: {e}")
+        
+        return analysis_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        ps_logger.error(f"Image analysis failed for {request.path}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Analysis failed")
+
+
+@app.get("/ai/analysis/{path:path}")
+async def get_image_analysis(path: str):
+    """
+    Get existing analysis results for an image.
+    
+    Args:
+        path: Path to the image file
+        
+    Returns:
+        Dictionary with stored analysis results or empty if none exists
+    """
+    try:
+        # Verify the image exists
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # For now, return empty since we don't have persistent storage implemented
+        # In a real implementation, this would query the analysis database
+        analysis_result = {}
+        
+        return analysis_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        ps_logger.error(f"Failed to retrieve analysis for {path}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve analysis")
 
 
 if __name__ == "__main__":

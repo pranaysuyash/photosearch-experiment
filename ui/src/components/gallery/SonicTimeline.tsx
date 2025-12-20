@@ -154,8 +154,8 @@ export function SonicTimeline({ onDateClick }: SonicTimelineProps) {
 
   return (
     <motion.div
-      className='fixed bottom-6 left-4 right-4 sm:left-6 sm:right-auto sm:w-[520px] glass-surface rounded-2xl shadow-2xl z-40'
-      animate={{ height: isOpen ? '7.5rem' : '2.75rem' }}
+      className='sonic-timeline fixed bottom-6 left-4 right-4 sm:left-6 sm:right-auto sm:w-[520px] glass-surface rounded-2xl shadow-2xl z-40 overflow-hidden'
+      animate={{ height: isOpen ? '7.5rem' : '2.25rem' }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       onMouseEnter={() => {
         if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);

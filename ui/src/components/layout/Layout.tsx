@@ -14,6 +14,8 @@ import {
   // EyeOff,
   // EyeOff, // Removed as per instruction
   ArrowUp,
+  Menu,
+  X,
   // Clock,
 } from 'lucide-react';
 import { ModeRail } from './ModeRail';
@@ -54,6 +56,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [hasRecentJobs, setHasRecentJobs] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [stats, setStats] = useState<{
     active_files?: number;
@@ -110,6 +113,10 @@ const Layout = ({ children }: LayoutProps) => {
       .then(setStats)
       .catch(() => setStats(null));
   }, []);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, searchExpanded]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -180,10 +187,10 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Floating Top Bar */}
       {!minimalMode && (
         <div className='fixed top-0 left-0 right-0 z-[1000] pointer-events-none'>
-          <div className='w-full max-w-[1600px] mx-auto grid grid-cols-[auto_1fr_auto] items-start px-4 md:px-6 pt-4 gap-4'>
+          <div className='lm-header-grid w-full max-w-[1600px] mx-auto grid grid-cols-[auto_1fr_auto] items-start px-2 sm:px-4 md:px-6 pt-3 sm:pt-4 gap-2 sm:gap-4'>
             {/* Left rail: modes */}
             <motion.div
-              className='pointer-events-auto z-20'
+              className='lm-header-left pointer-events-auto z-20'
               initial={{ opacity: 0, y: -10 }}
               animate={headerMotionTarget}
               transition={headerMotionTransition}
@@ -193,7 +200,7 @@ const Layout = ({ children }: LayoutProps) => {
 
             {/* Center: Dynamic Notch Search */}
             <motion.div
-              className='flex justify-center pointer-events-auto z-10'
+              className='lm-header-center flex justify-center pointer-events-auto z-10'
               initial={{ opacity: 0, y: -10 }}
               animate={headerMotionTarget}
               transition={headerMotionTransition}
@@ -202,7 +209,7 @@ const Layout = ({ children }: LayoutProps) => {
             </motion.div>
 
             {/* Right rail: actions */}
-            <div className="relative z-20 h-11 flex items-center justify-end">
+            <div className="lm-header-right relative z-20 h-11 flex items-center justify-end">
               <AnimatePresence>
                 {!searchExpanded && (
                   <>
@@ -221,23 +228,42 @@ const Layout = ({ children }: LayoutProps) => {
                       />
                     </motion.div>
 
-                    {/* Mobile: Absolute Positioned */}
-                    <motion.div
-                      className='pointer-events-auto md:hidden absolute right-0 top-12'
+                    {/* Mobile: More menu */}
+                    <motion.button
+                      type='button'
+                      className='pointer-events-auto md:hidden btn-glass btn-glass--muted w-10 h-10 p-0 justify-center'
+                      onClick={() => setMobileMenuOpen((v) => !v)}
+                      aria-expanded={mobileMenuOpen}
+                      aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
                       initial={{ opacity: 0, y: -10 }}
                       animate={headerMotionTarget}
                       transition={headerMotionTransition}
                     >
-                      <ActionsPod
-                        hasRecentJobs={hasRecentJobs}
-                        toggleMinimalMode={toggleMinimalMode}
-                      />
-                    </motion.div>
+                      {mobileMenuOpen ? <X size={16} /> : <Menu size={16} />}
+                    </motion.button>
                   </>
                 )}
               </AnimatePresence>
             </div>
           </div>
+
+          {mobileMenuOpen && !searchExpanded && (
+            <>
+              <div
+                className='lm-mobile-menu-backdrop'
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <div className='lm-mobile-menu pointer-events-auto'>
+                <div className='lm-mobile-menu-section'>
+                  <ModeRail variant='standalone' />
+                </div>
+                <ActionsPod
+                  hasRecentJobs={hasRecentJobs}
+                  toggleMinimalMode={toggleMinimalMode}
+                />
+              </div>
+            </>
+          )}
 
           {statusOpen && (
             <div className='status-popover-root'>
@@ -291,7 +317,7 @@ const Layout = ({ children }: LayoutProps) => {
       )}
 
       {/* Main Content Area */}
-      <main className='flex-1 w-full max-w-[1600px] mx-auto pt-20 px-4 md:px-6 pb-32'>
+      <main className='lm-main flex-1 w-full max-w-[1600px] mx-auto pt-20 px-4 md:px-6 pb-32'>
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0, y: 20 }}

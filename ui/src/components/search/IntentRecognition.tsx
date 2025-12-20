@@ -5,6 +5,20 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { 
+  User, 
+  MapPin, 
+  Search, 
+  Calendar, 
+  Palette, 
+  Smile, 
+  Wand2, 
+  Star, 
+  Settings, 
+  Lightbulb, 
+  FolderOpen,
+  Sparkles
+} from 'lucide-react';
 import './IntentRecognition.css';
 
 interface IntentRecognitionProps {
@@ -104,21 +118,22 @@ export const IntentRecognition = ({
   }, [query, detectIntent]);
 
   const getIntentIcon = (intentName: string) => {
-    const icons: Record<string, string> = {
-      find_person: '👤',
-      find_location: '📍',
-      find_object: '🔍',
-      find_event: '🎉',
-      find_date: '📅',
-      find_color: '�',
-      find_emotion: '😊',
-      find_style: '🎭',
-      find_quality: '⭐',
-      find_technical: '🔧',
-      find_creative: '💡',
-      find_organize: '�',
+    const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+      find_person: User,
+      find_location: MapPin,
+      find_object: Search,
+      find_event: Sparkles,
+      find_date: Calendar,
+      find_color: Palette,
+      find_emotion: Smile,
+      find_style: Wand2,
+      find_quality: Star,
+      find_technical: Settings,
+      find_creative: Lightbulb,
+      find_organize: FolderOpen,
     };
-    return icons[intentName] || '🔮';
+    const IconComponent = iconMap[intentName] || Sparkles;
+    return <IconComponent size={16} className="text-primary/70" />;
   };
 
   const getIntentDescription = (intentName: string) => {
@@ -136,12 +151,12 @@ export const IntentRecognition = ({
       find_creative: 'Looking for creative or artistic photos',
       find_organize: 'Organizing or managing photo collections',
     };
-    return descriptions[intentName] || 'Analyzing your search intent';
+    return descriptions[intentName] || 'We\'re analyzing your search intent';
   };
 
   if (loading) {
     return (
-      <div className='intent-loading'>Analyzing your search intent...</div>
+      <div className='intent-loading'>We're analyzing your search intent...</div>
     );
   }
 

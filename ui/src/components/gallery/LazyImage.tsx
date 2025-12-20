@@ -6,6 +6,7 @@ interface LazyImageProps {
   alt: string;
   className?: string;
   placeholder?: string;
+  aspectRatio?: number;
   onLoad?: () => void;
   onError?: () => void;
   onLoadTime?: (loadTime: number) => void;
@@ -16,6 +17,7 @@ export function LazyImage({
   alt,
   className = '',
   placeholder,
+  aspectRatio,
   onLoad,
   onError,
   onLoadTime,
@@ -24,12 +26,13 @@ export function LazyImage({
   const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadStartTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    const img = imgRef.current;
-    if (!img) return;
+    const node = wrapperRef.current;
+    if (!node) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
@@ -41,10 +44,10 @@ export function LazyImage({
           }
         });
       },
-      { threshold: 0.1, rootMargin: '50px' }
+      { threshold: 0.1, rootMargin: '200px' }
     );
 
-    observerRef.current.observe(img);
+    observerRef.current.observe(node);
 
     return () => {
       observerRef.current?.disconnect();
@@ -64,7 +67,11 @@ export function LazyImage({
   };
 
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div
+      ref={wrapperRef}
+      className={`relative overflow-hidden ${className}`}
+      style={aspectRatio ? { aspectRatio } : undefined}
+    >
       {/* Placeholder/Loading state */}
       {(!isLoaded || hasError) && (
         <div className='absolute inset-0 bg-muted animate-pulse flex items-center justify-center'>

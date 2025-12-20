@@ -33,7 +33,7 @@ Date: 2025-12-06
 import os
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from collections import defaultdict
 
 # Import catalog loading from Task 1
@@ -62,7 +62,7 @@ def get_format_statistics(catalog: Dict) -> Dict[str, Dict[str, int]]:
         >>> print(stats['/Users/pranay/Photos'])
         {'jpg': 4, 'png': 3, 'gif': 2}
     """
-    format_stats = defaultdict(lambda: defaultdict(int))
+    format_stats: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
     catalog_data = catalog.get('catalog', {})
     
     for directory, files in catalog_data.items():
@@ -75,7 +75,7 @@ def get_format_statistics(catalog: Dict) -> Dict[str, Dict[str, int]]:
     return dict(format_stats)
 
 
-def display_directory_formats(catalog: Dict, directory: str = None):
+def display_directory_formats(catalog: Dict, directory: Optional[str] = None):
     """
     Display format breakdown for specific directory or all directories.
     
@@ -204,7 +204,7 @@ def get_format_summary(catalog: Dict) -> Dict[str, int]:
         >>> print(summary)
         {'jpg': 150, 'png': 89, 'mp4': 45}
     """
-    format_totals = defaultdict(int)
+    format_totals: Dict[str, int] = defaultdict(int)
     stats = get_format_statistics(catalog)
     
     for directory, formats in stats.items():
@@ -214,7 +214,7 @@ def get_format_summary(catalog: Dict) -> Dict[str, int]:
     return dict(format_totals)
 
 
-def list_files_by_format(catalog: Dict, format: str, directory: str = None) -> List[Dict]:
+def list_files_by_format(catalog: Dict, format: str, directory: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     List all files of specific format.
     
@@ -470,7 +470,7 @@ def interactive_mode(catalog_file: str = 'media_catalog.json'):
             directory = input("Enter directory name (partial match): ").strip()
             
             if format_type and directory:
-                exists, files = check_format_in_directory(catalog, format_type, directory)
+                exists, filenames = check_format_in_directory(catalog, format_type, directory)
                 
                 fmt_upper = format_type.upper()
                 
@@ -483,10 +483,10 @@ def interactive_mode(catalog_file: str = 'media_catalog.json'):
                     
                     print(f"\n✓ {fmt_upper} files found in {dir_path}\n")
                     print("Files:")
-                    for filename in files:
+                    for filename in filenames:
                         print(f"  - {filename}")
-                    plural = "file" if len(files) == 1 else "files"
-                    print(f"\nTotal: {len(files)} {plural}")
+                    plural = "file" if len(filenames) == 1 else "files"
+                    print(f"\nTotal: {len(filenames)} {plural}")
                 else:
                     print(f"\n✗ No {fmt_upper} files found in directories matching '{directory}'")
             else:
@@ -494,27 +494,29 @@ def interactive_mode(catalog_file: str = 'media_catalog.json'):
         
         elif choice == '5':
             format_type = input("\nEnter format to list (e.g., jpg, mp4): ").strip()
-            directory = input("Enter directory filter (optional, press Enter to skip): ").strip()
-            directory = directory if directory else None
+            directory_input = input("Enter directory filter (optional, press Enter to skip): ").strip()
+            dir_filter: Optional[str] = directory_input if directory_input else None
             
             if format_type:
-                files = list_files_by_format(catalog, format_type, directory)
+                format_files: List[Dict[str, Any]] = list_files_by_format(catalog, format_type, dir_filter)
                 
-                if files:
+                if format_files:
                     fmt_upper = format_type.upper()
-                    plural = "file" if len(files) == 1 else "files"
-                    print(f"\n{fmt_upper} {plural} ({len(files)} total):\n")
+                    plural = "file" if len(format_files) == 1 else "files"
+                    print(f"\n{fmt_upper} {plural} ({len(format_files)} total):\n")
                     
                     # Limit display to first 50 files
-                    for file_info in files[:50]:
-                        size_kb = file_info['size'] / 1024 if file_info['size'] > 0 else 0
-                        if size_kb > 0:
-                            print(f"  {file_info['path']} ({size_kb:.1f} KB)")
+                    for info_dict in format_files[:50]:
+                        size_val = info_dict.get('size', 0)
+                        size_num = float(size_val) if isinstance(size_val, (int, float)) else 0.0
+                        path_str = str(info_dict.get('path', ''))
+                        if size_num > 0:
+                            print(f"  {path_str} ({size_num/1024:.1f} KB)")
                         else:
-                            print(f"  {file_info['path']} ({file_info['size']} bytes)")
+                            print(f"  {path_str} ({size_val} bytes)")
                     
-                    if len(files) > 50:
-                        print(f"\n  ... and {len(files) - 50} more files")
+                    if len(format_files) > 50:
+                        print(f"\n  ... and {len(format_files) - 50} more files")
                 else:
                     filter_msg = f" in '{directory}'" if directory else ""
                     print(f"\nNo {format_type.upper()} files found{filter_msg}.")

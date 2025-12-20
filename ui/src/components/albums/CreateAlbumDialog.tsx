@@ -96,8 +96,8 @@ export function CreateAlbumDialog({
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <Folder size={20} className="text-white" />
+              <div className="w-10 h-10 rounded-lg glass-surface flex items-center justify-center">
+                <Folder size={20} className="text-primary" />
               </div>
               <h2 className="text-xl font-semibold text-white">
                 {isEditMode ? 'Edit Album' : 'Create Album'}
@@ -177,7 +177,7 @@ export function CreateAlbumDialog({
               <button
                 type="submit"
                 disabled={isSubmitting || !name.trim()}
-                className="flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:from-blue-600 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                className="flex-1 btn-glass btn-glass--primary px-6 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

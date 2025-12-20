@@ -28,8 +28,8 @@ export default function FavoritesPage() {
       {/* Header */}
       <div className="max-w-screen-2xl mx-auto px-6 py-8">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
-            <Star size={24} className="text-white fill-white" />
+          <div className="w-12 h-12 rounded-2xl glass-surface flex items-center justify-center">
+            <Star size={24} className="text-yellow-400 fill-yellow-400" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-white mb-1">Favorites</h1>

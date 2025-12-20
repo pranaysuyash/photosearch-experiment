@@ -152,12 +152,12 @@ export function AlbumGrid({ onAlbumClick, onCreateAlbum }: AlbumGridProps) {
       {/* Floating Action Button */}
       <motion.button
         onClick={onCreateAlbum}
-        className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 shadow-lg hover:shadow-xl flex items-center justify-center z-50"
+        className="fixed bottom-8 right-8 w-14 h-14 rounded-full glass-surface shadow-lg hover:shadow-xl flex items-center justify-center z-50 border border-white/10"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
         aria-label="Create new album"
       >
-        <Plus size={28} className="text-white" />
+        <Plus size={28} className="text-primary" />
       </motion.button>
     </div>
   );

@@ -173,7 +173,7 @@ class SavedSearchManager:
         execution_time_ms: int = 0,
         user_agent: str = "unknown",
         ip_address: str = "unknown"
-    ) -> int:
+    ) -> Optional[int]:
         """
         Log execution of a saved search for analytics.
         
@@ -206,7 +206,7 @@ class SavedSearchManager:
         execution_time_ms: int = 0,
         user_agent: str = "unknown",
         ip_address: str = "unknown"
-    ) -> int:
+    ) -> Optional[int]:
         """
         Log any search execution to history (not necessarily saved).
         

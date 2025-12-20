@@ -73,10 +73,7 @@ class LocationClustersDB:
                     city TEXT,
                     accuracy REAL DEFAULT 100.0,  -- GPS accuracy in meters
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_coords (latitude, longitude),
-                    INDEX idx_corrected_place (corrected_place_name),
-                    INDEX idx_photo_path (photo_path)
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
@@ -92,10 +89,7 @@ class LocationClustersDB:
                     min_lng REAL NOT NULL,
                     max_lng REAL NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_center_coords (center_lat, center_lng),
-                    INDEX idx_name (name),
-                    INDEX idx_photo_count (photo_count)
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
@@ -106,11 +100,17 @@ class LocationClustersDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (cluster_id, photo_path),
                     FOREIGN KEY (cluster_id) REFERENCES location_clusters(id),
-                    FOREIGN KEY (photo_path) REFERENCES photo_locations(photo_path),
-                    INDEX idx_cluster_id (cluster_id),
-                    INDEX idx_photo_path (photo_path)
+                    FOREIGN KEY (photo_path) REFERENCES photo_locations(photo_path)
                 )
             """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coords ON photo_locations(latitude, longitude)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_corrected_place ON photo_locations(corrected_place_name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_path ON photo_locations(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_center_coords ON location_clusters(center_lat, center_lng)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_name ON location_clusters(name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_count ON location_clusters(photo_count)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_cluster_id ON cluster_photos(cluster_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_cluster_photo_path ON cluster_photos(photo_path)")
 
     def add_photo_location(self, 
                           photo_path: str,

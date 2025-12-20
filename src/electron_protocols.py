@@ -20,8 +20,8 @@ Usage:
     # Register custom protocols
     protocol_handler.register_protocols()
     
-    # Handle protocol requests
-    response = protocol_handler.handle_request('photosearch://images/123')
+# Handle protocol requests
+response = protocol_handler.handle_request('photosearch://images/123')
 """
 
 import os
@@ -42,7 +42,7 @@ class ElectronProtocolHandler:
             base_dir: Base directory for file access (defaults to root)
         """
         self.base_dir = Path(base_dir).resolve()
-        self.registered_protocols = []
+        self.registered_protocols: List[str] = []
         self._initialize_protocols()
     
     def _initialize_protocols(self):
@@ -150,7 +150,7 @@ class ElectronProtocolHandler:
             return self._handle_images_request(path_parts[1:])
         
         elif path_parts[0] == 'search':
-            return self._handle_search_request(path_parts[1:])
+            return self._handle_search_request(parsed_url, path_parts[1:])
         
         elif path_parts[0] == 'settings':
             return self._handle_settings_request(path_parts[1:])
@@ -226,7 +226,7 @@ class ElectronProtocolHandler:
             'message': f'Image not found: {image_id}'
         }
     
-    def _handle_search_request(self, path_parts: List[str]) -> Dict:
+    def _handle_search_request(self, parsed_url: urllib.parse.ParseResult, path_parts: List[str]) -> Dict:
         """
         Handle search-related requests.
         
@@ -470,7 +470,7 @@ class ElectronProtocolHandler:
         except Exception:
             return False
     
-    def generate_deep_link(self, action: str, params: Dict = None) -> str:
+    def generate_deep_link(self, action: str, params: Optional[Dict[str, str]] = None) -> str:
         """
         Generate a deep link URL for the application.
         
@@ -517,7 +517,7 @@ class ElectronProtocolHandler:
             query_params = urllib.parse.parse_qs(parsed.query)
             
             # Clean up query parameters (convert single-item lists to strings)
-            clean_params = {}
+            clean_params: Dict[str, object] = {}
             for key, value in query_params.items():
                 if len(value) == 1:
                     clean_params[key] = value[0]

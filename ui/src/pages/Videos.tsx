@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import PhotoGrid from '../components/gallery/PhotoGrid';
-import { PageSearchWrapper } from '../components/layout/PageSearchWrapper';
+// Removed PageSearchWrapper - global DynamicNotchSearch in Layout.tsx handles search
 import { usePhotoSearchContext } from '../contexts/PhotoSearchContext';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
 
@@ -23,7 +23,7 @@ export default function VideosPage() {
   }, [setTypeFilter]);
 
   return (
-    <PageSearchWrapper>
+    <div className='w-full'>
       <div className='mx-auto w-full'>
         <div className='mb-4 flex justify-center'>
           <div className='btn-glass btn-glass--muted text-xs px-3 py-2'>
@@ -39,7 +39,7 @@ export default function VideosPage() {
           loadMore={loadMore}
         />
       </div>
-    </PageSearchWrapper>
+    </div>
   );
 }
 

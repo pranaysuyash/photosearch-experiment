@@ -97,7 +97,7 @@ class EnhancedDuplicateDetector:
 
     def __init__(self,
                  db_path: str = "duplicates.db",
-                 progress_callback: Optional[Callable] = None,
+                 progress_callback: Optional[Callable[[str], Any]] = None,
                  enable_gpu: bool = True):
         """
         Initialize enhanced duplicate detector.
@@ -108,13 +108,13 @@ class EnhancedDuplicateDetector:
             enable_gpu: Enable GPU acceleration if available
         """
         self.db_path = db_path
-        self.progress_callback = progress_callback
+        self.progress_callback: Callable[[str], Any] = progress_callback or (lambda _msg: None)
         self.enable_gpu = enable_gpu
 
         # Threading and caching
         self.cache_lock = threading.Lock()
-        self.photo_cache = {}
-        self.hash_cache = {}
+        self.photo_cache: Dict[str, PhotoInfo] = {}
+        self.hash_cache: Dict[str, Dict[str, Any]] = {}
 
         # Configuration
         self.hash_thresholds = {
@@ -125,7 +125,7 @@ class EnhancedDuplicateDetector:
         }
 
         # Performance tracking
-        self.stats = {
+        self.stats: Dict[str, int | float] = {
             'photos_processed': 0,
             'duplicates_found': 0,
             'groups_created': 0,
@@ -183,7 +183,7 @@ class EnhancedDuplicateDetector:
                 # Wavelet hash if available
                 if WAVELET_AVAILABLE:
                     try:
-                        hashes['whash'] = imagehash.whash(img, hash_size=8, mode='db2')
+                        hashes['whash'] = imagehash.whash(img, hash_size=8, mode='haar')  # type: ignore
                     except:
                         pass  # Skip wavelet if it fails
 
@@ -321,31 +321,33 @@ class EnhancedDuplicateDetector:
             Dictionary with scan results
         """
         start_time = time.time()
-        results = {
+        results: Dict[str, Any] = {
             'total_images': 0,
             'processed_images': 0,
             'exact_duplicates': 0,
             'near_duplicates': 0,
             'similar_images': 0,
             'groups_created': 0,
-            'total_size_saved_mb': 0,
+            'total_size_saved_mb': 0.0,
             'errors': []
         }
 
         # Get all image files
         image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp'}
-        image_files = []
+        image_files: List[Path] = []
         for ext in image_extensions:
             image_files.extend(Path(directory_path).glob(f'*{ext}'))
             image_files.extend(Path(directory_path).glob(f'*{ext.upper()}'))
 
         results['total_images'] = len(image_files)
 
+        _progress_cb: Callable[[str], None] = self.progress_callback
+
         if show_progress:
-            self.progress_callback(f"Processing {len(image_files)} images for duplicates...")
+            _progress_cb(f"Processing {len(image_files)} images for duplicates...")
 
         # Process images in parallel
-        photo_infos = []
+        photo_infos: List[PhotoInfo] = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_file = {
                 executor.submit(self._process_image, str(img_path)): img_path
@@ -362,7 +364,7 @@ class EnhancedDuplicateDetector:
 
                     if show_progress and (i + 1) % 10 == 0:
                         progress = ((i + 1) / len(image_files)) * 100
-                        self.progress_callback(f"Progress: {progress:.1f}%")
+                        _progress_cb(f"Progress: {progress:.1f}%")
 
                 except Exception as e:
                     error_msg = f"Error processing {img_path}: {e}"
@@ -372,23 +374,23 @@ class EnhancedDuplicateDetector:
         # Find duplicates
         if photo_infos:
             if show_progress:
-                self.progress_callback("Finding duplicate groups...")
+                _progress_cb("Finding duplicate groups...")
             duplicate_results = self._find_duplicates(photo_infos, similarity_threshold)
             results.update(duplicate_results)
 
         # Store results in database
         if results['groups_created'] > 0:
             if show_progress:
-                self.progress_callback("Storing duplicate information...")
+                _progress_cb("Storing duplicate information...")
             self._store_duplicate_results(photo_infos, results)
 
         # Calculate processing time
         processing_time = (time.time() - start_time) * 1000
         self.stats['processing_time_ms'] += processing_time
-        results['processing_time_ms'] = int(processing_time)
+        results['processing_time_ms'] = processing_time
 
         if show_progress:
-            self.progress_callback(f"Completed: {results['groups_created']} duplicate groups found")
+            _progress_cb(f"Completed: {results['groups_created']} duplicate groups found")
 
         return results
 
@@ -399,20 +401,23 @@ class EnhancedDuplicateDetector:
             'near_duplicates': 0,
             'similar_images': 0,
             'groups_created': 0,
-            'total_size_saved_mb': 0
+            'total_size_saved_mb': 0.0
         }
 
         # 1. Find exact duplicates (same file hash)
         exact_groups = self._find_exact_duplicates(photo_infos)
-        results['exact_duplicates'] = sum(len(group) - 1 for group in exact_groups.values())
+        exact_count = sum(len(group) - 1 for group in exact_groups.values()) if exact_groups else 0
+        results['exact_duplicates'] = exact_count
 
         # 2. Find perceptual duplicates using PHash
         near_groups = self._find_perceptual_duplicates(photo_infos, 'phash', 2)
-        results['near_duplicates'] = sum(len(group) - 1 for group in near_groups.values())
+        near_count = sum(len(group) - 1 for group in near_groups.values()) if near_groups else 0
+        results['near_duplicates'] = near_count
 
         # 3. Find similar images
         similar_groups = self._find_perceptual_duplicates(photo_infos, 'phash', int(similarity_threshold))
-        results['similar_images'] = sum(len(group) - 1 for group in similar_groups.values())
+        similar_count = sum(len(group) - 1 for group in similar_groups.values()) if similar_groups else 0
+        results['similar_images'] = similar_count
 
         # Calculate total groups and potential space savings
         all_groups = list(exact_groups.values()) + list(near_groups.values()) + list(similar_groups.values())
@@ -423,7 +428,7 @@ class EnhancedDuplicateDetector:
                 # Calculate potential space savings (keeping highest quality)
                 best_photo = max(group, key=lambda x: x.quality_score)
                 space_saved = sum(info.size_bytes for info in group if info != best_photo)
-                results['total_size_saved_mb'] += space_saved / (1024 * 1024)
+                results['total_size_saved_mb'] += float(space_saved) / (1024 * 1024)
 
         return results
 
@@ -442,27 +447,27 @@ class EnhancedDuplicateDetector:
                                   threshold: int) -> Dict[str, List[PhotoInfo]]:
         """Find perceptual duplicates using image hashing"""
         # Filter photos that have the required hash
-        valid_photos = [info for info in photo_infos if getattr(info, hash_type) is not None]
+        valid_photos = [info for info in photo_infos if getattr(info, hash_type, None) is not None]
 
         if len(valid_photos) < 2:
             return {}
 
         # Extract hash values
-        hash_values = []
+        hash_values: List[Tuple[str, PhotoInfo]] = []
         for info in valid_photos:
-            hash_val = getattr(info, hash_type)
+            hash_val = getattr(info, hash_type, None)
             if hash_val:
                 hash_values.append((str(hash_val), info))
 
         # Group by hash similarity
-        groups = defaultdict(list)
-        used_indices = set()
+        groups: Dict[str, List[PhotoInfo]] = defaultdict(list)
+        used_indices: set[int] = set()
 
         for i, (hash1, info1) in enumerate(hash_values):
             if i in used_indices:
                 continue
 
-            current_group = [info1]
+            current_group: List[PhotoInfo] = [info1]
             used_indices.add(i)
 
             # Compare with other photos
@@ -473,7 +478,7 @@ class EnhancedDuplicateDetector:
                 # Calculate hash distance
                 hash1_obj = imagehash.hex_to_hash(hash1)
                 hash2_obj = imagehash.hex_to_hash(hash2)
-                distance = hash1_obj - hash2_obj
+                distance = int(hash1_obj - hash2_obj)
 
                 if distance <= threshold:
                     current_group.append(info2)
@@ -532,8 +537,8 @@ class EnhancedDuplicateDetector:
                 LEFT JOIN perceptual_hashes fs ON dr.photo_path = fs.photo_path
             """
 
-            params = []
-            where_clauses = []
+            params: List[Any] = []
+            where_clauses: List[str] = []
 
             if group_type:
                 where_clauses.append("dge.group_type = ?")
@@ -552,7 +557,7 @@ class EnhancedDuplicateDetector:
             """
 
             cursor = self.conn.execute(query, params)
-            groups = []
+            groups: List[DuplicateGroup] = []
 
             for row in cursor.fetchall():
                 # Get photos for this group
@@ -577,7 +582,7 @@ class EnhancedDuplicateDetector:
                     group_type=row['group_type'],
                     similarity_threshold=row['similarity_threshold'],
                     photos=photos,
-                    total_size_mb=(row['total_size'] or 0) / (1024 * 1024),
+                    total_size_mb=float((row['total_size'] or 0) / (1024 * 1024)),
                     primary_photo_id=row['primary_photo_id'],
                     resolution_strategy=row['resolution_strategy'],
                     auto_resolvable=bool(row['auto_resolvable']),
@@ -652,9 +657,9 @@ class EnhancedDuplicateDetector:
             logger.error(f"Error getting resolution suggestions for {group_id}: {e}")
             return {}
 
-    def _generate_resolution_suggestions(self, photos: List[Dict], group_type: str) -> List[Dict]:
+    def _generate_resolution_suggestions(self, photos: List[Dict[str, Any]], group_type: str) -> List[Dict[str, Any]]:
         """Generate intelligent resolution suggestions"""
-        suggestions = []
+        suggestions: List[Dict[str, Any]] = []
 
         if not photos:
             return suggestions

@@ -53,13 +53,13 @@ class SmartCollectionsDB:
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_favorite BOOLEAN DEFAULT FALSE,
-                    privacy_level TEXT DEFAULT 'private',  -- public, shared, private
-                    INDEX idx_name (name),
-                    INDEX idx_auto_update (auto_update),
-                    INDEX idx_privacy (privacy_level)
+                    privacy_level TEXT DEFAULT 'private'  -- public, shared, private
                 )
             """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON smart_collections(created_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_smart_collections_name ON smart_collections(name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_smart_collections_auto_update ON smart_collections(auto_update)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_smart_collections_privacy ON smart_collections(privacy_level)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_smart_collections_created_at ON smart_collections(created_at)")
 
     def create_smart_collection(self, 
                                name: str, 

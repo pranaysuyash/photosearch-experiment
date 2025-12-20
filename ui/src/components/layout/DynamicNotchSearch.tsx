@@ -152,7 +152,8 @@ export function DynamicNotchSearch({
         style={{ pointerEvents: 'auto' }}
         initial={false}
         animate={{
-          gap: expanded ? 8 : 0,
+          paddingLeft: expanded ? 4 : 0,
+          paddingRight: expanded ? 4 : 0,
         }}
         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
       >
@@ -297,7 +298,6 @@ export function DynamicNotchSearch({
                 opacity: 1,
                 height: collapsedHeight,
                 marginLeft: 0,
-                gap: 8,
                 paddingLeft: 8,
                 paddingRight: 8,
               }}

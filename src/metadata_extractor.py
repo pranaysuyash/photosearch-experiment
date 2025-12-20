@@ -34,7 +34,7 @@ import logging
 import mimetypes
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 import base64
 
 # Image processing
@@ -206,24 +206,24 @@ def extract_extended_attributes(filepath: str) -> Dict[str, Any]:
         return {"available": False, "error": str(e)}
 
 
-def _dms_to_decimal(dms: Tuple, ref: str) -> float:
+def _dms_to_decimal(dms: Sequence[float | int], ref: str) -> Optional[float]:
     """
     Convert GPS coordinates from DMS (degrees, minutes, seconds) to decimal.
     
     Args:
-        dms: Tuple of (degrees, minutes, seconds)
+        dms: Sequence of (degrees, minutes, seconds)
         ref: Reference (N/S for latitude, E/W for longitude)
         
     Returns:
-        Decimal coordinate
+        Decimal coordinate if conversion succeeds, otherwise None
     """
     try:
-        if isinstance(dms, (list, tuple)) and len(dms) >= 3:
-            degrees = float(dms[0])
-            minutes = float(dms[1])
-            seconds = float(dms[2])
-        else:
+        if len(dms) < 3:
             return None
+        
+        degrees = float(dms[0])
+        minutes = float(dms[1])
+        seconds = float(dms[2])
         
         decimal = degrees + (minutes / 60.0) + (seconds / 3600.0)
         
@@ -236,7 +236,7 @@ def _dms_to_decimal(dms: Tuple, ref: str) -> float:
         return None
 
 
-def extract_exif_metadata(filepath: str) -> Dict[str, Any]:
+def extract_exif_metadata(filepath: str) -> Optional[Dict[str, Dict[str, str]]]:
     """
     Extract ALL EXIF metadata including MakerNote.
     
@@ -254,7 +254,7 @@ def extract_exif_metadata(filepath: str) -> Dict[str, Any]:
         if not tags:
             return None
         
-        exif_data = {}
+        exif_data: Dict[str, Dict[str, str]] = {}
         
         # Organize tags by category
         for tag, value in tags.items():
@@ -293,7 +293,7 @@ def extract_exif_metadata(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_gps_metadata(filepath: str) -> Dict[str, Any]:
+def extract_gps_metadata(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract GPS metadata from EXIF.
     
@@ -307,7 +307,7 @@ def extract_gps_metadata(filepath: str) -> Dict[str, Any]:
         with open(filepath, 'rb') as f:
             tags = exifread.process_file(f, details=False)
         
-        gps_data = {}
+        gps_data: Dict[str, Any] = {}
         
         # Extract GPS coordinates
         if 'GPS GPSLatitude' in tags and 'GPS GPSLatitudeRef' in tags:
@@ -356,7 +356,7 @@ def extract_gps_metadata(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_image_properties(filepath: str) -> Dict[str, Any]:
+def extract_image_properties(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract image properties using Pillow.
     
@@ -385,7 +385,7 @@ def extract_image_properties(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_video_properties(filepath: str) -> Dict[str, Any]:
+def extract_video_properties(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract comprehensive video metadata using ffprobe.
     
@@ -411,7 +411,7 @@ def extract_video_properties(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_audio_properties(filepath: str) -> Dict[str, Any]:
+def extract_audio_properties(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract comprehensive audio metadata using mutagen.
     
@@ -431,7 +431,7 @@ def extract_audio_properties(filepath: str) -> Dict[str, Any]:
         if audio is None:
             return None
         
-        audio_data = {
+        audio_data: Dict[str, Any] = {
             "format": type(audio).__name__,
             "length_seconds": round(audio.info.length, 2) if hasattr(audio.info, 'length') else None,
             "length_human": None,
@@ -442,13 +442,14 @@ def extract_audio_properties(filepath: str) -> Dict[str, Any]:
         }
         
         # Format duration
-        if audio_data["length_seconds"]:
-            mins = int(audio_data["length_seconds"] // 60)
-            secs = int(audio_data["length_seconds"] % 60)
+        length_seconds = audio_data.get("length_seconds")
+        if isinstance(length_seconds, (int, float)):
+            mins = int(length_seconds // 60)
+            secs = int(length_seconds % 60)
             audio_data["length_human"] = f"{mins}:{secs:02d}"
         
         # Extract tags (ID3, Vorbis Comments, etc.)
-        tags = {}
+        tags: Dict[str, Any] = {}
         if hasattr(audio, 'tags') and audio.tags:
             for key, value in audio.tags.items():
                 # Clean up tag names and values
@@ -491,7 +492,7 @@ def extract_audio_properties(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_pdf_properties(filepath: str) -> Dict[str, Any]:
+def extract_pdf_properties(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract PDF metadata using pypdf.
     
@@ -508,9 +509,9 @@ def extract_pdf_properties(filepath: str) -> Dict[str, Any]:
         reader = PdfReader(filepath)
         
         # Get document info
-        info = reader.metadata or {}
+        info: Dict[str, Any] = dict(reader.metadata or {})
         
-        pdf_data = {
+        pdf_data: Dict[str, Any] = {
             "page_count": len(reader.pages),
             "encrypted": reader.is_encrypted,
             "author": info.get('/Author'),
@@ -536,7 +537,7 @@ def extract_pdf_properties(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def extract_svg_properties(filepath: str) -> Dict[str, Any]:
+def extract_svg_properties(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract SVG metadata by parsing XML.
     
@@ -555,7 +556,7 @@ def extract_svg_properties(filepath: str) -> Dict[str, Any]:
         # Handle namespace
         ns = {'svg': 'http://www.w3.org/2000/svg'}
         
-        svg_data = {
+        svg_data: Dict[str, Any] = {
             "width": root.get('width'),
             "height": root.get('height'),
             "viewBox": root.get('viewBox'),
@@ -619,7 +620,7 @@ def extract_file_hashes(filepath: str) -> Dict[str, str]:
         return {}
 
 
-def extract_thumbnail(filepath: str) -> Dict[str, Any]:
+def extract_thumbnail(filepath: str) -> Optional[Dict[str, Any]]:
     """
     Extract or generate thumbnail.
     
@@ -647,7 +648,7 @@ def extract_thumbnail(filepath: str) -> Dict[str, Any]:
         return None
 
 
-def _human_readable_size(size_bytes: int) -> str:
+def _human_readable_size(size_bytes: float) -> str:
     """Convert bytes to human-readable format."""
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
         if size_bytes < 1024.0:
@@ -690,24 +691,23 @@ def calculate_inferred_metadata(metadata: Dict[str, Any], current_time: datetime
     Returns:
         Dictionary with calculated metadata
     """
-    calculated = {}
+    calculated: Dict[str, Any] = {}
     
     try:
         # Image calculations
         if metadata.get('image'):
-            img = metadata['image']
-            if img.get('width') and img.get('height'):
-                width = img['width']
-                height = img['height']
-                
+            img = metadata['image'] or {}
+            width = img.get('width')
+            height = img.get('height')
+            if isinstance(width, (int, float)) and isinstance(height, (int, float)):
                 # Aspect ratio
                 from math import gcd
-                divisor = gcd(width, height)
-                calculated['aspect_ratio'] = f"{width//divisor}:{height//divisor}"
-                calculated['aspect_ratio_decimal'] = round(width / height, 3)
+                divisor = gcd(int(width), int(height)) or 1
+                calculated['aspect_ratio'] = f"{int(width)//divisor}:{int(height)//divisor}"
+                calculated['aspect_ratio_decimal'] = round(float(width) / float(height), 3)
                 
                 # Megapixels
-                calculated['megapixels'] = round((width * height) / 1_000_000, 2)
+                calculated['megapixels'] = round((float(width) * float(height)) / 1_000_000, 2)
                 
                 # Orientation
                 if width > height:
@@ -719,14 +719,15 @@ def calculate_inferred_metadata(metadata: Dict[str, Any], current_time: datetime
         
         # Video calculations
         if metadata.get('video') and metadata['video'].get('format'):
-            fmt = metadata['video']['format']
-            if fmt.get('duration'):
-                duration = float(fmt['duration'])
+            fmt = metadata['video']['format'] or {}
+            duration_value = fmt.get('duration')
+            duration = float(duration_value) if duration_value is not None else None
+            if duration:
                 calculated['duration_human'] = f"{int(duration // 60)}:{int(duration % 60):02d}"
                 
                 # Size per second
-                if metadata.get('filesystem', {}).get('size_bytes'):
-                    size_bytes = metadata['filesystem']['size_bytes']
+                size_bytes = metadata.get('filesystem', {}).get('size_bytes')
+                if isinstance(size_bytes, (int, float)):
                     calculated['size_per_second'] = _human_readable_size(size_bytes / duration)
         
         # Time-based calculations
@@ -786,7 +787,7 @@ def extract_all_metadata(filepath: str) -> Dict[str, Any]:
         except:
             pass
     
-    metadata = {
+    metadata: Dict[str, Any] = {
         "file": {
             "path": str(Path(filepath).absolute()),
             "name": Path(filepath).name,

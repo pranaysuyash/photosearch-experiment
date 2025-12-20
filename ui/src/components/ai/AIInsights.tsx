@@ -476,7 +476,13 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
       {error && (
         <div className='text-sm text-destructive bg-destructive/10 rounded-lg p-3'>
           {error}
-          <button className='ml-2' onClick={() => setError(null)}>
+          <button
+            className='ml-2'
+            type='button'
+            aria-label='Dismiss error message'
+            title='Dismiss error message'
+            onClick={() => setError(null)}
+          >
             <X size={16} />
           </button>
         </div>
