@@ -439,7 +439,7 @@ export function MobilePhotoEditor({
           animate={{ y: 0 }}
           exit={{ y: '100%' }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className={`fixed bottom-0 left-0 right-0 ${glass.surface} border-t border-white/10 z-50`}
+          className={`fixed bottom-0 left-0 right-0 glass-surface border-t border-white/10 z-50`}
         >
           {/* Mode Selector */}
           <div className='flex items-center justify-center p-2 border-b border-white/10'>
@@ -474,7 +474,7 @@ export function MobilePhotoEditor({
                       <button
                         key={preset.name}
                         onClick={() => applyPreset(preset)}
-                        className={`${glass.button} text-xs px-3 py-2 whitespace-nowrap`}
+                        className='btn-glass btn-glass--muted text-xs px-3 py-2 whitespace-nowrap'
                       >
                         {preset.name}
                       </button>
@@ -491,7 +491,7 @@ export function MobilePhotoEditor({
                         drag='y'
                         dragConstraints={{ top: 0, bottom: 0 }}
                         onPan={(_, info) => handleAdjustmentGesture(info, adj)}
-                        className={`${glass.card} p-3 rounded-lg cursor-grab active:cursor-grabbing`}
+                        className='glass-surface rounded-lg p-3 cursor-grab active:cursor-grabbing'
                       >
                         <div className='flex items-center justify-between'>
                           <div className='flex items-center gap-2'>
@@ -528,7 +528,7 @@ export function MobilePhotoEditor({
                   onClick={() =>
                     updateSetting('rotation', (settings.rotation - 90) % 360)
                   }
-                  className={`${glass.button} flex items-center justify-center gap-2 py-3`}
+                  className='btn-glass btn-glass--muted flex items-center justify-center gap-2 py-3'
                 >
                   <RotateCcw className='w-4 h-4' />
                   Rotate Left
@@ -537,17 +537,15 @@ export function MobilePhotoEditor({
                   onClick={() =>
                     updateSetting('rotation', (settings.rotation + 90) % 360)
                   }
-                  className={`${glass.button} flex items-center justify-center gap-2 py-3`}
+                  className='btn-glass btn-glass--muted flex items-center justify-center gap-2 py-3'
                 >
                   <RotateCw className='w-4 h-4' />
                   Rotate Right
                 </button>
                 <button
                   onClick={() => updateSetting('flipH', !settings.flipH)}
-                  className={`${
-                    glass.button
-                  } flex items-center justify-center gap-2 py-3 ${
-                    settings.flipH ? 'bg-blue-500/20 text-blue-400' : ''
+                  className={`btn-glass btn-glass--muted flex items-center justify-center gap-2 py-3 ${
+                    settings.flipH ? 'btn-glass--primary' : ''
                   }`}
                 >
                   <FlipHorizontal className='w-4 h-4' />
@@ -555,10 +553,8 @@ export function MobilePhotoEditor({
                 </button>
                 <button
                   onClick={() => updateSetting('flipV', !settings.flipV)}
-                  className={`${
-                    glass.button
-                  } flex items-center justify-center gap-2 py-3 ${
-                    settings.flipV ? 'bg-blue-500/20 text-blue-400' : ''
+                  className={`btn-glass btn-glass--muted flex items-center justify-center gap-2 py-3 ${
+                    settings.flipV ? 'btn-glass--primary' : ''
                   }`}
                 >
                   <FlipVertical className='w-4 h-4' />

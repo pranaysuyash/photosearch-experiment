@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { glass } from '../../design/glass';
 import { api, type PhotoEdit } from '../../api';
+import { useToast } from '../ui/Toast';
 
 interface PhotoEditorProps {
   photoPath: string;
@@ -74,7 +75,14 @@ export function PhotoEditor({
   const [cropMode, setCropMode] = useState(false);
   const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
   const [cropEnd, setCropEnd] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [cropPresets] = useState([
+    { name: '1:1', ratio: 1 },
+    { name: '4:3', ratio: 4/3 },
+    { name: '16:9', ratio: 16/9 },
+    { name: '3:2', ratio: 3/2 },
+    { name: 'Free', ratio: null },
+  ]);
+  const { showToast, ToastContainer } = useToast();
 
   // Load image when component opens
   useEffect(() => {
@@ -190,6 +198,7 @@ export function PhotoEditor({
   const resetSettings = () => {
     setSettings({ ...DEFAULT_SETTINGS });
     setCropMode(false);
+    showToast('All edits reset', 'info');
     if (originalImage) {
       applyEdits(originalImage, { ...DEFAULT_SETTINGS });
     }
@@ -272,6 +281,7 @@ export function PhotoEditor({
     try {
       // Save edit instructions to server
       await api.savePhotoEdit(photoPath, settings as PhotoEdit);
+      showToast('Photo edits saved successfully!', 'success');
 
       // For now, we'll still generate a local preview
       // In a full implementation, we could generate the edited image on the server
@@ -288,6 +298,7 @@ export function PhotoEditor({
       // This would be handled by a backend service that applies the edits
     } catch (error) {
       console.error('Failed to save edit:', error);
+      showToast('Failed to save edits. Please try again.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -339,28 +350,73 @@ export function PhotoEditor({
           {/* Canvas Area */}
           <div className='flex-1 flex items-center justify-center p-6 bg-black/20'>
             <div className='relative'>
-              <canvas
-                ref={canvasRef}
-                className={`max-w-full max-h-full object-contain ${
-                  cropMode ? 'cursor-crosshair' : ''
-                }`}
-                onMouseDown={startCrop}
-                onMouseMove={updateCrop}
-                onMouseUp={endCrop}
-                onMouseLeave={endCrop}
-              />
+              {showBeforeAfter ? (
+                /* Before/After Comparison */
+                <div className='flex gap-4 items-center'>
+                  <div className='text-center'>
+                    <div className='text-xs text-muted-foreground mb-2'>Before</div>
+                    <img
+                      ref={imageRef}
+                      src={imageUrl}
+                      alt='Original'
+                      className='max-w-[300px] max-h-[400px] object-contain rounded border border-white/20'
+                    />
+                  </div>
+                  <div className='text-center'>
+                    <div className='text-xs text-muted-foreground mb-2'>After</div>
+                    <canvas
+                      ref={canvasRef}
+                      className='max-w-[300px] max-h-[400px] object-contain rounded border border-white/20'
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Live Preview */
+                <div className='text-center'>
+                  <div className='text-xs text-muted-foreground mb-2'>Live Preview</div>
+                  <canvas
+                    ref={canvasRef}
+                    className={`max-w-full max-h-full object-contain rounded border border-white/20 ${
+                      cropMode ? 'cursor-crosshair' : ''
+                    }`}
+                    onMouseDown={startCrop}
+                    onMouseMove={updateCrop}
+                    onMouseUp={endCrop}
+                    onMouseLeave={endCrop}
+                  />
+                </div>
+              )}
 
               {/* Crop overlay */}
-              {cropMode && isDragging && (
+              {cropMode && isDragging && !showBeforeAfter && (
                 <div
-                  className='absolute border-2 border-primary bg-white/10'
+                  className='absolute border-2 border-primary bg-white/10 pointer-events-none'
                   style={{
                     left: Math.min(cropStart.x, cropEnd.x),
                     top: Math.min(cropStart.y, cropEnd.y),
                     width: Math.abs(cropEnd.x - cropStart.x),
                     height: Math.abs(cropEnd.y - cropStart.y),
                   }}
-                />
+                >
+                  {/* Rule of thirds grid */}
+                  <div className='absolute inset-0 grid grid-cols-3 grid-rows-3'>
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className='border border-white/30' />
+                    ))}
+                  </div>
+                  
+                  {/* Crop dimensions display */}
+                  <div className='absolute -bottom-6 left-0 text-xs text-white bg-black/70 px-2 py-1 rounded'>
+                    {Math.abs(cropEnd.x - cropStart.x)}×{Math.abs(cropEnd.y - cropStart.y)}
+                  </div>
+                </div>
+              )}
+              
+              {/* Crop mode instructions */}
+              {cropMode && !isDragging && !showBeforeAfter && (
+                <div className='absolute top-4 left-4 text-sm text-white bg-black/70 px-3 py-2 rounded-lg'>
+                  Click and drag to select crop area
+                </div>
               )}
             </div>
           </div>
@@ -408,6 +464,24 @@ export function PhotoEditor({
             <div>
               <h4 className='text-sm font-medium text-foreground mb-3'>Crop</h4>
               <div className='space-y-2'>
+                {/* Crop Presets */}
+                <div className='grid grid-cols-3 gap-1 mb-2'>
+                  {cropPresets.map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => {
+                        // Set crop mode and ratio constraint
+                        setCropMode(true);
+                        // Store the ratio for use during cropping
+                        (window as any).cropRatio = preset.ratio;
+                      }}
+                      className='btn-glass btn-glass--muted text-xs px-2 py-1'
+                    >
+                      {preset.name}
+                    </button>
+                  ))}
+                </div>
+                
                 {!settings.crop ? (
                   <button
                     onClick={() => setCropMode(true)}
@@ -420,9 +494,10 @@ export function PhotoEditor({
                   </button>
                 ) : (
                   <div className='space-y-2'>
-                    <div className='text-xs text-muted-foreground'>
-                      Crop active: {Math.round(settings.crop?.width || 0)}×
-                      {Math.round(settings.crop?.height || 0)}
+                    <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+                      Crop: {Math.round(settings.crop?.width || 0)}×{Math.round(settings.crop?.height || 0)}px
+                      <br />
+                      Ratio: {((settings.crop?.width || 1) / (settings.crop?.height || 1)).toFixed(2)}:1
                     </div>
                     <button
                       onClick={clearCrop}
@@ -435,7 +510,18 @@ export function PhotoEditor({
               </div>
             </div>
 
-            {/* Adjustments */}
+            {/* Preview Controls */}
+            <div>
+              <h4 className='text-sm font-medium text-foreground mb-3'>Preview</h4>
+              <button
+                onClick={() => setShowBeforeAfter(!showBeforeAfter)}
+                className={`btn-glass ${
+                  showBeforeAfter ? 'btn-glass--primary' : 'btn-glass--muted'
+                } text-xs px-3 py-2 w-full justify-center`}
+              >
+                {showBeforeAfter ? 'Show Live Preview' : 'Compare Before/After'}
+              </button>
+            </div>
             <div>
               <h4 className='text-sm font-medium text-foreground mb-3'>
                 Adjustments
@@ -448,9 +534,18 @@ export function PhotoEditor({
                       <Sun size={12} />
                       Brightness
                     </label>
-                    <span className='text-xs text-muted-foreground'>
-                      {settings.brightness}
-                    </span>
+                    <div className='flex items-center gap-2'>
+                      <input
+                        type='number'
+                        min='-100'
+                        max='100'
+                        value={settings.brightness}
+                        onChange={(e) =>
+                          updateSetting('brightness', parseInt(e.target.value) || 0)
+                        }
+                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
+                      />
+                    </div>
                   </div>
                   <input
                     type='range'
@@ -471,9 +566,18 @@ export function PhotoEditor({
                       <Contrast size={12} />
                       Contrast
                     </label>
-                    <span className='text-xs text-muted-foreground'>
-                      {settings.contrast}
-                    </span>
+                    <div className='flex items-center gap-2'>
+                      <input
+                        type='number'
+                        min='-100'
+                        max='100'
+                        value={settings.contrast}
+                        onChange={(e) =>
+                          updateSetting('contrast', parseInt(e.target.value) || 0)
+                        }
+                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
+                      />
+                    </div>
                   </div>
                   <input
                     type='range'
@@ -494,9 +598,18 @@ export function PhotoEditor({
                       <Droplet size={12} />
                       Saturation
                     </label>
-                    <span className='text-xs text-muted-foreground'>
-                      {settings.saturation}
-                    </span>
+                    <div className='flex items-center gap-2'>
+                      <input
+                        type='number'
+                        min='-100'
+                        max='100'
+                        value={settings.saturation}
+                        onChange={(e) =>
+                          updateSetting('saturation', parseInt(e.target.value) || 0)
+                        }
+                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
+                      />
+                    </div>
                   </div>
                   <input
                     type='range'
@@ -535,6 +648,9 @@ export function PhotoEditor({
           </div>
         </div>
       </div>
+      
+      {/* Toast notifications */}
+      <ToastContainer />
     </div>
   );
 }

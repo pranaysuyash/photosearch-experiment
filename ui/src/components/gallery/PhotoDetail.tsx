@@ -41,6 +41,7 @@ import { AddToTagDialog } from '../tags/AddToTagDialog';
 import { StarRating } from '../rating/StarRating';
 import { PhotoEditor } from '../editing/PhotoEditor';
 import { NotesEditor } from '../notes/NotesEditor';
+import { useToast } from '../ui/Toast';
 import ImageAnalysis from './AIAnalysis';
 
 interface PhotoDetailProps {
@@ -243,6 +244,7 @@ export function PhotoDetail({
   const [faceClusters, setFaceClusters] = useState<any[]>([]);
   const [isMetadataPanelVisible, setIsMetadataPanelVisible] = useState(true);
   const [facesLoading, setFacesLoading] = useState(false);
+  const { showToast, ToastContainer } = useToast();
 
   useEffect(() => {
     let mounted = true;
@@ -414,8 +416,9 @@ export function PhotoDetail({
   const copyPath = async () => {
     try {
       await navigator.clipboard.writeText(photo.path);
+      showToast('Path copied to clipboard ✓', 'success');
     } catch {
-      // ignore
+      showToast('Failed to copy path', 'error');
     }
   };
 
@@ -428,8 +431,12 @@ export function PhotoDetail({
     try {
       const res = await api.toggleFavorite(photo.path);
       setIsFavorited(Boolean(res.is_favorited));
+      showToast(
+        res.is_favorited ? 'Added to favorites ✓' : 'Removed from favorites',
+        'success'
+      );
     } catch {
-      // ignore
+      showToast('Failed to update favorite status', 'error');
     } finally {
       setFavoriteLoading(false);
     }
@@ -1640,6 +1647,9 @@ export function PhotoDetail({
           }}
         />
       )}
+      
+      {/* Toast notifications */}
+      <ToastContainer />
     </>
   );
 }
