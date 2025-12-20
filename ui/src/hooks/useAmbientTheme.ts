@@ -16,8 +16,13 @@ function setAccent(rgb: RGB) {
 async function averageColorFromImageUrl(url: string): Promise<RGB> {
   return await new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
     img.decoding = 'async';
+    
+    // For cross-origin requests, always use CORS mode
+    if (url.includes('localhost:8000') || url.includes('127.0.0.1:8000')) {
+      img.crossOrigin = 'anonymous';
+    }
+    
     img.src = url;
 
     img.onload = () => {
@@ -54,11 +59,16 @@ async function averageColorFromImageUrl(url: string): Promise<RGB> {
           b: clampByte(b / count),
         });
       } catch (e) {
-        reject(e);
+        // If canvas access fails, fall back to default accent
+        console.warn('Canvas access failed for ambient theme, using default accent:', e);
+        resolve(DEFAULT_ACCENT);
       }
     };
 
-    img.onerror = () => reject(new Error('Failed to load image'));
+    img.onerror = () => {
+      console.warn('Failed to load image for ambient theme, using default accent');
+      resolve(DEFAULT_ACCENT);
+    };
   });
 }
 

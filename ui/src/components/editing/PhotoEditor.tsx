@@ -17,6 +17,7 @@ import {
   FlipVertical,
   Check,
   Undo,
+  Redo,
 } from 'lucide-react';
 import { glass } from '../../design/glass';
 import { api, type PhotoEdit } from '../../api';
@@ -73,6 +74,7 @@ export function PhotoEditor({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoadingEdits, setIsLoadingEdits] = useState(false);
   const [cropMode, setCropMode] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
   const [cropEnd, setCropEnd] = useState({ x: 0, y: 0 });
   const [cropPresets] = useState([
@@ -82,6 +84,9 @@ export function PhotoEditor({
     { name: '3:2', ratio: 3/2 },
     { name: 'Free', ratio: null },
   ]);
+  const [showBeforeAfter, setShowBeforeAfter] = useState(false);
+  const [history, setHistory] = useState<EditSettings[]>([DEFAULT_SETTINGS]);
+  const [historyIndex, setHistoryIndex] = useState(0);
   const { showToast, ToastContainer } = useToast();
 
   // Load image when component opens
@@ -126,7 +131,58 @@ export function PhotoEditor({
     loadEdits();
   }, [isOpen, photoPath]);
 
-  // Re-apply edits whenever settings or image change
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === 'z' && !e.shiftKey) {
+          e.preventDefault();
+          undo();
+        } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+          e.preventDefault();
+          redo();
+        }
+      } else if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        // Quick action shortcuts (only when no modifiers)
+        switch (e.key) {
+          case 'r':
+            e.preventDefault();
+            rotateRight();
+            break;
+          case 'R':
+            e.preventDefault();
+            rotateLeft();
+            break;
+          case 'h':
+            e.preventDefault();
+            flipHorizontal();
+            break;
+          case 'v':
+            e.preventDefault();
+            flipVertical();
+            break;
+          case 'c':
+            e.preventDefault();
+            setCropMode(true);
+            break;
+          case 'Escape':
+            if (cropMode) {
+              e.preventDefault();
+              setCropMode(false);
+            }
+            break;
+        }
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, historyIndex, history, cropMode]);
   useEffect(() => {
     if (originalImage) {
       applyEdits(originalImage, settings);
@@ -189,18 +245,68 @@ export function PhotoEditor({
 
   const updateSetting = (key: keyof EditSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
+    
+    // Add to history (remove any future history if we're not at the end)
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newSettings);
+    
+    // Limit history to 20 steps
+    if (newHistory.length > 20) {
+      newHistory.shift();
+    } else {
+      setHistoryIndex(historyIndex + 1);
+    }
+    
+    setHistory(newHistory);
     setSettings(newSettings);
+    
     if (originalImage) {
       applyEdits(originalImage, newSettings);
     }
   };
 
+  const undo = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      const previousSettings = history[newIndex];
+      setHistoryIndex(newIndex);
+      setSettings(previousSettings);
+      showToast('Undid last change', 'info');
+      
+      if (originalImage) {
+        applyEdits(originalImage, previousSettings);
+      }
+    }
+  };
+
+  const redo = () => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      const nextSettings = history[newIndex];
+      setHistoryIndex(newIndex);
+      setSettings(nextSettings);
+      showToast('Redid change', 'info');
+      
+      if (originalImage) {
+        applyEdits(originalImage, nextSettings);
+      }
+    }
+  };
+
   const resetSettings = () => {
-    setSettings({ ...DEFAULT_SETTINGS });
+    const resetSettings = { ...DEFAULT_SETTINGS };
+    setSettings(resetSettings);
     setCropMode(false);
+    
+    // Add reset to history
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(resetSettings);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+    
     showToast('All edits reset', 'info');
     if (originalImage) {
-      applyEdits(originalImage, { ...DEFAULT_SETTINGS });
+      applyEdits(originalImage, resetSettings);
     }
   };
 
@@ -314,7 +420,7 @@ export function PhotoEditor({
       />
 
       <div
-        className={`relative w-full max-w-7xl h-full max-h-[90vh] ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col`}
+        className='relative w-full max-w-7xl h-full max-h-[95vh] sm:max-h-[90vh] glass-surface glass-surface--strong rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col lg:flex-row'
       >
         {/* Header */}
         <div className='flex items-center justify-between px-5 py-4 border-b border-white/10'>
@@ -328,12 +434,30 @@ export function PhotoEditor({
           </div>
           <div className='flex items-center gap-2'>
             <button
+              onClick={undo}
+              disabled={historyIndex <= 0}
+              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden sm:flex items-center gap-1'
+              title='Undo (Ctrl+Z)'
+            >
+              <Undo size={14} />
+              <span className='hidden lg:inline'>Undo</span>
+            </button>
+            <button
+              onClick={redo}
+              disabled={historyIndex >= history.length - 1}
+              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden sm:flex items-center gap-1'
+              title='Redo (Ctrl+Y)'
+            >
+              <Redo size={14} />
+              <span className='hidden lg:inline'>Redo</span>
+            </button>
+            <button
               onClick={resetSettings}
-              className='btn-glass btn-glass--muted text-sm px-3 py-2'
+              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden lg:flex items-center gap-1'
               title='Reset all edits'
             >
               <Undo size={14} />
-              Reset
+              <span className='hidden lg:inline'>Reset</span>
             </button>
             <button
               onClick={onClose}
@@ -422,7 +546,35 @@ export function PhotoEditor({
           </div>
 
           {/* Controls Panel */}
-          <div className='w-80 border-l border-white/10 p-4 space-y-6 overflow-y-auto'>
+          <div className='w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-white/10 p-3 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto max-h-80 sm:max-h-96 lg:max-h-full'>
+            {/* Mobile: Undo/Redo buttons */}
+            <div className='flex gap-2 lg:hidden'>
+              <button
+                onClick={undo}
+                disabled={historyIndex <= 0}
+                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1 flex-1'
+                title='Undo (Ctrl+Z)'
+              >
+                <Undo size={14} />
+                Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={historyIndex >= history.length - 1}
+                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1 flex-1'
+                title='Redo (Ctrl+Y)'
+              >
+                <Redo size={14} />
+                Redo
+              </button>
+              <button
+                onClick={resetSettings}
+                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1'
+                title='Reset all edits'
+              >
+                <Undo size={14} />
+              </button>
+            </div>
             {/* Quick Actions */}
             <div>
               <h4 className='text-sm font-medium text-foreground mb-3'>
@@ -430,33 +582,52 @@ export function PhotoEditor({
               </h4>
               <div className='grid grid-cols-2 gap-2'>
                 <button
-                  onClick={rotateLeft}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                >
-                  <RotateCcw size={14} className='mr-1' />
-                  Rotate Left
-                </button>
-                <button
                   onClick={rotateRight}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+                  title='Rotate Right (R)'
                 >
                   <RotateCw size={14} className='mr-1' />
                   Rotate Right
+                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    R
+                  </span>
+                </button>
+                <button
+                  onClick={rotateLeft}
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+                  title='Rotate Left (Shift+R)'
+                >
+                  <RotateCcw size={14} className='mr-1' />
+                  Rotate Left
+                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    ⇧R
+                  </span>
                 </button>
                 <button
                   onClick={flipHorizontal}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+                  title='Flip Horizontal (H)'
                 >
                   <FlipHorizontal size={14} className='mr-1' />
                   Flip H
+                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    H
+                  </span>
                 </button>
                 <button
                   onClick={flipVertical}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+                  title='Flip Vertical (V)'
                 >
                   <FlipVertical size={14} className='mr-1' />
                   Flip V
+                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    V
+                  </span>
                 </button>
+              </div>
+              <div className='mt-2 text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+                Tip: Use keyboard shortcuts: R (rotate), H (flip horizontal), V (flip vertical)
               </div>
             </div>
 
@@ -483,15 +654,26 @@ export function PhotoEditor({
                 </div>
                 
                 {!settings.crop ? (
-                  <button
-                    onClick={() => setCropMode(true)}
-                    className={`btn-glass ${
-                      cropMode ? 'btn-glass--primary' : 'btn-glass--muted'
-                    } text-xs px-3 py-2 w-full justify-center`}
-                  >
-                    <Crop size={14} className='mr-1' />
-                    {cropMode ? 'Click and drag to crop' : 'Start Crop'}
-                  </button>
+                  <div className='space-y-2'>
+                    <button
+                      onClick={() => setCropMode(true)}
+                      className={`btn-glass ${
+                        cropMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                      } text-xs px-3 py-2 w-full justify-center group relative`}
+                      title='Start Crop (C)'
+                    >
+                      <Crop size={14} className='mr-1' />
+                      {cropMode ? 'Click and drag to crop' : 'Start Crop'}
+                      <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                        C
+                      </span>
+                    </button>
+                    {cropMode && (
+                      <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+                        Press Escape to cancel crop mode
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className='space-y-2'>
                     <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
@@ -510,7 +692,40 @@ export function PhotoEditor({
               </div>
             </div>
 
-            {/* Preview Controls */}
+            {/* History */}
+            <div>
+              <h4 className='text-sm font-medium text-foreground mb-3'>History</h4>
+              <div className='space-y-1 max-h-32 overflow-y-auto'>
+                {history.map((step, index) => {
+                  const isActive = index === historyIndex;
+                  const stepName = index === 0 ? 'Original' : `Edit ${index}`;
+                  
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setHistoryIndex(index);
+                        setSettings(step);
+                        if (originalImage) {
+                          applyEdits(originalImage, step);
+                        }
+                      }}
+                      className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${
+                        isActive 
+                          ? 'bg-primary/20 text-primary border border-primary/30' 
+                          : 'hover:bg-white/5 text-muted-foreground'
+                      }`}
+                    >
+                      {stepName}
+                      {isActive && <span className='float-right'>•</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className='text-xs text-muted-foreground mt-2'>
+                {history.length}/20 steps • Ctrl+Z/Y for undo/redo
+              </div>
+            </div>
             <div>
               <h4 className='text-sm font-medium text-foreground mb-3'>Preview</h4>
               <button

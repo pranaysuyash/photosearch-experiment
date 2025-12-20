@@ -82,7 +82,7 @@ class Settings(BaseSettings):
 
     # Basic rate limiting (server/main.py uses a simple in-memory counter)
     RATE_LIMIT_ENABLED: bool = True  # Enable rate limiting by default
-    RATE_LIMIT_REQS_PER_MIN: int = 60  # Conservative rate limit
+    RATE_LIMIT_REQS_PER_MIN: int = 300  # Higher limit for development
 
     model_config = SettingsConfigDict(
         env_file=".env", 

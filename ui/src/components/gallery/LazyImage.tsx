@@ -10,6 +10,7 @@ interface LazyImageProps {
   onLoad?: () => void;
   onError?: () => void;
   onLoadTime?: (loadTime: number) => void;
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
 }
 
 export function LazyImage({
@@ -21,6 +22,7 @@ export function LazyImage({
   onLoad,
   onError,
   onLoadTime,
+  objectFit = 'cover',
 }: LazyImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -93,9 +95,9 @@ export function LazyImage({
           ref={imgRef}
           src={src}
           alt={alt}
-          className={`w-full h-full object-cover transition-opacity duration-300 ${
-            isLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`w-full h-full transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+          style={{ objectFit }}
           onLoad={handleLoad}
           onError={handleError}
           initial={{ opacity: 0 }}

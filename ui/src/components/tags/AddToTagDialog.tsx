@@ -117,26 +117,67 @@ export function AddToTagDialog({
             </button>
           </div>
 
-          <div className='mb-4 flex items-center gap-2'>
-            <input
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder='Create a new tag…'
-              className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/20'
-              disabled={isSubmitting}
-            />
-            <button
-              type='button'
-              className='btn-glass btn-glass--muted text-sm px-3 py-2'
-              onClick={() => {
-                if (!normalizedNewTag) return;
-                toggle(normalizedNewTag);
-              }}
-              disabled={!normalizedNewTag || isSubmitting}
-              title='Select the new tag'
-            >
-              <Plus size={16} />
-            </button>
+          <div className='mb-4'>
+            <div className='flex items-center gap-2 mb-2'>
+              <input
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder='Create a new tag…'
+                className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-white/20'
+                disabled={isSubmitting}
+              />
+              <button
+                type='button'
+                className='btn-glass btn-glass--muted text-sm px-3 py-2'
+                onClick={() => {
+                  if (!normalizedNewTag) return;
+                  toggle(normalizedNewTag);
+                }}
+                disabled={!normalizedNewTag || isSubmitting}
+                title='Select the new tag'
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+            
+            {/* New tag preview when typing */}
+            {normalizedNewTag && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`px-4 py-3 rounded-lg border transition-all flex items-center gap-3 ${
+                  selectedTags.has(normalizedNewTag)
+                    ? 'bg-emerald-500/20 border-emerald-500/40'
+                    : 'bg-blue-500/10 border-blue-500/30'
+                }`}
+              >
+                <div
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    selectedTags.has(normalizedNewTag)
+                      ? 'bg-emerald-500 border-emerald-500'
+                      : 'border-blue-400'
+                  }`}
+                >
+                  {selectedTags.has(normalizedNewTag) ? (
+                    <Check size={14} className='text-white' />
+                  ) : (
+                    <Plus size={14} className='text-blue-400' />
+                  )}
+                </div>
+                <div className='flex-1 min-w-0'>
+                  <h3 className='text-white font-medium truncate'>
+                    {normalizedNewTag}
+                  </h3>
+                  <p className='text-xs text-blue-300'>New tag</p>
+                </div>
+                <button
+                  onClick={() => toggle(normalizedNewTag)}
+                  className='text-xs text-blue-300 hover:text-blue-200 transition-colors'
+                >
+                  {selectedTags.has(normalizedNewTag) ? 'Remove' : 'Select'}
+                </button>
+              </motion.div>
+            )}
           </div>
 
           <div className='flex-1 overflow-y-auto -mx-2 px-2 mb-6'>
@@ -151,6 +192,9 @@ export function AddToTagDialog({
               </div>
             ) : (
               <div className='space-y-2'>
+                <div className='text-xs text-white/50 mb-3 px-2'>
+                  Existing Tags ({tags.length})
+                </div>
                 {tags.map((t) => {
                   const isSelected = selectedTags.has(t.name);
                   return (
@@ -177,9 +221,12 @@ export function AddToTagDialog({
                         <h3 className='text-white font-medium truncate'>
                           {t.name}
                         </h3>
+                        <p className='text-xs text-white/50'>
+                          {t.photo_count} {t.photo_count === 1 ? 'photo' : 'photos'}
+                        </p>
                       </div>
-                      <div className='text-xs text-white/50'>
-                        {t.photo_count}
+                      <div className='text-xs text-white/40 bg-white/10 px-2 py-1 rounded'>
+                        Existing
                       </div>
                     </motion.button>
                   );
