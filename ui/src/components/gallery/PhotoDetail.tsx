@@ -39,7 +39,7 @@ import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { AddToAlbumDialog } from '../albums/AddToAlbumDialog';
 import { AddToTagDialog } from '../tags/AddToTagDialog';
 import { StarRating } from '../rating/StarRating';
-import { PhotoEditor } from '../editing/PhotoEditor';
+import { PhotoEditor as EnhancedPhotoEditor } from '../editing/PhotoEditor';
 import { NotesEditor } from '../notes/NotesEditor';
 import { useToast } from '../ui/Toast';
 import ImageAnalysis from './AIAnalysis';
@@ -1635,7 +1635,7 @@ export function PhotoDetail({
 
       {/* Photo Editor */}
       {photo && (
-        <PhotoEditor
+        <EnhancedPhotoEditor
           photoPath={photo.path}
           imageUrl={api.getImageUrl(photo.path, 1200)}
           isOpen={showEditor}
