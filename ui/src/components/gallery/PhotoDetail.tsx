@@ -507,8 +507,8 @@ export function PhotoDetail({
                 {photo.filename}
               </h3>
               <div className='flex items-center gap-2 group'>
-                <div className='flex-1 overflow-hidden'>
-                  <p className='text-white/40 text-xs select-text whitespace-nowrap'>
+                <div className='flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-white/20'>
+                  <p className='text-white/40 text-xs select-text'>
                     <a
                       href={originalOpenUrl}
                       target='_blank'
@@ -554,8 +554,8 @@ export function PhotoDetail({
               </button>
             </div>
 
-            {/* Action grid */}
-            <div className='grid grid-cols-2 gap-2'>
+            {/* Action grid - main actions only, no duplicates */}
+            <div className='grid grid-cols-3 gap-2'>
               <button
                 onClick={() => setShowAddToAlbum(true)}
                 disabled={busy}
@@ -582,51 +582,6 @@ export function PhotoDetail({
               >
                 <Hash size={14} />
                 Tags
-              </button>
-              <button
-                onClick={rotateImage}
-                disabled={busy || api.isVideo(photo.path)}
-                className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                title='Rotate image 90° clockwise'
-              >
-                <RotateCw size={14} />
-                Rotate
-              </button>
-              <button
-                onClick={() => flipImage('horizontal')}
-                disabled={busy || api.isVideo(photo.path)}
-                className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                title='Flip image horizontally'
-              >
-                <FlipHorizontal size={14} />
-                Flip H
-              </button>
-              <button
-                onClick={() => flipImage('vertical')}
-                disabled={busy || api.isVideo(photo.path)}
-                className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                title='Flip image vertically'
-              >
-                <FlipVertical size={14} />
-                Flip V
-              </button>
-              <button
-                onClick={moveToTrash}
-                disabled={busy}
-                className='btn-glass btn-glass--danger text-xs px-3 py-2 justify-center'
-                title='Move to Trash'
-              >
-                <Trash2 size={14} />
-                Trash
-              </button>
-              <button
-                onClick={removeFromLibrary}
-                disabled={busy}
-                className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center'
-                title='Remove from library'
-              >
-                <Trash2 size={14} />
-                Remove
               </button>
             </div>
 
@@ -792,6 +747,34 @@ export function PhotoDetail({
                 </div>
               </div>
             )}
+
+            {/* Danger Zone - at the bottom */}
+            <div className='mt-6 pt-4 border-t border-red-500/20'>
+              <div className='text-xs uppercase tracking-wider text-red-400/70 mb-2 flex items-center gap-1.5'>
+                <Trash2 size={12} />
+                Danger Zone
+              </div>
+              <div className='grid grid-cols-2 gap-2'>
+                <button
+                  onClick={moveToTrash}
+                  disabled={busy}
+                  className='btn-glass text-xs px-3 py-2 justify-center bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20 hover:border-red-500/50'
+                  title='Move to Trash'
+                >
+                  <Trash2 size={14} />
+                  Trash
+                </button>
+                <button
+                  onClick={removeFromLibrary}
+                  disabled={busy}
+                  className='btn-glass text-xs px-3 py-2 justify-center bg-red-500/5 border-red-500/20 text-red-300/70 hover:bg-red-500/15 hover:border-red-500/40'
+                  title='Remove from library index (does not delete file)'
+                >
+                  <X size={14} />
+                  Remove
+                </button>
+              </div>
+            </div>
           </div>
         );
 
@@ -1257,10 +1240,10 @@ export function PhotoDetail({
                 <div className='flex items-center gap-2'>
                   <div
                     className={`w-3 h-3 rounded-full ${photo.matchExplanation.type === 'metadata'
-                        ? 'bg-blue-500'
-                        : photo.matchExplanation.type === 'semantic'
-                          ? 'bg-purple-500'
-                          : 'bg-gradient-to-r from-blue-500 to-purple-500'
+                      ? 'bg-blue-500'
+                      : photo.matchExplanation.type === 'semantic'
+                        ? 'bg-purple-500'
+                        : 'bg-gradient-to-r from-blue-500 to-purple-500'
                       }`}
                   />
                   <h3 className='text-lg font-bold text-white/95'>
