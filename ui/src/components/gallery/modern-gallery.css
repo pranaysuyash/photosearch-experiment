@@ -147,11 +147,11 @@
   grid-auto-rows: auto;
   grid-row: span var(--row-span, 1);
 
-  /* Modern card styling */
-  background: hsl(var(--card));
+  /* Modern card styling - transparent background to avoid border effect */
+  background: transparent;
   border-radius: var(--card-radius);
   overflow: hidden;
-  box-shadow: var(--shadow-soft);
+  box-shadow: none;
 
   /* Transform states */
   transform: translateZ(0);
