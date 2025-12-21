@@ -182,8 +182,7 @@ export function PhotoGrid({
     if (selectedPaths.size === 0) return;
 
     const confirmed = window.confirm(
-      `Move ${selectedPaths.size} item${
-        selectedPaths.size > 1 ? 's' : ''
+      `Move ${selectedPaths.size} item${selectedPaths.size > 1 ? 's' : ''
       } to Trash? You can restore from Trash.`
     );
 
@@ -398,9 +397,8 @@ export function PhotoGrid({
       <div className='mb-6 flex flex-wrap items-center gap-2 sm:gap-3'>
         <motion.button
           onClick={() => setSelectMode(!selectMode)}
-          className={`btn-glass ${
-            selectMode ? 'btn-glass--primary' : 'btn-glass--muted'
-          } text-sm font-semibold transition-all duration-300`}
+          className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'
+            } text-sm font-semibold transition-all duration-300`}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -548,9 +546,8 @@ export function PhotoGrid({
             <motion.div
               key={photo.path}
               layoutId={`photo-${photo.path}`}
-              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${
-                isSelected ? 'selected' : ''
-              }`}
+              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${isSelected ? 'selected' : ''
+                }`}
               style={
                 {
                   '--item-index': i,
@@ -612,14 +609,18 @@ export function PhotoGrid({
                 className='gallery-image w-full h-auto object-cover rounded-xl'
               />
 
-              {/* Enhanced Selection Checkbox */}
-              {selectMode && (
-                <div
-                  className={`gallery-select ${isSelected ? 'selected' : ''}`}
-                >
-                  {isSelected && <Check size={14} />}
-                </div>
-              )}
+              {/* Gmail-style Selection Checkbox - visible on hover, clickable to select */}
+              <div
+                className={`gallery-select ${isSelected ? 'selected' : ''} ${!selectMode ? 'group-hover:opacity-100' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!selectMode) setSelectMode(true);
+                  toggleSelection(photo.path);
+                }}
+                title={isSelected ? 'Deselect' : 'Select'}
+              >
+                {isSelected && <Check size={14} />}
+              </div>
 
               {/* Advanced Overlay System */}
               <div className='gallery-overlay' />
