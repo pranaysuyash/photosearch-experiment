@@ -92,6 +92,11 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Ensure images auto-rotate based on EXIF orientation */
+  img {
+    image-orientation: from-image;
+  }
 }
 
 @layer components {
