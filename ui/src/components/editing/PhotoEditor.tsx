@@ -731,22 +731,33 @@ export function PhotoEditor({
                       />
                     </div>
                   </div>
-                  <input
-                    type='range'
-                    min='-100'
-                    max='100'
-                    value={settings.brightness}
-                    onChange={(e) =>
-                      previewSetting('brightness', parseInt(e.target.value))
-                    }
-                    onMouseUp={(e) =>
-                      updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    onTouchEnd={(e) =>
-                      updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    className='w-full h-2 cursor-pointer'
-                  />
+                  {/* Slider with visible track */}
+                  <div className='relative w-full h-2 bg-white/30 rounded-full'>
+                    <div
+                      className='absolute top-0 left-0 h-full bg-blue-500 rounded-full'
+                      style={{ width: `${((settings.brightness + 100) / 200) * 100}%` }}
+                    />
+                    <input
+                      type='range'
+                      min='-100'
+                      max='100'
+                      value={settings.brightness}
+                      onChange={(e) =>
+                        previewSetting('brightness', parseInt(e.target.value))
+                      }
+                      onMouseUp={(e) =>
+                        updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      onTouchEnd={(e) =>
+                        updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                    />
+                    <div
+                      className='absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 border-blue-500 pointer-events-none'
+                      style={{ left: `calc(${((settings.brightness + 100) / 200) * 100}% - 8px)` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Contrast */}
@@ -769,22 +780,33 @@ export function PhotoEditor({
                       />
                     </div>
                   </div>
-                  <input
-                    type='range'
-                    min='-100'
-                    max='100'
-                    value={settings.contrast}
-                    onChange={(e) =>
-                      previewSetting('contrast', parseInt(e.target.value))
-                    }
-                    onMouseUp={(e) =>
-                      updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    onTouchEnd={(e) =>
-                      updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    className='w-full h-2 cursor-pointer'
-                  />
+                  {/* Slider with visible track */}
+                  <div className='relative w-full h-2 bg-white/30 rounded-full'>
+                    <div
+                      className='absolute top-0 left-0 h-full bg-blue-500 rounded-full'
+                      style={{ width: `${((settings.contrast + 100) / 200) * 100}%` }}
+                    />
+                    <input
+                      type='range'
+                      min='-100'
+                      max='100'
+                      value={settings.contrast}
+                      onChange={(e) =>
+                        previewSetting('contrast', parseInt(e.target.value))
+                      }
+                      onMouseUp={(e) =>
+                        updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      onTouchEnd={(e) =>
+                        updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                    />
+                    <div
+                      className='absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 border-blue-500 pointer-events-none'
+                      style={{ left: `calc(${((settings.contrast + 100) / 200) * 100}% - 8px)` }}
+                    />
+                  </div>
                 </div>
 
                 {/* Saturation */}
@@ -807,22 +829,33 @@ export function PhotoEditor({
                       />
                     </div>
                   </div>
-                  <input
-                    type='range'
-                    min='-100'
-                    max='100'
-                    value={settings.saturation}
-                    onChange={(e) =>
-                      previewSetting('saturation', parseInt(e.target.value))
-                    }
-                    onMouseUp={(e) =>
-                      updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    onTouchEnd={(e) =>
-                      updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
-                    }
-                    className='w-full h-2 cursor-pointer'
-                  />
+                  {/* Slider with visible track */}
+                  <div className='relative w-full h-2 bg-white/30 rounded-full'>
+                    <div
+                      className='absolute top-0 left-0 h-full bg-blue-500 rounded-full'
+                      style={{ width: `${((settings.saturation + 100) / 200) * 100}%` }}
+                    />
+                    <input
+                      type='range'
+                      min='-100'
+                      max='100'
+                      value={settings.saturation}
+                      onChange={(e) =>
+                        previewSetting('saturation', parseInt(e.target.value))
+                      }
+                      onMouseUp={(e) =>
+                        updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      onTouchEnd={(e) =>
+                        updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
+                      }
+                      className='absolute inset-0 w-full h-full opacity-0 cursor-pointer'
+                    />
+                    <div
+                      className='absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg border-2 border-blue-500 pointer-events-none'
+                      style={{ left: `calc(${((settings.saturation + 100) / 200) * 100}% - 8px)` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

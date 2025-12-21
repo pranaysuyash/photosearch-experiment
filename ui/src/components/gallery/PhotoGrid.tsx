@@ -145,13 +145,6 @@ export function PhotoGrid({
     });
   };
 
-  // Auto-exit select mode when all items are deselected
-  useEffect(() => {
-    if (selectMode && selectedPaths.size === 0) {
-      setSelectMode(false);
-    }
-  }, [selectMode, selectedPaths.size]);
-
   const selectAll = useCallback(() => {
     setSelectedPaths(new Set(photos.map((p) => p.path)));
   }, [photos]);
@@ -400,43 +393,31 @@ export function PhotoGrid({
       ref={scrollContainerRef}
       className='container mx-auto px-4 pb-32 relative pt-2'
     >
-      {/* Gmail-style Selection Checkbox in Toolbar */}
+      {/* Selection Controls */}
       <div className='mb-6 flex flex-wrap items-center gap-2 sm:gap-3'>
-        <div className='flex items-center gap-2'>
-          <button
-            onClick={() => {
-              if (selectMode) {
-                if (selectedPaths.size > 0) {
-                  clearSelection();
-                } else {
-                  setSelectMode(false);
-                }
-              } else {
-                setSelectMode(true);
-              }
-            }}
-            className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${selectMode
-                ? selectedPaths.size === photos.length
-                  ? 'bg-primary border-primary text-primary-foreground'
-                  : selectedPaths.size > 0
-                    ? 'bg-primary/50 border-primary text-primary-foreground'
-                    : 'bg-transparent border-white/40 hover:border-white/60'
-                : 'bg-transparent border-white/30 hover:border-white/50'
-              }`}
-            title={selectMode ? (selectedPaths.size > 0 ? 'Clear selection' : 'Exit select mode') : 'Enter select mode'}
-          >
-            {selectMode && selectedPaths.size > 0 && (
+        <button
+          onClick={() => {
+            if (selectMode) {
+              clearSelection();
+            } else {
+              setSelectMode(true);
+            }
+          }}
+          className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'} text-sm px-3 py-1.5 flex items-center gap-2`}
+          title={selectMode ? 'Exit select mode' : 'Enter select mode'}
+        >
+          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${selectedPaths.size > 0
+            ? 'bg-white border-white'
+            : 'border-current'
+            }`}>
+            {selectedPaths.size > 0 && (
               selectedPaths.size === photos.length
-                ? <Check size={14} />
-                : <div className='w-2 h-0.5 bg-current' />
+                ? <Check size={10} className='text-primary' />
+                : <div className='w-1.5 h-0.5 bg-primary' />
             )}
-          </button>
-          {selectMode && (
-            <span className='text-sm text-muted-foreground'>
-              {selectedPaths.size} of {photos.length}
-            </span>
-          )}
-        </div>
+          </div>
+          {selectMode ? `${selectedPaths.size} selected` : 'Select'}
+        </button>
 
         {selectMode && (
           <motion.div

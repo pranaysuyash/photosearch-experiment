@@ -232,6 +232,7 @@ export function PhotoDetail({
     setSizingMode('fit');
     setShowAddToAlbum(false);
     setShowAddToTag(false);
+    setShowEditor(false); // Close editor when navigating to a new photo
     setSignedImageUrl(null);
     setFavoriteLoading(true);
     api
