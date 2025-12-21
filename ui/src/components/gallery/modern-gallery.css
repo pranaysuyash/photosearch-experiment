@@ -607,3 +607,30 @@
     width: auto !important;
   }
 }
+
+/* Path Auto-Scroll on Hover */
+.path-auto-scroll {
+  display: inline-block;
+  white-space: nowrap;
+  transform: translateX(0);
+  transition: transform 0.5s ease-out;
+}
+
+.path-auto-scroll-container {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.path-auto-scroll-container:hover .path-auto-scroll {
+  animation: pathScrollLeft 3s ease-in-out forwards;
+}
+
+@keyframes pathScrollLeft {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(calc(-100% + 200px));
+  }
+}

@@ -6,7 +6,6 @@
  */
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  X,
   Crop,
   Sun,
   Contrast,
@@ -22,6 +21,7 @@ import {
 import { glass } from '../../design/glass';
 import { api, type PhotoEdit } from '../../api';
 import { useToast } from '../ui/Toast';
+import { TrafficLightButtons } from '../ui/TrafficLightButtons';
 
 interface PhotoEditorProps {
   photoPath: string;
@@ -79,24 +79,42 @@ export function PhotoEditor({
   const [cropEnd, setCropEnd] = useState({ x: 0, y: 0 });
   const [cropPresets] = useState([
     { name: '1:1', ratio: 1 },
-    { name: '4:3', ratio: 4/3 },
-    { name: '16:9', ratio: 16/9 },
-    { name: '3:2', ratio: 3/2 },
+    { name: '4:3', ratio: 4 / 3 },
+    { name: '16:9', ratio: 16 / 9 },
+    { name: '3:2', ratio: 3 / 2 },
     { name: 'Free', ratio: null },
   ]);
   const [showBeforeAfter, setShowBeforeAfter] = useState(false);
   const [history, setHistory] = useState<EditSettings[]>([DEFAULT_SETTINGS]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const { showToast, ToastContainer } = useToast();
+  const [imageLoadError, setImageLoadError] = useState(false);
 
   // Load image when component opens
   useEffect(() => {
     if (isOpen && imageUrl) {
+      setImageLoadError(false);
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         setOriginalImage(img);
         applyEdits(img, settings);
+      };
+      img.onerror = () => {
+        console.error('Failed to load image:', imageUrl);
+        setImageLoadError(true);
+        // Try loading without crossOrigin attribute as fallback
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          setOriginalImage(fallbackImg);
+          applyEdits(fallbackImg, settings);
+          setImageLoadError(false);
+        };
+        fallbackImg.onerror = () => {
+          console.error('Fallback image load also failed');
+          showToast('Failed to load image for editing', 'error');
+        };
+        fallbackImg.src = imageUrl;
       };
       img.src = imageUrl;
     }
@@ -218,9 +236,8 @@ export function PhotoEditor({
     ctx.scale(currentSettings.flipH ? -1 : 1, currentSettings.flipV ? -1 : 1);
 
     // Apply filters
-    ctx.filter = `brightness(${100 + currentSettings.brightness}%) contrast(${
-      100 + currentSettings.contrast
-    }%) saturate(${100 + currentSettings.saturation}%)`;
+    ctx.filter = `brightness(${100 + currentSettings.brightness}%) contrast(${100 + currentSettings.contrast
+      }%) saturate(${100 + currentSettings.saturation}%)`;
 
     // Apply crop if active
     if (currentSettings.crop) {
@@ -245,21 +262,21 @@ export function PhotoEditor({
 
   const updateSetting = (key: keyof EditSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
-    
+
     // Add to history (remove any future history if we're not at the end)
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(newSettings);
-    
+
     // Limit history to 20 steps
     if (newHistory.length > 20) {
       newHistory.shift();
     } else {
       setHistoryIndex(historyIndex + 1);
     }
-    
+
     setHistory(newHistory);
     setSettings(newSettings);
-    
+
     if (originalImage) {
       applyEdits(originalImage, newSettings);
     }
@@ -272,7 +289,7 @@ export function PhotoEditor({
       setHistoryIndex(newIndex);
       setSettings(previousSettings);
       showToast('Undid last change', 'info');
-      
+
       if (originalImage) {
         applyEdits(originalImage, previousSettings);
       }
@@ -286,7 +303,7 @@ export function PhotoEditor({
       setHistoryIndex(newIndex);
       setSettings(nextSettings);
       showToast('Redid change', 'info');
-      
+
       if (originalImage) {
         applyEdits(originalImage, nextSettings);
       }
@@ -297,13 +314,13 @@ export function PhotoEditor({
     const resetSettings = { ...DEFAULT_SETTINGS };
     setSettings(resetSettings);
     setCropMode(false);
-    
+
     // Add reset to history
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(resetSettings);
     setHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
-    
+
     showToast('All edits reset', 'info');
     if (originalImage) {
       applyEdits(originalImage, resetSettings);
@@ -422,448 +439,397 @@ export function PhotoEditor({
       <div
         className='relative w-full max-w-7xl h-full max-h-[95vh] sm:max-h-[90vh] glass-surface glass-surface--strong rounded-2xl border border-white/10 shadow-2xl overflow-hidden flex flex-col lg:flex-row'
       >
-        {/* Header */}
-        <div className='flex items-center justify-between px-5 py-4 border-b border-white/10'>
-          <div className='flex items-center gap-3'>
-            <h3 className='text-lg font-semibold text-foreground'>
-              Photo Editor
-            </h3>
-            <span className='text-xs text-muted-foreground bg-white/10 px-2 py-1 rounded-full'>
-              Basic Editing
-            </span>
-          </div>
-          <div className='flex items-center gap-2'>
-            <button
-              onClick={undo}
-              disabled={historyIndex <= 0}
-              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden sm:flex items-center gap-1'
-              title='Undo (Ctrl+Z)'
-            >
-              <Undo size={14} />
-              <span className='hidden lg:inline'>Undo</span>
-            </button>
-            <button
-              onClick={redo}
-              disabled={historyIndex >= history.length - 1}
-              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden sm:flex items-center gap-1'
-              title='Redo (Ctrl+Y)'
-            >
-              <Redo size={14} />
-              <span className='hidden lg:inline'>Redo</span>
-            </button>
-            <button
-              onClick={resetSettings}
-              className='btn-glass btn-glass--muted text-sm px-3 py-2 hidden lg:flex items-center gap-1'
-              title='Reset all edits'
-            >
-              <Undo size={14} />
-              <span className='hidden lg:inline'>Reset</span>
-            </button>
-            <button
-              onClick={onClose}
-              className='btn-glass btn-glass--muted w-9 h-9 p-0 justify-center'
-              aria-label='Close editor'
-            >
-              <X size={16} />
-            </button>
-          </div>
+        {/* Mac-style Traffic Light Buttons */}
+        <div className='absolute top-4 left-4 z-30'>
+          <TrafficLightButtons
+            onClose={onClose}
+            showMinimize={false}
+            showMaximize={false}
+          />
+        </div>
+
+        {/* Header - Title only */}
+        <div className='flex items-center justify-center px-5 py-3 border-b border-white/10'>
+          <h3 className='text-lg font-semibold text-foreground'>
+            Photo Editor
+          </h3>
         </div>
 
         {/* Editor Content */}
-        <div className='flex-1 flex overflow-hidden'>
-          {/* Canvas Area */}
-          <div className='flex-1 flex items-center justify-center p-6 bg-black/20'>
-            <div className='relative'>
-              {showBeforeAfter ? (
-                /* Before/After Comparison */
-                <div className='flex gap-4 items-center'>
-                  <div className='text-center'>
-                    <div className='text-xs text-muted-foreground mb-2'>Before</div>
-                    <img
-                      ref={imageRef}
-                      src={imageUrl}
-                      alt='Original'
-                      className='max-w-[300px] max-h-[400px] object-contain rounded border border-white/20'
-                    />
-                  </div>
-                  <div className='text-center'>
-                    <div className='text-xs text-muted-foreground mb-2'>After</div>
-                    <canvas
-                      ref={canvasRef}
-                      className='max-w-[300px] max-h-[400px] object-contain rounded border border-white/20'
-                    />
-                  </div>
-                </div>
-              ) : (
-                /* Live Preview */
-                <div className='text-center'>
-                  <div className='text-xs text-muted-foreground mb-2'>Live Preview</div>
-                  <canvas
-                    ref={canvasRef}
-                    className={`max-w-full max-h-full object-contain rounded border border-white/20 ${
-                      cropMode ? 'cursor-crosshair' : ''
-                    }`}
-                    onMouseDown={startCrop}
-                    onMouseMove={updateCrop}
-                    onMouseUp={endCrop}
-                    onMouseLeave={endCrop}
-                  />
-                </div>
-              )}
+        <div className='flex-1 flex flex-col lg:flex-row overflow-hidden'>
+          {/* Image Preview Area - Uses CSS transforms for live preview */}
+          <div className='flex-1 flex flex-col'>
+            <div className='flex-1 flex items-center justify-center p-4 bg-black/30 overflow-hidden'>
+              {/* CSS-based live preview (no canvas needed for display) */}
+              <img
+                src={imageUrl}
+                alt='Photo being edited'
+                className='max-w-full max-h-full object-contain rounded-lg'
+                style={{
+                  filter: `brightness(${100 + settings.brightness}%) contrast(${100 + settings.contrast}%) saturate(${100 + settings.saturation}%)`,
+                  transform: `rotate(${settings.rotation}deg) scaleX(${settings.flipH ? -1 : 1}) scaleY(${settings.flipV ? -1 : 1})`,
+                  transition: 'filter 0.15s ease, transform 0.15s ease',
+                }}
+              />
+              {/* Hidden canvas for save operations */}
+              <canvas ref={canvasRef} className='hidden' />
+            </div>
 
-              {/* Crop overlay */}
-              {cropMode && isDragging && !showBeforeAfter && (
-                <div
-                  className='absolute border-2 border-primary bg-white/10 pointer-events-none'
-                  style={{
-                    left: Math.min(cropStart.x, cropEnd.x),
-                    top: Math.min(cropStart.y, cropEnd.y),
-                    width: Math.abs(cropEnd.x - cropStart.x),
-                    height: Math.abs(cropEnd.y - cropStart.y),
-                  }}
+            {/* Footer Controls - Undo/Redo/Reset */}
+            <div className='flex items-center justify-between px-4 py-3 border-t border-white/10 bg-black/20'>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={undo}
+                  disabled={historyIndex <= 0}
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 flex items-center gap-1'
+                  title='Undo (Ctrl+Z)'
                 >
-                  {/* Rule of thirds grid */}
-                  <div className='absolute inset-0 grid grid-cols-3 grid-rows-3'>
-                    {Array.from({ length: 9 }).map((_, i) => (
-                      <div key={i} className='border border-white/30' />
-                    ))}
-                  </div>
-                  
-                  {/* Crop dimensions display */}
-                  <div className='absolute -bottom-6 left-0 text-xs text-white bg-black/70 px-2 py-1 rounded'>
-                    {Math.abs(cropEnd.x - cropStart.x)}×{Math.abs(cropEnd.y - cropStart.y)}
-                  </div>
-                </div>
-              )}
-              
-              {/* Crop mode instructions */}
-              {cropMode && !isDragging && !showBeforeAfter && (
-                <div className='absolute top-4 left-4 text-sm text-white bg-black/70 px-3 py-2 rounded-lg'>
-                  Click and drag to select crop area
-                </div>
-              )}
+                  <Undo size={14} />
+                  Undo
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={historyIndex >= history.length - 1}
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 flex items-center gap-1'
+                  title='Redo (Ctrl+Y)'
+                >
+                  <Redo size={14} />
+                  Redo
+                </button>
+                <button
+                  onClick={resetSettings}
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2 flex items-center gap-1'
+                  title='Reset all edits'
+                >
+                  Reset
+                </button>
+              </div>
+              <div className='text-xs text-muted-foreground'>
+                {historyIndex}/{history.length - 1} edits
+              </div>
             </div>
           </div>
 
-          {/* Controls Panel */}
-          <div className='w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-white/10 p-3 sm:p-4 space-y-4 sm:space-y-6 overflow-y-auto max-h-80 sm:max-h-96 lg:max-h-full'>
-            {/* Mobile: Undo/Redo buttons */}
-            <div className='flex gap-2 lg:hidden'>
-              <button
-                onClick={undo}
-                disabled={historyIndex <= 0}
-                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1 flex-1'
-                title='Undo (Ctrl+Z)'
-              >
-                <Undo size={14} />
-                Undo
-              </button>
-              <button
-                onClick={redo}
-                disabled={historyIndex >= history.length - 1}
-                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1 flex-1'
-                title='Redo (Ctrl+Y)'
-              >
-                <Redo size={14} />
-                Redo
-              </button>
-              <button
-                onClick={resetSettings}
-                className='btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-1'
-                title='Reset all edits'
-              >
-                <Undo size={14} />
-              </button>
+          {/* Crop overlay */}
+          {cropMode && isDragging && !showBeforeAfter && (
+            <div
+              className='absolute border-2 border-primary bg-white/10 pointer-events-none'
+              style={{
+                left: Math.min(cropStart.x, cropEnd.x),
+                top: Math.min(cropStart.y, cropEnd.y),
+                width: Math.abs(cropEnd.x - cropStart.x),
+                height: Math.abs(cropEnd.y - cropStart.y),
+              }}
+            >
+              {/* Rule of thirds grid */}
+              <div className='absolute inset-0 grid grid-cols-3 grid-rows-3'>
+                {Array.from({ length: 9 }).map((_, i) => (
+                  <div key={i} className='border border-white/30' />
+                ))}
+              </div>
+
+              {/* Crop dimensions display */}
+              <div className='absolute -bottom-6 left-0 text-xs text-white bg-black/70 px-2 py-1 rounded'>
+                {Math.abs(cropEnd.x - cropStart.x)}×{Math.abs(cropEnd.y - cropStart.y)}
+              </div>
             </div>
-            {/* Quick Actions */}
-            <div>
-              <h4 className='text-sm font-medium text-foreground mb-3'>
-                Quick Actions
-              </h4>
-              <div className='grid grid-cols-2 gap-2'>
+          )}
+
+          {/* Crop mode instructions */}
+          {cropMode && !isDragging && !showBeforeAfter && (
+            <div className='absolute top-4 left-4 text-sm text-white bg-black/70 px-3 py-2 rounded-lg'>
+              Click and drag to select crop area
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Controls Panel */}
+      <div className='w-full lg:w-72 border-t lg:border-t-0 lg:border-l border-white/10 p-3 space-y-4 overflow-y-auto max-h-60 lg:max-h-full'>
+        {/* Quick Actions */}
+        <div>
+          <h4 className='text-sm font-medium text-foreground mb-3'>
+            Quick Actions
+          </h4>
+          <div className='grid grid-cols-2 gap-2'>
+            <button
+              onClick={rotateRight}
+              className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+              title='Rotate Right (R)'
+            >
+              <RotateCw size={14} className='mr-1' />
+              Rotate Right
+              <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                R
+              </span>
+            </button>
+            <button
+              onClick={rotateLeft}
+              className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+              title='Rotate Left (Shift+R)'
+            >
+              <RotateCcw size={14} className='mr-1' />
+              Rotate Left
+              <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                ⇧R
+              </span>
+            </button>
+            <button
+              onClick={flipHorizontal}
+              className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+              title='Flip Horizontal (H)'
+            >
+              <FlipHorizontal size={14} className='mr-1' />
+              Flip H
+              <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                H
+              </span>
+            </button>
+            <button
+              onClick={flipVertical}
+              className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
+              title='Flip Vertical (V)'
+            >
+              <FlipVertical size={14} className='mr-1' />
+              Flip V
+              <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                V
+              </span>
+            </button>
+          </div>
+          <div className='mt-2 text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+            Tip: Use keyboard shortcuts: R (rotate), H (flip horizontal), V (flip vertical)
+          </div>
+        </div>
+
+        {/* Crop */}
+        <div>
+          <h4 className='text-sm font-medium text-foreground mb-3'>Crop</h4>
+          <div className='space-y-2'>
+            {/* Crop Presets */}
+            <div className='grid grid-cols-3 gap-1 mb-2'>
+              {cropPresets.map((preset) => (
                 <button
-                  onClick={rotateRight}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
-                  title='Rotate Right (R)'
+                  key={preset.name}
+                  onClick={() => {
+                    // Set crop mode and ratio constraint
+                    setCropMode(true);
+                    // Store the ratio for use during cropping
+                    (window as any).cropRatio = preset.ratio;
+                  }}
+                  className='btn-glass btn-glass--muted text-xs px-2 py-1'
                 >
-                  <RotateCw size={14} className='mr-1' />
-                  Rotate Right
-                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    R
-                  </span>
+                  {preset.name}
                 </button>
-                <button
-                  onClick={rotateLeft}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
-                  title='Rotate Left (Shift+R)'
-                >
-                  <RotateCcw size={14} className='mr-1' />
-                  Rotate Left
-                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    ⇧R
-                  </span>
-                </button>
-                <button
-                  onClick={flipHorizontal}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
-                  title='Flip Horizontal (H)'
-                >
-                  <FlipHorizontal size={14} className='mr-1' />
-                  Flip H
-                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    H
-                  </span>
-                </button>
-                <button
-                  onClick={flipVertical}
-                  className='btn-glass btn-glass--muted text-xs px-3 py-2 justify-center group relative'
-                  title='Flip Vertical (V)'
-                >
-                  <FlipVertical size={14} className='mr-1' />
-                  Flip V
-                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
-                    V
-                  </span>
-                </button>
-              </div>
-              <div className='mt-2 text-xs text-muted-foreground bg-white/5 p-2 rounded'>
-                Tip: Use keyboard shortcuts: R (rotate), H (flip horizontal), V (flip vertical)
-              </div>
+              ))}
             </div>
 
-            {/* Crop */}
-            <div>
-              <h4 className='text-sm font-medium text-foreground mb-3'>Crop</h4>
+            {!settings.crop ? (
               <div className='space-y-2'>
-                {/* Crop Presets */}
-                <div className='grid grid-cols-3 gap-1 mb-2'>
-                  {cropPresets.map((preset) => (
-                    <button
-                      key={preset.name}
-                      onClick={() => {
-                        // Set crop mode and ratio constraint
-                        setCropMode(true);
-                        // Store the ratio for use during cropping
-                        (window as any).cropRatio = preset.ratio;
-                      }}
-                      className='btn-glass btn-glass--muted text-xs px-2 py-1'
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
-                </div>
-                
-                {!settings.crop ? (
-                  <div className='space-y-2'>
-                    <button
-                      onClick={() => setCropMode(true)}
-                      className={`btn-glass ${
-                        cropMode ? 'btn-glass--primary' : 'btn-glass--muted'
-                      } text-xs px-3 py-2 w-full justify-center group relative`}
-                      title='Start Crop (C)'
-                    >
-                      <Crop size={14} className='mr-1' />
-                      {cropMode ? 'Click and drag to crop' : 'Start Crop'}
-                      <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
-                        C
-                      </span>
-                    </button>
-                    {cropMode && (
-                      <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
-                        Press Escape to cancel crop mode
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className='space-y-2'>
-                    <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
-                      Crop: {Math.round(settings.crop?.width || 0)}×{Math.round(settings.crop?.height || 0)}px
-                      <br />
-                      Ratio: {((settings.crop?.width || 1) / (settings.crop?.height || 1)).toFixed(2)}:1
-                    </div>
-                    <button
-                      onClick={clearCrop}
-                      className='btn-glass btn-glass--danger text-xs px-3 py-2 w-full'
-                    >
-                      Clear Crop
-                    </button>
+                <button
+                  onClick={() => setCropMode(true)}
+                  className={`btn-glass ${cropMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                    } text-xs px-3 py-2 w-full justify-center group relative`}
+                  title='Start Crop (C)'
+                >
+                  <Crop size={14} className='mr-1' />
+                  {cropMode ? 'Click and drag to crop' : 'Start Crop'}
+                  <span className='absolute top-1 right-1 text-[10px] text-white/40 opacity-0 group-hover:opacity-100 transition-opacity'>
+                    C
+                  </span>
+                </button>
+                {cropMode && (
+                  <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+                    Press Escape to cancel crop mode
                   </div>
                 )}
               </div>
-            </div>
+            ) : (
+              <div className='space-y-2'>
+                <div className='text-xs text-muted-foreground bg-white/5 p-2 rounded'>
+                  Crop: {Math.round(settings.crop?.width || 0)}×{Math.round(settings.crop?.height || 0)}px
+                  <br />
+                  Ratio: {((settings.crop?.width || 1) / (settings.crop?.height || 1)).toFixed(2)}:1
+                </div>
+                <button
+                  onClick={clearCrop}
+                  className='btn-glass btn-glass--danger text-xs px-3 py-2 w-full'
+                >
+                  Clear Crop
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
-            {/* History */}
+        {/* History */}
+        <div>
+          <h4 className='text-sm font-medium text-foreground mb-3'>History</h4>
+          <div className='space-y-1 max-h-32 overflow-y-auto'>
+            {history.map((step, index) => {
+              const isActive = index === historyIndex;
+              const stepName = index === 0 ? 'Original' : `Edit ${index}`;
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setHistoryIndex(index);
+                    setSettings(step);
+                    if (originalImage) {
+                      applyEdits(originalImage, step);
+                    }
+                  }}
+                  className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${isActive
+                    ? 'bg-primary/20 text-primary border border-primary/30'
+                    : 'hover:bg-white/5 text-muted-foreground'
+                    }`}
+                >
+                  {stepName}
+                  {isActive && <span className='float-right'>•</span>}
+                </button>
+              );
+            })}
+          </div>
+          <div className='text-xs text-muted-foreground mt-2'>
+            {history.length}/20 steps • Ctrl+Z/Y for undo/redo
+          </div>
+        </div>
+        <div>
+          <h4 className='text-sm font-medium text-foreground mb-3'>Preview</h4>
+          <button
+            onClick={() => setShowBeforeAfter(!showBeforeAfter)}
+            className={`btn-glass ${showBeforeAfter ? 'btn-glass--primary' : 'btn-glass--muted'
+              } text-xs px-3 py-2 w-full justify-center`}
+          >
+            {showBeforeAfter ? 'Show Live Preview' : 'Compare Before/After'}
+          </button>
+        </div>
+        <div>
+          <h4 className='text-sm font-medium text-foreground mb-3'>
+            Adjustments
+          </h4>
+          <div className='space-y-4'>
+            {/* Brightness */}
             <div>
-              <h4 className='text-sm font-medium text-foreground mb-3'>History</h4>
-              <div className='space-y-1 max-h-32 overflow-y-auto'>
-                {history.map((step, index) => {
-                  const isActive = index === historyIndex;
-                  const stepName = index === 0 ? 'Original' : `Edit ${index}`;
-                  
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setHistoryIndex(index);
-                        setSettings(step);
-                        if (originalImage) {
-                          applyEdits(originalImage, step);
-                        }
-                      }}
-                      className={`w-full text-left px-2 py-1 rounded text-xs transition-colors ${
-                        isActive 
-                          ? 'bg-primary/20 text-primary border border-primary/30' 
-                          : 'hover:bg-white/5 text-muted-foreground'
-                      }`}
-                    >
-                      {stepName}
-                      {isActive && <span className='float-right'>•</span>}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className='text-xs text-muted-foreground mt-2'>
-                {history.length}/20 steps • Ctrl+Z/Y for undo/redo
-              </div>
-            </div>
-            <div>
-              <h4 className='text-sm font-medium text-foreground mb-3'>Preview</h4>
-              <button
-                onClick={() => setShowBeforeAfter(!showBeforeAfter)}
-                className={`btn-glass ${
-                  showBeforeAfter ? 'btn-glass--primary' : 'btn-glass--muted'
-                } text-xs px-3 py-2 w-full justify-center`}
-              >
-                {showBeforeAfter ? 'Show Live Preview' : 'Compare Before/After'}
-              </button>
-            </div>
-            <div>
-              <h4 className='text-sm font-medium text-foreground mb-3'>
-                Adjustments
-              </h4>
-              <div className='space-y-4'>
-                {/* Brightness */}
-                <div>
-                  <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
-                      <Sun size={12} />
-                      Brightness
-                    </label>
-                    <div className='flex items-center gap-2'>
-                      <input
-                        type='number'
-                        min='-100'
-                        max='100'
-                        value={settings.brightness}
-                        onChange={(e) =>
-                          updateSetting('brightness', parseInt(e.target.value) || 0)
-                        }
-                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
-                      />
-                    </div>
-                  </div>
+              <div className='flex items-center justify-between mb-1'>
+                <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                  <Sun size={12} />
+                  Brightness
+                </label>
+                <div className='flex items-center gap-2'>
                   <input
-                    type='range'
+                    type='number'
                     min='-100'
                     max='100'
                     value={settings.brightness}
                     onChange={(e) =>
-                      updateSetting('brightness', parseInt(e.target.value))
+                      updateSetting('brightness', parseInt(e.target.value) || 0)
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
                   />
                 </div>
+              </div>
+              <input
+                type='range'
+                min='-100'
+                max='100'
+                value={settings.brightness}
+                onChange={(e) =>
+                  updateSetting('brightness', parseInt(e.target.value))
+                }
+                className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+              />
+            </div>
 
-                {/* Contrast */}
-                <div>
-                  <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
-                      <Contrast size={12} />
-                      Contrast
-                    </label>
-                    <div className='flex items-center gap-2'>
-                      <input
-                        type='number'
-                        min='-100'
-                        max='100'
-                        value={settings.contrast}
-                        onChange={(e) =>
-                          updateSetting('contrast', parseInt(e.target.value) || 0)
-                        }
-                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
-                      />
-                    </div>
-                  </div>
+            {/* Contrast */}
+            <div>
+              <div className='flex items-center justify-between mb-1'>
+                <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                  <Contrast size={12} />
+                  Contrast
+                </label>
+                <div className='flex items-center gap-2'>
                   <input
-                    type='range'
+                    type='number'
                     min='-100'
                     max='100'
                     value={settings.contrast}
                     onChange={(e) =>
-                      updateSetting('contrast', parseInt(e.target.value))
+                      updateSetting('contrast', parseInt(e.target.value) || 0)
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
                   />
                 </div>
+              </div>
+              <input
+                type='range'
+                min='-100'
+                max='100'
+                value={settings.contrast}
+                onChange={(e) =>
+                  updateSetting('contrast', parseInt(e.target.value))
+                }
+                className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+              />
+            </div>
 
-                {/* Saturation */}
-                <div>
-                  <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
-                      <Droplet size={12} />
-                      Saturation
-                    </label>
-                    <div className='flex items-center gap-2'>
-                      <input
-                        type='number'
-                        min='-100'
-                        max='100'
-                        value={settings.saturation}
-                        onChange={(e) =>
-                          updateSetting('saturation', parseInt(e.target.value) || 0)
-                        }
-                        className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
-                      />
-                    </div>
-                  </div>
+            {/* Saturation */}
+            <div>
+              <div className='flex items-center justify-between mb-1'>
+                <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                  <Droplet size={12} />
+                  Saturation
+                </label>
+                <div className='flex items-center gap-2'>
                   <input
-                    type='range'
+                    type='number'
                     min='-100'
                     max='100'
                     value={settings.saturation}
                     onChange={(e) =>
-                      updateSetting('saturation', parseInt(e.target.value))
+                      updateSetting('saturation', parseInt(e.target.value) || 0)
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-12 h-6 text-xs bg-white/10 border border-white/20 rounded px-1 text-center text-white'
                   />
                 </div>
               </div>
-            </div>
-
-            {/* Save Button */}
-            <div className='pt-4'>
-              <button
-                onClick={saveEdit}
-                disabled={isProcessing}
-                className='btn-glass btn-glass--primary text-sm px-4 py-3 w-full justify-center'
-              >
-                {isProcessing ? (
-                  <div className='flex items-center gap-2'>
-                    <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-                    Processing...
-                  </div>
-                ) : (
-                  <div className='flex items-center gap-2'>
-                    <Check size={16} />
-                    Save Edit
-                  </div>
-                )}
-              </button>
+              <input
+                type='range'
+                min='-100'
+                max='100'
+                value={settings.saturation}
+                onChange={(e) =>
+                  updateSetting('saturation', parseInt(e.target.value))
+                }
+                className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+              />
             </div>
           </div>
         </div>
+
+        {/* Save Button */}
+        <div className='pt-4'>
+          <button
+            onClick={saveEdit}
+            disabled={isProcessing}
+            className='btn-glass btn-glass--primary text-sm px-4 py-3 w-full justify-center'
+          >
+            {isProcessing ? (
+              <div className='flex items-center gap-2'>
+                <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
+                Processing...
+              </div>
+            ) : (
+              <div className='flex items-center gap-2'>
+                <Check size={16} />
+                Save Edit
+              </div>
+            )}
+          </button>
+        </div>
       </div>
-      
+
       {/* Toast notifications */}
       <ToastContainer />
     </div>

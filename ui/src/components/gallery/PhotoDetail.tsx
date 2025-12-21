@@ -34,6 +34,7 @@ import {
   ZoomIn,
   ZoomOut,
   Download,
+  GripVertical,
 } from 'lucide-react';
 import SecureLazyImage from './SecureLazyImage';
 import { type Photo, api } from '../../api';
@@ -169,6 +170,7 @@ export function PhotoDetail({
   const [faceClusters, setFaceClusters] = useState<any[]>([]);
   const [isMetadataPanelVisible, setIsMetadataPanelVisible] = useState(true);
   const [facesLoading, setFacesLoading] = useState(false);
+  const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
   const { showToast, ToastContainer } = useToast();
 
   // Tab state
@@ -176,6 +178,21 @@ export function PhotoDetail({
 
   // Image sizing mode
   const [sizingMode, setSizingMode] = useState<SizingMode>('fit');
+
+  // Resizable panel state
+  const [panelWidth, setPanelWidth] = useState(384); // Default 24rem (384px)
+  const isDraggingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (photo) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [photo]);
 
   useEffect(() => {
     let mounted = true;
@@ -215,6 +232,7 @@ export function PhotoDetail({
     setSizingMode('fit');
     setShowAddToAlbum(false);
     setShowAddToTag(false);
+    setSignedImageUrl(null);
     setFavoriteLoading(true);
     api
       .checkFavorite(photo.path)
@@ -240,6 +258,12 @@ export function PhotoDetail({
       .then((res) => setPhotoTags(res.tags || []))
       .catch(() => setPhotoTags([]))
       .finally(() => setTagsLoading(false));
+
+    // Get signed URL for the photo editor
+    api
+      .getSignedImageUrl(photo.path, 1600)
+      .then(setSignedImageUrl)
+      .catch(() => setSignedImageUrl(api.getImageUrl(photo.path, 1600)));
   }, [photo]);
 
   const refreshFaces = async () => {
@@ -270,6 +294,39 @@ export function PhotoDetail({
     }
     refreshFaces();
   }, [photo]);
+
+  // Handle panel resize - must be at component level (Rules of Hooks)
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current || !containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newWidth = containerRect.right - e.clientX;
+      // Clamp between 280px (min) and 600px (max)
+      setPanelWidth(Math.max(280, Math.min(600, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
 
   const refreshTags = async () => {
     if (!photo) return;
@@ -506,9 +563,9 @@ export function PhotoDetail({
               <h3 className='text-white text-lg font-semibold mb-1 truncate'>
                 {photo.filename}
               </h3>
-              <div className='flex items-center gap-2 group'>
-                <div className='flex-1 overflow-x-auto scrollbar-thin scrollbar-thumb-white/20'>
-                  <p className='text-white/40 text-xs select-text'>
+              <div className='flex items-center gap-2 group min-w-0'>
+                <div className='flex-1 min-w-0 path-auto-scroll-container'>
+                  <p className='text-white/40 text-xs select-text path-auto-scroll'>
                     <a
                       href={originalOpenUrl}
                       target='_blank'
@@ -609,8 +666,8 @@ export function PhotoDetail({
               showLabel={true}
             />
 
-            {/* Tags section */}
-            {(tagsLoading || photoTags.length > 0) && (
+            {/* Tags section - only show when there are tags */}
+            {photoTags.length > 0 && (
               <div className='glass-surface rounded-xl p-3'>
                 <div className='flex items-center justify-between gap-2 mb-2'>
                   <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
@@ -626,45 +683,38 @@ export function PhotoDetail({
                     <RotateCw size={12} />
                   </button>
                 </div>
-                {tagsLoading ? (
-                  <div className='text-xs text-white/50'>Loading…</div>
-                ) : (
-                  <div className='flex flex-wrap gap-2'>
-                    {photoTags.map((t) => (
-                      <div
-                        key={t}
-                        className='flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1'
+                <div className='flex flex-wrap gap-2'>
+                  {photoTags.map((t) => (
+                    <div
+                      key={t}
+                      className='flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1'
+                    >
+                      <span className='text-xs text-white/85'>#{t}</span>
+                      <button
+                        className='btn-glass btn-glass--muted w-5 h-5 p-0 justify-center'
+                        title='Remove tag'
+                        disabled={busy}
+                        onClick={async () => {
+                          if (!photo) return;
+                          setBusy(true);
+                          try {
+                            await api.removePhotosFromTag(t, [photo.path]);
+                            await refreshTags();
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
                       >
-                        <span className='text-xs text-white/85'>#{t}</span>
-                        <button
-                          className='btn-glass btn-glass--muted w-5 h-5 p-0 justify-center'
-                          title='Remove tag'
-                          disabled={busy}
-                          onClick={async () => {
-                            if (!photo) return;
-                            setBusy(true);
-                            try {
-                              await api.removePhotosFromTag(t, [photo.path]);
-                              await refreshTags();
-                            } finally {
-                              setBusy(false);
-                            }
-                          }}
-                        >
-                          <X size={10} />
-                        </button>
-                      </div>
-                    ))}
-                    {photoTags.length === 0 && (
-                      <div className='text-xs text-white/50'>No tags yet.</div>
-                    )}
-                  </div>
-                )}
+                        <X size={10} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
-            {/* People/Faces section */}
-            {(facesLoading || faceClusters.length > 0) && (
+            {/* People/Faces section - only show when there are faces */}
+            {faceClusters.length > 0 && (
               <div className='glass-surface rounded-xl p-3'>
                 <div className='flex items-center justify-between gap-2 mb-2'>
                   <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
@@ -680,29 +730,23 @@ export function PhotoDetail({
                     <RotateCw size={12} />
                   </button>
                 </div>
-                {facesLoading ? (
-                  <div className='text-xs text-white/50'>Scanning…</div>
-                ) : faceClusters.length === 0 ? (
-                  <div className='text-xs text-white/50'>No faces detected.</div>
-                ) : (
-                  <div className='flex flex-wrap gap-2'>
-                    {faceClusters.map((c, idx) => (
-                      <div
-                        key={c.id || idx}
-                        className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1'
-                      >
-                        <span className='text-xs text-white/85'>
-                          {c.label || c.cluster_label || `Person ${c.id || idx + 1}`}
+                <div className='flex flex-wrap gap-2'>
+                  {faceClusters.map((c, idx) => (
+                    <div
+                      key={c.id || idx}
+                      className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1'
+                    >
+                      <span className='text-xs text-white/85'>
+                        {c.label || c.cluster_label || `Person ${c.id || idx + 1}`}
+                      </span>
+                      {typeof c.face_count === 'number' && (
+                        <span className='text-[10px] text-white/60'>
+                          {c.face_count} face{c.face_count === 1 ? '' : 's'}
                         </span>
-                        {typeof c.face_count === 'number' && (
-                          <span className='text-[10px] text-white/60'>
-                            {c.face_count} face{c.face_count === 1 ? '' : 's'}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -977,25 +1021,26 @@ export function PhotoDetail({
             )}
           </div>
         );
-    }
+    };
   };
 
   return (
     <>
       <AnimatePresence>
         {photo && (
-          <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div className='fixed inset-0 z-[1100] flex items-center justify-center p-4'>
             <motion.div
               onClick={onClose}
               className='absolute inset-0 bg-black/70 backdrop-blur-md'
             />
 
             <motion.div
+              ref={containerRef}
               layoutId={`photo-${photo.path}`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className='relative z-10 max-w-7xl w-full max-h-[95vh] flex gap-4 md:gap-6'
+              className='relative z-10 max-w-7xl w-full max-h-[95vh] flex gap-0'
               onClick={(e) => e.stopPropagation()}
             >
               {/* Mac-style traffic light buttons */}
@@ -1041,11 +1086,11 @@ export function PhotoDetail({
               {hasPrev && (
                 <button
                   onClick={() => onNavigate(currentIndex! - 1)}
-                  className='absolute left-4 top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-12 h-12 p-0 justify-center text-white/80'
+                  className='absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-10 h-10 md:w-12 md:h-12 p-0 justify-center text-white/80'
                   title='Previous photo'
                   aria-label='Previous photo'
                 >
-                  <ChevronLeft size={24} />
+                  <ChevronLeft size={20} className='md:w-6 md:h-6' />
                 </button>
               )}
 
@@ -1053,11 +1098,12 @@ export function PhotoDetail({
               {hasNext && (
                 <button
                   onClick={() => onNavigate(currentIndex! + 1)}
-                  className={`absolute ${isMetadataPanelVisible ? 'right-[26rem]' : 'right-4'} top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-12 h-12 p-0 justify-center text-white/80 transition-all`}
+                  style={isMetadataPanelVisible ? { right: panelWidth + 24 } : undefined}
+                  className={`absolute ${!isMetadataPanelVisible ? 'right-2 md:right-4' : ''} top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-10 h-10 md:w-12 md:h-12 p-0 justify-center text-white/80 transition-all`}
                   title='Next photo'
                   aria-label='Next photo'
                 >
-                  <ChevronRight size={24} />
+                  <ChevronRight size={20} className='md:w-6 md:h-6' />
                 </button>
               )}
 
@@ -1097,47 +1143,47 @@ export function PhotoDetail({
 
                 {/* Image Sizing Controls Bar */}
                 {!api.isVideo(photo.path) && (
-                  <div className='flex items-center justify-between gap-4 px-4 py-3 border-t border-white/10 bg-black/20'>
+                  <div className='flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 pr-4 sm:pr-6 py-2 sm:py-3 border-t border-white/10 bg-black/20'>
                     {/* Sizing mode buttons */}
-                    <div className='flex items-center gap-1'>
+                    <div className='flex items-center gap-1 flex-shrink-0'>
                       <button
                         onClick={() => { setSizingMode('fit'); setZoom(100); }}
-                        className={`btn-glass ${sizingMode === 'fit' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-1.5`}
+                        className={`btn-glass ${sizingMode === 'fit' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-2 sm:px-3 py-1.5`}
                         title='Fit image to container'
                       >
                         Fit
                       </button>
                       <button
                         onClick={() => { setSizingMode('fill'); setZoom(100); }}
-                        className={`btn-glass ${sizingMode === 'fill' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-1.5`}
+                        className={`btn-glass ${sizingMode === 'fill' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-2 sm:px-3 py-1.5`}
                         title='Fill container (may crop)'
                       >
                         Fill
                       </button>
                       <button
                         onClick={() => { setSizingMode('extend'); setZoom(150); }}
-                        className={`btn-glass ${sizingMode === 'extend' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-1.5`}
+                        className={`btn-glass ${sizingMode === 'extend' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-2 sm:px-3 py-1.5`}
                         title='Extend (zoom larger)'
                       >
                         <Expand size={14} />
-                        Extend
+                        <span className='hidden sm:inline ml-1'>Extend</span>
                       </button>
                       <button
                         onClick={() => { setSizingMode('compress'); setZoom(75); }}
-                        className={`btn-glass ${sizingMode === 'compress' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-3 py-1.5`}
+                        className={`btn-glass ${sizingMode === 'compress' ? 'btn-glass--primary' : 'btn-glass--muted'} text-xs px-2 sm:px-3 py-1.5`}
                         title='Compress (zoom smaller)'
                       >
                         <Shrink size={14} />
-                        Compress
+                        <span className='hidden sm:inline ml-1'>Compress</span>
                       </button>
                     </div>
 
                     {/* Zoom slider and percentage */}
-                    <div className='flex items-center gap-3'>
+                    <div className='flex items-center gap-2 sm:gap-3 flex-shrink-0'>
                       <button
                         onClick={zoomOut}
                         disabled={zoom <= 25}
-                        className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                        className='btn-glass btn-glass--muted w-7 h-7 sm:w-8 sm:h-8 p-0 justify-center'
                         title='Zoom out'
                       >
                         <ZoomOut size={14} />
@@ -1153,14 +1199,14 @@ export function PhotoDetail({
                           setZoom(parseInt(e.target.value));
                           if (sizingMode !== 'fit') setSizingMode('fit');
                         }}
-                        className='w-24 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white'
+                        className='w-16 sm:w-24 h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white'
                         title={`Zoom: ${zoom}%`}
                       />
 
                       <button
                         onClick={zoomIn}
                         disabled={zoom >= 400}
-                        className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
+                        className='btn-glass btn-glass--muted w-7 h-7 sm:w-8 sm:h-8 p-0 justify-center'
                         title='Zoom in'
                       >
                         <ZoomIn size={14} />
@@ -1178,23 +1224,47 @@ export function PhotoDetail({
                             setZoom(val);
                             if (sizingMode !== 'fit') setSizingMode('fit');
                           }}
-                          className='w-14 h-7 text-xs bg-white/10 border border-white/20 rounded px-2 text-center text-white'
+                          className='w-12 sm:w-14 h-7 text-xs bg-white/10 border border-white/20 rounded px-1 sm:px-2 text-center text-white'
                         />
-                        <span className='text-xs text-white/50'>%</span>
+                        <span className='text-xs text-white/50 hidden sm:inline'>%</span>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
 
+              {/* Resizable Divider */}
+              {isMetadataPanelVisible && (
+                <div
+                  onMouseDown={handleResizeStart}
+                  className='hidden md:flex w-2 cursor-col-resize items-center justify-center hover:bg-white/10 transition-colors group flex-shrink-0'
+                  title='Drag to resize panels'
+                >
+                  <GripVertical size={14} className='text-white/30 group-hover:text-white/60 transition-colors' />
+                </div>
+              )}
+
               {/* Tabbed Metadata Panel */}
               {isMetadataPanelVisible && (
-                <PhotoDetailTabs
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                >
-                  {renderTabContent()}
-                </PhotoDetailTabs>
+                <div style={{ width: panelWidth }} className='flex-shrink-0 hidden md:block'>
+                  <PhotoDetailTabs
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                  >
+                    {renderTabContent()}
+                  </PhotoDetailTabs>
+                </div>
+              )}
+              {/* Mobile: Full width panel */}
+              {isMetadataPanelVisible && (
+                <div className='md:hidden w-full'>
+                  <PhotoDetailTabs
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                  >
+                    {renderTabContent()}
+                  </PhotoDetailTabs>
+                </div>
               )}
             </motion.div>
           </div>
@@ -1313,7 +1383,7 @@ export function PhotoDetail({
       {photo && (
         <EnhancedPhotoEditor
           photoPath={photo.path}
-          imageUrl={api.getImageUrl(photo.path, 1200)}
+          imageUrl={signedImageUrl || api.getImageUrl(photo.path, 1200)}
           isOpen={showEditor}
           onClose={() => setShowEditor(false)}
           onSave={(editedImageUrl) => {
