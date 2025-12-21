@@ -588,27 +588,36 @@ export function PhotoDetail({
               </div>
             </div>
 
-            {/* Quick action buttons */}
-            <div className='flex items-center gap-2 flex-wrap'>
-              <a
-                href={originalOpenUrl}
-                target='_blank'
-                rel='noopener noreferrer'
-                className='btn-glass btn-glass--muted text-xs px-3 py-2'
-                title='Open original in new tab'
-              >
-                <ExternalLink size={14} />
-                Open
-              </a>
-              <button
-                onClick={toggleFavorite}
-                disabled={favoriteLoading || busy}
-                className='btn-glass btn-glass--muted text-xs px-3 py-2'
-                title={isFavorited ? 'Unfavorite' : 'Favorite'}
-              >
-                {isFavorited ? <StarOff size={14} /> : <Star size={14} />}
-                {isFavorited ? 'Unfavorite' : 'Favorite'}
-              </button>
+            {/* Quick actions + Rating on same row */}
+            <div className='flex items-center justify-between gap-2 flex-wrap'>
+              <div className='flex items-center gap-2'>
+                <a
+                  href={originalOpenUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2'
+                  title='Open original in new tab'
+                >
+                  <ExternalLink size={14} />
+                  Open
+                </a>
+                <button
+                  onClick={toggleFavorite}
+                  disabled={favoriteLoading || busy}
+                  className='btn-glass btn-glass--muted text-xs px-3 py-2'
+                  title={isFavorited ? 'Unfavorite' : 'Favorite'}
+                >
+                  {isFavorited ? <StarOff size={14} /> : <Star size={14} />}
+                  {isFavorited ? 'Unfav' : 'Fav'}
+                </button>
+              </div>
+              {/* Rating inline */}
+              <StarRating
+                photoPath={photo.path}
+                initialRating={rating}
+                size='sm'
+                showLabel={false}
+              />
             </div>
 
             {/* Action grid - main actions only, no duplicates */}
@@ -642,21 +651,7 @@ export function PhotoDetail({
               </button>
             </div>
 
-            {/* Rating Section */}
-            <div className='glass-surface rounded-xl p-3'>
-              <div className='flex items-center justify-between gap-2'>
-                <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
-                  <Star size={12} />
-                  Rating
-                </div>
-                <StarRating
-                  photoPath={photo.path}
-                  initialRating={rating}
-                  size='sm'
-                  showLabel={true}
-                />
-              </div>
-            </div>
+
 
             {/* Notes */}
             <NotesEditor
@@ -793,29 +788,28 @@ export function PhotoDetail({
             )}
 
             {/* Danger Zone - at the bottom */}
-            <div className='mt-6 pt-4 border-t border-red-500/20'>
-              <div className='text-xs uppercase tracking-wider text-red-400/70 mb-2 flex items-center gap-1.5'>
-                <Trash2 size={12} />
-                Danger Zone
+            <div className='mt-6 pt-4 border-t border-white/10'>
+              <div className='text-xs uppercase tracking-wider text-white/40 mb-2 flex items-center gap-1.5'>
+                Actions
               </div>
               <div className='grid grid-cols-2 gap-2'>
                 <button
+                  onClick={removeFromLibrary}
+                  disabled={busy}
+                  className='btn-glass text-xs px-3 py-2 justify-center bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20 hover:border-amber-500/50'
+                  title='Remove from library index only - file stays on disk'
+                >
+                  <X size={14} />
+                  Unlink
+                </button>
+                <button
                   onClick={moveToTrash}
                   disabled={busy}
-                  className='btn-glass text-xs px-3 py-2 justify-center bg-red-500/10 border-red-500/30 text-red-300 hover:bg-red-500/20 hover:border-red-500/50'
-                  title='Move to Trash'
+                  className='btn-glass text-xs px-3 py-2 justify-center bg-red-600/20 border-red-600/40 text-red-400 hover:bg-red-600/30 hover:border-red-600/60'
+                  title='Move file to system Trash - can be recovered from Trash'
                 >
                   <Trash2 size={14} />
                   Trash
-                </button>
-                <button
-                  onClick={removeFromLibrary}
-                  disabled={busy}
-                  className='btn-glass text-xs px-3 py-2 justify-center bg-red-500/5 border-red-500/20 text-red-300/70 hover:bg-red-500/15 hover:border-red-500/40'
-                  title='Remove from library index (does not delete file)'
-                >
-                  <X size={14} />
-                  Remove
                 </button>
               </div>
             </div>
@@ -825,9 +819,6 @@ export function PhotoDetail({
       case 'edit':
         return (
           <div className="space-y-4">
-            <div className='text-white/60 text-sm'>
-              Use the Edit button above to open the full photo editor, or use the quick view controls below:
-            </div>
 
             {/* View-only transformations */}
             {!api.isVideo(photo.path) && (

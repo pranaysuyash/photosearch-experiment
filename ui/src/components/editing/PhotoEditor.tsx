@@ -260,6 +260,16 @@ export function PhotoEditor({
     ctx.restore();
   };
 
+  // Preview-only update (for slider dragging) - doesn't add to history
+  const previewSetting = (key: keyof EditSettings, value: any) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    if (originalImage) {
+      applyEdits(originalImage, newSettings);
+    }
+  };
+
+  // Commit update to history (for slider release, button clicks)
   const updateSetting = (key: keyof EditSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
 
@@ -734,7 +744,13 @@ export function PhotoEditor({
                     max='100'
                     value={settings.brightness}
                     onChange={(e) =>
-                      updateSetting('brightness', parseInt(e.target.value))
+                      previewSetting('brightness', parseInt(e.target.value))
+                    }
+                    onMouseUp={(e) =>
+                      updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
+                    }
+                    onTouchEnd={(e) =>
+                      updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
                     }
                     className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
@@ -766,7 +782,13 @@ export function PhotoEditor({
                     max='100'
                     value={settings.contrast}
                     onChange={(e) =>
-                      updateSetting('contrast', parseInt(e.target.value))
+                      previewSetting('contrast', parseInt(e.target.value))
+                    }
+                    onMouseUp={(e) =>
+                      updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
+                    }
+                    onTouchEnd={(e) =>
+                      updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
                     }
                     className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
@@ -798,7 +820,13 @@ export function PhotoEditor({
                     max='100'
                     value={settings.saturation}
                     onChange={(e) =>
-                      updateSetting('saturation', parseInt(e.target.value))
+                      previewSetting('saturation', parseInt(e.target.value))
+                    }
+                    onMouseUp={(e) =>
+                      updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
+                    }
+                    onTouchEnd={(e) =>
+                      updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
                     }
                     className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
                   />
