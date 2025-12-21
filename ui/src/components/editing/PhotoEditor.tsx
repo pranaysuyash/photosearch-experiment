@@ -458,13 +458,6 @@ export function PhotoEditor({
           />
         </div>
 
-        {/* Header - Title only */}
-        <div className='flex items-center justify-center px-5 py-3 border-b border-white/10'>
-          <h3 className='text-lg font-semibold text-foreground'>
-            Photo Editor
-          </h3>
-        </div>
-
         {/* Editor Content */}
         <div className='flex-1 flex flex-col lg:flex-row overflow-hidden'>
           {/* Image Preview Area - Uses CSS transforms for live preview */}
@@ -752,7 +745,7 @@ export function PhotoEditor({
                     onTouchEnd={(e) =>
                       updateSetting('brightness', parseInt((e.target as HTMLInputElement).value))
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-full h-2 cursor-pointer'
                   />
                 </div>
 
@@ -790,7 +783,7 @@ export function PhotoEditor({
                     onTouchEnd={(e) =>
                       updateSetting('contrast', parseInt((e.target as HTMLInputElement).value))
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-full h-2 cursor-pointer'
                   />
                 </div>
 
@@ -828,7 +821,7 @@ export function PhotoEditor({
                     onTouchEnd={(e) =>
                       updateSetting('saturation', parseInt((e.target as HTMLInputElement).value))
                     }
-                    className='w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer'
+                    className='w-full h-2 cursor-pointer'
                   />
                 </div>
               </div>
