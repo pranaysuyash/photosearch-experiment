@@ -8663,49 +8663,71 @@ async def cleanup_duplicates():
 async def get_face_clusters():
     """Get all face clusters."""
     try:
-        # Get all photo paths from database
-        cursor = photo_search_engine.db.conn.cursor()
-        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT 1000")
-        all_files = [row[0] for row in cursor.fetchall()]
-
-        clusterer = FaceClusterer()
-        clusters = clusterer.get_image_clusters(all_files)
-
+        # Check if face clusterer is ready
+        if not face_clusterer or not face_clusterer.models_loaded:
+            return {"clusters": [], "message": "Face recognition models are still loading"}
+        
+        # Get all clusters from the pre-initialized clusterer
+        result = face_clusterer.get_all_clusters(limit=100)
+        
         # Format for frontend
         formatted_clusters = []
-        for cluster_id, cluster_data in clusters.items():
-            formatted_clusters.append({
-                "id": cluster_id,
-                "label": cluster_data.get("label", f"Person {cluster_id}"),
-                "face_count": cluster_data.get("face_count", 0),
-                "image_count": len(cluster_data.get("images", [])),
-                "images": cluster_data.get("images", [])[:6],  # Limit to 6 preview images
-                "created_at": cluster_data.get("created_at")
-            })
+        for cluster in result.get("clusters", []):
+            cluster_details = face_clusterer.get_cluster_details(cluster["id"])
+            if cluster_details.get("status") != "error":
+                formatted_clusters.append({
+                    "id": str(cluster["id"]),
+                    "label": cluster.get("label") or f"Person {cluster['id']}",
+                    "face_count": cluster_details.get("face_count", 0),
+                    "image_count": len(set(f.get("image_path") for f in cluster_details.get("faces", []))),
+                    "images": [f.get("image_path") for f in cluster_details.get("faces", [])[:6]],
+                    "created_at": cluster.get("created_at")
+                })
 
         return {"clusters": formatted_clusters}
     except Exception as e:
         # Return empty clusters if face recognition is not available
-        return {"clusters": []}
+        return {"clusters": [], "error": str(e)}
 
 
 @app.post("/api/faces/scan")
 async def scan_faces(limit: int = 100):
     """Scan for faces in photos."""
     try:
+        # Check if face clusterer is ready
+        if not face_clusterer or not face_clusterer.models_loaded:
+            raise HTTPException(
+                status_code=503, 
+                detail="Face recognition models are still loading. Please try again in a few seconds."
+            )
+        
         # Get all photo paths from database
         cursor = photo_search_engine.db.conn.cursor()
         cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT ?", (limit,))
         all_files = [row[0] for row in cursor.fetchall()]
 
-        clusterer = FaceClusterer()
-        result = clusterer.cluster_faces(all_files)
+        if not all_files:
+            return {
+                "scanned": 0,
+                "clusters_found": 0,
+                "total_faces": 0,
+                "message": "No photos found in library"
+            }
+
+        result = face_clusterer.cluster_faces(all_files)
+
+        # Handle error response from cluster_faces
+        if result.get('status') == 'error':
+            raise HTTPException(status_code=500, detail=result.get('message', 'Clustering failed'))
 
         return {
             "scanned": len(all_files),
-            "clusters_found": len(result),
-            "total_faces": sum(len(cluster.get("images", [])) for cluster in result.values())
+            "clusters_found": result.get("total_clusters", 0),
+            "total_faces": result.get("total_faces", 0),
+            "message": result.get("message", "Scan complete")
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

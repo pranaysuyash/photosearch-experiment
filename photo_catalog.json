@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-20T16:55:43.556113",
-    "last_update_date": "2025-12-20T16:55:43.556116",
+    "first_scan_date": "2025-12-21T22:14:54.340878",
+    "last_update_date": "2025-12-21T22:14:54.340883",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1061,
-    "total_images": 1059,
+    "total_files": 1064,
+    "total_images": 1062,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -31,8 +31,8 @@
       {
         "name": "food_14.jpg",
         "type": "image",
-        "size": 158853,
-        "mtime": 1766086397.121943
+        "size": 159260,
+        "mtime": 1766250051.6331441
       },
       {
         "name": "benchmark_0211.png",
@@ -2411,6 +2411,12 @@
         "mtime": 1765124131.7090795
       },
       {
+        "name": "people_47_backup.jpg",
+        "type": "image",
+        "size": 168724,
+        "mtime": 1766258676.9854984
+      },
+      {
         "name": "benchmark_0498.png",
         "type": "image",
         "size": 4229,
@@ -3125,6 +3131,12 @@
         "mtime": 1765124131.9790227
       },
       {
+        "name": "people_47_backup_backup.jpg",
+        "type": "image",
+        "size": 168868,
+        "mtime": 1766250117.8366234
+      },
+      {
         "name": "benchmark_0864.png",
         "type": "image",
         "size": 3218,
@@ -3823,8 +3835,8 @@
       {
         "name": "people_47.jpg",
         "type": "image",
-        "size": 110905,
-        "mtime": 1765162952.8918757
+        "size": 169006,
+        "mtime": 1766259275.265463
       },
       {
         "name": "benchmark_0533.png",
@@ -4633,8 +4645,8 @@
       {
         "name": "food_14_backup.jpg",
         "type": "image",
-        "size": 156997,
-        "mtime": 1766086345.192477
+        "size": 159240,
+        "mtime": 1766249762.1975253
       },
       {
         "name": "benchmark_0257.png",
@@ -5153,6 +5165,12 @@
         "mtime": 1765124131.7688766
       },
       {
+        "name": "nature_40_backup.jpg",
+        "type": "image",
+        "size": 166527,
+        "mtime": 1766249564.0888834
+      },
+      {
         "name": "benchmark_0031.png",
         "type": "image",
         "size": 4223,
@@ -5479,8 +5497,8 @@
       {
         "name": "nature_40.jpg",
         "type": "image",
-        "size": 110905,
-        "mtime": 1765162952.8915586
+        "size": 168020,
+        "mtime": 1766255058.7505157
       },
       {
         "name": "benchmark_0583.png",
