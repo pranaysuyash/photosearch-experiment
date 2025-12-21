@@ -11,6 +11,7 @@ import {
   StarOff,
   FolderPlus,
   Hash,
+  ChevronDown,
 } from 'lucide-react';
 import { LoadingSpinner } from '../common/LoadingSpinner';
 import { SortControls } from './SortControls';
@@ -393,31 +394,58 @@ export function PhotoGrid({
       ref={scrollContainerRef}
       className='container mx-auto px-4 pb-32 relative pt-2'
     >
-      {/* Selection Controls */}
+      {/* Gmail-style Selection Dropdown */}
       <div className='mb-6 flex flex-wrap items-center gap-2 sm:gap-3'>
-        <button
-          onClick={() => {
-            if (selectMode) {
-              clearSelection();
-            } else {
-              setSelectMode(true);
-            }
-          }}
-          className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'} text-sm px-3 py-1.5 flex items-center gap-2`}
-          title={selectMode ? 'Exit select mode' : 'Enter select mode'}
-        >
-          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${selectedPaths.size > 0
-            ? 'bg-white border-white'
-            : 'border-current'
-            }`}>
-            {selectedPaths.size > 0 && (
-              selectedPaths.size === photos.length
-                ? <Check size={10} className='text-primary' />
-                : <div className='w-1.5 h-0.5 bg-primary' />
-            )}
-          </div>
-          {selectMode ? `${selectedPaths.size} selected` : 'Select'}
-        </button>
+        <div className='relative'>
+          <button
+            onClick={() => {
+              if (!selectMode) {
+                setSelectMode(true);
+              }
+            }}
+            className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'} text-sm px-3 py-1.5 flex items-center gap-2`}
+          >
+            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${selectedPaths.size > 0
+              ? 'bg-white border-white'
+              : 'border-current'
+              }`}>
+              {selectedPaths.size > 0 && (
+                selectedPaths.size === photos.length
+                  ? <Check size={10} className='text-primary' />
+                  : <div className='w-1.5 h-0.5 bg-primary' />
+              )}
+            </div>
+            {selectMode ? `${selectedPaths.size} selected` : 'Select'}
+            <ChevronDown size={14} className={`transition-transform ${selectMode ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {selectMode && (
+            <div className='absolute top-full left-0 mt-1 w-40 bg-background/95 backdrop-blur-lg border border-white/10 rounded-lg shadow-xl z-50 py-1'>
+              <button
+                onClick={() => selectAll()}
+                className='w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors'
+              >
+                Select All
+              </button>
+              {selectedPaths.size > 0 && (
+                <button
+                  onClick={() => setSelectedPaths(new Set())}
+                  className='w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors'
+                >
+                  Deselect All
+                </button>
+              )}
+              <hr className='border-white/10 my-1' />
+              <button
+                onClick={() => clearSelection()}
+                className='w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors'
+              >
+                Exit Select
+              </button>
+            </div>
+          )}
+        </div>
 
         {selectMode && (
           <motion.div
