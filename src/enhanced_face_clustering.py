@@ -153,7 +153,8 @@ class EnhancedFaceClusterer:
                  models_dir: str = "models",
                  encryption_key: Optional[bytes] = None,
                  enable_gpu: bool = True,
-                 progress_callback: Optional[Callable] = None):
+                 progress_callback: Optional[Callable] = None,
+                 auto_load_models: bool = True):
         """
         Initialize face clusterer with production features.
 
@@ -163,6 +164,7 @@ class EnhancedFaceClusterer:
             encryption_key: Optional key for encrypting face embeddings
             enable_gpu: Whether to use GPU acceleration if available
             progress_callback: Callback for progress updates during processing
+            auto_load_models: If True, background model loading is scheduled automatically
         """
         self.db_path = db_path
         self.models_dir = Path(models_dir)
@@ -170,6 +172,7 @@ class EnhancedFaceClusterer:
         self.encryption_key = encryption_key
         self.enable_gpu = enable_gpu and _DEVICE_TYPE != 'cpu'
         self.progress_callback = progress_callback
+        self.auto_load_models = auto_load_models
 
         # Threading and performance
         self.model_lock = threading.Lock()
@@ -195,7 +198,8 @@ class EnhancedFaceClusterer:
         self._setup_encryption()
 
         # Load models progressively (not blocking)
-        self._schedule_model_loading()
+        if self.auto_load_models:
+            self._schedule_model_loading()
 
     def _setup_encryption(self):
         """Setup encryption for sensitive face data"""
@@ -233,6 +237,33 @@ class EnhancedFaceClusterer:
 
         # Load models in background thread
         threading.Thread(target=load_models, daemon=True).start()
+
+    def ensure_models_loaded(self, allow_downloads: bool = True) -> bool:
+        """Synchronously ensure face models are initialized.
+
+        Returns True if models are available after the call. This is useful for
+        scripts/tests that want deterministic model availability without relying
+        on the background scheduler.
+        """
+        if self.models_loaded and self.face_detector:
+            return True
+
+        if not FACE_LIBRARIES_AVAILABLE:
+            logger.warning("Face libraries not available")
+            return False
+
+        with self.model_lock:
+            if self.models_loaded and self.face_detector:
+                return True
+
+            if allow_downloads:
+                self._download_missing_models()
+
+            initialized = self._initialize_models()
+            if initialized:
+                self.models_loaded = True
+
+            return self.models_loaded
 
     def _download_missing_models(self):
         """Download missing face recognition models"""
@@ -377,8 +408,10 @@ class EnhancedFaceClusterer:
             List of FaceDetection objects
         """
         if not self.models_loaded or not self.face_detector:
-            logger.warning("Face models not loaded yet")
-            return []
+            logger.info("Face models not loaded yet; attempting synchronous initialization")
+            if not self.ensure_models_loaded():
+                logger.warning("Face models still unavailable after initialization attempt")
+                return []
 
         try:
             # Load image

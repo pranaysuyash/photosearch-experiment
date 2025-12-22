@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-21T22:14:54.340878",
-    "last_update_date": "2025-12-21T22:14:54.340883",
+    "first_scan_date": "2025-12-22T11:44:55.936286",
+    "last_update_date": "2025-12-22T11:44:55.936289",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1064,
-    "total_images": 1062,
+    "total_files": 1069,
+    "total_images": 1067,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -1667,6 +1667,12 @@
         "mtime": 1765124131.6723108
       },
       {
+        "name": "test_family_4faces.png",
+        "type": "image",
+        "size": 809051,
+        "mtime": 1766378182.031834
+      },
+      {
         "name": "benchmark_0449.png",
         "type": "image",
         "size": 2868,
@@ -2193,6 +2199,12 @@
         "type": "image",
         "size": 67899,
         "mtime": 1765162952.619883
+      },
+      {
+        "name": "test_group_3faces.png",
+        "type": "image",
+        "size": 841857,
+        "mtime": 1766378182.025263
       },
       {
         "name": "benchmark_0502.png",
@@ -4925,6 +4937,12 @@
         "mtime": 1765124131.622959
       },
       {
+        "name": "pranay aadhaar front.png",
+        "type": "image",
+        "size": 322396,
+        "mtime": 1766335656.2104597
+      },
+      {
         "name": "benchmark_0345.png",
         "type": "image",
         "size": 4403,
@@ -5247,6 +5265,12 @@
         "type": "image",
         "size": 4696,
         "mtime": 1765124131.8085413
+      },
+      {
+        "name": "test_woman_face.png",
+        "type": "image",
+        "size": 693072,
+        "mtime": 1766378182.017856
       },
       {
         "name": "benchmark_0151.png",
@@ -5631,6 +5655,12 @@
         "type": "image",
         "size": 3855,
         "mtime": 1765124132.05883
+      },
+      {
+        "name": "test_single_face.png",
+        "type": "image",
+        "size": 719221,
+        "mtime": 1766378182.012903
       },
       {
         "name": "benchmark_0961.png",

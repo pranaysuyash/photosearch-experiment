@@ -442,12 +442,14 @@ class FaceClusterer:
 
         return min(100.0, quality_score)
     
-    def detect_faces(self, image_path: str) -> List[Dict]:
+    def detect_faces(self, image_path: str, min_confidence: float = 0.75, min_face_area: int = 1000) -> List[Dict]:
         """
         Detect faces in an image using InsightFace RetinaFace.
         
         Args:
             image_path: Path to image file
+            min_confidence: Minimum confidence threshold (default 0.75)
+            min_face_area: Minimum face area in pixels (default 1000)
             
         Returns:
             List of face detection results with bounding boxes and embeddings
@@ -465,10 +467,20 @@ class FaceClusterer:
             # Delegate to backend (BGR image)
             results = backend.detect_bgr(img)
 
-            # Normalize / enrich output for callers expecting these keys.
+            # Filter by confidence and face size
+            filtered_results = []
             for r in results:
-                r.setdefault("embedding_version", FACE_EMBEDDING_VERSION)
-            return results
+                confidence = r.get("confidence", 0)
+                bbox = r.get("bounding_box", [0, 0, 0, 0])
+                face_area = bbox[2] * bbox[3] if len(bbox) == 4 else 0
+                
+                if confidence >= min_confidence and face_area >= min_face_area:
+                    r.setdefault("embedding_version", FACE_EMBEDDING_VERSION)
+                    filtered_results.append(r)
+                else:
+                    logger.debug(f"Filtered face: conf={confidence:.2f}, area={face_area}")
+            
+            return filtered_results
             
         except Exception as e:
             print(f"Error detecting faces in {image_path}: {e}")
@@ -520,9 +532,163 @@ class FaceClusterer:
             print(f"Error extracting embedding from {image_path}: {e}")
             return None
     
+    def _upsert_face(self, cursor, record: Dict) -> Tuple[int, Optional[int]]:
+        """
+        Insert or update a face record, preserving cluster membership.
+        
+        Args:
+            cursor: Database cursor
+            record: Face record with image_path, bounding_box, embedding, confidence
+            
+        Returns:
+            Tuple of (face_id, existing_cluster_id or None)
+        """
+        bbox_json = json.dumps(record['bounding_box'])
+        embedding_blob = record['embedding'].tobytes() if record['embedding'] is not None else None
+        
+        # Check if face already exists (same image + similar bounding box)
+        cursor.execute("""
+            SELECT id, cluster_id FROM faces 
+            WHERE image_path = ? AND bounding_box = ?
+        """, (record['image_path'], bbox_json))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Update existing face, preserve cluster_id
+            face_id = existing['id']
+            existing_cluster = existing['cluster_id']
+            cursor.execute("""
+                UPDATE faces 
+                SET embedding = ?, confidence = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (embedding_blob, record['confidence'], face_id))
+            logger.debug(f"Updated existing face {face_id}, cluster={existing_cluster}")
+            return face_id, existing_cluster
+        else:
+            # Insert new face
+            cursor.execute("""
+                INSERT INTO faces (image_path, bounding_box, embedding, confidence)
+                VALUES (?, ?, ?, ?)
+            """, (record['image_path'], bbox_json, embedding_blob, record['confidence']))
+            face_id = cursor.lastrowid
+            logger.debug(f"Inserted new face {face_id}")
+            return face_id, None
+    
+    def _find_matching_labeled_cluster(self, embedding: np.ndarray, threshold: float = 0.5) -> Optional[Dict]:
+        """
+        Find an existing labeled cluster that matches this embedding.
+        
+        Args:
+            embedding: Face embedding to match
+            threshold: Minimum cosine similarity (0.5 = 50%)
+            
+        Returns:
+            Dict with cluster id, label, similarity if found, else None
+        """
+        cursor = self.conn.cursor()
+        
+        # Get embeddings from all labeled clusters
+        cursor.execute("""
+            SELECT c.id, c.label, f.embedding
+            FROM clusters c
+            JOIN cluster_membership cm ON c.id = cm.cluster_id
+            JOIN faces f ON cm.face_id = f.id
+            WHERE c.label IS NOT NULL AND c.label != ''
+            AND f.embedding IS NOT NULL
+        """)
+        
+        best_match = None
+        best_similarity = threshold
+        
+        for row in cursor.fetchall():
+            existing_blob = row['embedding']
+            if existing_blob:
+                try:
+                    existing = np.frombuffer(existing_blob, dtype=np.float32)
+                    if len(existing) == len(embedding):
+                        # Cosine similarity
+                        similarity = np.dot(embedding, existing) / (
+                            np.linalg.norm(embedding) * np.linalg.norm(existing) + 1e-8
+                        )
+                        if similarity > best_similarity:
+                            best_similarity = similarity
+                            best_match = {
+                                'id': row['id'], 
+                                'label': row['label'], 
+                                'similarity': float(similarity)
+                            }
+                except Exception as e:
+                    logger.warning(f"Error comparing embeddings: {e}")
+                    continue
+        
+        if best_match:
+            logger.info(f"Matched face to cluster {best_match['id']} ({best_match['label']}) with {best_match['similarity']:.2%} similarity")
+        
+        return best_match
+    
+    def _add_to_cluster(self, cursor, face_id: int, cluster_id: int) -> None:
+        """Add a face to a cluster, updating membership and size."""
+        # Check if already in cluster
+        cursor.execute("""
+            SELECT 1 FROM cluster_membership WHERE face_id = ? AND cluster_id = ?
+        """, (face_id, cluster_id))
+        
+        if not cursor.fetchone():
+            cursor.execute("""
+                INSERT INTO cluster_membership (cluster_id, face_id)
+                VALUES (?, ?)
+            """, (cluster_id, face_id))
+            
+            # Update cluster size
+            cursor.execute("""
+                UPDATE clusters SET size = size + 1, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (cluster_id,))
+            
+            # Update face's cluster_id reference
+            cursor.execute("""
+                UPDATE faces SET cluster_id = ? WHERE id = ?
+            """, (cluster_id, face_id))
+            
+            logger.debug(f"Added face {face_id} to cluster {cluster_id}")
+    
+    def _create_cluster(self, cursor, faces: List[Dict]) -> int:
+        """Create a new cluster from a list of faces."""
+        if not faces:
+            return -1
+        
+        representative_face = faces[0]
+        
+        cursor.execute("""
+            INSERT INTO clusters (representative_face_id, size, created_at, updated_at)
+            VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """, (representative_face['db_id'], len(faces)))
+        
+        cluster_id = cursor.lastrowid
+        
+        # Add all faces to cluster
+        for face in faces:
+            cursor.execute("""
+                INSERT INTO cluster_membership (cluster_id, face_id)
+                VALUES (?, ?)
+            """, (cluster_id, face['db_id']))
+            
+            cursor.execute("""
+                UPDATE faces SET cluster_id = ? WHERE id = ?
+            """, (cluster_id, face['db_id']))
+        
+        logger.info(f"Created new cluster {cluster_id} with {len(faces)} faces")
+        return cluster_id
+
     def cluster_faces(self, image_paths: List[str], eps: float = 0.6, min_samples: int = 2) -> Dict:
         """
         Cluster faces across multiple images using DBSCAN.
+        
+        This method now properly:
+        1. Upserts faces (preserves existing face IDs and cluster assignments)
+        2. Matches new faces to existing labeled clusters before DBSCAN
+        3. Only clusters unmatched faces with DBSCAN
         
         Args:
             image_paths: List of image file paths
@@ -542,122 +708,89 @@ class FaceClusterer:
         try:
             from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
             
-            all_embeddings = []
+            cursor = self.conn.cursor()
             face_records = []
+            matched_to_existing = 0
             
-            # Process each image
+            # Step 1: Detect faces and upsert to database
+            logger.info(f"Processing {len(image_paths)} images for face detection")
+            
             for i, image_path in enumerate(image_paths):
-                print(f"Processing {i+1}/{len(image_paths)}: {image_path}")
+                if (i + 1) % 10 == 0 or i == 0:
+                    print(f"Processing {i+1}/{len(image_paths)}: {image_path.split('/')[-1]}")
                 
                 # Detect faces
                 faces = self.detect_faces(image_path)
                 
-                for j, face in enumerate(faces):
-                    # Prefer embedding returned by detect_faces; otherwise try to re-extract.
+                for face in faces:
                     embedding = face.get('embedding')
                     if embedding is None:
                         embedding = self.extract_face_embedding(image_path, face['bounding_box'])
                     
                     if embedding is not None:
-                        all_embeddings.append(embedding)
-                        face_records.append({
+                        record = {
                             'image_path': image_path,
                             'bounding_box': face['bounding_box'],
                             'confidence': face['confidence'],
-                            'embedding': embedding,
-                            'index': len(all_embeddings) - 1
-                        })
+                            'embedding': embedding
+                        }
+                        
+                        # Upsert face - preserves existing cluster assignments
+                        face_id, existing_cluster = self._upsert_face(cursor, record)
+                        record['db_id'] = face_id
+                        record['assigned_cluster'] = existing_cluster
+                        
+                        if existing_cluster:
+                            # Face already assigned - keep it
+                            matched_to_existing += 1
+                        else:
+                            # Check if matches any labeled cluster
+                            match = self._find_matching_labeled_cluster(embedding)
+                            if match:
+                                self._add_to_cluster(cursor, face_id, match['id'])
+                                record['assigned_cluster'] = match['id']
+                                matched_to_existing += 1
+                        
+                        face_records.append(record)
             
-            if not all_embeddings:
-                return {'status': 'completed', 'clusters': [], 'message': 'No faces found'}
+            if not face_records:
+                self.conn.commit()
+                return {'status': 'completed', 'clusters': [], 'total_faces': 0, 'message': 'No faces found'}
             
-            # Convert to numpy array
-            embeddings_array = np.array(all_embeddings)
-            
-            # Perform DBSCAN clustering
-            clustering = DBSCAN(eps=eps, min_samples=min_samples, metric='cosine')
-            cluster_labels = clustering.fit_predict(embeddings_array)
-            
-            # Store results in database
-            cursor = self.conn.cursor()
-            
-            # Clear existing data for these images
-            for image_path in image_paths:
-                cursor.execute("DELETE FROM faces WHERE image_path = ?", (image_path,))
-            
-            # Insert faces
-            for record in face_records:
-                embedding_blob = record['embedding'].tobytes()
-                
-                cursor.execute("""
-                    INSERT INTO faces 
-                    (image_path, bounding_box, embedding, confidence)
-                    VALUES (?, ?, ?, ?)
-                """, (
-                    record['image_path'],
-                    json.dumps(record['bounding_box']),
-                    embedding_blob,
-                    record['confidence']
-                ))
-            
-            # Get face IDs
-            cursor.execute("SELECT id, image_path FROM faces WHERE image_path IN ({})".format(
-                ','.join('?' for _ in image_paths)
-            ), image_paths)
-            
-            face_id_map = {}
-            for row in cursor.fetchall():
-                face_id_map[(row['image_path'], row['id'])] = row['id']
-            
-            # Create clusters
-            unique_labels = set(cluster_labels)
+            # Step 2: Cluster only unassigned faces with DBSCAN
+            unassigned_faces = [r for r in face_records if r.get('assigned_cluster') is None]
             clusters_created = []
             
-            for label in unique_labels:
-                if label == -1:  # Noise
-                    continue
+            if len(unassigned_faces) >= min_samples:
+                logger.info(f"Clustering {len(unassigned_faces)} unassigned faces with DBSCAN")
                 
-                # Get faces in this cluster
-                cluster_faces = [record for record, cluster_label in zip(face_records, cluster_labels) 
-                                if cluster_label == label]
+                embeddings_array = np.array([f['embedding'] for f in unassigned_faces])
+                clustering = DBSCAN(eps=eps, min_samples=min_samples, metric='cosine')
+                cluster_labels = clustering.fit_predict(embeddings_array)
                 
-                if len(cluster_faces) >= min_samples:
-                    # Create cluster
-                    representative_face = cluster_faces[0]
+                # Create clusters for each DBSCAN group
+                unique_labels = set(cluster_labels)
+                for label in unique_labels:
+                    if label == -1:  # Noise - remains unassigned
+                        continue
                     
-                    cursor.execute("""
-                        INSERT INTO clusters 
-                        (representative_face_id, size)
-                        VALUES (?, ?)
-                    """, (face_id_map[(representative_face['image_path'], representative_face['index'])], len(cluster_faces)))
+                    group_faces = [f for f, l in zip(unassigned_faces, cluster_labels) if l == label]
                     
-                    cluster_id = cursor.lastrowid
-                    clusters_created.append(cluster_id)
-                    
-                    # Update faces with cluster ID
-                    for face_record in cluster_faces:
-                        face_id = face_id_map[(face_record['image_path'], face_record['index'])]
-                        cursor.execute("""
-                            UPDATE faces 
-                            SET cluster_id = ?
-                            WHERE id = ?
-                        """, (cluster_id, face_id))
+                    if len(group_faces) >= min_samples:
+                        cluster_id = self._create_cluster(cursor, group_faces)
+                        clusters_created.append(cluster_id)
                         
-                        # Add to cluster membership
-                        cursor.execute("""
-                            INSERT INTO cluster_membership 
-                            (cluster_id, face_id)
-                            VALUES (?, ?)
-                        """, (cluster_id, face_id))
+                        for f in group_faces:
+                            f['assigned_cluster'] = cluster_id
             
-            # Update image clusters
+            # Step 3: Update image_clusters table
             for image_path in image_paths:
                 cursor.execute("""
                     SELECT cluster_id FROM faces 
                     WHERE image_path = ? AND cluster_id IS NOT NULL
                 """, (image_path,))
                 
-                cluster_ids = [row['cluster_id'] for row in cursor.fetchall()]
+                cluster_ids = list(set([row['cluster_id'] for row in cursor.fetchall()]))
                 face_count = len(cluster_ids)
                 
                 if cluster_ids:
@@ -669,17 +802,25 @@ class FaceClusterer:
             
             self.conn.commit()
             
-            # Return results
+            # Count results
+            assigned_faces = len([r for r in face_records if r.get('assigned_cluster')])
+            unassigned_remaining = len(face_records) - assigned_faces
+            
+            logger.info(f"Clustering complete: {len(face_records)} faces, {matched_to_existing} matched existing, {len(clusters_created)} new clusters")
+            
             return {
                 'status': 'completed',
                 'total_faces': len(face_records),
-                'total_clusters': len(clusters_created),
+                'matched_to_existing': matched_to_existing,
+                'new_clusters_created': len(clusters_created),
+                'unassigned_faces': unassigned_remaining,
                 'clusters': clusters_created,
-                'message': f'Found {len(face_records)} faces in {len(clusters_created)} clusters'
+                'message': f'Found {len(face_records)} faces, {matched_to_existing} matched existing clusters, {len(clusters_created)} new clusters created'
             }
             
         except Exception as e:
             self.conn.rollback()
+            logger.error(f"Clustering failed: {e}")
             return {'status': 'error', 'message': str(e)}
     
     def get_face_clusters(self, image_path: str) -> Dict:

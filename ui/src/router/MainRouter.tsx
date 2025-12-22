@@ -20,15 +20,18 @@ import Search from '../pages/Search';
 import StoryModePage from '../pages/StoryModePage';
 import GlobePage from '../pages/GlobePage';
 
-	// Lazily load Albums to keep initial bundle lean
-	const Albums = lazy(() => import('../pages/Albums'));
-	const Favorites = lazy(() => import('../pages/Favorites'));
-	const Videos = lazy(() => import('../pages/Videos'));
-	const Trash = lazy(() => import('../pages/Trash'));
-	const People = lazy(() => import('../pages/People'));
-	const Import = lazy(() => import('../pages/Import'));
-	const Tags = lazy(() => import('../pages/Tags'));
-	const PerformanceDashboard = lazy(() => import('../pages/PerformanceDashboard'));
+// Lazily load Albums to keep initial bundle lean
+const Albums = lazy(() => import('../pages/Albums'));
+const Favorites = lazy(() => import('../pages/Favorites'));
+const Videos = lazy(() => import('../pages/Videos'));
+const Trash = lazy(() => import('../pages/Trash'));
+const People = lazy(() => import('../pages/People'));
+const PersonDetail = lazy(() => import('../pages/PersonDetail'));
+const UnidentifiedFaces = lazy(() => import('../pages/UnidentifiedFaces'));
+const AllFacePhotos = lazy(() => import('../pages/AllFacePhotos'));
+const Import = lazy(() => import('../pages/Import'));
+const Tags = lazy(() => import('../pages/Tags'));
+const PerformanceDashboard = lazy(() => import('../pages/PerformanceDashboard'));
 
 // Lazily load studio/utility features to keep initial bundle lean and avoid CSS bleed
 const SavedSearches = lazy(() => import('../pages/SavedSearches'));
@@ -66,15 +69,18 @@ const MainRouter = () => {
               {/* Main Routes */}
               <Route path='/' element={<Home />} />
               <Route path='/search' element={<Search />} />
-	              <Route path='/globe' element={<GlobePage />} />
-	              <Route path='/story-mode' element={<StoryModePage />} />
-	              <Route path='/albums' element={<Albums />} />
-	              <Route path='/people' element={<People />} />
-	              <Route path='/favorites' element={<Favorites />} />
-	              <Route path='/videos' element={<Videos />} />
-	              <Route path='/trash' element={<Trash />} />
-	              <Route path='/tags' element={<Tags />} />
-	              <Route path='/saved-searches' element={<SavedSearches />} />
+              <Route path='/globe' element={<GlobePage />} />
+              <Route path='/story-mode' element={<StoryModePage />} />
+              <Route path='/albums' element={<Albums />} />
+              <Route path='/people' element={<People />} />
+              <Route path='/people/unidentified' element={<UnidentifiedFaces />} />
+              <Route path='/people/all-photos' element={<AllFacePhotos />} />
+              <Route path='/people/:clusterId' element={<PersonDetail />} />
+              <Route path='/favorites' element={<Favorites />} />
+              <Route path='/videos' element={<Videos />} />
+              <Route path='/trash' element={<Trash />} />
+              <Route path='/tags' element={<Tags />} />
+              <Route path='/saved-searches' element={<SavedSearches />} />
               <Route path='/jobs' element={<JobMonitor />} />
               <Route path='/performance' element={<PerformanceDashboard />} />
               <Route path='/tasks' element={<Navigate to='/jobs' replace />} />

@@ -11,7 +11,6 @@ interface SecureLazyImageProps {
   placeholder?: string;
   showBadge?: boolean;
   aspectRatio?: number;
-  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
 }
 
 export function SecureLazyImage({
@@ -22,7 +21,6 @@ export function SecureLazyImage({
   placeholder,
   showBadge = true,
   aspectRatio,
-  objectFit = 'cover',
 }: SecureLazyImageProps) {
   const [src, setSrc] = useState<string>(() => api.getImageUrl(path, size));
   const [badge, setBadge] = useState<'local' | 'cloud' | 'hybrid'>('local');
@@ -36,8 +34,8 @@ export function SecureLazyImage({
         const fileLocation = contextAnalyzer.isLocalFile(path)
           ? 'local'
           : contextAnalyzer.isCloudFile(path)
-            ? 'cloud'
-            : 'hybrid';
+          ? 'cloud'
+          : 'hybrid';
         setBadge(fileLocation);
 
         // Ask server for config to know if signed URLs are enabled
@@ -77,7 +75,6 @@ export function SecureLazyImage({
         placeholder={placeholder}
         className={className}
         aspectRatio={aspectRatio}
-        objectFit={objectFit}
       />
       {showBadge && (
         <div

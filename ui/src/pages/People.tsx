@@ -5,7 +5,7 @@
  * Uses the glass design system consistent with the rest of the app.
  */
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Users,
   Camera,
@@ -14,7 +14,8 @@ import {
   User,
   Tag,
   Clock,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Trash2
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -24,6 +25,7 @@ interface FaceCluster {
   label?: string;
   face_count: number;
   image_count: number;
+  face_ids?: number[];  // IDs for face crop endpoint
   images: string[];
   created_at?: string;
 }
@@ -36,12 +38,22 @@ interface FaceStats {
 }
 
 export function People() {
+  const navigate = useNavigate();
   const [clusters, setClusters] = useState<FaceCluster[]>([]);
   const [stats, setStats] = useState<FaceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Modal states
+  const [renameModal, setRenameModal] = useState<{ open: boolean; clusterId: string; currentLabel: string }>({
+    open: false, clusterId: '', currentLabel: ''
+  });
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; clusterId: string; label: string }>({
+    open: false, clusterId: '', label: ''
+  });
+  const [newLabel, setNewLabel] = useState('');
 
   useEffect(() => {
     fetchClusters();
@@ -102,6 +114,44 @@ export function People() {
       console.error('Failed to set label:', err);
       setError('Failed to update label');
     }
+  };
+
+  const openDeleteModal = (clusterId: string, label: string) => {
+    setDeleteModal({ open: true, clusterId, label });
+  };
+
+  const confirmDelete = async () => {
+    const { clusterId } = deleteModal;
+    setDeleteModal({ open: false, clusterId: '', label: '' });
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}`,
+        { method: 'DELETE' }
+      );
+      if (response.ok) {
+        setClusters(clusters.filter(c => c.id !== clusterId));
+        fetchStats();
+      } else {
+        throw new Error('Failed to delete cluster');
+      }
+    } catch (err) {
+      console.error('Failed to delete cluster:', err);
+      setError('Failed to delete person');
+    }
+  };
+
+  const openRenameModal = (clusterId: string, currentLabel: string) => {
+    setNewLabel(currentLabel);
+    setRenameModal({ open: true, clusterId, currentLabel });
+  };
+
+  const confirmRename = async () => {
+    const { clusterId } = renameModal;
+    if (newLabel.trim()) {
+      await handleSetLabel(clusterId, newLabel.trim());
+    }
+    setRenameModal({ open: false, clusterId: '', currentLabel: '' });
+    setNewLabel('');
   };
 
   const filteredClusters = clusters.filter(cluster =>
@@ -166,7 +216,8 @@ export function People() {
                 </div>
               </div>
 
-              <div className={`${glass.surface} rounded-xl p-4 border border-white/10`}>
+              <div className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-primary/50 cursor-pointer transition-colors`}
+                onClick={() => document.getElementById('clusters-section')?.scrollIntoView({ behavior: 'smooth' })}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
                     <Users className="text-green-400" size={18} />
@@ -178,7 +229,8 @@ export function People() {
                 </div>
               </div>
 
-              <div className={`${glass.surface} rounded-xl p-4 border border-white/10`}>
+              <div className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-primary/50 cursor-pointer transition-colors`}
+                onClick={() => navigate('/people/all-photos')}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
                     <Camera className="text-purple-400" size={18} />
@@ -190,7 +242,8 @@ export function People() {
                 </div>
               </div>
 
-              <div className={`${glass.surface} rounded-xl p-4 border border-white/10`}>
+              <div className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-orange-500/50 cursor-pointer transition-colors`}
+                onClick={() => stats.unidentified_faces > 0 && navigate('/people/unidentified')}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center">
                     <User className="text-orange-400" size={18} />
@@ -257,21 +310,28 @@ export function People() {
 
         {/* Face Clusters Grid */}
         {!loading && filteredClusters.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div id="clusters-section" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredClusters.map((cluster) => (
               <div key={cluster.id} className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors`}>
                 {/* Preview Images */}
                 <div className="grid grid-cols-3 gap-1 p-3 bg-black/20">
-                  {cluster.images.slice(0, 6).map((imagePath, index) => (
+                  {(cluster.face_ids || []).slice(0, 6).map((faceId, index) => (
                     <img
                       key={index}
-                      src={api.getImageUrl(imagePath, 150)}
+                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/crop?size=150`}
                       alt={`Face ${index + 1}`}
                       className="w-full h-20 object-cover rounded"
                       loading="lazy"
+                      onError={(e) => {
+                        // Fallback to full image if crop fails
+                        const img = e.target as HTMLImageElement;
+                        if (cluster.images[index]) {
+                          img.src = api.getImageUrl(cluster.images[index], 150);
+                        }
+                      }}
                     />
                   ))}
-                  {Array.from({ length: Math.max(0, 6 - cluster.images.length) }).map((_, index) => (
+                  {Array.from({ length: Math.max(0, 6 - (cluster.face_ids?.length || 0)) }).map((_, index) => (
                     <div key={`empty-${index}`} className="w-full h-20 bg-white/5 rounded flex items-center justify-center">
                       <ImageIcon size={16} className="text-white/20" />
                     </div>
@@ -304,24 +364,27 @@ export function People() {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        const newLabel = prompt('Enter person name:', cluster.label || `Person ${cluster.id}`);
-                        if (newLabel && newLabel.trim()) {
-                          handleSetLabel(cluster.id, newLabel.trim());
-                        }
-                      }}
-                      className="btn-glass btn-glass--muted text-xs px-3 py-1.5 flex-1"
+                      onClick={() => openRenameModal(cluster.id, cluster.label || `Person ${cluster.id}`)}
+                      className="btn-glass btn-glass--muted text-xs px-2 py-1.5"
+                      title="Rename"
                     >
-                      <Tag size={12} className="mr-1" />
-                      Rename
+                      <Tag size={12} />
+                    </button>
+
+                    <button
+                      onClick={() => openDeleteModal(cluster.id, cluster.label || `Person ${cluster.id}`)}
+                      className="btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-red-400"
+                      title="Delete this person group"
+                    >
+                      <Trash2 size={12} />
                     </button>
 
                     <Link
-                      to={`/search?query=person:${encodeURIComponent(cluster.label || cluster.id)}`}
-                      className="btn-glass btn-glass--primary text-xs px-3 py-1.5 flex-1"
+                      to={`/people/${cluster.id}`}
+                      className="btn-glass btn-glass--primary text-xs px-3 py-1.5 flex-1 flex items-center justify-center"
                     >
                       <User size={12} className="mr-1" />
-                      View
+                      View Photos
                     </Link>
                   </div>
                 </div>
@@ -330,6 +393,64 @@ export function People() {
           </div>
         )}
       </div>
+
+      {/* Rename Modal */}
+      {renameModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setRenameModal({ open: false, clusterId: '', currentLabel: '' })}>
+          <div className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Rename Person</h3>
+            <input
+              type="text"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="Enter person name..."
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 mb-4"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && confirmRename()}
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setRenameModal({ open: false, clusterId: '', currentLabel: '' })}
+                className="btn-glass btn-glass--muted px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRename}
+                className="btn-glass btn-glass--primary px-4 py-2"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeleteModal({ open: false, clusterId: '', label: '' })}>
+          <div className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Delete Person?</h3>
+            <p className="text-muted-foreground mb-4">
+              Delete "{deleteModal.label}"? This will ungroup these faces but won't delete the photos.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteModal({ open: false, clusterId: '', label: '' })}
+                className="btn-glass btn-glass--muted px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="btn-glass bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
