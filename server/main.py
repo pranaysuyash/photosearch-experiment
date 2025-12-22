@@ -1493,8 +1493,39 @@ async def search_photos(
                 tagged_paths = set()
         
         # Person filter - get photo paths containing the person
+        # Also auto-detect person names from query if not explicitly provided
         person_paths = None
-        if person:
+        person_to_search = person
+        remaining_query = query  # Query after extracting person: prefix
+        
+        # Parse person: prefix from query (e.g., "person:pranay sunset")
+        if not person and query:
+            import re
+            person_match = re.match(r'^person:(\S+)\s*(.*)', query, re.IGNORECASE)
+            if person_match:
+                person_to_search = person_match.group(1)
+                remaining_query = person_match.group(2).strip()  # Rest of query for other search
+                print(f"Explicit person search: '{person_to_search}', remaining query: '{remaining_query}'")
+        
+        # Auto-detect: if query matches a person/cluster label, treat it as person search
+        if not person_to_search and query and face_clusterer:
+            try:
+                cursor = face_clusterer.conn.cursor()
+                # Check if query matches any cluster label (exact or partial match)
+                cursor.execute("""
+                    SELECT c.label FROM clusters c 
+                    WHERE LOWER(c.label) LIKE LOWER(?)
+                    AND c.label NOT LIKE 'Person %'
+                """, (f"%{query}%",))
+                matching_labels = [row[0] for row in cursor.fetchall()]
+                if matching_labels:
+                    # Query matches a person name - use it as person filter
+                    person_to_search = query
+                    print(f"Auto-detected person search: '{query}' matches {matching_labels}")
+            except Exception as e:
+                print(f"Person auto-detection error: {e}")
+        
+        if person_to_search:
             try:
                 if face_clusterer:
                     cursor = face_clusterer.conn.cursor()
@@ -1502,7 +1533,7 @@ async def search_photos(
                     cursor.execute("""
                         SELECT c.id FROM clusters c 
                         WHERE LOWER(c.label) LIKE LOWER(?)
-                    """, (f"%{person}%",))
+                    """, (f"%{person_to_search}%",))
                     matching_clusters = [row[0] for row in cursor.fetchall()]
                     
                     if matching_clusters:
@@ -1518,6 +1549,25 @@ async def search_photos(
             except Exception as e:
                 print(f"Person filtering error: {e}")
                 person_paths = None
+        
+        # Build person results with high priority score (if person detected)
+        person_results = []
+        if person_to_search and person_paths:
+            import json
+            cursor = photo_search_engine.db.conn.cursor()
+            if person_paths:
+                placeholders = ','.join(['?' for _ in person_paths])
+                cursor.execute(f"SELECT file_path, metadata_json FROM metadata WHERE file_path IN ({placeholders})", list(person_paths))
+                for row in cursor.fetchall():
+                    metadata = json.loads(row['metadata_json']) if row['metadata_json'] else {}
+                    person_results.append({
+                        'path': row['file_path'],
+                        'filename': os.path.basename(row['file_path']),
+                        'score': 2.0,  # Highest priority for person matches
+                        'metadata': metadata,
+                        'match_type': 'person',
+                        'matched_person': person_to_search
+                    })
         
         # 1. Semantic Search
         if mode == "semantic":
@@ -1566,9 +1616,27 @@ async def search_photos(
             # Apply sort
             results = apply_sort(results, sort_by)
             
+            # Merge person results (highest priority) with other results
+            if person_results:
+                seen_paths = set()
+                merged = []
+                # Add person matches first (score 2.0)
+                for r in person_results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                # Add other results (avoiding duplicates)
+                for r in results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                results = merged
+            
             # Paginate
             paginated = results[offset:offset + limit]
-            return {"count": len(results), "results": paginated}
+            return {"count": len(results), "results": paginated, "matched_person": person_to_search if person_results else None}
 
         # 2. Metadata Search
         if mode == "metadata":
@@ -1657,11 +1725,29 @@ async def search_photos(
             # Apply sorting
             formatted_results = apply_sort(formatted_results, sort_by)
             
+            # Merge person results (highest priority) with other results
+            if person_results:
+                seen_paths = set()
+                merged = []
+                # Add person matches first (score 2.0)
+                for r in person_results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                # Add other results (avoiding duplicates)
+                for r in formatted_results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                formatted_results = merged
+            
             # Apply Pagination Slicing
             count = len(formatted_results)
             paginated = formatted_results[offset : offset + limit]
             
-            return {"count": count, "results": paginated}
+            return {"count": count, "results": paginated, "matched_person": person_to_search if person_results else None}
 
         # 3. Hybrid Search (Metadata + Semantic with weighted scoring)
         if mode == "hybrid":
@@ -1795,6 +1881,24 @@ async def search_photos(
                     hybrid_results = [r for r in hybrid_results if is_cloud_path(r.get('path', ''))]
                 elif source_filter == "hybrid":
                     hybrid_results = [r for r in hybrid_results if (not is_local_path(r.get('path', '')) and not is_cloud_path(r.get('path', '')))]
+            
+            # Merge person results (highest priority) with other results
+            if person_results:
+                seen_paths = set()
+                merged = []
+                # Add person matches first (score 2.0)
+                for r in person_results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                # Add other results (avoiding duplicates)
+                for r in hybrid_results:
+                    path = r.get('path')
+                    if path not in seen_paths:
+                        seen_paths.add(path)
+                        merged.append(r)
+                hybrid_results = merged
             
             # Apply Pagination Slicing
             count = len(hybrid_results)

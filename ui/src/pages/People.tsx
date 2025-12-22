@@ -58,6 +58,8 @@ export function People() {
     open: false, clusterId: '', label: ''
   });
   const [newLabel, setNewLabel] = useState('');
+  const [renameLoading, setRenameLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchClusters();
@@ -144,6 +146,7 @@ export function People() {
 
   const handleSetLabel = async (clusterId: string, newLabel: string) => {
     try {
+      setRenameLoading(true);
       await api.setFaceClusterLabel(clusterId, newLabel);
 
       // Update local state
@@ -152,9 +155,14 @@ export function People() {
           ? { ...cluster, label: newLabel }
           : cluster
       ));
+
+      // Refresh stats in case labels affect counts
+      await fetchStats();
     } catch (err) {
       console.error('Failed to set label:', err);
       setError('Failed to update label');
+    } finally {
+      setRenameLoading(false);
     }
   };
 
@@ -164,21 +172,24 @@ export function People() {
 
   const confirmDelete = async () => {
     const { clusterId } = deleteModal;
-    setDeleteModal({ open: false, clusterId: '', label: '' });
     try {
+      setDeleteLoading(true);
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}`,
         { method: 'DELETE' }
       );
       if (response.ok) {
         setClusters(clusters.filter(c => c.id !== clusterId));
-        fetchStats();
+        await fetchStats();
+        setDeleteModal({ open: false, clusterId: '', label: '' });
       } else {
         throw new Error('Failed to delete cluster');
       }
     } catch (err) {
       console.error('Failed to delete cluster:', err);
       setError('Failed to delete person');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -191,9 +202,9 @@ export function People() {
     const { clusterId } = renameModal;
     if (newLabel.trim()) {
       await handleSetLabel(clusterId, newLabel.trim());
+      setRenameModal({ open: false, clusterId: '', currentLabel: '' });
+      setNewLabel('');
     }
-    setRenameModal({ open: false, clusterId: '', currentLabel: '' });
-    setNewLabel('');
   };
 
   const filteredClusters = clusters.filter(cluster =>
@@ -499,14 +510,17 @@ export function People() {
               <button
                 onClick={() => setRenameModal({ open: false, clusterId: '', currentLabel: '' })}
                 className="btn-glass btn-glass--muted px-4 py-2"
+                disabled={renameLoading}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmRename}
-                className="btn-glass btn-glass--primary px-4 py-2"
+                className="btn-glass btn-glass--primary px-4 py-2 flex items-center gap-2"
+                disabled={renameLoading || !newLabel.trim()}
               >
-                Save
+                {renameLoading && <RefreshCw size={14} className="animate-spin" />}
+                {renameLoading ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
@@ -525,14 +539,17 @@ export function People() {
               <button
                 onClick={() => setDeleteModal({ open: false, clusterId: '', label: '' })}
                 className="btn-glass btn-glass--muted px-4 py-2"
+                disabled={deleteLoading}
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="btn-glass bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors"
+                className="btn-glass bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
+                disabled={deleteLoading}
               >
-                Delete
+                {deleteLoading && <RefreshCw size={14} className="animate-spin" />}
+                {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

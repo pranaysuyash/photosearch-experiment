@@ -513,11 +513,26 @@ export const api = {
     dateFrom?: string | null,
     dateTo?: string | null,
     sourceFilter: 'all' | 'local' | 'cloud' | 'hybrid' = 'all',
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    person?: string | null
   ) => {
+    // Parse "person:Name" from the query if person is not explicitly provided
+    let parsedPerson = person || null;
+    let cleanQuery = query;
+    
+    if (!parsedPerson && query) {
+      // Match patterns like "person:Name" or "person:Full Name" (quoted) or "person:Name with spaces"
+      const personMatch = query.match(/\bperson:(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+      if (personMatch) {
+        parsedPerson = personMatch[1] || personMatch[2] || personMatch[3];
+        // Remove the person: prefix from the query
+        cleanQuery = query.replace(/\bperson:(?:"[^"]+"|'[^']+'|\S+)/i, '').trim();
+      }
+    }
+    
     const res = await apiClient.get('/search', {
       params: {
-        query,
+        query: cleanQuery,
         mode,
         limit,
         offset,
@@ -528,6 +543,7 @@ export const api = {
         ...(tag ? { tag } : {}),
         ...(dateFrom ? { date_from: dateFrom } : {}),
         ...(dateTo ? { date_to: dateTo } : {}),
+        ...(parsedPerson ? { person: parsedPerson } : {}),
       },
       signal,
     });
