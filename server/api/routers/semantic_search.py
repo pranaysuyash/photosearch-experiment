@@ -1,25 +1,34 @@
+"""
+Semantic Search Router
+
+Uses Depends(get_state) for accessing shared application state.
+"""
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from server.models.schemas.search import SearchCountRequest
 from server.utils.search_explanations import generate_semantic_match_explanation
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/api/search/count")
-async def get_search_count(request: SearchCountRequest):
+async def get_search_count(request: SearchCountRequest, state: AppState = Depends(get_state)):
     """
     Get count of search results for live feedback while typing.
     Used for the live match count feature in the UI.
     """
     try:
-        from server import main as main_module
-
         query = request.query.strip()
         mode = request.mode
+
+        photo_search_engine = state.photo_search_engine
+        embedding_generator = state.embedding_generator
+        vector_store = state.vector_store
 
         if not query:
             return {"count": 0}
@@ -32,20 +41,20 @@ async def get_search_count(request: SearchCountRequest):
             if not has_operators:
                 # Simple search term - search in filename
                 search_query = f"filename:{query}"
-                results = main_module.photo_search_engine.query_engine.search(search_query)
+                results = photo_search_engine.query_engine.search(search_query)
             else:
                 # Structured query - use as-is
-                results = main_module.photo_search_engine.query_engine.search(query)
+                results = photo_search_engine.query_engine.search(query)
 
             return {"count": len(results)}
 
         elif mode == "semantic":
-            if not main_module.embedding_generator:
+            if not embedding_generator:
                 return {"count": 0}
 
             # Generate text embedding and search
-            text_vec = main_module.embedding_generator.generate_text_embedding(query)
-            results = main_module.vector_store.search(text_vec, limit=1000, offset=0)
+            text_vec = embedding_generator.generate_text_embedding(query)
+            results = vector_store.search(text_vec, limit=1000, offset=0)
 
             # Filter by minimum score and apply more realistic scoring
             filtered_results = []
@@ -69,10 +78,10 @@ async def get_search_count(request: SearchCountRequest):
             # Get metadata count
             try:
                 if any(op in query for op in ["=", ">", "<", "LIKE"]):
-                    metadata_results = main_module.photo_search_engine.query_engine.search(query)
+                    metadata_results = photo_search_engine.query_engine.search(query)
                 else:
                     safe_query = query.replace("'", "''")
-                    metadata_results = main_module.photo_search_engine.query_engine.search(
+                    metadata_results = photo_search_engine.query_engine.search(
                         f"file.path LIKE '%{safe_query}%'"
                     )
                 metadata_count = len(metadata_results)
@@ -81,9 +90,9 @@ async def get_search_count(request: SearchCountRequest):
 
             # Get semantic count
             try:
-                if main_module.embedding_generator:
-                    text_vec = main_module.embedding_generator.generate_text_embedding(query)
-                    semantic_results = main_module.vector_store.search(text_vec, limit=1000, offset=0)
+                if embedding_generator:
+                    text_vec = embedding_generator.generate_text_embedding(query)
+                    semantic_results = vector_store.search(text_vec, limit=1000, offset=0)
                     semantic_count = len([r for r in semantic_results if r["score"] >= 0.22])
             except:
                 pass
@@ -100,25 +109,36 @@ async def get_search_count(request: SearchCountRequest):
 
 
 @router.get("/search/semantic")
-async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_score: float = 0.22):
+async def search_semantic(
+    state: AppState = Depends(get_state),
+    query: str = "",
+    limit: int = 50,
+    offset: int = 0,
+    min_score: float = 0.22
+):
     """
     Semantic Search using text-to-image embeddings.
     """
     try:
-        from server import main as main_module
+        from server.embedding_generator import EmbeddingGenerator
 
-        if not main_module.embedding_generator:
-            main_module.embedding_generator = main_module.EmbeddingGenerator()
+        embedding_generator = state.embedding_generator
+        vector_store = state.vector_store
+        photo_search_engine = state.photo_search_engine
+
+        if not embedding_generator:
+            embedding_generator = EmbeddingGenerator()
+            state.embedding_generator = embedding_generator
 
         # Handle empty query - return all photos (paginated)
         if not query.strip():
             try:
                 # Pass offset to store
-                all_records = main_module.vector_store.get_all_records(limit=limit, offset=offset)
+                all_records = vector_store.get_all_records(limit=limit, offset=offset)
                 formatted = []
                 for r in all_records:
                     file_path = r.get("path", r.get("id", ""))
-                    full_metadata = main_module.photo_search_engine.db.get_metadata_by_path(file_path)
+                    full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
                     formatted.append(
                         {
                             "path": file_path,
@@ -134,18 +154,18 @@ async def search_semantic(query: str, limit: int = 50, offset: int = 0, min_scor
                 return {"count": 0, "results": []}
 
         # 1. Generate text embedding
-        text_vec = main_module.embedding_generator.generate_text_embedding(query)
+        text_vec = embedding_generator.generate_text_embedding(query)
 
         # 2. Search LanceDB with offset
         # vector_store.search now supports offset directly
-        results = main_module.vector_store.search(text_vec, limit=limit, offset=offset)
+        results = vector_store.search(text_vec, limit=limit, offset=offset)
 
         # 3. Format and enrich
         formatted = []
         for r in results:
             if r["score"] >= min_score:
                 file_path = r["metadata"]["path"]
-                full_metadata = main_module.photo_search_engine.db.get_metadata_by_path(file_path)
+                full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
 
                 result_item = {
                     "path": file_path,

@@ -1,15 +1,23 @@
-from fastapi import APIRouter
+"""
+System Router - API schema, cache, and logging endpoints.
+
+Uses Depends(get_state) for accessing shared application state.
+"""
+import time
+
+from fastapi import APIRouter, Depends
+
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/api/schema")
-async def get_api_schema():
+async def get_api_schema(state: AppState = Depends(get_state)):
     """Get the API schema and version information."""
-    from server import main as main_module
-
-    schema = main_module.api_version_manager.get_api_schema()
+    schema = state.api_version_manager.get_api_schema()
     return schema
 
 
@@ -20,52 +28,44 @@ async def detect_installed_apps():
 
 
 @router.get("/api/cache/stats")
-async def get_api_cache_stats():
+async def get_api_cache_stats(state: AppState = Depends(get_state)):
     """Get cache statistics and performance metrics."""
-    from server import main as main_module
-
-    stats = main_module.cache_manager.stats()
+    stats = state.cache_manager.stats()
     return stats
 
 
 @router.post("/api/cache/clear")
-async def clear_api_cache():
+async def clear_api_cache(state: AppState = Depends(get_state)):
     """Clear all cache entries."""
-    from server import main as main_module
-
-    main_module.cache_manager.clear()
+    state.cache_manager.clear()
     return {"message": "Cache cleared successfully"}
 
 
 @router.get("/api/cache/cleanup")
-async def cleanup_cache():
+async def cleanup_cache(state: AppState = Depends(get_state)):
     """Clean up expired cache entries."""
-    from server import main as main_module
-
-    removed_count = main_module.cache_manager.cleanup()
+    removed_count = state.cache_manager.cleanup()
     return {"message": f"Cleaned up {removed_count} expired entries"}
 
 
 @router.get("/api/logs/test")
-async def test_logging():
+async def test_logging(state: AppState = Depends(get_state)):
     """Test endpoint to verify logging functionality."""
-    import time
-    from server import main as main_module
-
     start = time.time()
 
     # Log a test message
-    main_module.ps_logger.info("Test log message from API endpoint")
+    state.ps_logger.info("Test log message from API endpoint")
 
     execution_time = (time.time() - start) * 1000
 
     # Log the operation
-    main_module.log_search_operation(
-        main_module.ps_logger,
-        query="test",
-        mode="test",
-        results_count=0,
-        execution_time=execution_time,
-    )
+    if state.log_search_operation:
+        state.log_search_operation(
+            state.ps_logger,
+            query="test",
+            mode="test",
+            results_count=0,
+            execution_time=execution_time,
+        )
 
     return {"message": "Test log message sent", "execution_time_ms": execution_time}
