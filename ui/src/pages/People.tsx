@@ -15,7 +15,8 @@ import {
   Tag,
   Clock,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -35,6 +36,8 @@ interface FaceStats {
   faces_detected: number;
   clusters_found: number;
   unidentified_faces: number;
+  singletons: number;
+  low_confidence: number;
 }
 
 export function People() {
@@ -250,14 +253,42 @@ export function People() {
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-foreground">{stats.unidentified_faces}</div>
-                    <div className="text-xs text-muted-foreground">Unidentified</div>
+                    <div className="text-xs text-muted-foreground">Unlabeled</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-yellow-500/50 cursor-pointer transition-colors`}
+                onClick={() => stats.singletons > 0 && navigate('/people/singletons')}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <User className="text-yellow-400" size={18} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">{stats.singletons}</div>
+                    <div className="text-xs text-muted-foreground">Singletons</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-red-500/50 cursor-pointer transition-colors`}
+                onClick={() => stats.low_confidence > 0 && navigate('/people/low-confidence')}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <AlertCircle className="text-red-400" size={18} />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-foreground">{stats.low_confidence}</div>
+                    <div className="text-xs text-muted-foreground">Low Conf</div>
                   </div>
                 </div>
               </div>
             </>
           )}
+        </div>
 
-          {/* Search */}
+        {/* Search Row */}
+        <div className="mb-6">
           <div className={`${glass.surface} rounded-xl p-4 border border-white/10`}>
             <div className="flex items-center gap-2">
               <Search className="text-muted-foreground" size={16} />

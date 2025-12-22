@@ -8903,23 +8903,115 @@ async def get_cluster_photos(cluster_id: str, limit: int = 100, offset: int = 0)
 
 
 @app.get("/api/faces/unidentified")
-async def get_unidentified_faces(limit: int = 100, offset: int = 0):
-    """Get all faces that are not assigned to any cluster."""
+async def get_unidentified_clusters(limit: int = 100, offset: int = 0):
+    """Get all clusters that have no user-assigned label (unlabeled clusters)."""
+    try:
+        if not face_clusterer:
+            return {"clusters": [], "count": 0}
+        
+        cursor = face_clusterer.conn.cursor()
+        
+        # Get clusters with no user label (NULL or auto-generated like "Person X")
+        cursor.execute("""
+            SELECT c.id, c.label, c.size, c.representative_face_id, c.created_at
+            FROM clusters c
+            WHERE c.label IS NULL OR c.label LIKE 'Person %'
+            ORDER BY c.size DESC, c.created_at DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        
+        clusters = []
+        for row in cursor.fetchall():
+            cluster_id = row[0]
+            # Get face IDs and images for this cluster
+            cursor.execute("""
+                SELECT f.id, f.image_path FROM faces f
+                JOIN cluster_membership cm ON f.id = cm.face_id
+                WHERE cm.cluster_id = ?
+            """, (cluster_id,))
+            faces = cursor.fetchall()
+            
+            clusters.append({
+                "id": str(cluster_id),
+                "label": row[1] or f"Person {cluster_id}",
+                "face_count": row[2],
+                "face_ids": [f[0] for f in faces],
+                "images": [f[1] for f in faces],
+                "created_at": row[4]
+            })
+        
+        # Get total count
+        cursor.execute("""
+            SELECT COUNT(*) FROM clusters 
+            WHERE label IS NULL OR label LIKE 'Person %'
+        """)
+        total = cursor.fetchone()[0]
+        
+        return {"clusters": clusters, "count": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/singletons")
+async def get_singleton_clusters(limit: int = 100, offset: int = 0):
+    """Get all clusters with only 1 face (appears only once in library)."""
+    try:
+        if not face_clusterer:
+            return {"clusters": [], "count": 0}
+        
+        cursor = face_clusterer.conn.cursor()
+        
+        cursor.execute("""
+            SELECT c.id, c.label, c.size, c.representative_face_id, c.created_at
+            FROM clusters c
+            WHERE c.size = 1
+            ORDER BY c.created_at DESC
+            LIMIT ? OFFSET ?
+        """, (limit, offset))
+        
+        clusters = []
+        for row in cursor.fetchall():
+            cluster_id = row[0]
+            cursor.execute("""
+                SELECT f.id, f.image_path FROM faces f
+                JOIN cluster_membership cm ON f.id = cm.face_id
+                WHERE cm.cluster_id = ?
+            """, (cluster_id,))
+            faces = cursor.fetchall()
+            
+            clusters.append({
+                "id": str(cluster_id),
+                "label": row[1] or f"Person {cluster_id}",
+                "face_count": row[2],
+                "face_ids": [f[0] for f in faces],
+                "images": [f[1] for f in faces],
+                "created_at": row[4]
+            })
+        
+        cursor.execute("SELECT COUNT(*) FROM clusters WHERE size = 1")
+        total = cursor.fetchone()[0]
+        
+        return {"clusters": clusters, "count": total}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/faces/low-confidence")
+async def get_low_confidence_faces(limit: int = 100, offset: int = 0, threshold: float = 0.8):
+    """Get all faces with confidence below threshold."""
     try:
         if not face_clusterer:
             return {"faces": [], "count": 0}
         
         cursor = face_clusterer.conn.cursor()
         
-        # Get faces that have no cluster membership
         cursor.execute("""
-            SELECT f.id, f.image_path, f.bounding_box, f.confidence
+            SELECT f.id, f.image_path, f.bounding_box, f.confidence, f.cluster_id
             FROM faces f
-            LEFT JOIN cluster_membership cm ON f.id = cm.face_id
-            WHERE cm.face_id IS NULL
-            ORDER BY f.confidence DESC
+            WHERE f.confidence < ?
+            ORDER BY f.confidence ASC
             LIMIT ? OFFSET ?
-        """, (limit, offset))
+        """, (threshold, limit, offset))
         
         faces = []
         for row in cursor.fetchall():
@@ -8927,16 +9019,11 @@ async def get_unidentified_faces(limit: int = 100, offset: int = 0):
                 "id": row[0],
                 "image_path": row[1],
                 "bounding_box": json.loads(row[2]) if row[2] else None,
-                "confidence": row[3]
+                "confidence": row[3],
+                "cluster_id": row[4]
             })
         
-        # Get total count
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM faces f
-            LEFT JOIN cluster_membership cm ON f.id = cm.face_id
-            WHERE cm.face_id IS NULL
-        """)
+        cursor.execute("SELECT COUNT(*) FROM faces WHERE confidence < ?", (threshold,))
         total = cursor.fetchone()[0]
         
         return {"faces": faces, "count": total}
@@ -9129,26 +9216,49 @@ async def get_face_stats_api():
             total_faces = stats.get("total_faces", 0)
             total_clusters = stats.get("total_clusters", 0)
             
-            # Count faces that aren't in any cluster (cluster_id IS NULL)
             try:
                 face_cursor = face_clusterer.conn.cursor()
-                face_cursor.execute("SELECT COUNT(*) FROM faces WHERE cluster_id IS NULL")
+                
+                # Unidentified = clusters with no user label (NULL or auto-generated like "Person X")
+                face_cursor.execute("""
+                    SELECT COUNT(*) FROM clusters 
+                    WHERE label IS NULL OR label LIKE 'Person %'
+                """)
                 unidentified = face_cursor.fetchone()[0]
+                
+                # Singletons = clusters with only 1 face (appears once)
+                face_cursor.execute("""
+                    SELECT COUNT(*) FROM clusters WHERE size = 1
+                """)
+                singletons = face_cursor.fetchone()[0]
+                
+                # Low confidence = faces with confidence < 0.8
+                face_cursor.execute("""
+                    SELECT COUNT(*) FROM faces WHERE confidence < 0.8
+                """)
+                low_confidence = face_cursor.fetchone()[0]
+                
             except:
                 unidentified = 0
+                singletons = 0
+                low_confidence = 0
             
             return {
                 "total_photos": total_photos,
                 "faces_detected": total_faces,
                 "clusters_found": total_clusters,
-                "unidentified_faces": unidentified
+                "unidentified_faces": unidentified,
+                "singletons": singletons,
+                "low_confidence": low_confidence
             }
         else:
             return {
                 "total_photos": total_photos,
                 "faces_detected": 0,
                 "clusters_found": 0,
-                "unidentified_faces": 0
+                "unidentified_faces": 0,
+                "singletons": 0,
+                "low_confidence": 0
             }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

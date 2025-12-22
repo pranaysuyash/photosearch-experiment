@@ -44,7 +44,21 @@ export default function UnidentifiedFaces() {
                 `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/unidentified`
             );
             const data = await response.json();
-            setFaces(data.faces || []);
+            // API now returns clusters (unlabeled ones)
+            // Convert to face-like format for display
+            const clusterData = data.clusters || [];
+            const facesFromClusters: UnidentifiedFace[] = [];
+            for (const cluster of clusterData) {
+                for (let i = 0; i < (cluster.face_ids || []).length; i++) {
+                    facesFromClusters.push({
+                        id: cluster.face_ids[i],
+                        image_path: cluster.images?.[i] || '',
+                        bounding_box: [],
+                        confidence: 1.0
+                    });
+                }
+            }
+            setFaces(facesFromClusters);
         } catch (err) {
             console.error('Failed to fetch unidentified faces:', err);
             setError('Failed to load unidentified faces');

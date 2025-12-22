@@ -29,6 +29,8 @@ const People = lazy(() => import('../pages/People'));
 const PersonDetail = lazy(() => import('../pages/PersonDetail'));
 const UnidentifiedFaces = lazy(() => import('../pages/UnidentifiedFaces'));
 const AllFacePhotos = lazy(() => import('../pages/AllFacePhotos'));
+const Singletons = lazy(() => import('../pages/Singletons'));
+const LowConfidence = lazy(() => import('../pages/LowConfidence'));
 const Import = lazy(() => import('../pages/Import'));
 const Tags = lazy(() => import('../pages/Tags'));
 const PerformanceDashboard = lazy(() => import('../pages/PerformanceDashboard'));
@@ -75,6 +77,8 @@ const MainRouter = () => {
               <Route path='/people' element={<People />} />
               <Route path='/people/unidentified' element={<UnidentifiedFaces />} />
               <Route path='/people/all-photos' element={<AllFacePhotos />} />
+              <Route path='/people/singletons' element={<Singletons />} />
+              <Route path='/people/low-confidence' element={<LowConfidence />} />
               <Route path='/people/:clusterId' element={<PersonDetail />} />
               <Route path='/favorites' element={<Favorites />} />
               <Route path='/videos' element={<Videos />} />
