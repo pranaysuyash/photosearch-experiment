@@ -198,12 +198,6 @@
     "summary": ""
   },
   {
-    "path": "/api/faces/cluster/{cluster_id}/photos",
-    "method": "GET",
-    "name": "get_cluster_photos",
-    "summary": ""
-  },
-  {
     "path": "/api/faces/clusters",
     "method": "GET",
     "name": "get_face_clusters",
@@ -222,21 +216,33 @@
     "summary": ""
   },
   {
+    "path": "/api/faces/clusters/{cluster_id}/photos",
+    "method": "GET",
+    "name": "get_cluster_photos",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/crop/{face_id}",
+    "method": "GET",
+    "name": "get_face_crop",
+    "summary": ""
+  },
+  {
     "path": "/api/faces/low-confidence",
     "method": "GET",
     "name": "get_low_confidence_faces",
     "summary": ""
   },
   {
-    "path": "/api/faces/photos-with-faces",
+    "path": "/api/faces/person/{person_name}",
     "method": "GET",
-    "name": "get_photos_with_faces",
+    "name": "get_photos_by_person",
     "summary": ""
   },
   {
-    "path": "/api/faces/photos/{person_name}",
+    "path": "/api/faces/photos-with-faces",
     "method": "GET",
-    "name": "get_photos_by_person",
+    "name": "get_photos_with_faces",
     "summary": ""
   },
   {
@@ -252,15 +258,15 @@
     "summary": ""
   },
   {
-    "path": "/api/faces/scan-async/{job_id}",
-    "method": "GET",
-    "name": "get_scan_job_status",
+    "path": "/api/faces/scan-single",
+    "method": "POST",
+    "name": "scan_single_file",
     "summary": ""
   },
   {
-    "path": "/api/faces/scan-file",
-    "method": "POST",
-    "name": "scan_single_file",
+    "path": "/api/faces/scan-status/{job_id}",
+    "method": "GET",
+    "name": "get_scan_job_status",
     "summary": ""
   },
   {
@@ -303,12 +309,6 @@
     "path": "/api/faces/{face_id}/create-person",
     "method": "POST",
     "name": "create_person_from_face",
-    "summary": ""
-  },
-  {
-    "path": "/api/faces/{face_id}/crop",
-    "method": "GET",
-    "name": "get_face_crop",
     "summary": ""
   },
   {

@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Depends
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/favorites/toggle")
-async def toggle_favorite(payload: dict = Body(...)):
+async def toggle_favorite(payload: dict = Body(...), state: AppState = Depends(get_state)):
     """
     Toggle favorite status of a file.
 
@@ -18,46 +20,43 @@ async def toggle_favorite(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="file_path is required")
 
     try:
-        from server import main as main_module
 
-        is_favorited = main_module.photo_search_engine.toggle_favorite(file_path, notes)
+        is_favorited = state.photo_search_engine.toggle_favorite(file_path, notes)
         return {"success": True, "is_favorited": is_favorited}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/favorites")
-async def get_favorites(limit: int = 1000, offset: int = 0):
+async def get_favorites(limit: int = 1000, offset: int = 0, state: AppState = Depends(get_state)):
     """
     Get all favorited files.
     """
     try:
-        from server import main as main_module
 
-        favorites = main_module.photo_search_engine.get_favorites(limit, offset)
+        favorites = state.photo_search_engine.get_favorites(limit, offset)
         return {"count": len(favorites), "results": favorites}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/favorites/check")
-async def check_favorite(file_path: str):
+async def check_favorite(file_path: str, state: AppState = Depends(get_state)):
     """
     Check if a file is favorited.
 
     Query param: file_path=/path/to/file.jpg
     """
     try:
-        from server import main as main_module
 
-        is_favorited = main_module.photo_search_engine.is_favorite(file_path)
+        is_favorited = state.photo_search_engine.is_favorite(file_path)
         return {"is_favorited": is_favorited}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.delete("/favorites")
-async def remove_favorite(payload: dict = Body(...)):
+async def remove_favorite(payload: dict = Body(...), state: AppState = Depends(get_state)):
     """
     Remove a file from favorites.
 
@@ -69,9 +68,8 @@ async def remove_favorite(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="file_path is required")
 
     try:
-        from server import main as main_module
 
-        success = main_module.photo_search_engine.remove_favorite(file_path)
+        success = state.photo_search_engine.remove_favorite(file_path)
         return {"success": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

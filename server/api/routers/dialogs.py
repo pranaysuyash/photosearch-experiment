@@ -1,6 +1,11 @@
+"""
+Dialogs Router
+
+Uses Depends(get_state) for accessing shared application state.
+"""
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from server.models.schemas.dialogs import (
     DialogActionRequest,
@@ -8,25 +13,17 @@ from server.models.schemas.dialogs import (
     InputDialogRequest,
     ProgressDialogRequest,
 )
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/dialogs/create")
-async def create_dialog(request: DialogRequest):
-    """
-    Create a new dialog
-
-    Args:
-        request: DialogRequest with dialog details
-
-    Returns:
-        Dictionary with dialog ID
-    """
+async def create_dialog(request: DialogRequest, state: AppState = Depends(get_state)):
+    """Create a new dialog."""
     try:
-        from server import main as main_module
-
         create_kwargs: dict[str, Any] = {
             "dialog_type": request.dialog_type,
             "title": request.title,
@@ -37,48 +34,27 @@ async def create_dialog(request: DialogRequest):
         if request.timeout is not None:
             create_kwargs["expires_in"] = int(request.timeout)
 
-        dialog_id = main_module.modal_system.create_dialog(**create_kwargs)
+        dialog_id = state.modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/dialogs/active")
-async def get_active_dialogs(user_id: str = "system"):
-    """
-    Get all active dialogs for a user
-
-    Args:
-        user_id: ID of the user
-
-    Returns:
-        Dictionary with active dialogs
-    """
+async def get_active_dialogs(state: AppState = Depends(get_state), user_id: str = "system"):
+    """Get all active dialogs for a user."""
     try:
-        from server import main as main_module
-
-        dialogs = main_module.modal_system.get_active_dialogs(user_id)
+        dialogs = state.modal_system.get_active_dialogs(user_id)
         return {"status": "success", "dialogs": dialogs}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/dialogs/{dialog_id}")
-async def get_dialog(dialog_id: str, user_id: str = "system"):
-    """
-    Get details for a specific dialog
-
-    Args:
-        dialog_id: ID of the dialog
-        user_id: ID of the user
-
-    Returns:
-        Dictionary with dialog details
-    """
+async def get_dialog(dialog_id: str, state: AppState = Depends(get_state), user_id: str = "system"):
+    """Get details for a specific dialog."""
     try:
-        from server import main as main_module
-
-        dialog = main_module.modal_system.get_dialog(dialog_id)
+        dialog = state.modal_system.get_dialog(dialog_id)
         if dialog and dialog.get("user_id") == user_id:
             return {"status": "success", "dialog": dialog}
         else:
@@ -88,21 +64,10 @@ async def get_dialog(dialog_id: str, user_id: str = "system"):
 
 
 @router.post("/dialogs/{dialog_id}/action")
-async def dialog_action(dialog_id: str, request: DialogActionRequest):
-    """
-    Record an action on a dialog
-
-    Args:
-        dialog_id: ID of the dialog
-        request: DialogActionRequest with action details
-
-    Returns:
-        Dictionary with action status
-    """
+async def dialog_action(dialog_id: str, request: DialogActionRequest, state: AppState = Depends(get_state)):
+    """Record an action on a dialog."""
     try:
-        from server import main as main_module
-
-        success = main_module.modal_system.record_dialog_action(
+        success = state.modal_system.record_dialog_action(
             dialog_id,
             request.action,
             action_data={},
@@ -114,21 +79,10 @@ async def dialog_action(dialog_id: str, request: DialogActionRequest):
 
 
 @router.post("/dialogs/{dialog_id}/close")
-async def close_dialog(dialog_id: str, request: DialogActionRequest):
-    """
-    Close a dialog
-
-    Args:
-        dialog_id: ID of the dialog
-        request: DialogActionRequest with close action
-
-    Returns:
-        Dictionary with close status
-    """
+async def close_dialog(dialog_id: str, request: DialogActionRequest, state: AppState = Depends(get_state)):
+    """Close a dialog."""
     try:
-        from server import main as main_module
-
-        success = main_module.modal_system.close_dialog(
+        success = state.modal_system.close_dialog(
             dialog_id,
             request.action,
             request.user_id,
@@ -139,40 +93,19 @@ async def close_dialog(dialog_id: str, request: DialogActionRequest):
 
 
 @router.post("/dialogs/{dialog_id}/dismiss")
-async def dismiss_dialog(dialog_id: str, user_id: str = "system"):
-    """
-    Dismiss a dialog
-
-    Args:
-        dialog_id: ID of the dialog
-        user_id: ID of the user
-
-    Returns:
-        Dictionary with dismiss status
-    """
+async def dismiss_dialog(dialog_id: str, state: AppState = Depends(get_state), user_id: str = "system"):
+    """Dismiss a dialog."""
     try:
-        from server import main as main_module
-
-        success = main_module.modal_system.dismiss_dialog(dialog_id, user_id)
+        success = state.modal_system.dismiss_dialog(dialog_id, user_id)
         return {"status": "success" if success else "failed", "dismissed": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/dialogs/confirmation")
-async def create_confirmation_dialog(request: DialogRequest):
-    """
-    Create a confirmation dialog
-
-    Args:
-        request: DialogRequest with confirmation details
-
-    Returns:
-        Dictionary with dialog ID
-    """
+async def create_confirmation_dialog(request: DialogRequest, state: AppState = Depends(get_state)):
+    """Create a confirmation dialog."""
     try:
-        from server import main as main_module
-
         create_kwargs: dict[str, Any] = {
             "dialog_type": "confirmation",
             "title": request.title,
@@ -184,26 +117,16 @@ async def create_confirmation_dialog(request: DialogRequest):
         if request.timeout is not None:
             create_kwargs["expires_in"] = int(request.timeout)
 
-        dialog_id = main_module.modal_system.create_dialog(**create_kwargs)
+        dialog_id = state.modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/dialogs/error")
-async def create_error_dialog(request: DialogRequest):
-    """
-    Create an error dialog
-
-    Args:
-        request: DialogRequest with error details
-
-    Returns:
-        Dictionary with dialog ID
-    """
+async def create_error_dialog(request: DialogRequest, state: AppState = Depends(get_state)):
+    """Create an error dialog."""
     try:
-        from server import main as main_module
-
         create_kwargs: dict[str, Any] = {
             "dialog_type": "error",
             "title": request.title,
@@ -216,37 +139,27 @@ async def create_error_dialog(request: DialogRequest):
         if request.timeout is not None:
             create_kwargs["expires_in"] = int(request.timeout)
 
-        dialog_id = main_module.modal_system.create_dialog(**create_kwargs)
+        dialog_id = state.modal_system.create_dialog(**create_kwargs)
         return {"status": "success", "dialog_id": dialog_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/dialogs/progress")
-async def create_progress_dialog(request: ProgressDialogRequest):
-    """
-    Create a progress dialog
-
-    Args:
-        request: ProgressDialogRequest with progress details
-
-    Returns:
-        Dictionary with dialog ID
-    """
+async def create_progress_dialog(request: ProgressDialogRequest, state: AppState = Depends(get_state)):
+    """Create a progress dialog."""
     try:
-        from server import main as main_module
-
-        dialog_id = main_module.modal_system.create_progress_dialog(
+        dialog_id = state.modal_system.create_progress_dialog(
             title=request.title,
             message=request.message,
             total_steps=request.max_value,
             user_id=request.user_id,
         )
-        # Best-effort initial progress update based on current_value/max_value.
+        # Best-effort initial progress update
         try:
             denom = float(request.max_value) if request.max_value else 100.0
             pct = (float(request.current_value) / denom) * 100.0
-            main_module.modal_system.update_progress_dialog(dialog_id, progress=pct, message=request.message)
+            state.modal_system.update_progress_dialog(dialog_id, progress=pct, message=request.message)
         except Exception:
             pass
         return {"status": "success", "dialog_id": dialog_id}
@@ -255,23 +168,12 @@ async def create_progress_dialog(request: ProgressDialogRequest):
 
 
 @router.post("/dialogs/progress/{dialog_id}")
-async def update_progress_dialog(dialog_id: str, request: ProgressDialogRequest):
-    """
-    Update a progress dialog
-
-    Args:
-        dialog_id: ID of the progress dialog
-        request: ProgressDialogRequest with updated values
-
-    Returns:
-        Dictionary with update status
-    """
+async def update_progress_dialog(dialog_id: str, request: ProgressDialogRequest, state: AppState = Depends(get_state)):
+    """Update a progress dialog."""
     try:
-        from server import main as main_module
-
         denom = float(request.max_value) if request.max_value else 100.0
         pct = (float(request.current_value) / denom) * 100.0
-        success = main_module.modal_system.update_progress_dialog(
+        success = state.modal_system.update_progress_dialog(
             dialog_id,
             progress=pct,
             message=request.message,
@@ -282,41 +184,20 @@ async def update_progress_dialog(dialog_id: str, request: ProgressDialogRequest)
 
 
 @router.post("/dialogs/progress/{dialog_id}/complete")
-async def complete_progress_dialog(dialog_id: str, user_id: str = "system"):
-    """
-    Complete a progress dialog
-
-    Args:
-        dialog_id: ID of the progress dialog
-        user_id: ID of the user
-
-    Returns:
-        Dictionary with completion status
-    """
+async def complete_progress_dialog(dialog_id: str, state: AppState = Depends(get_state), user_id: str = "system"):
+    """Complete a progress dialog."""
     try:
-        from server import main as main_module
-
-        success = main_module.modal_system.complete_progress_dialog(dialog_id, success=True)
+        success = state.modal_system.complete_progress_dialog(dialog_id, success=True)
         return {"status": "success" if success else "failed", "completed": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/dialogs/input")
-async def create_input_dialog(request: InputDialogRequest):
-    """
-    Create an input dialog
-
-    Args:
-        request: InputDialogRequest with input details
-
-    Returns:
-        Dictionary with dialog ID
-    """
+async def create_input_dialog(request: InputDialogRequest, state: AppState = Depends(get_state)):
+    """Create an input dialog."""
     try:
-        from server import main as main_module
-
-        dialog_id = main_module.modal_system.create_dialog(
+        dialog_id = state.modal_system.create_dialog(
             dialog_type="input",
             title=request.title,
             message=request.message,
@@ -330,38 +211,20 @@ async def create_input_dialog(request: InputDialogRequest):
 
 
 @router.get("/dialogs/history")
-async def get_dialog_history(user_id: str = "system", limit: int = 50):
-    """
-    Get dialog history for a user
-
-    Args:
-        user_id: ID of the user
-        limit: Maximum number of dialogs to return
-
-    Returns:
-        Dictionary with dialog history
-    """
+async def get_dialog_history(state: AppState = Depends(get_state), user_id: str = "system", limit: int = 50):
+    """Get dialog history for a user."""
     try:
-        from server import main as main_module
-
-        history = main_module.modal_system.get_dialog_history(user_id=user_id, limit=limit)
+        history = state.modal_system.get_dialog_history(user_id=user_id, limit=limit)
         return {"status": "success", "history": history}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/dialogs/stats")
-async def get_dialog_stats():
-    """
-    Get dialog statistics
-
-    Returns:
-        Dictionary with dialog statistics
-    """
+async def get_dialog_stats(state: AppState = Depends(get_state)):
+    """Get dialog statistics."""
     try:
-        from server import main as main_module
-
-        stats = main_module.modal_system.get_dialog_statistics()
+        stats = state.modal_system.get_dialog_statistics()
         return {"status": "success", "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

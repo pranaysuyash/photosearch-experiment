@@ -2,17 +2,19 @@ import os
 import sqlite3
 from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Request, Depends
 from fastapi.responses import FileResponse
 
 from server.models.schemas.video_analysis import VideoAnalysisRequest, VideoSearchRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/video/analyze")
-async def analyze_video_content(background_tasks: BackgroundTasks, request: VideoAnalysisRequest):
+async def analyze_video_content(background_tasks: BackgroundTasks, request: VideoAnalysisRequest, state: AppState = Depends(get_state)):
     """
     Analyze video content for keyframes, scenes, and text detection.
 
@@ -23,9 +25,8 @@ async def analyze_video_content(background_tasks: BackgroundTasks, request: Vide
     - Visual similarity analysis
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
-        ps_logger = main_module.ps_logger
+        video_analyzer = state.video_analyzer
+        ps_logger = state.ps_logger
 
         video_path = request.video_path
 
@@ -61,7 +62,7 @@ async def analyze_video_content(background_tasks: BackgroundTasks, request: Vide
 
 
 @router.get("/video/analysis/{video_path:path}")
-async def get_video_analysis_results(video_path: str):
+async def get_video_analysis_results(video_path: str, state: AppState = Depends(get_state)):
     """
     Get complete analysis results for a video.
 
@@ -72,8 +73,7 @@ async def get_video_analysis_results(video_path: str):
     - OCR text detections with confidence scores
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         # Validate video path
         if not os.path.exists(video_path):
@@ -91,7 +91,7 @@ async def get_video_analysis_results(video_path: str):
 
 
 @router.post("/video/search")
-async def search_video_content(request: VideoSearchRequest):
+async def search_video_content(request: VideoSearchRequest, state: AppState = Depends(get_state)):
     """
     Search video content using text queries.
 
@@ -103,8 +103,7 @@ async def search_video_content(request: VideoSearchRequest):
     Returns matching videos with timestamps where text was found.
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         results = video_analyzer.search_video_content(
             query=request.query,
@@ -131,7 +130,7 @@ async def search_video_content(request: VideoSearchRequest):
 
 
 @router.get("/video/keyframes/{video_path:path}")
-async def get_video_keyframes(video_path: str, scene_id: Optional[int] = None):
+async def get_video_keyframes(video_path: str, scene_id: Optional[int] = None, state: AppState = Depends(get_state)):
     """
     Get keyframes for a specific video, optionally filtered by scene.
 
@@ -143,8 +142,7 @@ async def get_video_keyframes(video_path: str, scene_id: Optional[int] = None):
         List of keyframes with timestamps and file paths
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         analysis = video_analyzer.get_video_analysis(video_path)
 
@@ -169,7 +167,7 @@ async def get_video_keyframes(video_path: str, scene_id: Optional[int] = None):
 
 
 @router.get("/video/scenes/{video_path:path}")
-async def get_video_scenes(video_path: str):
+async def get_video_scenes(video_path: str, state: AppState = Depends(get_state)):
     """
     Get scene detection results for a video.
 
@@ -177,8 +175,7 @@ async def get_video_scenes(video_path: str):
         List of detected scenes with start/end timestamps and durations
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         analysis = video_analyzer.get_video_analysis(video_path)
 
@@ -199,7 +196,7 @@ async def get_video_scenes(video_path: str):
 
 
 @router.get("/video/ocr/{video_path:path}")
-async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5):
+async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5, state: AppState = Depends(get_state)):
     """
     Get OCR text detection results for a video.
 
@@ -211,8 +208,7 @@ async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5):
         List of text detections with timestamps and confidence scores
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         analysis = video_analyzer.get_video_analysis(video_path)
 
@@ -239,7 +235,7 @@ async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5):
 
 
 @router.get("/video/stats")
-async def get_video_analysis_stats():
+async def get_video_analysis_stats(state: AppState = Depends(get_state)):
     """
     Get statistics about video analysis processing.
 
@@ -251,8 +247,7 @@ async def get_video_analysis_stats():
         - Processing time statistics
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         stats = video_analyzer.get_video_statistics()
         return {"stats": stats}
@@ -280,9 +275,8 @@ async def get_video_thumbnail(
         Thumbnail image as JPEG
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
-        cors_origins = main_module.cors_origins
+        video_analyzer = state.video_analyzer
+        cors_origins = state.cors_origins
 
         analysis = video_analyzer.get_video_analysis(video_path)
 
@@ -340,7 +334,7 @@ async def get_video_thumbnail(
 
 
 @router.delete("/video/analysis/{video_path:path}")
-async def delete_video_analysis(video_path: str):
+async def delete_video_analysis(video_path: str, state: AppState = Depends(get_state)):
     """
     Delete analysis data for a specific video.
 
@@ -351,8 +345,7 @@ async def delete_video_analysis(video_path: str):
     - OCR text detections
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
+        video_analyzer = state.video_analyzer
 
         # Check if video analysis exists
         analysis = video_analyzer.get_video_analysis(video_path)
@@ -396,7 +389,7 @@ async def delete_video_analysis(video_path: str):
 
 
 @router.post("/video/batch-analyze")
-async def batch_analyze_videos(background_tasks: BackgroundTasks, video_paths: List[str] = Body(...)):
+async def batch_analyze_videos(background_tasks: BackgroundTasks, video_paths: List[str] = Body(...), state: AppState = Depends(get_state)):
     """
     Analyze multiple videos in batch.
 
@@ -404,9 +397,8 @@ async def batch_analyze_videos(background_tasks: BackgroundTasks, video_paths: L
     Use /video/batch-status to monitor progress.
     """
     try:
-        from server import main as main_module
-        video_analyzer = main_module.video_analyzer
-        ps_logger = main_module.ps_logger
+        video_analyzer = state.video_analyzer
+        ps_logger = state.ps_logger
 
         if len(video_paths) > 50:
             raise HTTPException(status_code=400, detail="Maximum 50 videos per batch")

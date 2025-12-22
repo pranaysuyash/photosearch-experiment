@@ -1,7 +1,9 @@
 import os
 
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, HTTPException, Depends
 from fastapi.responses import FileResponse
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -49,7 +51,7 @@ async def bulk_export(payload: dict = Body(...)):
 
 
 @router.post("/bulk/delete")
-async def bulk_delete(payload: dict = Body(...)):
+async def bulk_delete(payload: dict = Body(...), state: AppState = Depends(get_state)):
     """
     Delete multiple photos.
 
@@ -65,7 +67,6 @@ async def bulk_delete(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="Deletion requires confirmation")
 
     try:
-        from server import main as main_module
 
         deleted_count = 0
         errors = []
@@ -75,11 +76,11 @@ async def bulk_delete(payload: dict = Body(...)):
                 if os.path.exists(file_path):
                     os.remove(file_path)
                     # Remove from database
-                    main_module.photo_search_engine.db.conn.execute(
+                    state.photo_search_engine.db.conn.execute(
                         "DELETE FROM metadata WHERE file_path = ?",
                         (file_path,),
                     )
-                    main_module.photo_search_engine.db.conn.commit()
+                    state.photo_search_engine.db.conn.commit()
                     deleted_count += 1
                 else:
                     errors.append(f"File not found: {file_path}")
@@ -97,7 +98,7 @@ async def bulk_delete(payload: dict = Body(...)):
 
 
 @router.post("/bulk/favorite")
-async def bulk_favorite(payload: dict = Body(...)):
+async def bulk_favorite(payload: dict = Body(...), state: AppState = Depends(get_state)):
     """
     Add/remove multiple photos to/from favorites.
 
@@ -113,7 +114,6 @@ async def bulk_favorite(payload: dict = Body(...)):
         raise HTTPException(status_code=400, detail="action must be 'add' or 'remove'")
 
     try:
-        from server import main as main_module
 
         success_count = 0
         errors = []
@@ -121,9 +121,9 @@ async def bulk_favorite(payload: dict = Body(...)):
         for file_path in file_paths:
             try:
                 if action == "add":
-                    main_module.photo_search_engine.add_favorite(file_path)
+                    state.photo_search_engine.add_favorite(file_path)
                 else:
-                    main_module.photo_search_engine.remove_favorite(file_path)
+                    state.photo_search_engine.remove_favorite(file_path)
                 success_count += 1
             except Exception as e:
                 errors.append(f"Failed to {action} favorite {file_path}: {str(e)}")

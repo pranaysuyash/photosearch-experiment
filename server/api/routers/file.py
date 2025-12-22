@@ -2,23 +2,24 @@ import mimetypes
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse
 
 from server.config import settings
 from server.utils.files import validate_file_path
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/file")
-async def get_file(request: Request, path: str, download: bool = False):
+async def get_file(request: Request, path: str, download: bool = False, state: AppState = Depends(get_state)):
     """
     Serve an original file (image/video/etc.) without transcoding.
     Use `download=true` to force a download Content-Disposition.
     """
-    from server import main as main_module
 
     # Security check with enhanced validation
     if settings.MEDIA_DIR.exists():
@@ -30,7 +31,7 @@ async def get_file(request: Request, path: str, download: bool = False):
     if not validate_file_path(path, allowed_paths):
         # Log the attempted access for security monitoring
         client_ip = request.client.host if request.client else "unknown"
-        main_module.ps_logger.warning(f"File access denied - IP: {client_ip}, Path: {path}")
+        state.ps_logger.warning(f"File access denied - IP: {client_ip}, Path: {path}")
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Additional security: validate file extension

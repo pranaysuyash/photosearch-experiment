@@ -1,10 +1,12 @@
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.duplicates_db import get_duplicates_db
 from server.models.schemas.duplicates import DuplicateResolution
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -22,16 +24,14 @@ async def get_duplicates(hash_type: Optional[str] = None, limit: int = 100, offs
 
 
 @router.post("/api/duplicates/scan")
-async def scan_duplicates(type: str = "exact", limit: int = 1000):
+async def scan_duplicates(type: str = "exact", limit: int = 1000, state: AppState = Depends(get_state)):
     """Scan for duplicates."""
     try:
         if type not in ["exact", "perceptual"]:
             raise HTTPException(status_code=400, detail="Type must be 'exact' or 'perceptual'")
 
-        from server import main as main_module
-
         # Get all photo paths from database
-        cursor = main_module.photo_search_engine.db.conn.cursor()
+        cursor = state.photo_search_engine.db.conn.cursor()
         cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT ?", (limit,))
         all_files = [row[0] for row in cursor.fetchall()]
 

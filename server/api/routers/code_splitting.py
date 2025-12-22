@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.models.schemas.performance import CodeSplittingConfigRequest, PerformanceRecordRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/code-splitting/config")
-async def get_code_splitting_config():
+async def get_code_splitting_config(state: AppState = Depends(get_state)):
     """
     Get code splitting configuration
 
@@ -15,16 +17,15 @@ async def get_code_splitting_config():
         Dictionary with code splitting configuration
     """
     try:
-        from server import main as main_module
 
-        config = main_module.code_splitting_config.get_config()
+        config = state.code_splitting_config.get_config()
         return {"status": "success", "config": config}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/code-splitting/chunk/{chunk_name}")
-async def get_chunk_config(chunk_name: str):
+async def get_chunk_config(chunk_name: str, state: AppState = Depends(get_state)):
     """
     Get configuration for a specific chunk
 
@@ -35,9 +36,8 @@ async def get_chunk_config(chunk_name: str):
         Dictionary with chunk configuration
     """
     try:
-        from server import main as main_module
 
-        config = main_module.code_splitting_config.get_chunk_config(chunk_name)
+        config = state.code_splitting_config.get_chunk_config(chunk_name)
         if config:
             return {"status": "success", "config": config}
         else:
@@ -47,7 +47,7 @@ async def get_chunk_config(chunk_name: str):
 
 
 @router.post("/code-splitting/chunk/{chunk_name}")
-async def set_chunk_config(chunk_name: str, request: CodeSplittingConfigRequest):
+async def set_chunk_config(chunk_name: str, request: CodeSplittingConfigRequest, state: AppState = Depends(get_state)):
     """
     Set configuration for a specific chunk
 
@@ -59,16 +59,15 @@ async def set_chunk_config(chunk_name: str, request: CodeSplittingConfigRequest)
         Dictionary with update status
     """
     try:
-        from server import main as main_module
 
-        success = main_module.code_splitting_config.set_chunk_config(chunk_name, request.config)
+        success = state.code_splitting_config.set_chunk_config(chunk_name, request.config)
         return {"status": "success" if success else "failed", "updated": success}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/code-splitting/enabled")
-async def get_code_splitting_enabled():
+async def get_code_splitting_enabled(state: AppState = Depends(get_state)):
     """
     Check if code splitting is enabled
 
@@ -76,16 +75,15 @@ async def get_code_splitting_enabled():
         Dictionary with enabled status
     """
     try:
-        from server import main as main_module
 
-        enabled = main_module.code_splitting_config.is_code_splitting_enabled()
+        enabled = state.code_splitting_config.is_code_splitting_enabled()
         return {"status": "success", "enabled": enabled}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/code-splitting/enabled")
-async def set_code_splitting_enabled(enabled: bool):
+async def set_code_splitting_enabled(enabled: bool, state: AppState = Depends(get_state)):
     """
     Enable or disable code splitting
 
@@ -96,16 +94,15 @@ async def set_code_splitting_enabled(enabled: bool):
         Dictionary with update status
     """
     try:
-        from server import main as main_module
 
-        main_module.code_splitting_config.enable_code_splitting(enabled)
+        state.code_splitting_config.enable_code_splitting(enabled)
         return {"status": "success", "enabled": enabled}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/code-splitting/performance")
-async def record_lazy_load_performance(request: PerformanceRecordRequest):
+async def record_lazy_load_performance(request: PerformanceRecordRequest, state: AppState = Depends(get_state)):
     """
     Record lazy load performance data
 
@@ -116,9 +113,8 @@ async def record_lazy_load_performance(request: PerformanceRecordRequest):
         Dictionary with recording status
     """
     try:
-        from server import main as main_module
 
-        main_module.lazy_load_tracker.record_lazy_load(
+        state.lazy_load_tracker.record_lazy_load(
             component_name=request.component_name,
             load_time_ms=request.load_time_ms,
             chunk_name=request.chunk_name,
@@ -130,7 +126,7 @@ async def record_lazy_load_performance(request: PerformanceRecordRequest):
 
 
 @router.get("/code-splitting/performance")
-async def get_lazy_load_performance(component_name: str | None = None):
+async def get_lazy_load_performance(component_name: str | None = None, state: AppState = Depends(get_state)):
     """
     Get lazy load performance statistics
 
@@ -141,16 +137,15 @@ async def get_lazy_load_performance(component_name: str | None = None):
         Dictionary with performance statistics
     """
     try:
-        from server import main as main_module
 
-        stats = main_module.lazy_load_tracker.get_performance_stats(component_name)
+        stats = state.lazy_load_tracker.get_performance_stats(component_name)
         return {"status": "success", "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/code-splitting/performance/chunks")
-async def get_chunk_performance():
+async def get_chunk_performance(state: AppState = Depends(get_state)):
     """
     Get performance statistics by chunk
 
@@ -158,9 +153,8 @@ async def get_chunk_performance():
         Dictionary with chunk performance statistics
     """
     try:
-        from server import main as main_module
 
-        stats = main_module.lazy_load_tracker.get_chunk_performance()
+        stats = state.lazy_load_tracker.get_chunk_performance()
         return {"status": "success", "stats": stats}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

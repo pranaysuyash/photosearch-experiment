@@ -3675,64 +3675,6 @@
         "summary": "Cluster Faces Api"
       }
     },
-    "/api/faces/cluster/{cluster_id}/photos": {
-      "get": {
-        "description": "Get all photos containing faces from a specific cluster.",
-        "operationId": "get_cluster_photos_api_faces_cluster__cluster_id__photos_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "cluster_id",
-            "required": true,
-            "schema": {
-              "title": "Cluster Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 100,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Cluster Photos"
-      }
-    },
     "/api/faces/clusters": {
       "get": {
         "description": "Get all face clusters.",
@@ -3838,6 +3780,112 @@
         "summary": "Set Cluster Label"
       }
     },
+    "/api/faces/clusters/{cluster_id}/photos": {
+      "get": {
+        "description": "Get all photos containing faces from a specific cluster.",
+        "operationId": "get_cluster_photos_api_faces_clusters__cluster_id__photos_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cluster_id",
+            "required": true,
+            "schema": {
+              "title": "Cluster Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Cluster Photos"
+      }
+    },
+    "/api/faces/crop/{face_id}": {
+      "get": {
+        "description": "Get a cropped face image by face ID.",
+        "operationId": "get_face_crop_api_faces_crop__face_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "face_id",
+            "required": true,
+            "schema": {
+              "title": "Face Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "required": false,
+            "schema": {
+              "default": 150,
+              "title": "Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Face Crop"
+      }
+    },
     "/api/faces/low-confidence": {
       "get": {
         "description": "Get all faces with confidence below threshold.",
@@ -3897,59 +3945,10 @@
         "summary": "Get Low Confidence Faces"
       }
     },
-    "/api/faces/photos-with-faces": {
-      "get": {
-        "description": "Get all photos that have at least one detected face.",
-        "operationId": "get_photos_with_faces_api_faces_photos_with_faces_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 200,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Photos With Faces"
-      }
-    },
-    "/api/faces/photos/{person_name}": {
+    "/api/faces/person/{person_name}": {
       "get": {
         "description": "Get photos for a specific person/cluster.",
-        "operationId": "get_photos_by_person_api_faces_photos__person_name__get",
+        "operationId": "get_photos_by_person_api_faces_person__person_name__get",
         "parameters": [
           {
             "in": "path",
@@ -4002,6 +4001,55 @@
           }
         },
         "summary": "Get Photos By Person"
+      }
+    },
+    "/api/faces/photos-with-faces": {
+      "get": {
+        "description": "Get all photos that have at least one detected face.",
+        "operationId": "get_photos_with_faces_api_faces_photos_with_faces_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Photos With Faces"
       }
     },
     "/api/faces/scan": {
@@ -4094,48 +4142,10 @@
         "summary": "Scan Faces Async"
       }
     },
-    "/api/faces/scan-async/{job_id}": {
-      "get": {
-        "description": "Get status of an async face scan job.",
-        "operationId": "get_scan_job_status_api_faces_scan_async__job_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Scan Job Status"
-      }
-    },
-    "/api/faces/scan-file": {
+    "/api/faces/scan-single": {
       "post": {
         "description": "Scan a specific file or list of files for faces.",
-        "operationId": "scan_single_file_api_faces_scan_file_post",
+        "operationId": "scan_single_file_api_faces_scan_single_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -4169,6 +4179,44 @@
           }
         },
         "summary": "Scan Single File"
+      }
+    },
+    "/api/faces/scan-status/{job_id}": {
+      "get": {
+        "description": "Get status of an async face scan job.",
+        "operationId": "get_scan_job_status_api_faces_scan_status__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scan Job Status"
       }
     },
     "/api/faces/singletons": {
@@ -4470,54 +4518,6 @@
           }
         },
         "summary": "Create Person From Face"
-      }
-    },
-    "/api/faces/{face_id}/crop": {
-      "get": {
-        "description": "Get a cropped face image by face ID.",
-        "operationId": "get_face_crop_api_faces__face_id__crop_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "face_id",
-            "required": true,
-            "schema": {
-              "title": "Face Id",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "size",
-            "required": false,
-            "schema": {
-              "default": 150,
-              "title": "Size",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Face Crop"
       }
     },
     "/api/intent/detect": {
@@ -7164,7 +7164,7 @@
     },
     "/dialogs/active": {
       "get": {
-        "description": "Get all active dialogs for a user Args: user_id: ID of the user Returns: Dictionary with active dialogs",
+        "description": "Get all active dialogs for a user.",
         "operationId": "get_active_dialogs_dialogs_active_get",
         "parameters": [
           {
@@ -7203,7 +7203,7 @@
     },
     "/dialogs/confirmation": {
       "post": {
-        "description": "Create a confirmation dialog Args: request: DialogRequest with confirmation details Returns: Dictionary with dialog ID",
+        "description": "Create a confirmation dialog.",
         "operationId": "create_confirmation_dialog_dialogs_confirmation_post",
         "requestBody": {
           "content": {
@@ -7240,7 +7240,7 @@
     },
     "/dialogs/create": {
       "post": {
-        "description": "Create a new dialog Args: request: DialogRequest with dialog details Returns: Dictionary with dialog ID",
+        "description": "Create a new dialog.",
         "operationId": "create_dialog_dialogs_create_post",
         "requestBody": {
           "content": {
@@ -7277,7 +7277,7 @@
     },
     "/dialogs/error": {
       "post": {
-        "description": "Create an error dialog Args: request: DialogRequest with error details Returns: Dictionary with dialog ID",
+        "description": "Create an error dialog.",
         "operationId": "create_error_dialog_dialogs_error_post",
         "requestBody": {
           "content": {
@@ -7314,7 +7314,7 @@
     },
     "/dialogs/history": {
       "get": {
-        "description": "Get dialog history for a user Args: user_id: ID of the user limit: Maximum number of dialogs to return Returns: Dictionary with dialog history",
+        "description": "Get dialog history for a user.",
         "operationId": "get_dialog_history_dialogs_history_get",
         "parameters": [
           {
@@ -7363,7 +7363,7 @@
     },
     "/dialogs/input": {
       "post": {
-        "description": "Create an input dialog Args: request: InputDialogRequest with input details Returns: Dictionary with dialog ID",
+        "description": "Create an input dialog.",
         "operationId": "create_input_dialog_dialogs_input_post",
         "requestBody": {
           "content": {
@@ -7400,7 +7400,7 @@
     },
     "/dialogs/progress": {
       "post": {
-        "description": "Create a progress dialog Args: request: ProgressDialogRequest with progress details Returns: Dictionary with dialog ID",
+        "description": "Create a progress dialog.",
         "operationId": "create_progress_dialog_dialogs_progress_post",
         "requestBody": {
           "content": {
@@ -7437,7 +7437,7 @@
     },
     "/dialogs/progress/{dialog_id}": {
       "post": {
-        "description": "Update a progress dialog Args: dialog_id: ID of the progress dialog request: ProgressDialogRequest with updated values Returns: Dictionary with update status",
+        "description": "Update a progress dialog.",
         "operationId": "update_progress_dialog_dialogs_progress__dialog_id__post",
         "parameters": [
           {
@@ -7485,7 +7485,7 @@
     },
     "/dialogs/progress/{dialog_id}/complete": {
       "post": {
-        "description": "Complete a progress dialog Args: dialog_id: ID of the progress dialog user_id: ID of the user Returns: Dictionary with completion status",
+        "description": "Complete a progress dialog.",
         "operationId": "complete_progress_dialog_dialogs_progress__dialog_id__complete_post",
         "parameters": [
           {
@@ -7533,7 +7533,7 @@
     },
     "/dialogs/stats": {
       "get": {
-        "description": "Get dialog statistics Returns: Dictionary with dialog statistics",
+        "description": "Get dialog statistics.",
         "operationId": "get_dialog_stats_dialogs_stats_get",
         "responses": {
           "200": {
@@ -7550,7 +7550,7 @@
     },
     "/dialogs/{dialog_id}": {
       "get": {
-        "description": "Get details for a specific dialog Args: dialog_id: ID of the dialog user_id: ID of the user Returns: Dictionary with dialog details",
+        "description": "Get details for a specific dialog.",
         "operationId": "get_dialog_dialogs__dialog_id__get",
         "parameters": [
           {
@@ -7598,7 +7598,7 @@
     },
     "/dialogs/{dialog_id}/action": {
       "post": {
-        "description": "Record an action on a dialog Args: dialog_id: ID of the dialog request: DialogActionRequest with action details Returns: Dictionary with action status",
+        "description": "Record an action on a dialog.",
         "operationId": "dialog_action_dialogs__dialog_id__action_post",
         "parameters": [
           {
@@ -7646,7 +7646,7 @@
     },
     "/dialogs/{dialog_id}/close": {
       "post": {
-        "description": "Close a dialog Args: dialog_id: ID of the dialog request: DialogActionRequest with close action Returns: Dictionary with close status",
+        "description": "Close a dialog.",
         "operationId": "close_dialog_dialogs__dialog_id__close_post",
         "parameters": [
           {
@@ -7694,7 +7694,7 @@
     },
     "/dialogs/{dialog_id}/dismiss": {
       "post": {
-        "description": "Dismiss a dialog Args: dialog_id: ID of the dialog user_id: ID of the user Returns: Dictionary with dismiss status",
+        "description": "Dismiss a dialog.",
         "operationId": "dismiss_dialog_dialogs__dialog_id__dismiss_post",
         "parameters": [
           {
@@ -10724,8 +10724,9 @@
           {
             "in": "query",
             "name": "query",
-            "required": true,
+            "required": false,
             "schema": {
+              "default": "",
               "title": "Query",
               "type": "string"
             }
@@ -10786,7 +10787,7 @@
     },
     "/searches": {
       "get": {
-        "description": "Get saved searches with pagination and filtering. Args: limit: Maximum number of results offset: Pagination offset sort_by: Field to sort by sort_order: Sort order (ASC or DESC) favorites_only: Only return favorite searches Returns: List of saved searches",
+        "description": "Get saved searches with pagination and filtering.",
         "operationId": "get_saved_searches_searches_get",
         "parameters": [
           {
@@ -10865,7 +10866,7 @@
     },
     "/searches/analytics": {
       "get": {
-        "description": "Get overall search analytics and insights. Returns: Analytics data including popular searches, recent searches, etc.",
+        "description": "Get overall search analytics and insights.",
         "operationId": "get_search_analytics_searches_analytics_get",
         "responses": {
           "200": {
@@ -10882,7 +10883,7 @@
     },
     "/searches/analytics/detailed": {
       "get": {
-        "description": "Get detailed search analytics for a specific time period. Args: days: Number of days to analyze (default: 30) Returns: Detailed analytics data with trends and insights",
+        "description": "Get detailed search analytics for a specific time period.",
         "operationId": "get_detailed_analytics_searches_analytics_detailed_get",
         "parameters": [
           {
@@ -10921,7 +10922,7 @@
     },
     "/searches/analytics/export": {
       "get": {
-        "description": "Export analytics data in various formats. Args: format_type: Output format ('json', 'csv', 'text') - default: json days: Number of days to include in analysis - default: 30 Returns: Analytics data in specified format",
+        "description": "Export analytics data in various formats.",
         "operationId": "export_analytics_searches_analytics_export_get",
         "parameters": [
           {
@@ -10970,7 +10971,7 @@
     },
     "/searches/analytics/trends": {
       "get": {
-        "description": "Get search trends over time. Args: days: Number of days to calculate trends for (default: 90) Returns: Trend data showing search evolution over time",
+        "description": "Get search trends over time.",
         "operationId": "get_search_trends_searches_analytics_trends_get",
         "parameters": [
           {
@@ -11009,7 +11010,7 @@
     },
     "/searches/history": {
       "get": {
-        "description": "Get search history (all searches, not just saved ones). Args: limit: Maximum number of results offset: Pagination offset sort_by: Field to sort by sort_order: Sort order (ASC or DESC) Returns: Search history records",
+        "description": "Get search history (all searches, not just saved ones).",
         "operationId": "get_search_history_searches_history_get",
         "parameters": [
           {
@@ -11078,7 +11079,7 @@
     },
     "/searches/history/clear": {
       "post": {
-        "description": "Clear all search history (but keep saved searches). Returns: Number of records deleted",
+        "description": "Clear all search history (but keep saved searches).",
         "operationId": "clear_search_history_searches_history_clear_post",
         "responses": {
           "200": {
@@ -11095,7 +11096,7 @@
     },
     "/searches/performance": {
       "get": {
-        "description": "Get performance metrics for searches. Returns: Performance data including average execution time, etc.",
+        "description": "Get performance metrics for searches.",
         "operationId": "get_search_performance_searches_performance_get",
         "responses": {
           "200": {
@@ -11112,7 +11113,7 @@
     },
     "/searches/recurring": {
       "get": {
-        "description": "Get searches that have been executed multiple times. Args: threshold: Minimum number of executions to be considered recurring Returns: List of recurring searches",
+        "description": "Get searches that have been executed multiple times.",
         "operationId": "get_recurring_searches_searches_recurring_get",
         "parameters": [
           {
@@ -11151,7 +11152,7 @@
     },
     "/searches/save": {
       "post": {
-        "description": "Save a search query for later reuse. Args: request: SaveSearchRequest with search details Returns: ID of the saved search",
+        "description": "Save a search query for later reuse.",
         "operationId": "save_search_searches_save_post",
         "requestBody": {
           "content": {
@@ -11188,7 +11189,7 @@
     },
     "/searches/{search_id}": {
       "delete": {
-        "description": "Delete a saved search. Args: search_id: ID of the search to delete Returns: Confirmation message",
+        "description": "Delete a saved search.",
         "operationId": "delete_saved_search_searches__search_id__delete",
         "parameters": [
           {
@@ -11224,7 +11225,7 @@
         "summary": "Delete Saved Search"
       },
       "get": {
-        "description": "Get a specific saved search by ID. Args: search_id: ID of the search Returns: Saved search details",
+        "description": "Get a specific saved search by ID.",
         "operationId": "get_saved_search_searches__search_id__get",
         "parameters": [
           {
@@ -11260,7 +11261,7 @@
         "summary": "Get Saved Search"
       },
       "put": {
-        "description": "Update a saved search (favorite status or notes). Args: search_id: ID of the search request: UpdateSearchRequest with fields to update Returns: Updated search details",
+        "description": "Update a saved search (favorite status or notes).",
         "operationId": "update_saved_search_searches__search_id__put",
         "parameters": [
           {
@@ -11308,7 +11309,7 @@
     },
     "/searches/{search_id}/execute": {
       "post": {
-        "description": "Execute a saved search and log the execution. Args: search_id: ID of the saved search Returns: Search results and execution details",
+        "description": "Execute a saved search and log the execution.",
         "operationId": "execute_saved_search_searches__search_id__execute_post",
         "parameters": [
           {

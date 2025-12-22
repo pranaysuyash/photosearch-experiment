@@ -3,11 +3,13 @@ import uuid
 from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.models.schemas.library import LibraryRemoveRequest
 from server.models.schemas.trash import TrashEmptyRequest, TrashMoveRequest, TrashRestoreRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -30,9 +32,8 @@ def _trash_allowed_roots() -> List[Path]:
         (settings.BASE_DIR / "media_sources").resolve(),
     ]
     try:
-        from server import main as main_module
 
-        for s in main_module.source_store.list_sources(redact=False):
+        for s in state.source_store.list_sources(redact=False):
             if s.type != "local_folder":
                 continue
             p = (s.config or {}).get("path")
@@ -59,19 +60,18 @@ def _assert_path_allowed_for_trash(p: Path) -> None:
 def _reindex_one_file(path: str) -> None:
     try:
         from src.metadata_extractor import extract_all_metadata
-        from server import main as main_module
 
         metadata = extract_all_metadata(path)
         if metadata:
-            main_module.photo_search_engine.db.store_metadata(path, metadata)
-            main_module.process_semantic_indexing([path])
+            state.photo_search_engine.db.store_metadata(path, metadata)
+            state.process_semantic_indexing([path])
     except Exception:
         # Restore should succeed even if indexing fails.
         pass
 
 
 @router.post("/trash/move")
-async def trash_move(req: TrashMoveRequest):
+async def trash_move(req: TrashMoveRequest, state: AppState = Depends(get_state)):
     """
     Move files into app-managed Trash and remove them from the active library index.
     For cloud sources, this moves the mirrored local copy only (does not delete remote originals).
@@ -79,12 +79,10 @@ async def trash_move(req: TrashMoveRequest):
     if not req.file_paths:
         raise HTTPException(status_code=400, detail="file_paths is required")
 
-    from server import main as main_module
-
-    photo_search_engine = main_module.photo_search_engine
-    source_item_store = main_module.source_item_store
-    trash_db = main_module.trash_db
-    vector_store = main_module.vector_store
+    photo_search_engine = state.photo_search_engine
+    source_item_store = state.source_item_store
+    trash_db = state.trash_db
+    vector_store = state.vector_store
 
     moved: List[dict] = []
     errors: List[str] = []
@@ -149,10 +147,9 @@ async def trash_move(req: TrashMoveRequest):
 
 
 @router.get("/trash")
-async def list_trash(limit: int = 200, offset: int = 0):
-    from server import main as main_module
+async def list_trash(limit: int = 200, offset: int = 0, state: AppState = Depends(get_state)):
 
-    items = main_module.trash_db.list(status="trashed", limit=limit, offset=offset)
+    items = state.trash_db.list(status="trashed", limit=limit, offset=offset)
     out: List[dict] = []
     for it in items:
         out.append(
@@ -170,14 +167,12 @@ async def list_trash(limit: int = 200, offset: int = 0):
 
 
 @router.post("/trash/restore")
-async def restore_from_trash(req: TrashRestoreRequest):
+async def restore_from_trash(req: TrashRestoreRequest, state: AppState = Depends(get_state)):
     if not req.item_ids:
         raise HTTPException(status_code=400, detail="item_ids is required")
 
-    from server import main as main_module
-
-    source_item_store = main_module.source_item_store
-    trash_db = main_module.trash_db
+    source_item_store = state.source_item_store
+    trash_db = state.trash_db
 
     restored: List[str] = []
     errors: List[str] = []
@@ -217,15 +212,14 @@ async def restore_from_trash(req: TrashRestoreRequest):
 
 
 @router.post("/trash/empty")
-async def empty_trash(req: TrashEmptyRequest):
+async def empty_trash(req: TrashEmptyRequest, state: AppState = Depends(get_state)):
     """
     Permanently delete files currently in Trash.
     For cloud sources, this acts as "Remove from library" (remote originals are not deleted).
     """
-    from server import main as main_module
 
-    source_item_store = main_module.source_item_store
-    trash_db = main_module.trash_db
+    source_item_store = state.source_item_store
+    trash_db = state.trash_db
 
     items = []
     if req.item_ids:
@@ -263,7 +257,7 @@ async def empty_trash(req: TrashEmptyRequest):
 
 
 @router.post("/library/remove")
-async def remove_from_library(req: LibraryRemoveRequest):
+async def remove_from_library(req: LibraryRemoveRequest, state: AppState = Depends(get_state)):
     """
     Remove items from the library index without sending them to Trash.
     - For cloud sources (Drive/S3 mirrors): deletes the local mirror and marks the source item as `removed` so it won't re-download.
@@ -272,11 +266,9 @@ async def remove_from_library(req: LibraryRemoveRequest):
     if not req.file_paths:
         raise HTTPException(status_code=400, detail="file_paths is required")
 
-    from server import main as main_module
-
-    photo_search_engine = main_module.photo_search_engine
-    source_item_store = main_module.source_item_store
-    vector_store = main_module.vector_store
+    photo_search_engine = state.photo_search_engine
+    source_item_store = state.source_item_store
+    vector_store = state.vector_store
 
     removed: List[str] = []
     errors: List[str] = []

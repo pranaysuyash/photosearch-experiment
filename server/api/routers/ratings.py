@@ -1,8 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.models.schemas.ratings import RatingCreate
 from server.ratings_db import get_ratings_db
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -40,7 +42,7 @@ async def set_photo_rating(file_path: str, rating_req: RatingCreate):
 
 
 @router.get("/api/ratings/photos/{rating}")
-async def get_photos_by_rating(rating: int, limit: int = 100, offset: int = 0):
+async def get_photos_by_rating(rating: int, limit: int = 100, offset: int = 0, state: AppState = Depends(get_state)):
     """Get photos with specific rating."""
     try:
         if not (1 <= rating <= 5):
@@ -49,12 +51,10 @@ async def get_photos_by_rating(rating: int, limit: int = 100, offset: int = 0):
         ratings_db = get_ratings_db(settings.BASE_DIR / "ratings.db")
         photo_paths = ratings_db.get_photos_by_rating(rating, limit, offset)
 
-        from server import main as main_module
-
         # Get full metadata for each photo
         photos = []
         for path in photo_paths:
-            metadata = main_module.photo_search_engine.db.get_metadata(path)
+            metadata = state.photo_search_engine.db.get_metadata(path)
             if metadata:
                 photos.append(
                     {

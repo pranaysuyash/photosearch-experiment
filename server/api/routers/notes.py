@@ -1,10 +1,12 @@
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.models.schemas.notes import NoteCreate
 from server.notes_db import get_notes_db
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -57,13 +59,11 @@ async def delete_photo_notes(file_path: str):
 
 
 @router.get("/api/notes/search")
-async def search_notes(query: str, limit: int = 100, offset: int = 0):
+async def search_notes(query: str, limit: int = 100, offset: int = 0, state: AppState = Depends(get_state)):
     """Search notes by content."""
     try:
         notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
         results = notes_db.search_notes(query, limit, offset)
-
-        from server import main as main_module
 
         # Get full metadata for each photo
         photos = []
@@ -72,7 +72,7 @@ async def search_notes(query: str, limit: int = 100, offset: int = 0):
             if not note_path:
                 continue
             try:
-                metadata = main_module.photo_search_engine.db.get_metadata(note_path)
+                metadata = state.photo_search_engine.db.get_metadata(note_path)
                 if metadata:
                     photos.append(
                         {
@@ -92,19 +92,18 @@ async def search_notes(query: str, limit: int = 100, offset: int = 0):
 
 
 @router.get("/api/notes/stats")
-async def get_notes_stats():
+async def get_notes_stats(state: AppState = Depends(get_state)):
     """Get notes statistics."""
     try:
         notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
         stats = notes_db.get_notes_stats()
         return {"stats": stats}
     except Exception as e:
-        from server import main as main_module
 
         photos = []
         for row in results:
             path = row.get("photo_path")
-            metadata = main_module.photo_search_engine.db.get_metadata(path)
+            metadata = state.photo_search_engine.db.get_metadata(path)
             if metadata:
                 photos.append(
                     {

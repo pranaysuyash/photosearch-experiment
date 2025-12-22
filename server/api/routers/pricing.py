@@ -1,8 +1,10 @@
 from typing import List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.pricing import PricingTier, UsageStats, pricing_manager
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -39,15 +41,14 @@ async def recommend_pricing_tier(image_count: int):
 
 
 @router.get("/usage/{user_id}", response_model=UsageStats)
-async def get_usage_stats(user_id: str):
+async def get_usage_stats(user_id: str, state: AppState = Depends(get_state)):
     """
     Get current usage statistics for a user.
     """
-    from server import main as main_module
 
     # Get current image count from database
     try:
-        cursor = main_module.photo_search_engine.db.conn.cursor()
+        cursor = state.photo_search_engine.db.conn.cursor()
         cursor.execute("SELECT COUNT(*) as count FROM metadata")
         result = cursor.fetchone()
         image_count = result["count"] if result else 0

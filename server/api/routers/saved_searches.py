@@ -1,26 +1,23 @@
-from fastapi import APIRouter, HTTPException
+"""
+Saved Searches Router
+
+Uses Depends(get_state) for accessing shared application state.
+"""
+from fastapi import APIRouter, Depends, HTTPException
 
 from server.models.schemas.saved_searches import SaveSearchRequest, UpdateSearchRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/searches/save")
-async def save_search(request: SaveSearchRequest):
-    """
-    Save a search query for later reuse.
-
-    Args:
-        request: SaveSearchRequest with search details
-
-    Returns:
-        ID of the saved search
-    """
+async def save_search(request: SaveSearchRequest, state: AppState = Depends(get_state)):
+    """Save a search query for later reuse."""
     try:
-        from server import main as main_module
-
-        search_id = main_module.saved_search_manager.save_search(
+        search_id = state.saved_search_manager.save_search(
             query=request.query,
             mode=request.mode,
             results_count=request.results_count,
@@ -36,29 +33,16 @@ async def save_search(request: SaveSearchRequest):
 
 @router.get("/searches")
 async def get_saved_searches(
+    state: AppState = Depends(get_state),
     limit: int = 50,
     offset: int = 0,
     sort_by: str = "updated_at",
     sort_order: str = "DESC",
     favorites_only: bool = False,
 ):
-    """
-    Get saved searches with pagination and filtering.
-
-    Args:
-        limit: Maximum number of results
-        offset: Pagination offset
-        sort_by: Field to sort by
-        sort_order: Sort order (ASC or DESC)
-        favorites_only: Only return favorite searches
-
-    Returns:
-        List of saved searches
-    """
+    """Get saved searches with pagination and filtering."""
     try:
-        from server import main as main_module
-
-        searches = main_module.saved_search_manager.get_saved_searches(
+        searches = state.saved_search_manager.get_saved_searches(
             limit=limit,
             offset=offset,
             sort_by=sort_by,
@@ -71,20 +55,10 @@ async def get_saved_searches(
 
 
 @router.get("/searches/{search_id}")
-async def get_saved_search(search_id: int):
-    """
-    Get a specific saved search by ID.
-
-    Args:
-        search_id: ID of the search
-
-    Returns:
-        Saved search details
-    """
+async def get_saved_search(search_id: int, state: AppState = Depends(get_state)):
+    """Get a specific saved search by ID."""
     try:
-        from server import main as main_module
-
-        search = main_module.saved_search_manager.get_saved_search_by_id(search_id)
+        search = state.saved_search_manager.get_saved_search_by_id(search_id)
         if not search:
             raise HTTPException(status_code=404, detail="Search not found")
         return search
@@ -93,44 +67,34 @@ async def get_saved_search(search_id: int):
 
 
 @router.post("/searches/{search_id}/execute")
-async def execute_saved_search(search_id: int):
-    """
-    Execute a saved search and log the execution.
-
-    Args:
-        search_id: ID of the saved search
-
-    Returns:
-        Search results and execution details
-    """
+async def execute_saved_search(search_id: int, state: AppState = Depends(get_state)):
+    """Execute a saved search and log the execution."""
     try:
-        from server import main as main_module
-
         # Get the saved search
-        search = main_module.saved_search_manager.get_saved_search_by_id(search_id)
+        search = state.saved_search_manager.get_saved_search_by_id(search_id)
         if not search:
             raise HTTPException(status_code=404, detail="Search not found")
 
-        # Execute the search using the existing search endpoint
-        results = await main_module.search_photos(
-            query=search["query"],
-            mode=search["mode"],
-            limit=50,
-            offset=0,
-        )
+        # Execute search using photo_search_engine
+        photo_search_engine = state.photo_search_engine
+        if photo_search_engine:
+            results = photo_search_engine.query_engine.search(search["query"])
+            results_count = len(results) if results else 0
+        else:
+            results_count = 0
 
         # Log the execution
-        main_module.saved_search_manager.log_search_execution(
+        state.saved_search_manager.log_search_execution(
             search_id=search_id,
-            results_count=results["count"],
-            execution_time_ms=0,  # Would need to measure this in production
+            results_count=results_count,
+            execution_time_ms=0,
             user_agent="api",
             ip_address="localhost",
         )
 
         return {
             "search": search,
-            "results": results,
+            "results_count": results_count,
             "message": "Search executed and logged",
         }
     except Exception as e:
@@ -138,30 +102,19 @@ async def execute_saved_search(search_id: int):
 
 
 @router.put("/searches/{search_id}")
-async def update_saved_search(search_id: int, request: UpdateSearchRequest):
-    """
-    Update a saved search (favorite status or notes).
-
-    Args:
-        search_id: ID of the search
-        request: UpdateSearchRequest with fields to update
-
-    Returns:
-        Updated search details
-    """
+async def update_saved_search(search_id: int, request: UpdateSearchRequest, state: AppState = Depends(get_state)):
+    """Update a saved search (favorite status or notes)."""
     try:
-        from server import main as main_module
-
-        search = main_module.saved_search_manager.get_saved_search_by_id(search_id)
+        search = state.saved_search_manager.get_saved_search_by_id(search_id)
         if not search:
             raise HTTPException(status_code=404, detail="Search not found")
 
         if request.is_favorite is not None:
-            new_favorite_status = main_module.saved_search_manager.toggle_favorite(search_id)
+            new_favorite_status = state.saved_search_manager.toggle_favorite(search_id)
             search["is_favorite"] = new_favorite_status
 
         if request.notes is not None:
-            main_module.saved_search_manager.update_search_notes(search_id, request.notes)
+            state.saved_search_manager.update_search_notes(search_id, request.notes)
             search["notes"] = request.notes
 
         return {"search": search, "message": "Search updated successfully"}
@@ -170,20 +123,10 @@ async def update_saved_search(search_id: int, request: UpdateSearchRequest):
 
 
 @router.delete("/searches/{search_id}")
-async def delete_saved_search(search_id: int):
-    """
-    Delete a saved search.
-
-    Args:
-        search_id: ID of the search to delete
-
-    Returns:
-        Confirmation message
-    """
+async def delete_saved_search(search_id: int, state: AppState = Depends(get_state)):
+    """Delete a saved search."""
     try:
-        from server import main as main_module
-
-        success = main_module.saved_search_manager.delete_saved_search(search_id)
+        success = state.saved_search_manager.delete_saved_search(search_id)
         if not success:
             raise HTTPException(status_code=404, detail="Search not found")
         return {"message": "Search deleted successfully"}
@@ -192,78 +135,40 @@ async def delete_saved_search(search_id: int):
 
 
 @router.get("/searches/analytics")
-async def get_search_analytics():
-    """
-    Get overall search analytics and insights.
-
-    Returns:
-        Analytics data including popular searches, recent searches, etc.
-    """
+async def get_search_analytics(state: AppState = Depends(get_state)):
+    """Get overall search analytics and insights."""
     try:
-        from server import main as main_module
-
-        return main_module.saved_search_manager.get_overall_analytics()
+        return state.saved_search_manager.get_overall_analytics()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/searches/analytics/detailed")
-async def get_detailed_analytics(days: int = 30):
-    """
-    Get detailed search analytics for a specific time period.
-
-    Args:
-        days: Number of days to analyze (default: 30)
-
-    Returns:
-        Detailed analytics data with trends and insights
-    """
+async def get_detailed_analytics(state: AppState = Depends(get_state), days: int = 30):
+    """Get detailed search analytics for a specific time period."""
     try:
-        from server import main as main_module
-
-        return main_module.saved_search_manager.get_detailed_analytics(days=days)
+        return state.saved_search_manager.get_detailed_analytics(days=days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/searches/analytics/trends")
-async def get_search_trends(days: int = 90):
-    """
-    Get search trends over time.
-
-    Args:
-        days: Number of days to calculate trends for (default: 90)
-
-    Returns:
-        Trend data showing search evolution over time
-    """
+async def get_search_trends(state: AppState = Depends(get_state), days: int = 90):
+    """Get search trends over time."""
     try:
-        from server import main as main_module
-
-        return main_module.saved_search_manager.get_search_trends(days=days)
+        return state.saved_search_manager.get_search_trends(days=days)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/searches/analytics/export")
-async def export_analytics(format_type: str = "json", days: int = 30):
-    """
-    Export analytics data in various formats.
-
-    Args:
-        format_type: Output format ('json', 'csv', 'text') - default: json
-        days: Number of days to include in analysis - default: 30
-
-    Returns:
-        Analytics data in specified format
-    """
+async def export_analytics(state: AppState = Depends(get_state), format_type: str = "json", days: int = 30):
+    """Export analytics data in various formats."""
     try:
         if format_type not in ["json", "csv", "text"]:
             raise HTTPException(status_code=400, detail="Format must be 'json', 'csv', or 'text'")
 
-        from server import main as main_module
-
-        exported_data = main_module.saved_search_manager.export_analytics(
+        exported_data = state.saved_search_manager.export_analytics(
             format_type=format_type,
             days=days,
         )
@@ -280,27 +185,15 @@ async def export_analytics(format_type: str = "json", days: int = 30):
 
 @router.get("/searches/history")
 async def get_search_history(
+    state: AppState = Depends(get_state),
     limit: int = 50,
     offset: int = 0,
     sort_by: str = "executed_at",
     sort_order: str = "DESC",
 ):
-    """
-    Get search history (all searches, not just saved ones).
-
-    Args:
-        limit: Maximum number of results
-        offset: Pagination offset
-        sort_by: Field to sort by
-        sort_order: Sort order (ASC or DESC)
-
-    Returns:
-        Search history records
-    """
+    """Get search history (all searches, not just saved ones)."""
     try:
-        from server import main as main_module
-
-        history = main_module.saved_search_manager.get_search_history(
+        history = state.saved_search_manager.get_search_history(
             limit=limit,
             offset=offset,
             sort_by=sort_by,
@@ -312,53 +205,29 @@ async def get_search_history(
 
 
 @router.get("/searches/recurring")
-async def get_recurring_searches(threshold: int = 2):
-    """
-    Get searches that have been executed multiple times.
-
-    Args:
-        threshold: Minimum number of executions to be considered recurring
-
-    Returns:
-        List of recurring searches
-    """
+async def get_recurring_searches(state: AppState = Depends(get_state), threshold: int = 2):
+    """Get searches that have been executed multiple times."""
     try:
-        from server import main as main_module
-
-        recurring = main_module.saved_search_manager.get_recurring_searches(threshold=threshold)
+        recurring = state.saved_search_manager.get_recurring_searches(threshold=threshold)
         return {"count": len(recurring), "recurring_searches": recurring}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/searches/performance")
-async def get_search_performance():
-    """
-    Get performance metrics for searches.
-
-    Returns:
-        Performance data including average execution time, etc.
-    """
+async def get_search_performance(state: AppState = Depends(get_state)):
+    """Get performance metrics for searches."""
     try:
-        from server import main as main_module
-
-        return main_module.saved_search_manager.get_search_performance()
+        return state.saved_search_manager.get_search_performance()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/searches/history/clear")
-async def clear_search_history():
-    """
-    Clear all search history (but keep saved searches).
-
-    Returns:
-        Number of records deleted
-    """
+async def clear_search_history(state: AppState = Depends(get_state)):
+    """Clear all search history (but keep saved searches)."""
     try:
-        from server import main as main_module
-
-        deleted_count = main_module.saved_search_manager.clear_search_history()
+        deleted_count = state.saved_search_manager.clear_search_history()
         return {"deleted_count": deleted_count, "message": "Search history cleared"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

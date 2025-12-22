@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse
 
 import requests  # type: ignore
-from fastapi import APIRouter, BackgroundTasks, Body, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 
 from server.config import settings
@@ -19,15 +19,16 @@ from server.models.schemas.sources import (
     S3SourceCreate,
     SourceOut,
 )
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 def _source_to_out(source_id: str) -> SourceOut:
-    from server import main as main_module
 
-    s = main_module.source_store.get_source(source_id, redact=True)
+    s = state.source_store.get_source(source_id, redact=True)
     return SourceOut(
         id=s.id,
         type=s.type,
@@ -42,10 +43,9 @@ def _source_to_out(source_id: str) -> SourceOut:
 
 
 @router.get("/sources")
-async def list_sources():
-    from server import main as main_module
+async def list_sources(state: AppState = Depends(get_state)):
 
-    sources = main_module.source_store.list_sources(redact=True)
+    sources = state.source_store.list_sources(redact=True)
     return {
         "sources": [
             SourceOut(
@@ -65,14 +65,13 @@ async def list_sources():
 
 
 @router.delete("/sources/{source_id}")
-async def delete_source(source_id: str):
-    from server import main as main_module
+async def delete_source(source_id: str, state: AppState = Depends(get_state)):
 
     try:
-        main_module.source_store.get_source(source_id, redact=False)
+        state.source_store.get_source(source_id, redact=False)
     except KeyError:
         raise HTTPException(status_code=404, detail="Source not found")
-    main_module.source_store.delete_source(source_id)
+    state.source_store.delete_source(source_id)
     return {"ok": True}
 
 
@@ -82,10 +81,9 @@ async def rescan_source(
     source_id: str,
     payload: dict = Body(default={}),
 ):
-    from server import main as main_module
 
     try:
-        src = main_module.source_store.get_source(source_id, redact=False)
+        src = state.source_store.get_source(source_id, redact=False)
     except KeyError:
         raise HTTPException(status_code=404, detail="Source not found")
     if src.type != "local_folder":
@@ -100,32 +98,32 @@ async def rescan_source(
         raise HTTPException(status_code=400, detail="Directory does not exist")
     force = bool(payload.get("force", False))
 
-    job_id = main_module.job_store.create_job(type="scan")
+    job_id = state.job_store.create_job(type="scan")
 
-    def run_scan(job_id: str, path: str, force: bool):
+    def run_scan(job_id: str, path: str, force: bool, state: AppState = Depends(get_state)):
         try:
-            scan_results = main_module.photo_search_engine.scan(
+            scan_results = state.photo_search_engine.scan(
                 path,
                 force=force,
                 job_id=job_id,
             )
             all_files = scan_results.get("all_files", [])
             if all_files:
-                main_module.process_semantic_indexing(all_files)
-            main_module.job_store.update_job(
+                state.process_semantic_indexing(all_files)
+            state.job_store.update_job(
                 job_id,
                 status="completed",
                 message="Scan and indexing finished.",
             )
-            main_module.source_store.update_source(
+            state.source_store.update_source(
                 source_id,
                 last_sync_at=datetime.utcnow().isoformat() + "Z",
                 last_error=None,
                 status="connected",
             )
         except Exception as e:
-            main_module.job_store.update_job(job_id, status="failed", message=str(e))
-            main_module.source_store.update_source(
+            state.job_store.update_job(job_id, status="failed", message=str(e))
+            state.source_store.update_source(
                 source_id,
                 status="error",
                 last_error=str(e),
@@ -360,20 +358,19 @@ def _test_s3_connection(cfg: Dict[str, object]) -> None:
 
 
 def _sync_s3_source(source_id: str, job_id: str) -> None:
-    from server import main as main_module
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         status="processing",
         message="Enumerating S3…",
         progress=5,
     )
-    src = main_module.source_store.get_source(source_id, redact=False)
+    src = state.source_store.get_source(source_id, redact=False)
     cfg = src.config or {}
     items = _s3_list_objects(cfg)
     seen_marker = datetime.now(timezone.utc).isoformat()
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         message=f"Found {len(items)} objects. Downloading…",
         progress=20,
@@ -397,11 +394,11 @@ def _sync_s3_source(source_id: str, job_id: str) -> None:
 
         remote_id = key
         try:
-            prev = main_module.source_item_store.get(source_id, remote_id)
+            prev = state.source_item_store.get(source_id, remote_id)
         except Exception:
             prev = None
 
-        main_module.source_item_store.upsert_seen(
+        state.source_item_store.upsert_seen(
             source_id=source_id,
             remote_id=remote_id,
             remote_path=key,
@@ -429,18 +426,18 @@ def _sync_s3_source(source_id: str, job_id: str) -> None:
 
         if needs_download:
             _s3_download_object(cfg, key, dest)
-            main_module.source_item_store.set_local_path(source_id, remote_id, str(dest))
+            state.source_item_store.set_local_path(source_id, remote_id, str(dest))
             downloaded += 1
 
         if idx % 50 == 0:
             pct = 20 + int((idx / max(1, len(items))) * 55)
-            main_module.job_store.update_job(
+            state.job_store.update_job(
                 job_id,
                 message=f"Downloading S3 objects… ({idx}/{len(items)})",
                 progress=pct,
             )
 
-    missing = main_module.source_item_store.mark_missing_as_deleted(source_id, seen_marker)
+    missing = state.source_item_store.mark_missing_as_deleted(source_id, seen_marker)
     for m in missing:
         if m.local_path:
             try:
@@ -448,7 +445,7 @@ def _sync_s3_source(source_id: str, job_id: str) -> None:
                 if lp.exists():
                     lp.unlink()
                 try:
-                    main_module.photo_search_engine.db.mark_as_deleted(
+                    state.photo_search_engine.db.mark_as_deleted(
                         m.local_path,
                         reason="source_deleted",
                     )
@@ -457,28 +454,28 @@ def _sync_s3_source(source_id: str, job_id: str) -> None:
             except Exception:
                 pass
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         message="Indexing downloaded files…",
         progress=80,
     )
-    results = main_module.photo_search_engine.scan(str(root), force=False)
+    results = state.photo_search_engine.scan(str(root), force=False)
     all_files = results.get("all_files", []) if isinstance(results, dict) else []
     if all_files:
-        main_module.job_store.update_job(
+        state.job_store.update_job(
             job_id,
             message="Semantic indexing…",
             progress=92,
         )
-        main_module.process_semantic_indexing(all_files)
+        state.process_semantic_indexing(all_files)
 
-    main_module.source_store.update_source(
+    state.source_store.update_source(
         source_id,
         status="connected",
         last_error=None,
         last_sync_at=datetime.utcnow().isoformat() + "Z",
     )
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         status="completed",
         progress=100,
@@ -492,7 +489,6 @@ async def add_local_folder_source(
     background_tasks: BackgroundTasks,
     payload: LocalFolderSourceCreate,
 ):
-    from server import main as main_module
 
     path = payload.path
     if not path:
@@ -503,39 +499,39 @@ async def add_local_folder_source(
         raise HTTPException(status_code=400, detail="Path must be a directory")
 
     name = payload.name or os.path.basename(path.rstrip("/")) or "Local Folder"
-    src = main_module.source_store.create_source(
+    src = state.source_store.create_source(
         "local_folder",
         name=name,
         config={"path": path},
         status="connected",
     )
 
-    job_id = main_module.job_store.create_job(type="scan")
+    job_id = state.job_store.create_job(type="scan")
     force = bool(payload.force)
 
-    def run_scan(job_id: str, path: str, force: bool):
+    def run_scan(job_id: str, path: str, force: bool, state: AppState = Depends(get_state)):
         try:
-            scan_results = main_module.photo_search_engine.scan(
+            scan_results = state.photo_search_engine.scan(
                 path,
                 force=force,
                 job_id=job_id,
             )
             all_files = scan_results.get("all_files", [])
             if all_files:
-                main_module.process_semantic_indexing(all_files)
-            main_module.job_store.update_job(
+                state.process_semantic_indexing(all_files)
+            state.job_store.update_job(
                 job_id,
                 status="completed",
                 message="Scan and indexing finished.",
             )
-            main_module.source_store.update_source(
+            state.source_store.update_source(
                 src.id,
                 last_sync_at=datetime.utcnow().isoformat() + "Z",
                 last_error=None,
             )
         except Exception as e:
-            main_module.job_store.update_job(job_id, status="failed", message=str(e))
-            main_module.source_store.update_source(
+            state.job_store.update_job(job_id, status="failed", message=str(e))
+            state.source_store.update_source(
                 src.id,
                 status="error",
                 last_error=str(e),
@@ -546,12 +542,11 @@ async def add_local_folder_source(
 
 
 @router.post("/sources/s3")
-async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCreate):
-    from server import main as main_module
+async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCreate, state: AppState = Depends(get_state)):
 
     cfg = payload.model_dump()
     # Store secrets server-side; return only redacted config.
-    src = main_module.source_store.create_source(
+    src = state.source_store.create_source(
         "s3",
         name=payload.name,
         config=cfg,
@@ -559,15 +554,15 @@ async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCrea
     )
     try:
         _test_s3_connection(cfg)
-        main_module.source_store.update_source(src.id, status="connected", last_error=None)
-        job_id = main_module.job_store.create_job(type="source_sync")
+        state.source_store.update_source(src.id, status="connected", last_error=None)
+        job_id = state.job_store.create_job(type="source_sync")
 
-        def run_sync():
+        def run_sync(state: AppState = Depends(get_state)):
             try:
                 _sync_s3_source(src.id, job_id)
             except Exception as e:
-                main_module.job_store.update_job(job_id, status="failed", message=str(e))
-                main_module.source_store.update_source(
+                state.job_store.update_job(job_id, status="failed", message=str(e))
+                state.source_store.update_source(
                     src.id,
                     status="error",
                     last_error=str(e),
@@ -575,7 +570,7 @@ async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCrea
 
         background_tasks.add_task(run_sync)
     except Exception as e:
-        main_module.source_store.update_source(src.id, status="error", last_error=str(e))
+        state.source_store.update_source(src.id, status="error", last_error=str(e))
         return {"source": _source_to_out(src.id)}
     return {"source": _source_to_out(src.id), "job_id": job_id}
 
@@ -631,9 +626,8 @@ def _safe_filename(name: str) -> str:
 
 
 def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
-    from server import main as main_module
 
-    src = main_module.source_store.get_source(source_id, redact=False)
+    src = state.source_store.get_source(source_id, redact=False)
     cfg = src.config or {}
     refresh_token = cfg.get("refresh_token")
     if not refresh_token:
@@ -657,7 +651,7 @@ def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
     if expires_in:
         expires_at = datetime.utcnow().timestamp() + float(expires_in)
     patch = {"access_token": access_token, "expires_at": expires_at}
-    main_module.source_store.update_source(
+    state.source_store.update_source(
         source_id,
         config_patch=patch,
         status="connected",
@@ -667,9 +661,8 @@ def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
 
 
 def _get_google_access_token(source_id: str) -> str:
-    from server import main as main_module
 
-    src = main_module.source_store.get_source(source_id, redact=False)
+    src = state.source_store.get_source(source_id, redact=False)
     cfg = src.config or {}
     access_token = cfg.get("access_token")
     expires_at = cfg.get("expires_at")
@@ -686,9 +679,8 @@ def _get_google_access_token(source_id: str) -> str:
 
 
 def _sync_google_drive_source(source_id: str, job_id: str) -> None:
-    from server import main as main_module
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         status="processing",
         message="Enumerating Google Drive…",
@@ -734,7 +726,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
         if not page_token:
             break
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         message=f"Found {len(files)} Drive items. Downloading…",
         progress=20,
@@ -770,11 +762,11 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
         )
 
         try:
-            prev = main_module.source_item_store.get(source_id, file_id)
+            prev = state.source_item_store.get(source_id, file_id)
         except Exception:
             prev = None
 
-        main_module.source_item_store.upsert_seen(
+        state.source_item_store.upsert_seen(
             source_id=source_id,
             remote_id=file_id,
             remote_path=file_id,
@@ -831,7 +823,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
                         if chunk:
                             out.write(chunk)
                 tmp.replace(local_path)
-            main_module.source_item_store.set_local_path(
+            state.source_item_store.set_local_path(
                 source_id,
                 file_id,
                 str(local_path),
@@ -840,13 +832,13 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
 
         if idx % 25 == 0:
             pct = 20 + int((idx / max(1, len(files))) * 55)
-            main_module.job_store.update_job(
+            state.job_store.update_job(
                 job_id,
                 message=f"Downloading Drive items… ({idx}/{len(files)})",
                 progress=pct,
             )
 
-    missing = main_module.source_item_store.mark_missing_as_deleted(source_id, seen_marker)
+    missing = state.source_item_store.mark_missing_as_deleted(source_id, seen_marker)
     for m in missing:
         if m.local_path:
             try:
@@ -854,7 +846,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
                 if lp.exists():
                     lp.unlink()
                 try:
-                    main_module.photo_search_engine.db.mark_as_deleted(
+                    state.photo_search_engine.db.mark_as_deleted(
                         m.local_path,
                         reason="source_deleted",
                     )
@@ -863,28 +855,28 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
             except Exception:
                 pass
 
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         message="Indexing downloaded files…",
         progress=80,
     )
-    results = main_module.photo_search_engine.scan(str(root), force=False)
+    results = state.photo_search_engine.scan(str(root), force=False)
     all_files = results.get("all_files", []) if isinstance(results, dict) else []
     if all_files:
-        main_module.job_store.update_job(
+        state.job_store.update_job(
             job_id,
             message="Semantic indexing…",
             progress=92,
         )
-        main_module.process_semantic_indexing(all_files)
+        state.process_semantic_indexing(all_files)
 
-    main_module.source_store.update_source(
+    state.source_store.update_source(
         source_id,
         status="connected",
         last_error=None,
         last_sync_at=datetime.utcnow().isoformat() + "Z",
     )
-    main_module.job_store.update_job(
+    state.job_store.update_job(
         job_id,
         status="completed",
         progress=100,
@@ -896,18 +888,17 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
 
 
 @router.post("/sources/google-drive")
-async def add_google_drive_source(payload: GoogleDriveSourceCreate):
-    from server import main as main_module
+async def add_google_drive_source(payload: GoogleDriveSourceCreate, state: AppState = Depends(get_state)):
 
     cfg = {"client_id": payload.client_id, "client_secret": payload.client_secret}
-    src = main_module.source_store.create_source(
+    src = state.source_store.create_source(
         "google_drive",
         name=payload.name,
         config=cfg,
         status="auth_required",
     )
     state_nonce = str(uuid.uuid4())
-    main_module.source_store.update_source(src.id, config_patch={"state_nonce": state_nonce})
+    state.source_store.update_source(src.id, config_patch={"state_nonce": state_nonce})
 
     params = {
         "client_id": payload.client_id,
@@ -930,7 +921,6 @@ async def google_oauth_callback(
     state: Optional[str] = None,
     error: Optional[str] = None,
 ):
-    from server import main as main_module
 
     if error:
         return {
@@ -941,7 +931,7 @@ async def google_oauth_callback(
         raise HTTPException(status_code=400, detail="Missing code/state")
     source_id, nonce = state.split(":", 1)
     try:
-        src = main_module.source_store.get_source(source_id, redact=False)
+        src = state.source_store.get_source(source_id, redact=False)
     except KeyError:
         raise HTTPException(status_code=404, detail="Source not found")
     if src.type != "google_drive":
@@ -964,7 +954,7 @@ async def google_oauth_callback(
         timeout=15,
     )
     if token_resp.status_code != 200:
-        main_module.source_store.update_source(
+        state.source_store.update_source(
             source_id,
             status="error",
             last_error=f"token exchange failed: {token_resp.text[:200]}",
@@ -978,7 +968,7 @@ async def google_oauth_callback(
     if expires_in:
         expires_at = datetime.utcnow().timestamp() + float(expires_in)
 
-    main_module.source_store.update_source(
+    state.source_store.update_source(
         source_id,
         status="connected",
         last_error=None,
@@ -990,14 +980,14 @@ async def google_oauth_callback(
         },
     )
 
-    job_id = main_module.job_store.create_job(type="source_sync")
+    job_id = state.job_store.create_job(type="source_sync")
 
-    def run_sync():
+    def run_sync(state: AppState = Depends(get_state)):
         try:
             _sync_google_drive_source(source_id, job_id)
         except Exception as e:
-            main_module.job_store.update_job(job_id, status="failed", message=str(e))
-            main_module.source_store.update_source(
+            state.job_store.update_job(job_id, status="failed", message=str(e))
+            state.source_store.update_source(
                 source_id,
                 status="error",
                 last_error=str(e),
@@ -1028,17 +1018,16 @@ async def google_oauth_callback(
 
 
 @router.post("/sources/{source_id}/sync")
-async def sync_source(background_tasks: BackgroundTasks, source_id: str):
-    from server import main as main_module
+async def sync_source(background_tasks: BackgroundTasks, source_id: str, state: AppState = Depends(get_state)):
 
     try:
-        src = main_module.source_store.get_source(source_id, redact=False)
+        src = state.source_store.get_source(source_id, redact=False)
     except KeyError:
         raise HTTPException(status_code=404, detail="Source not found")
 
-    job_id = main_module.job_store.create_job(type="source_sync")
+    job_id = state.job_store.create_job(type="source_sync")
 
-    def run_sync():
+    def run_sync(state: AppState = Depends(get_state)):
         try:
             if src.type == "s3":
                 _sync_s3_source(source_id, job_id)
@@ -1049,11 +1038,11 @@ async def sync_source(background_tasks: BackgroundTasks, source_id: str):
                 path = (src.config or {}).get("path")
                 if not isinstance(path, str) or not path:
                     raise RuntimeError("Invalid local folder path")
-                results = main_module.photo_search_engine.scan(path, force=False)
+                results = state.photo_search_engine.scan(path, force=False)
                 all_files = results.get("all_files", []) if isinstance(results, dict) else []
                 if all_files:
-                    main_module.process_semantic_indexing(all_files)
-                main_module.job_store.update_job(
+                    state.process_semantic_indexing(all_files)
+                state.job_store.update_job(
                     job_id,
                     status="completed",
                     progress=100,
@@ -1062,8 +1051,8 @@ async def sync_source(background_tasks: BackgroundTasks, source_id: str):
             else:
                 raise RuntimeError("Unsupported source type")
         except Exception as e:
-            main_module.job_store.update_job(job_id, status="failed", message=str(e))
-            main_module.source_store.update_source(
+            state.job_store.update_job(job_id, status="failed", message=str(e))
+            state.source_store.update_source(
                 source_id,
                 status="error",
                 last_error=str(e),

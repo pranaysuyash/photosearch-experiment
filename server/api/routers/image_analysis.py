@@ -1,16 +1,18 @@
 import os
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.models.schemas.image_analysis import ImageAnalysisRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/ai/analyze")
-async def analyze_image(request: ImageAnalysisRequest):
+async def analyze_image(request: ImageAnalysisRequest, state: AppState = Depends(get_state)):
     """
     Analyze an image to extract visual insights and characteristics.
 
@@ -21,10 +23,9 @@ async def analyze_image(request: ImageAnalysisRequest):
         Dictionary with analysis results including caption, tags, objects, etc.
     """
     try:
-        from server import main as main_module
 
-        photo_search_engine = main_module.photo_search_engine
-        ps_logger = main_module.ps_logger
+        photo_search_engine = state.photo_search_engine
+        ps_logger = state.ps_logger
 
         if not photo_search_engine:
             raise HTTPException(status_code=503, detail="Analysis engine not available")
@@ -66,15 +67,14 @@ async def analyze_image(request: ImageAnalysisRequest):
     except HTTPException:
         raise
     except Exception as e:
-        from server import main as main_module
 
-        ps_logger = main_module.ps_logger
+        ps_logger = state.ps_logger
         ps_logger.error(f"Image analysis failed for {request.path}: {str(e)}")
         raise HTTPException(status_code=500, detail="Analysis failed")
 
 
 @router.get("/ai/analysis/{path:path}")
-async def get_image_analysis(path: str):
+async def get_image_analysis(path: str, state: AppState = Depends(get_state)):
     """
     Get existing analysis results for an image.
 
@@ -85,8 +85,7 @@ async def get_image_analysis(path: str):
         Dictionary with stored analysis results or empty if none exists
     """
     try:
-        from server import main as main_module
-        ps_logger = main_module.ps_logger
+        ps_logger = state.ps_logger
 
         # Verify the image exists
         if not os.path.exists(path):
@@ -101,8 +100,7 @@ async def get_image_analysis(path: str):
     except HTTPException:
         raise
     except Exception as e:
-        from server import main as main_module
 
-        ps_logger = main_module.ps_logger
+        ps_logger = state.ps_logger
         ps_logger.error(f"Failed to retrieve analysis for {path}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve analysis")

@@ -1,11 +1,13 @@
 import os
 from typing import Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.models.schemas.tags import TagCreate, TagPhotosRequest
 from server.tags_db import get_tags_db
+from server.api.deps import get_state
+from server.core.state import AppState
 
 router = APIRouter()
 
@@ -39,18 +41,17 @@ async def delete_tag(tag_name: str):
 
 
 @router.get("/tags/{tag_name}")
-async def get_tag(tag_name: str, include_photos: bool = True):
+async def get_tag(tag_name: str, include_photos: bool = True, state: AppState = Depends(get_state)):
     tags_db = get_tags_db(settings.BASE_DIR / "tags.db")
     if not tags_db.has_tag(tag_name):
         raise HTTPException(status_code=404, detail="Tag not found")
     out: Dict[str, object] = {"tag": tag_name}
     if include_photos:
-        from server import main as main_module
 
         paths = tags_db.get_tag_paths(tag_name)
         photos = []
         for path in paths:
-            metadata = main_module.photo_search_engine.db.get_metadata(path)
+            metadata = state.photo_search_engine.db.get_metadata(path)
             if metadata:
                 photos.append(
                     {

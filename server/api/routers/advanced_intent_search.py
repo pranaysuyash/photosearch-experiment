@@ -1,17 +1,19 @@
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.locations_db import get_locations_db
 from server.models.schemas.intent import IntentSearchParams
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.post("/search/intent")
-async def search_with_intent(params: IntentSearchParams):
+async def search_with_intent(params: IntentSearchParams, state: AppState = Depends(get_state)):
     """
     Advanced search with intent recognition and context-aware processing.
 
@@ -22,10 +24,8 @@ async def search_with_intent(params: IntentSearchParams):
         import time
         start_time = time.time()
 
-        from server import main as main_module
-
         # Detect intent from query
-        intent_result = main_module.intent_detector.detect_intent(params.query)
+        intent_result = state.intent_detector.detect_intent(params.query)
 
         # Apply intent-specific search logic
         results: List[Dict[str, Any]] = []
@@ -87,7 +87,7 @@ async def search_with_intent(params: IntentSearchParams):
         # This would use the existing hybrid search logic with intent weights
 
         # Fallback to regular search if no specific intent processing
-        search_results_response = await main_module.search_photos(
+        search_results_response = await state.search_photos(
             query=params.query,
             limit=params.limit,
             offset=params.offset,
@@ -113,7 +113,7 @@ async def search_with_intent(params: IntentSearchParams):
 
 
 @router.post("/search/refine")
-async def refine_search(query: str, previous_results: List[Dict], refinement: str):
+async def refine_search(query: str, previous_results: List[Dict], refinement: str, state: AppState = Depends(get_state)):
     """
     Refine search results based on user feedback.
 
@@ -121,16 +121,15 @@ async def refine_search(query: str, previous_results: List[Dict], refinement: st
     additional criteria or corrections.
     """
     try:
-        from server import main as main_module
 
         # Detect intent in refinement query
-        intent_result = main_module.intent_detector.detect_intent(refinement)
+        intent_result = state.intent_detector.detect_intent(refinement)
 
         # Apply refinement to previous results
         # For example, if refinement is "only show photos from 2023", filter by date
         # If refinement is "only beach photos", apply scene detection filter
         refined_results = previous_results[:]  # In a real implementation, this would apply filters
-        suggestions = main_module.intent_detector.get_search_suggestions(f"{query} {refinement}")
+        suggestions = state.intent_detector.get_search_suggestions(f"{query} {refinement}")
 
         return {
             "original_query": query,

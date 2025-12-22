@@ -3,11 +3,13 @@ import os
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.albums_db import get_albums_db
 from server.models.schemas.albums import AlbumCreate, AlbumPhotosRequest, AlbumUpdate
 from server.smart_albums import initialize_predefined_smart_albums, populate_smart_album
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -41,7 +43,7 @@ async def list_albums(include_smart: bool = True):
 
 
 @router.get("/albums/{album_id}")
-async def get_album(album_id: str, include_photos: bool = True):
+async def get_album(album_id: str, include_photos: bool = True, state: AppState = Depends(get_state)):
     """Get album details."""
     albums_db = get_albums_db()
     album = albums_db.get_album(album_id)
@@ -52,13 +54,12 @@ async def get_album(album_id: str, include_photos: bool = True):
     result: dict[str, Any] = {"album": album}
 
     if include_photos:
-        from server import main as main_module
 
         photo_paths = albums_db.get_album_photos(album_id)
         # Get metadata for photos
         photos = []
         for path in photo_paths:
-            metadata = main_module.photo_search_engine.db.get_metadata(path)
+            metadata = state.photo_search_engine.db.get_metadata(path)
             if metadata:
                 photos.append(
                     {
@@ -147,9 +148,8 @@ async def remove_photos_from_album(album_id: str, req: AlbumPhotosRequest):
 
 
 @router.post("/albums/{album_id}/refresh")
-async def refresh_smart_album(album_id: str):
+async def refresh_smart_album(album_id: str, state: AppState = Depends(get_state)):
     """Refresh a smart album (recompute matches)."""
-    from server import main as main_module
 
     albums_db = get_albums_db()
 
@@ -161,7 +161,7 @@ async def refresh_smart_album(album_id: str):
         raise HTTPException(status_code=400, detail="Only smart albums can be refreshed")
 
     # Get all photos with metadata
-    cursor = main_module.photo_search_engine.db.conn.cursor()
+    cursor = state.photo_search_engine.db.conn.cursor()
     cursor.execute("SELECT file_path, metadata_json FROM metadata WHERE deleted_at IS NULL")
 
     photos_with_metadata = []

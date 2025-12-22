@@ -1,32 +1,32 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/stats")
-async def get_stats():
+async def get_stats(state: AppState = Depends(get_state)):
     """
     Return system statistics for the dashboard/timeline.
     """
     try:
-        from server import main as main_module
 
         # Leverage existing stats logic or db
-        stats = main_module.photo_search_engine.db.get_stats()
+        stats = state.photo_search_engine.db.get_stats()
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/timeline")
-async def get_timeline():
+async def get_timeline(state: AppState = Depends(get_state)):
     """
     Return distribution of photos over time for the Sonic Timeline.
     Grouping by month for now.
     """
     try:
-        from server import main as main_module
 
         # We need a method to get date stats.
         # photo_search_engine.db has get_stats() but that's summary.
@@ -35,7 +35,7 @@ async def get_timeline():
         # Connect to db safely using the existing connection if available
         # The MetadataDatabase handles connection in __init__
 
-        cursor = main_module.photo_search_engine.db.conn.cursor()
+        cursor = state.photo_search_engine.db.conn.cursor()
 
         # Query: Count photos per month
         # SQLite: strftime('%Y-%m', created_at)

@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, Response
 
 from server.auth import AuthError, verify_jwt
@@ -12,6 +12,8 @@ from server.security_utils import hash_for_logs
 from server.signed_urls import TokenError, issue_token, verify_token
 from server.utils.http import _make_cache_headers
 from server.utils.images import _negotiate_image_format
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -34,7 +36,6 @@ async def get_thumbnail(
         token: Optional signed token for production/public access
         format: Optional output format override (jpeg|webp)
     """
-    from server import main as main_module
 
     # Resolve path either from token (preferred for public) or from 'path' param
     requested_path_str: str
@@ -106,7 +107,7 @@ async def get_thumbnail(
         # Add CORS headers to 304 responses
         response_headers = dict(cache_headers)
         origin = request.headers.get("origin")
-        if origin and origin in main_module.cors_origins:
+        if origin and origin in state.cors_origins:
             response_headers["Access-Control-Allow-Origin"] = origin
             response_headers["Access-Control-Allow-Credentials"] = "true"
         return Response(status_code=304, headers=response_headers)
@@ -117,7 +118,7 @@ async def get_thumbnail(
                 # Add CORS headers to 304 responses
                 response_headers = dict(cache_headers)
                 origin = request.headers.get("origin")
-                if origin and origin in main_module.cors_origins:
+                if origin and origin in state.cors_origins:
                     response_headers["Access-Control-Allow-Origin"] = origin
                     response_headers["Access-Control-Allow-Credentials"] = "true"
                 return Response(status_code=304, headers=response_headers)
@@ -168,16 +169,16 @@ async def get_thumbnail(
                     conf = (bool(settings.RATE_LIMIT_ENABLED), int(settings.RATE_LIMIT_REQS_PER_MIN))
                     client_ip = request.client.host if request.client else "unknown"
                     now = __import__("time").time()
-                    with main_module._rate_lock:
-                        if main_module._rate_last_conf != conf:
-                            main_module._rate_counters.clear()
-                            main_module._rate_last_conf = conf
-                        lst = main_module._rate_counters.get(client_ip, [])
+                    with state._rate_lock:
+                        if state._rate_last_conf != conf:
+                            state._rate_counters.clear()
+                            state._rate_last_conf = conf
+                        lst = state._rate_counters.get(client_ip, [])
                         lst = [t for t in lst if now - t < 60]
                         if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
                             raise HTTPException(status_code=429, detail="Rate limit exceeded")
                         lst.append(now)
-                        main_module._rate_counters[client_ip] = lst
+                        state._rate_counters[client_ip] = lst
             except HTTPException:
                 raise
             except Exception:
@@ -196,7 +197,7 @@ async def get_thumbnail(
 
             # Explicit CORS headers for cross-origin image requests
             origin = request.headers.get("origin")
-            if origin and origin in main_module.cors_origins:
+            if origin and origin in state.cors_origins:
                 headers["Access-Control-Allow-Origin"] = origin
                 headers["Access-Control-Allow-Credentials"] = "true"
 
@@ -219,7 +220,7 @@ async def get_thumbnail(
 
     # Add explicit CORS headers for cross-origin image requests
     origin = request.headers.get("origin")
-    if origin and origin in main_module.cors_origins:
+    if origin and origin in state.cors_origins:
         fallback_headers["Access-Control-Allow-Origin"] = origin
         fallback_headers["Access-Control-Allow-Credentials"] = "true"
 

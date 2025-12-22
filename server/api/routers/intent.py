@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/api/intent/detect")
-async def detect_intent_api(query: str):
+async def detect_intent_api(query: str, state: AppState = Depends(get_state)):
     """
     Detect user intent from search query for auto-mode switching.
     """
@@ -19,9 +21,7 @@ async def detect_intent_api(query: str):
                 "suggestions": [],
             }
 
-        from server import main as main_module
-
-        intent_result = main_module.intent_detector.detect_intent(query)
+        intent_result = state.intent_detector.detect_intent(query)
         return intent_result
     except Exception as e:
         print(f"Intent detection error: {e}")
@@ -35,7 +35,7 @@ async def detect_intent_api(query: str):
 
 
 @router.get("/intent/detect")
-async def detect_intent_v2(query: str):
+async def detect_intent_v2(query: str, state: AppState = Depends(get_state)):
     """
     Detect search intent from a query.
 
@@ -55,9 +55,7 @@ async def detect_intent_v2(query: str):
                 "badges": [],
             }
 
-        from server import main as main_module
-
-        result = main_module.intent_detector.detect_intent(query)
+        result = state.intent_detector.detect_intent(query)
         return {
             "intent": result["primary_intent"],
             "confidence": result["confidence"],
@@ -71,7 +69,7 @@ async def detect_intent_v2(query: str):
 
 
 @router.get("/intent/suggestions")
-async def get_search_suggestions(query: str, limit: int = 3):
+async def get_search_suggestions(query: str, limit: int = 3, state: AppState = Depends(get_state)):
     """
     Get search suggestions based on detected intent.
 
@@ -83,16 +81,15 @@ async def get_search_suggestions(query: str, limit: int = 3):
         List of suggested search queries
     """
     try:
-        from server import main as main_module
 
-        suggestions = main_module.intent_detector.get_search_suggestions(query)
+        suggestions = state.intent_detector.get_search_suggestions(query)
         return {"suggestions": suggestions[:limit]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/intent/badges")
-async def get_search_badges(query: str):
+async def get_search_badges(query: str, state: AppState = Depends(get_state)):
     """
     Get intent badges for UI display.
 
@@ -103,16 +100,15 @@ async def get_search_badges(query: str):
         List of intent badges with labels and icons
     """
     try:
-        from server import main as main_module
 
-        badges = main_module.intent_detector.get_search_badges(query)
+        badges = state.intent_detector.get_search_badges(query)
         return {"badges": badges}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/intent/all")
-async def get_all_intents():
+async def get_all_intents(state: AppState = Depends(get_state)):
     """
     Get all supported intents with descriptions.
 
@@ -120,8 +116,7 @@ async def get_all_intents():
         Dictionary of all supported intents
     """
     try:
-        from server import main as main_module
 
-        return main_module.intent_detector.get_all_intents()
+        return state.intent_detector.get_all_intents()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

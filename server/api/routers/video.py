@@ -1,22 +1,23 @@
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import FileResponse
 
 from server.config import settings
 from server.utils.files import validate_file_path
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/video")
-async def get_video(request: Request, path: str):
+async def get_video(request: Request, path: str, state: AppState = Depends(get_state)):
     """
     Serve a video file directly.
     """
-    from server import main as main_module
 
     # Security check with enhanced validation
     if settings.MEDIA_DIR.exists():
@@ -27,7 +28,7 @@ async def get_video(request: Request, path: str):
     # Validate the video file path is safe
     if not validate_file_path(path, allowed_paths):
         client_ip = request.client.host if request.client else "unknown"
-        main_module.ps_logger.warning(f"Video access denied - IP: {client_ip}, Path: {path}")
+        state.ps_logger.warning(f"Video access denied - IP: {client_ip}, Path: {path}")
         raise HTTPException(status_code=403, detail="Access denied")
 
     # Validate video-specific file extensions
@@ -56,7 +57,7 @@ async def get_video(request: Request, path: str):
 
         # Add explicit CORS headers for cross-origin video requests
         origin = request.headers.get("origin")
-        if origin and origin in main_module.cors_origins:
+        if origin and origin in state.cors_origins:
             video_headers["Access-Control-Allow-Origin"] = origin
             video_headers["Access-Control-Allow-Credentials"] = "true"
 

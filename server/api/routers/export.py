@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from server.config import settings
 from server.models.schemas.export import ExportRequest
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
@@ -26,8 +28,6 @@ async def export_photos(request: ExportRequest):
     from fastapi.responses import StreamingResponse
     from PIL import Image
     import json
-
-    from server import main as main_module
 
     if not request.paths:
         raise HTTPException(status_code=400, detail="No files specified")
@@ -95,7 +95,7 @@ async def export_photos(request: ExportRequest):
             # Include metadata if requested
             if request.options.include_metadata:
                 try:
-                    metadata = main_module.photo_search_engine.db.get_metadata(path)
+                    metadata = state.photo_search_engine.db.get_metadata(path)
                     if metadata:
                         # Write metadata as JSON file
                         meta_filename = (

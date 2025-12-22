@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/tauri/commands")
-async def get_tauri_commands():
+async def get_tauri_commands(state: AppState = Depends(get_state)):
     """
     Get available Tauri commands
 
@@ -13,16 +15,15 @@ async def get_tauri_commands():
         Dictionary with Tauri commands
     """
     try:
-        from server import main as main_module
 
-        commands = main_module.tauri_integration.get_all_commands()
+        commands = state.tauri_integration.get_all_commands()
         return {"status": "success", "commands": commands}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/commands/{command_name}")
-async def get_tauri_command(command_name: str):
+async def get_tauri_command(command_name: str, state: AppState = Depends(get_state)):
     """
     Get details for a specific Tauri command
 
@@ -33,9 +34,8 @@ async def get_tauri_command(command_name: str):
         Dictionary with command details
     """
     try:
-        from server import main as main_module
 
-        command = main_module.tauri_integration.get_command(command_name)
+        command = state.tauri_integration.get_command(command_name)
         if command:
             return {"status": "success", "command": command}
         else:
@@ -45,7 +45,7 @@ async def get_tauri_command(command_name: str):
 
 
 @router.get("/tauri/rust-skeleton")
-async def get_rust_skeleton():
+async def get_rust_skeleton(state: AppState = Depends(get_state)):
     """
     Get Rust skeleton code for Tauri integration
 
@@ -53,16 +53,15 @@ async def get_rust_skeleton():
         Dictionary with Rust skeleton code
     """
     try:
-        from server import main as main_module
 
-        skeleton = main_module.tauri_integration.generate_rust_skeleton()
+        skeleton = state.tauri_integration.generate_rust_skeleton()
         return {"status": "success", "skeleton": skeleton}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/frontend-hooks")
-async def get_frontend_hooks():
+async def get_frontend_hooks(state: AppState = Depends(get_state)):
     """
     Get frontend hooks for Tauri integration
 
@@ -70,16 +69,15 @@ async def get_frontend_hooks():
         Dictionary with frontend hooks code
     """
     try:
-        from server import main as main_module
 
-        hooks = main_module.tauri_integration.generate_frontend_hooks()
+        hooks = state.tauri_integration.generate_frontend_hooks()
         return {"status": "success", "hooks": hooks}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/config")
-async def get_tauri_config():
+async def get_tauri_config(state: AppState = Depends(get_state)):
     """
     Get Tauri configuration
 
@@ -87,16 +85,15 @@ async def get_tauri_config():
         Dictionary with Tauri configuration
     """
     try:
-        from server import main as main_module
 
-        config = main_module.tauri_integration.generate_tauri_config()
+        config = state.tauri_integration.generate_tauri_config()
         return {"status": "success", "config": config}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/security")
-async def get_security_recommendations():
+async def get_security_recommendations(state: AppState = Depends(get_state)):
     """
     Get security recommendations for Tauri integration
 
@@ -104,16 +101,15 @@ async def get_security_recommendations():
         Dictionary with security recommendations
     """
     try:
-        from server import main as main_module
 
-        recommendations = main_module.tauri_integration.get_security_recommendations()
+        recommendations = state.tauri_integration.get_security_recommendations()
         return {"status": "success", "recommendations": recommendations}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/performance")
-async def get_performance_tips():
+async def get_performance_tips(state: AppState = Depends(get_state)):
     """
     Get performance tips for Tauri integration
 
@@ -121,16 +117,15 @@ async def get_performance_tips():
         Dictionary with performance tips
     """
     try:
-        from server import main as main_module
 
-        tips = main_module.tauri_integration.get_performance_tips()
+        tips = state.tauri_integration.get_performance_tips()
         return {"status": "success", "tips": tips}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/tauri/checklist")
-async def get_integration_checklist():
+async def get_integration_checklist(state: AppState = Depends(get_state)):
     """
     Get integration checklist for Tauri
 
@@ -138,9 +133,8 @@ async def get_integration_checklist():
         Dictionary with integration checklist
     """
     try:
-        from server import main as main_module
 
-        checklist = main_module.tauri_integration.get_integration_checklist()
+        checklist = state.tauri_integration.get_integration_checklist()
         return {"status": "success", "checklist": checklist}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
