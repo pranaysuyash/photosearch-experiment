@@ -137,6 +137,17 @@ async def lifespan(app: FastAPI):
                         
                         # Trigger Semantic Indexing
                         process_semantic_indexing([filepath])
+                        
+                        # Trigger Face Detection (if models loaded)
+                        if face_clusterer and face_clusterer.models_loaded:
+                            try:
+                                result = face_clusterer.cluster_faces([filepath], min_samples=1)
+                                if result.get("status") == "completed":
+                                    faces_found = result.get("total_faces", 0)
+                                    if faces_found > 0:
+                                        print(f"Face detection: found {faces_found} faces in {filepath}")
+                            except Exception as face_err:
+                                print(f"Face detection failed for {filepath}: {face_err}")
                 except Exception as e:
                     print(f"Real-time indexing failed for {filepath}: {e}")
 
@@ -8888,6 +8899,37 @@ async def get_scan_job_status(job_id: str):
         "result": job.get("result") if job.get("status") == "completed" else None,
         "error": job.get("error")
     }
+
+
+@app.post("/api/faces/scan-file")
+async def scan_single_file(data: dict):
+    """Scan a specific file or list of files for faces."""
+    try:
+        if not face_clusterer or not face_clusterer.models_loaded:
+            raise HTTPException(status_code=503, detail="Face recognition models not ready")
+        
+        files = data.get("files", [])
+        filepath = data.get("filepath")
+        
+        if filepath:
+            files = [filepath]
+        
+        if not files:
+            raise HTTPException(status_code=400, detail="No files specified")
+        
+        result = face_clusterer.cluster_faces(files, min_samples=1)
+        
+        return {
+            "status": result.get("status"),
+            "total_faces": result.get("total_faces", 0),
+            "matched_to_existing": result.get("matched_to_existing", 0),
+            "new_clusters": result.get("new_clusters_created", 0),
+            "message": result.get("message", "Scan complete")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/faces/clusters/{cluster_id}/label")

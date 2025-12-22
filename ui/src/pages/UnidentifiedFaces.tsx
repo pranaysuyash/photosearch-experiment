@@ -139,7 +139,7 @@ export default function UnidentifiedFaces() {
                                 <User size={24} className="text-orange-400" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-semibold text-foreground">Unidentified Faces</h1>
+                                <h1 className="text-xl font-semibold text-foreground">Name These</h1>
                                 <p className="text-sm text-muted-foreground">
                                     {faces.length} faces waiting to be identified
                                 </p>

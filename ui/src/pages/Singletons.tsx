@@ -2,7 +2,7 @@
  * Singletons Page - People appearing only once in library
  */
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { User, ArrowLeft } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -40,19 +40,24 @@ export function Singletons() {
     };
 
     return (
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen">
             {/* Header */}
-            <div className={`${glass.surface} border-b border-white/10`}>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="border-b border-white/10">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        <Link to="/people" className="p-2 rounded-lg hover:bg-white/10 transition-colors">
+                        <button onClick={() => navigate('/people')} className="btn-glass btn-glass--muted p-2">
                             <ArrowLeft size={20} />
-                        </Link>
-                        <div>
-                            <h1 className="text-xl font-semibold text-foreground">Seen Just Once</h1>
-                            <p className="text-sm text-muted-foreground">
-                                {count} people who appeared in only one photo
-                            </p>
+                        </button>
+                        <div className="flex items-center gap-3">
+                            <div className={`${glass.surface} p-3 rounded-xl border border-white/10`}>
+                                <User size={24} className="text-yellow-400" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-semibold text-foreground">Seen Just Once</h1>
+                                <p className="text-sm text-muted-foreground">
+                                    {count} people who appeared in only one photo
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
