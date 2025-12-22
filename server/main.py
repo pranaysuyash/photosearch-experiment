@@ -64,6 +64,9 @@ embedding_generator: Any | None = None
 file_watcher: Any | None = None
 photo_search_engine: Any | None = None
 
+# Face scan job tracking for async progress
+face_scan_jobs: dict = {}
+
 
 def _runtime_base_dir() -> Path:
     """Resolve a runtime base dir.
@@ -8737,6 +8740,154 @@ async def scan_faces(limit: Optional[int] = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+def _run_face_scan_job(job_id: str, files: list, min_samples: int = 1):
+    """Background task to run face scanning with progress updates."""
+    global face_scan_jobs
+    
+    try:
+        # Create new FaceClusterer in this thread to avoid SQLite threading issues
+        from src.face_clustering import FaceClusterer
+        import time
+        
+        bg_clusterer = FaceClusterer()
+        
+        # Wait for models to load in background
+        max_wait = 60
+        waited = 0
+        while not bg_clusterer.models_loaded and waited < max_wait:
+            time.sleep(1)
+            waited += 1
+        
+        if not bg_clusterer.models_loaded:
+            face_scan_jobs[job_id].update({
+                "status": "error",
+                "message": "Face recognition models failed to load",
+                "error": "Model loading timeout"
+            })
+            return
+        
+        total = len(files)
+        face_scan_jobs[job_id] = {
+            "status": "running",
+            "progress": 0,
+            "total": total,
+            "current": 0,
+            "current_file": "",
+            "message": "Starting scan...",
+            "result": None,
+            "error": None
+        }
+        
+        # Process in batches to update progress
+        batch_size = 10
+        all_results = {"total_faces": 0, "clusters": [], "matched_to_existing": 0}
+        
+        for i in range(0, total, batch_size):
+            batch = files[i:i + batch_size]
+            current_file = batch[0].split('/')[-1] if batch else ""
+            
+            face_scan_jobs[job_id].update({
+                "current": i,
+                "progress": int((i / total) * 100),
+                "current_file": current_file,
+                "message": f"Scanning {i+1}/{total}: {current_file}"
+            })
+            
+            # Process batch with thread-local clusterer
+            result = bg_clusterer.cluster_faces(batch, min_samples=min_samples)
+            if result.get("status") == "completed":
+                all_results["total_faces"] += result.get("total_faces", 0)
+                all_results["matched_to_existing"] += result.get("matched_to_existing", 0)
+                all_results["clusters"].extend(result.get("clusters", []))
+        
+        # Complete
+        face_scan_jobs[job_id].update({
+            "status": "completed",
+            "progress": 100,
+            "current": total,
+            "current_file": "",
+            "message": f"Scan complete! Found {all_results['total_faces']} faces",
+            "result": all_results
+        })
+        
+    except Exception as e:
+        face_scan_jobs[job_id].update({
+            "status": "error",
+            "message": str(e),
+            "error": str(e)
+        })
+
+
+@app.post("/api/faces/scan-async")
+async def scan_faces_async(background_tasks: BackgroundTasks, limit: Optional[int] = None):
+    """Start an async face scan job. Returns immediately with job_id for polling."""
+    import uuid
+    
+    # Check if face clusterer is ready
+    if not face_clusterer or not face_clusterer.models_loaded:
+        raise HTTPException(
+            status_code=503, 
+            detail="Face recognition models are still loading. Please try again in a few seconds."
+        )
+    
+    # Get all photo paths from database
+    cursor = photo_search_engine.db.conn.cursor()
+    if limit:
+        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL LIMIT ?", (limit,))
+    else:
+        cursor.execute("SELECT file_path FROM metadata WHERE deleted_at IS NULL")
+    all_files = [row[0] for row in cursor.fetchall()]
+
+    if not all_files:
+        return {
+            "job_id": None,
+            "status": "completed",
+            "message": "No photos found in library"
+        }
+    
+    # Create job ID and start background task
+    job_id = str(uuid.uuid4())
+    face_scan_jobs[job_id] = {
+        "status": "starting",
+        "progress": 0,
+        "total": len(all_files),
+        "current": 0,
+        "current_file": "",
+        "message": "Initializing scan...",
+        "result": None,
+        "error": None
+    }
+    
+    background_tasks.add_task(_run_face_scan_job, job_id, all_files)
+    
+    return {
+        "job_id": job_id,
+        "status": "started",
+        "total_files": len(all_files),
+        "message": f"Scan started for {len(all_files)} photos"
+    }
+
+
+@app.get("/api/faces/scan-async/{job_id}")
+async def get_scan_job_status(job_id: str):
+    """Get status of an async face scan job."""
+    if job_id not in face_scan_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    job = face_scan_jobs[job_id]
+    return {
+        "job_id": job_id,
+        "status": job.get("status"),
+        "progress": job.get("progress", 0),
+        "total": job.get("total", 0),
+        "current": job.get("current", 0),
+        "current_file": job.get("current_file", ""),
+        "message": job.get("message", ""),
+        "result": job.get("result") if job.get("status") == "completed" else None,
+        "error": job.get("error")
+    }
 
 
 @app.post("/api/faces/clusters/{cluster_id}/label")

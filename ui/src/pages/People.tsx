@@ -46,6 +46,7 @@ export function People() {
   const [stats, setStats] = useState<FaceStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [scanProgress, setScanProgress] = useState<{ progress: number; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -87,18 +88,56 @@ export function People() {
   };
 
   const handleScan = async () => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
     try {
       setScanning(true);
-      const response = await api.scanFaces();
-      console.log('Face scan completed:', response);
+      setScanProgress({ progress: 0, message: 'Starting scan...' });
 
-      // Refresh data after scan
-      await fetchClusters();
-      await fetchStats();
+      // Start async scan
+      const startResponse = await fetch(`${apiUrl}/api/faces/scan-async`, {
+        method: 'POST'
+      });
+      const startData = await startResponse.json();
+
+      if (!startData.job_id) {
+        // No job ID means immediate completion (no photos)
+        setScanProgress(null);
+        setScanning(false);
+        return;
+      }
+
+      // Poll for progress
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusResponse = await fetch(`${apiUrl}/api/faces/scan-async/${startData.job_id}`);
+          const statusData = await statusResponse.json();
+
+          setScanProgress({
+            progress: statusData.progress || 0,
+            message: statusData.message || 'Scanning...'
+          });
+
+          if (statusData.status === 'completed' || statusData.status === 'error') {
+            clearInterval(pollInterval);
+            setScanProgress(null);
+            setScanning(false);
+
+            // Refresh data
+            await fetchClusters();
+            await fetchStats();
+          }
+        } catch {
+          clearInterval(pollInterval);
+          setScanProgress(null);
+          setScanning(false);
+        }
+      }, 1000);
+
     } catch (err) {
       console.error('Failed to scan faces:', err);
       setError('Failed to scan for faces');
-    } finally {
+      setScanProgress(null);
       setScanning(false);
     }
   };
@@ -253,7 +292,7 @@ export function People() {
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-foreground">{stats.unidentified_faces}</div>
-                    <div className="text-xs text-muted-foreground">Unlabeled</div>
+                    <div className="text-xs text-muted-foreground">Name These</div>
                   </div>
                 </div>
               </div>
@@ -266,7 +305,7 @@ export function People() {
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-foreground">{stats.singletons}</div>
-                    <div className="text-xs text-muted-foreground">Singletons</div>
+                    <div className="text-xs text-muted-foreground">Seen Once</div>
                   </div>
                 </div>
               </div>
@@ -279,7 +318,7 @@ export function People() {
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-foreground">{stats.low_confidence}</div>
-                    <div className="text-xs text-muted-foreground">Low Conf</div>
+                    <div className="text-xs text-muted-foreground">Review These</div>
                   </div>
                 </div>
               </div>
@@ -302,6 +341,23 @@ export function People() {
             </div>
           </div>
         </div>
+
+        {/* Scan Progress */}
+        {scanProgress && (
+          <div className={`${glass.surface} rounded-xl p-4 border border-white/10 mb-6`}>
+            <div className="flex items-center gap-3 mb-2">
+              <RefreshCw size={16} className="animate-spin text-primary" />
+              <span className="text-sm text-foreground">Scanning for faces...</span>
+            </div>
+            <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+              <div
+                className="bg-primary h-2 rounded-full transition-all duration-300"
+                style={{ width: `${scanProgress.progress}%` }}
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">{scanProgress.message}</div>
+          </div>
+        )}
 
         {/* Error State */}
         {error && (

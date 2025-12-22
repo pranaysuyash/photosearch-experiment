@@ -49,9 +49,9 @@ export function Singletons() {
                             <ArrowLeft size={20} />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-semibold text-foreground">Singletons</h1>
+                            <h1 className="text-xl font-semibold text-foreground">Seen Just Once</h1>
                             <p className="text-sm text-muted-foreground">
-                                {count} people appearing only once
+                                {count} people who appeared in only one photo
                             </p>
                         </div>
                     </div>
@@ -66,7 +66,7 @@ export function Singletons() {
                 ) : clusters.length === 0 ? (
                     <div className={`${glass.surface} rounded-xl p-8 text-center border border-white/10`}>
                         <User className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No Singletons</h3>
+                        <h3 className="text-lg font-medium text-foreground mb-2">Everyone's Been Seen Twice!</h3>
                         <p className="text-muted-foreground">
                             All detected people appear in multiple photos.
                         </p>

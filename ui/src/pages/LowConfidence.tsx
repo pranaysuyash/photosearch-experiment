@@ -48,9 +48,9 @@ export function LowConfidence() {
                             <ArrowLeft size={20} />
                         </Link>
                         <div>
-                            <h1 className="text-xl font-semibold text-foreground">Low Confidence Faces</h1>
+                            <h1 className="text-xl font-semibold text-foreground">Review These Faces</h1>
                             <p className="text-sm text-muted-foreground">
-                                {count} faces with less than 80% detection confidence
+                                {count} faces we're not quite sure about
                             </p>
                         </div>
                     </div>
@@ -65,7 +65,7 @@ export function LowConfidence() {
                 ) : faces.length === 0 ? (
                     <div className={`${glass.surface} rounded-xl p-8 text-center border border-white/10`}>
                         <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium text-foreground mb-2">No Low Confidence Faces</h3>
+                        <h3 className="text-lg font-medium text-foreground mb-2">All Faces Look Good!</h3>
                         <p className="text-muted-foreground">
                             All detected faces have high confidence scores.
                         </p>
