@@ -67,6 +67,7 @@ test_scan_dir/
 docs/
 !docs/refactor-main-split.md
 !docs/refactor_analysis_dec_2024.md
+!docs/architecture_dependency_injection.md
 codex-review/
 copilot_raptor_review/
 old_project_docs/
