@@ -1,0 +1,1886 @@
+[
+  {
+    "path": "/",
+    "method": "GET",
+    "name": "root",
+    "summary": ""
+  },
+  {
+    "path": "/admin/unmask",
+    "method": "POST",
+    "name": "admin_unmask",
+    "summary": ""
+  },
+  {
+    "path": "/ai/analysis/{path:path}",
+    "method": "GET",
+    "name": "get_image_analysis",
+    "summary": ""
+  },
+  {
+    "path": "/ai/analytics/patterns",
+    "method": "POST",
+    "name": "analyze_photographer_patterns",
+    "summary": ""
+  },
+  {
+    "path": "/ai/analyze",
+    "method": "POST",
+    "name": "analyze_image",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights",
+    "method": "GET",
+    "name": "get_all_insights",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights",
+    "method": "POST",
+    "name": "create_ai_insight",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights/photo/{photo_path:path}",
+    "method": "GET",
+    "name": "get_insights_for_photo",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights/stats",
+    "method": "GET",
+    "name": "get_insights_stats",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights/type/{insight_type}",
+    "method": "GET",
+    "name": "get_insights_by_type",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights/{insight_id}",
+    "method": "DELETE",
+    "name": "delete_insight",
+    "summary": ""
+  },
+  {
+    "path": "/ai/insights/{insight_id}",
+    "method": "PUT",
+    "name": "update_insight_applied_status",
+    "summary": ""
+  },
+  {
+    "path": "/albums",
+    "method": "GET",
+    "name": "list_albums",
+    "summary": ""
+  },
+  {
+    "path": "/albums",
+    "method": "POST",
+    "name": "create_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}",
+    "method": "DELETE",
+    "name": "delete_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}",
+    "method": "GET",
+    "name": "get_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}",
+    "method": "PUT",
+    "name": "update_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}/photos",
+    "method": "DELETE",
+    "name": "remove_photos_from_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}/photos",
+    "method": "POST",
+    "name": "add_photos_to_album",
+    "summary": ""
+  },
+  {
+    "path": "/albums/{album_id}/refresh",
+    "method": "POST",
+    "name": "refresh_smart_album",
+    "summary": ""
+  },
+  {
+    "path": "/api/actions/detect-apps",
+    "method": "GET",
+    "name": "detect_installed_apps",
+    "summary": ""
+  },
+  {
+    "path": "/api/cache/cleanup",
+    "method": "GET",
+    "name": "cleanup_cache",
+    "summary": ""
+  },
+  {
+    "path": "/api/cache/clear",
+    "method": "POST",
+    "name": "clear_api_cache",
+    "summary": ""
+  },
+  {
+    "path": "/api/cache/stats",
+    "method": "GET",
+    "name": "get_api_cache_stats",
+    "summary": ""
+  },
+  {
+    "path": "/api/clusters/{cluster_id}/merge",
+    "method": "POST",
+    "name": "merge_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/api/clusters/{cluster_id}/quality",
+    "method": "GET",
+    "name": "get_cluster_quality",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates",
+    "method": "GET",
+    "name": "get_duplicates",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates/cleanup",
+    "method": "POST",
+    "name": "cleanup_duplicates",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates/scan",
+    "method": "POST",
+    "name": "scan_duplicates",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates/stats",
+    "method": "GET",
+    "name": "get_duplicates_stats",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates/{group_id}",
+    "method": "DELETE",
+    "name": "delete_duplicate_group",
+    "summary": ""
+  },
+  {
+    "path": "/api/duplicates/{group_id}/resolve",
+    "method": "POST",
+    "name": "resolve_duplicates",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/cluster",
+    "method": "POST",
+    "name": "cluster_faces_api",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/cluster/{cluster_id}/photos",
+    "method": "GET",
+    "name": "get_cluster_photos",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/clusters",
+    "method": "GET",
+    "name": "get_face_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}",
+    "method": "DELETE",
+    "name": "delete_cluster",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/label",
+    "method": "POST",
+    "name": "set_cluster_label",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/low-confidence",
+    "method": "GET",
+    "name": "get_low_confidence_faces",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/photos-with-faces",
+    "method": "GET",
+    "name": "get_photos_with_faces",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/photos/{person_name}",
+    "method": "GET",
+    "name": "get_photos_by_person",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/scan",
+    "method": "POST",
+    "name": "scan_faces",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/scan-async",
+    "method": "POST",
+    "name": "scan_faces_async",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/scan-async/{job_id}",
+    "method": "GET",
+    "name": "get_scan_job_status",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/scan-file",
+    "method": "POST",
+    "name": "scan_single_file",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/singletons",
+    "method": "GET",
+    "name": "get_singleton_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/stats",
+    "method": "GET",
+    "name": "get_face_stats_api",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/unidentified",
+    "method": "GET",
+    "name": "get_unidentified_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/{detection_id}/similar",
+    "method": "GET",
+    "name": "find_similar_faces",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/{detection_id}/thumbnail",
+    "method": "GET",
+    "name": "get_face_thumbnail",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/{face_id}/assign",
+    "method": "POST",
+    "name": "assign_face_to_cluster",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/{face_id}/create-person",
+    "method": "POST",
+    "name": "create_person_from_face",
+    "summary": ""
+  },
+  {
+    "path": "/api/faces/{face_id}/crop",
+    "method": "GET",
+    "name": "get_face_crop",
+    "summary": ""
+  },
+  {
+    "path": "/api/intent/detect",
+    "method": "GET",
+    "name": "detect_intent_api",
+    "summary": ""
+  },
+  {
+    "path": "/api/logs/test",
+    "method": "GET",
+    "name": "test_logging",
+    "summary": ""
+  },
+  {
+    "path": "/api/notes/search",
+    "method": "GET",
+    "name": "search_notes",
+    "summary": ""
+  },
+  {
+    "path": "/api/notes/stats",
+    "method": "GET",
+    "name": "get_notes_stats",
+    "summary": ""
+  },
+  {
+    "path": "/api/people/search",
+    "method": "GET",
+    "name": "search_people",
+    "summary": ""
+  },
+  {
+    "path": "/api/people/{person_id}/analytics",
+    "method": "GET",
+    "name": "get_person_analytics",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/batch/faces/detect",
+    "method": "POST",
+    "name": "detect_faces_in_batch",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/edit",
+    "method": "GET",
+    "name": "get_photo_edit",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/edit",
+    "method": "POST",
+    "name": "set_photo_edit",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/edits",
+    "method": "DELETE",
+    "name": "delete_photo_edits",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/edits",
+    "method": "GET",
+    "name": "get_photo_edits",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/edits",
+    "method": "POST",
+    "name": "set_photo_edits",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/notes",
+    "method": "DELETE",
+    "name": "delete_photo_notes",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/notes",
+    "method": "GET",
+    "name": "get_photo_notes",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/notes",
+    "method": "POST",
+    "name": "set_photo_notes",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/rating",
+    "method": "GET",
+    "name": "get_photo_rating",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{file_path:path}/rating",
+    "method": "POST",
+    "name": "set_photo_rating",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{photo_path:path}/faces",
+    "method": "GET",
+    "name": "get_faces_in_photo",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{photo_path:path}/faces/detect",
+    "method": "POST",
+    "name": "detect_faces_in_photo",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{photo_path:path}/people",
+    "method": "GET",
+    "name": "get_people_in_photo",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{photo_path:path}/people",
+    "method": "POST",
+    "name": "add_person_to_photo",
+    "summary": ""
+  },
+  {
+    "path": "/api/photos/{photo_path:path}/people/{person_id}",
+    "method": "DELETE",
+    "name": "remove_person_from_photo",
+    "summary": ""
+  },
+  {
+    "path": "/api/ratings/photos/{rating}",
+    "method": "GET",
+    "name": "get_photos_by_rating",
+    "summary": ""
+  },
+  {
+    "path": "/api/ratings/stats",
+    "method": "GET",
+    "name": "get_rating_stats",
+    "summary": ""
+  },
+  {
+    "path": "/api/schema",
+    "method": "GET",
+    "name": "get_api_schema",
+    "summary": ""
+  },
+  {
+    "path": "/api/search/count",
+    "method": "POST",
+    "name": "get_search_count",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/action",
+    "method": "POST",
+    "name": "record_bulk_action",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/can-undo/{action_id}",
+    "method": "GET",
+    "name": "can_undo_action",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/delete",
+    "method": "POST",
+    "name": "bulk_delete",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/export",
+    "method": "POST",
+    "name": "bulk_export",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/favorite",
+    "method": "POST",
+    "name": "bulk_favorite",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/history/{user_id}",
+    "method": "GET",
+    "name": "get_bulk_action_history",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/stats/{user_id}",
+    "method": "GET",
+    "name": "get_bulk_actions_stats",
+    "summary": ""
+  },
+  {
+    "path": "/bulk/undo/{action_id}",
+    "method": "POST",
+    "name": "undo_bulk_action",
+    "summary": ""
+  },
+  {
+    "path": "/cache/clear",
+    "method": "POST",
+    "name": "clear_cache",
+    "summary": ""
+  },
+  {
+    "path": "/cache/health",
+    "method": "GET",
+    "name": "cache_health_check",
+    "summary": ""
+  },
+  {
+    "path": "/cache/stats",
+    "method": "GET",
+    "name": "get_cache_stats",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/api-endpoints",
+    "method": "GET",
+    "name": "get_api_endpoints",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/chunk/{chunk_name}",
+    "method": "GET",
+    "name": "get_chunk_config",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/chunk/{chunk_name}",
+    "method": "POST",
+    "name": "set_chunk_config",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/config",
+    "method": "GET",
+    "name": "get_code_splitting_config",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/enabled",
+    "method": "GET",
+    "name": "get_code_splitting_enabled",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/enabled",
+    "method": "POST",
+    "name": "set_code_splitting_enabled",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/integration-guide",
+    "method": "GET",
+    "name": "get_frontend_integration_guide",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/performance",
+    "method": "GET",
+    "name": "get_lazy_load_performance",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/performance",
+    "method": "POST",
+    "name": "record_lazy_load_performance",
+    "summary": ""
+  },
+  {
+    "path": "/code-splitting/performance/chunks",
+    "method": "GET",
+    "name": "get_chunk_performance",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces",
+    "method": "POST",
+    "name": "create_collaborative_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/user/{user_id}",
+    "method": "GET",
+    "name": "get_user_spaces",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}",
+    "method": "GET",
+    "name": "get_collaborative_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/members",
+    "method": "GET",
+    "name": "get_space_members",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/members",
+    "method": "POST",
+    "name": "add_member_to_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/members/{user_id}",
+    "method": "DELETE",
+    "name": "remove_member_from_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/photos",
+    "method": "GET",
+    "name": "get_space_photos",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/photos",
+    "method": "POST",
+    "name": "add_photo_to_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}",
+    "method": "DELETE",
+    "name": "remove_photo_from_space",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments",
+    "method": "GET",
+    "name": "get_photo_comments",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments",
+    "method": "POST",
+    "name": "add_comment_to_space_photo",
+    "summary": ""
+  },
+  {
+    "path": "/collaborative/spaces/{space_id}/stats",
+    "method": "GET",
+    "name": "get_space_stats",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart",
+    "method": "GET",
+    "name": "get_smart_collections",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart",
+    "method": "POST",
+    "name": "create_smart_collection",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/by-rule/{rule_type}",
+    "method": "GET",
+    "name": "get_collections_by_rule_type",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/stats",
+    "method": "GET",
+    "name": "get_smart_collections_stats",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/{collection_id}",
+    "method": "DELETE",
+    "name": "delete_smart_collection",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/{collection_id}",
+    "method": "GET",
+    "name": "get_smart_collection",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/{collection_id}",
+    "method": "PUT",
+    "name": "update_smart_collection",
+    "summary": ""
+  },
+  {
+    "path": "/collections/smart/{collection_id}/photos",
+    "method": "GET",
+    "name": "get_photos_for_collection",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/active",
+    "method": "GET",
+    "name": "get_active_dialogs",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/confirmation",
+    "method": "POST",
+    "name": "create_confirmation_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/create",
+    "method": "POST",
+    "name": "create_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/error",
+    "method": "POST",
+    "name": "create_error_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/history",
+    "method": "GET",
+    "name": "get_dialog_history",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/input",
+    "method": "POST",
+    "name": "create_input_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/progress",
+    "method": "POST",
+    "name": "create_progress_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/progress/{dialog_id}",
+    "method": "POST",
+    "name": "update_progress_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/progress/{dialog_id}/complete",
+    "method": "POST",
+    "name": "complete_progress_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/stats",
+    "method": "GET",
+    "name": "get_dialog_stats",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/{dialog_id}",
+    "method": "GET",
+    "name": "get_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/{dialog_id}/action",
+    "method": "POST",
+    "name": "dialog_action",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/{dialog_id}/close",
+    "method": "POST",
+    "name": "close_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/dialogs/{dialog_id}/dismiss",
+    "method": "POST",
+    "name": "dismiss_dialog",
+    "summary": ""
+  },
+  {
+    "path": "/docs",
+    "method": "GET",
+    "name": "swagger_ui_html",
+    "summary": ""
+  },
+  {
+    "path": "/docs/oauth2-redirect",
+    "method": "GET",
+    "name": "swagger_ui_redirect",
+    "summary": ""
+  },
+  {
+    "path": "/export",
+    "method": "POST",
+    "name": "export_photos",
+    "summary": ""
+  },
+  {
+    "path": "/export/presets",
+    "method": "GET",
+    "name": "get_export_presets",
+    "summary": ""
+  },
+  {
+    "path": "/export/presets",
+    "method": "POST",
+    "name": "create_export_preset",
+    "summary": ""
+  },
+  {
+    "path": "/faces/cluster",
+    "method": "POST",
+    "name": "cluster_faces_v1",
+    "summary": ""
+  },
+  {
+    "path": "/faces/clusters",
+    "method": "GET",
+    "name": "get_all_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/faces/clusters/{cluster_id}",
+    "method": "DELETE",
+    "name": "delete_cluster",
+    "summary": ""
+  },
+  {
+    "path": "/faces/clusters/{cluster_id}",
+    "method": "GET",
+    "name": "get_cluster_details",
+    "summary": ""
+  },
+  {
+    "path": "/faces/clusters/{cluster_id}/label",
+    "method": "PUT",
+    "name": "update_cluster_label",
+    "summary": ""
+  },
+  {
+    "path": "/faces/image/{image_path:path}",
+    "method": "GET",
+    "name": "get_image_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/faces/stats",
+    "method": "GET",
+    "name": "get_face_stats_v1",
+    "summary": ""
+  },
+  {
+    "path": "/favorites",
+    "method": "DELETE",
+    "name": "remove_favorite",
+    "summary": ""
+  },
+  {
+    "path": "/favorites",
+    "method": "GET",
+    "name": "get_favorites",
+    "summary": ""
+  },
+  {
+    "path": "/favorites/check",
+    "method": "GET",
+    "name": "check_favorite",
+    "summary": ""
+  },
+  {
+    "path": "/favorites/toggle",
+    "method": "POST",
+    "name": "toggle_favorite",
+    "summary": ""
+  },
+  {
+    "path": "/file",
+    "method": "GET",
+    "name": "get_file",
+    "summary": ""
+  },
+  {
+    "path": "/image/thumbnail",
+    "method": "GET",
+    "name": "get_thumbnail",
+    "summary": ""
+  },
+  {
+    "path": "/image/token",
+    "method": "POST",
+    "name": "issue_image_token",
+    "summary": ""
+  },
+  {
+    "path": "/index",
+    "method": "POST",
+    "name": "force_indexing",
+    "summary": ""
+  },
+  {
+    "path": "/intent/all",
+    "method": "GET",
+    "name": "get_all_intents",
+    "summary": ""
+  },
+  {
+    "path": "/intent/badges",
+    "method": "GET",
+    "name": "get_search_badges",
+    "summary": ""
+  },
+  {
+    "path": "/intent/detect",
+    "method": "GET",
+    "name": "detect_intent_v2",
+    "summary": ""
+  },
+  {
+    "path": "/intent/suggestions",
+    "method": "GET",
+    "name": "get_search_suggestions",
+    "summary": ""
+  },
+  {
+    "path": "/jobs/{job_id}",
+    "method": "GET",
+    "name": "get_job_status",
+    "summary": ""
+  },
+  {
+    "path": "/library/remove",
+    "method": "POST",
+    "name": "remove_from_library",
+    "summary": ""
+  },
+  {
+    "path": "/locations-legacy",
+    "method": "POST",
+    "name": "add_photo_location_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/locations-legacy/photo/{photo_path:path}",
+    "method": "GET",
+    "name": "get_photo_location_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/locations-legacy/photo/{photo_path:path}",
+    "method": "PUT",
+    "name": "update_photo_location_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/locations-legacy/stats",
+    "method": "GET",
+    "name": "get_location_stats_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/locations/clusterize",
+    "method": "POST",
+    "name": "create_location_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/locations/clusters",
+    "method": "GET",
+    "name": "get_place_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/locations/clusters",
+    "method": "GET",
+    "name": "get_location_clusters",
+    "summary": ""
+  },
+  {
+    "path": "/locations/clusters/{cluster_id}/photos",
+    "method": "GET",
+    "name": "get_photos_in_cluster",
+    "summary": ""
+  },
+  {
+    "path": "/locations/correct-bulk",
+    "method": "POST",
+    "name": "bulk_correct_place_names",
+    "summary": ""
+  },
+  {
+    "path": "/locations/correct/{photo_path:path}",
+    "method": "POST",
+    "name": "correct_photo_location",
+    "summary": ""
+  },
+  {
+    "path": "/locations/nearby",
+    "method": "GET",
+    "name": "get_nearby_locations",
+    "summary": ""
+  },
+  {
+    "path": "/locations/nearby",
+    "method": "GET",
+    "name": "get_photos_near_location",
+    "summary": ""
+  },
+  {
+    "path": "/locations/photo/{photo_path:path}",
+    "method": "GET",
+    "name": "get_photo_location",
+    "summary": ""
+  },
+  {
+    "path": "/locations/photo/{photo_path:path}/cluster",
+    "method": "GET",
+    "name": "get_photo_cluster",
+    "summary": ""
+  },
+  {
+    "path": "/locations/places/{place_name}",
+    "method": "GET",
+    "name": "get_photos_by_place",
+    "summary": ""
+  },
+  {
+    "path": "/locations/stats",
+    "method": "GET",
+    "name": "get_location_stats",
+    "summary": ""
+  },
+  {
+    "path": "/oauth/google/callback",
+    "method": "GET",
+    "name": "google_oauth_callback",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/all",
+    "method": "DELETE",
+    "name": "clear_all_ocr_data",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/extract",
+    "method": "POST",
+    "name": "extract_text_from_images",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/image/{image_path:path}",
+    "method": "DELETE",
+    "name": "delete_image_ocr_data",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/image/{image_path:path}",
+    "method": "GET",
+    "name": "get_image_ocr_stats",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/search",
+    "method": "GET",
+    "name": "search_ocr_text",
+    "summary": ""
+  },
+  {
+    "path": "/ocr/stats",
+    "method": "GET",
+    "name": "get_ocr_stats",
+    "summary": ""
+  },
+  {
+    "path": "/openapi.json",
+    "method": "GET",
+    "name": "openapi",
+    "summary": ""
+  },
+  {
+    "path": "/photos/by-tags",
+    "method": "GET",
+    "name": "get_photos_by_tags",
+    "summary": ""
+  },
+  {
+    "path": "/photos/by-tags/legacy2",
+    "method": "GET",
+    "name": "get_photos_by_tags_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/photos/flip",
+    "method": "POST",
+    "name": "flip_photo",
+    "summary": ""
+  },
+  {
+    "path": "/photos/rotate",
+    "method": "POST",
+    "name": "rotate_photo",
+    "summary": ""
+  },
+  {
+    "path": "/photos/{path:path}/albums",
+    "method": "GET",
+    "name": "get_photo_albums",
+    "summary": ""
+  },
+  {
+    "path": "/photos/{path:path}/tags",
+    "method": "GET",
+    "name": "get_photo_tags",
+    "summary": ""
+  },
+  {
+    "path": "/pricing",
+    "method": "GET",
+    "name": "get_pricing_tiers",
+    "summary": ""
+  },
+  {
+    "path": "/pricing/recommend",
+    "method": "GET",
+    "name": "recommend_pricing_tier",
+    "summary": ""
+  },
+  {
+    "path": "/pricing/{tier_name}",
+    "method": "GET",
+    "name": "get_pricing_tier",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/access/{user_id}",
+    "method": "GET",
+    "name": "get_photos_accessible_to_user",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/check-access/{photo_path:path}/{user_id}",
+    "method": "GET",
+    "name": "check_photo_access",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/control/{photo_path:path}",
+    "method": "GET",
+    "name": "get_photo_privacy",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/control/{photo_path:path}",
+    "method": "POST",
+    "name": "set_photo_privacy",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/control/{photo_path:path}",
+    "method": "PUT",
+    "name": "update_photo_privacy",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/encrypted/{owner_id}",
+    "method": "GET",
+    "name": "get_encrypted_photos",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/revoke-access/{photo_path:path}/{user_id}",
+    "method": "DELETE",
+    "name": "revoke_user_access",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/stats/{owner_id}",
+    "method": "GET",
+    "name": "get_privacy_stats",
+    "summary": ""
+  },
+  {
+    "path": "/privacy/visible/{visibility}/{owner_id}",
+    "method": "GET",
+    "name": "get_photos_by_visibility",
+    "summary": ""
+  },
+  {
+    "path": "/redoc",
+    "method": "GET",
+    "name": "redoc_html",
+    "summary": ""
+  },
+  {
+    "path": "/scan",
+    "method": "POST",
+    "name": "scan_directory",
+    "summary": ""
+  },
+  {
+    "path": "/search",
+    "method": "GET",
+    "name": "search_photos",
+    "summary": ""
+  },
+  {
+    "path": "/search/intent",
+    "method": "POST",
+    "name": "search_with_intent",
+    "summary": ""
+  },
+  {
+    "path": "/search/refine",
+    "method": "POST",
+    "name": "refine_search",
+    "summary": ""
+  },
+  {
+    "path": "/search/semantic",
+    "method": "GET",
+    "name": "search_semantic",
+    "summary": ""
+  },
+  {
+    "path": "/searches",
+    "method": "GET",
+    "name": "get_saved_searches",
+    "summary": ""
+  },
+  {
+    "path": "/searches/analytics",
+    "method": "GET",
+    "name": "get_search_analytics",
+    "summary": ""
+  },
+  {
+    "path": "/searches/analytics/detailed",
+    "method": "GET",
+    "name": "get_detailed_analytics",
+    "summary": ""
+  },
+  {
+    "path": "/searches/analytics/export",
+    "method": "GET",
+    "name": "export_analytics",
+    "summary": ""
+  },
+  {
+    "path": "/searches/analytics/trends",
+    "method": "GET",
+    "name": "get_search_trends",
+    "summary": ""
+  },
+  {
+    "path": "/searches/history",
+    "method": "GET",
+    "name": "get_search_history",
+    "summary": ""
+  },
+  {
+    "path": "/searches/history/clear",
+    "method": "POST",
+    "name": "clear_search_history",
+    "summary": ""
+  },
+  {
+    "path": "/searches/performance",
+    "method": "GET",
+    "name": "get_search_performance",
+    "summary": ""
+  },
+  {
+    "path": "/searches/recurring",
+    "method": "GET",
+    "name": "get_recurring_searches",
+    "summary": ""
+  },
+  {
+    "path": "/searches/save",
+    "method": "POST",
+    "name": "save_search",
+    "summary": ""
+  },
+  {
+    "path": "/searches/{search_id}",
+    "method": "DELETE",
+    "name": "delete_saved_search",
+    "summary": ""
+  },
+  {
+    "path": "/searches/{search_id}",
+    "method": "GET",
+    "name": "get_saved_search",
+    "summary": ""
+  },
+  {
+    "path": "/searches/{search_id}",
+    "method": "PUT",
+    "name": "update_saved_search",
+    "summary": ""
+  },
+  {
+    "path": "/searches/{search_id}/execute",
+    "method": "POST",
+    "name": "execute_saved_search",
+    "summary": ""
+  },
+  {
+    "path": "/server/config",
+    "method": "GET",
+    "name": "server_config",
+    "summary": ""
+  },
+  {
+    "path": "/share",
+    "method": "POST",
+    "name": "create_share_link",
+    "summary": ""
+  },
+  {
+    "path": "/shared/{share_id}",
+    "method": "GET",
+    "name": "get_shared_content",
+    "summary": ""
+  },
+  {
+    "path": "/shared/{share_id}/download",
+    "method": "GET",
+    "name": "download_shared_content",
+    "summary": ""
+  },
+  {
+    "path": "/sources",
+    "method": "GET",
+    "name": "list_sources",
+    "summary": ""
+  },
+  {
+    "path": "/sources/google-drive",
+    "method": "POST",
+    "name": "add_google_drive_source",
+    "summary": ""
+  },
+  {
+    "path": "/sources/local-folder",
+    "method": "POST",
+    "name": "add_local_folder_source",
+    "summary": ""
+  },
+  {
+    "path": "/sources/s3",
+    "method": "POST",
+    "name": "add_s3_source",
+    "summary": ""
+  },
+  {
+    "path": "/sources/{source_id}",
+    "method": "DELETE",
+    "name": "delete_source",
+    "summary": ""
+  },
+  {
+    "path": "/sources/{source_id}/rescan",
+    "method": "POST",
+    "name": "rescan_source",
+    "summary": ""
+  },
+  {
+    "path": "/sources/{source_id}/sync",
+    "method": "POST",
+    "name": "sync_source",
+    "summary": ""
+  },
+  {
+    "path": "/stats",
+    "method": "GET",
+    "name": "get_stats",
+    "summary": ""
+  },
+  {
+    "path": "/stories",
+    "method": "POST",
+    "name": "create_story",
+    "summary": ""
+  },
+  {
+    "path": "/stories/owner/{owner_id}",
+    "method": "GET",
+    "name": "get_stories_by_owner",
+    "summary": ""
+  },
+  {
+    "path": "/stories/user/{user_id}/stats",
+    "method": "GET",
+    "name": "get_user_story_stats",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}",
+    "method": "GET",
+    "name": "get_story",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}",
+    "method": "PUT",
+    "name": "update_story",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}/photos",
+    "method": "POST",
+    "name": "add_photo_to_story",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}/publish",
+    "method": "POST",
+    "name": "toggle_story_publish",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}/stats",
+    "method": "GET",
+    "name": "get_story_stats",
+    "summary": ""
+  },
+  {
+    "path": "/stories/{story_id}/timeline",
+    "method": "GET",
+    "name": "get_story_timeline",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters",
+    "method": "GET",
+    "name": "get_tag_filters",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters",
+    "method": "POST",
+    "name": "create_tag_filter",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/apply",
+    "method": "POST",
+    "name": "apply_tag_filter",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2",
+    "method": "GET",
+    "name": "get_tag_filters_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2",
+    "method": "POST",
+    "name": "create_tag_filter_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2/apply",
+    "method": "POST",
+    "name": "apply_tag_filter_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2/{filter_id}",
+    "method": "DELETE",
+    "name": "delete_tag_filter_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2/{filter_id}",
+    "method": "GET",
+    "name": "get_tag_filter_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/legacy2/{filter_id}",
+    "method": "PUT",
+    "name": "update_tag_filter_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/{filter_id}",
+    "method": "DELETE",
+    "name": "delete_tag_filter",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/{filter_id}",
+    "method": "GET",
+    "name": "get_tag_filter",
+    "summary": ""
+  },
+  {
+    "path": "/tag-filters/{filter_id}",
+    "method": "PUT",
+    "name": "update_tag_filter",
+    "summary": ""
+  },
+  {
+    "path": "/tags",
+    "method": "GET",
+    "name": "list_tags",
+    "summary": ""
+  },
+  {
+    "path": "/tags",
+    "method": "POST",
+    "name": "create_tag",
+    "summary": ""
+  },
+  {
+    "path": "/tags/common",
+    "method": "GET",
+    "name": "get_common_tags",
+    "summary": ""
+  },
+  {
+    "path": "/tags/common/legacy2",
+    "method": "GET",
+    "name": "get_common_tags_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tags/search",
+    "method": "GET",
+    "name": "search_tags",
+    "summary": ""
+  },
+  {
+    "path": "/tags/search/legacy2",
+    "method": "GET",
+    "name": "search_tags_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tags/stats",
+    "method": "GET",
+    "name": "get_tag_stats",
+    "summary": ""
+  },
+  {
+    "path": "/tags/stats/legacy2",
+    "method": "GET",
+    "name": "get_tag_stats_legacy2",
+    "summary": ""
+  },
+  {
+    "path": "/tags/{tag_name}",
+    "method": "DELETE",
+    "name": "delete_tag",
+    "summary": ""
+  },
+  {
+    "path": "/tags/{tag_name}",
+    "method": "GET",
+    "name": "get_tag",
+    "summary": ""
+  },
+  {
+    "path": "/tags/{tag_name}/photos",
+    "method": "DELETE",
+    "name": "remove_photos_from_tag",
+    "summary": ""
+  },
+  {
+    "path": "/tags/{tag_name}/photos",
+    "method": "POST",
+    "name": "add_photos_to_tag",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/checklist",
+    "method": "GET",
+    "name": "get_integration_checklist",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/commands",
+    "method": "GET",
+    "name": "get_tauri_commands",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/commands/{command_name}",
+    "method": "GET",
+    "name": "get_tauri_command",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/config",
+    "method": "GET",
+    "name": "get_tauri_config",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/frontend-hooks",
+    "method": "GET",
+    "name": "get_frontend_hooks",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/performance",
+    "method": "GET",
+    "name": "get_performance_tips",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/rust-skeleton",
+    "method": "GET",
+    "name": "get_rust_skeleton",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/security",
+    "method": "GET",
+    "name": "get_security_recommendations",
+    "summary": ""
+  },
+  {
+    "path": "/tauri/setup-guide",
+    "method": "GET",
+    "name": "get_setup_guide",
+    "summary": ""
+  },
+  {
+    "path": "/timeline",
+    "method": "GET",
+    "name": "get_timeline",
+    "summary": ""
+  },
+  {
+    "path": "/timeline/entries/{entry_id}",
+    "method": "DELETE",
+    "name": "remove_photo_from_timeline",
+    "summary": ""
+  },
+  {
+    "path": "/timeline/entries/{entry_id}",
+    "method": "PUT",
+    "name": "update_timeline_entry",
+    "summary": ""
+  },
+  {
+    "path": "/trash",
+    "method": "GET",
+    "name": "list_trash",
+    "summary": ""
+  },
+  {
+    "path": "/trash/empty",
+    "method": "POST",
+    "name": "empty_trash",
+    "summary": ""
+  },
+  {
+    "path": "/trash/move",
+    "method": "POST",
+    "name": "trash_move",
+    "summary": ""
+  },
+  {
+    "path": "/trash/restore",
+    "method": "POST",
+    "name": "restore_from_trash",
+    "summary": ""
+  },
+  {
+    "path": "/usage/check/{user_id}",
+    "method": "GET",
+    "name": "check_usage_limit",
+    "summary": ""
+  },
+  {
+    "path": "/usage/company-analytics",
+    "method": "GET",
+    "name": "get_company_usage_analytics",
+    "summary": ""
+  },
+  {
+    "path": "/usage/growth/{user_id}",
+    "method": "GET",
+    "name": "get_user_growth_rate",
+    "summary": ""
+  },
+  {
+    "path": "/usage/history/{user_id}",
+    "method": "GET",
+    "name": "get_user_usage_history",
+    "summary": ""
+  },
+  {
+    "path": "/usage/tier-averages",
+    "method": "GET",
+    "name": "get_tier_usage_averages",
+    "summary": ""
+  },
+  {
+    "path": "/usage/upgrade/{user_id}",
+    "method": "POST",
+    "name": "upgrade_user_tier",
+    "summary": ""
+  },
+  {
+    "path": "/usage/{user_id}",
+    "method": "GET",
+    "name": "get_usage_stats",
+    "summary": ""
+  },
+  {
+    "path": "/versions",
+    "method": "POST",
+    "name": "create_photo_version",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy",
+    "method": "POST",
+    "name": "create_photo_version_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy/original/{original_path:path}",
+    "method": "GET",
+    "name": "get_versions_for_original_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy/stack/{version_path:path}",
+    "method": "GET",
+    "name": "get_version_stack_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy/stats",
+    "method": "GET",
+    "name": "get_version_stats_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy/{version_id}",
+    "method": "DELETE",
+    "name": "delete_photo_version_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions-legacy/{version_path:path}",
+    "method": "PUT",
+    "name": "update_version_metadata_legacy",
+    "summary": ""
+  },
+  {
+    "path": "/versions/merge-stacks",
+    "method": "POST",
+    "name": "merge_version_stacks",
+    "summary": ""
+  },
+  {
+    "path": "/versions/photo/{photo_path:path}",
+    "method": "GET",
+    "name": "get_photo_versions",
+    "summary": ""
+  },
+  {
+    "path": "/versions/stack/{original_path:path}",
+    "method": "GET",
+    "name": "get_version_stack",
+    "summary": ""
+  },
+  {
+    "path": "/versions/stacks",
+    "method": "GET",
+    "name": "get_all_version_stacks",
+    "summary": ""
+  },
+  {
+    "path": "/versions/stats",
+    "method": "GET",
+    "name": "get_version_stats",
+    "summary": ""
+  },
+  {
+    "path": "/versions/{version_id}",
+    "method": "DELETE",
+    "name": "delete_photo_version",
+    "summary": ""
+  },
+  {
+    "path": "/versions/{version_path:path}",
+    "method": "PUT",
+    "name": "update_version_metadata",
+    "summary": ""
+  },
+  {
+    "path": "/video",
+    "method": "GET",
+    "name": "get_video",
+    "summary": ""
+  },
+  {
+    "path": "/video/analysis/{video_path:path}",
+    "method": "DELETE",
+    "name": "delete_video_analysis",
+    "summary": ""
+  },
+  {
+    "path": "/video/analysis/{video_path:path}",
+    "method": "GET",
+    "name": "get_video_analysis_results",
+    "summary": ""
+  },
+  {
+    "path": "/video/analyze",
+    "method": "POST",
+    "name": "analyze_video_content",
+    "summary": ""
+  },
+  {
+    "path": "/video/batch-analyze",
+    "method": "POST",
+    "name": "batch_analyze_videos",
+    "summary": ""
+  },
+  {
+    "path": "/video/keyframes/{video_path:path}",
+    "method": "GET",
+    "name": "get_video_keyframes",
+    "summary": ""
+  },
+  {
+    "path": "/video/ocr/{video_path:path}",
+    "method": "GET",
+    "name": "get_video_ocr_results",
+    "summary": ""
+  },
+  {
+    "path": "/video/scenes/{video_path:path}",
+    "method": "GET",
+    "name": "get_video_scenes",
+    "summary": ""
+  },
+  {
+    "path": "/video/search",
+    "method": "POST",
+    "name": "search_video_content",
+    "summary": ""
+  },
+  {
+    "path": "/video/stats",
+    "method": "GET",
+    "name": "get_video_analysis_stats",
+    "summary": ""
+  },
+  {
+    "path": "/video/thumbnail/{video_path:path}",
+    "method": "GET",
+    "name": "get_video_thumbnail",
+    "summary": ""
+  }
+]
