@@ -197,7 +197,7 @@ async def lifespan(app: FastAPI):
                         print(f"Metadata indexed: {filepath}")
                         
                         # Trigger Semantic Indexing
-                        process_semantic_indexing([filepath])
+                        state.process_semantic_indexing([filepath])
                         
                         # Trigger Face Detection (if models loaded)
                         fc = state.face_clusterer

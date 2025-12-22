@@ -37,9 +37,8 @@ from .main import (
     ps_logger,
     perf_tracker,
     photo_search_engine,
-    process_semantic_indexing,
-    trash_db,
 )
+from .services.semantic_indexing import process_semantic_indexing
 from .config import settings
 from .watcher import start_watcher
 from .embedding_generator import EmbeddingGenerator
@@ -100,8 +99,15 @@ async def lifespan(app: FastAPI):
                         photo_search_engine.db.store_metadata(filepath, metadata)
                         print(f"Metadata indexed: {filepath}")
 
-                        # Trigger Semantic Indexing
-                        process_semantic_indexing([filepath])
+                        # Trigger Semantic Indexing (requires deps)
+                        # Note: This uses the globally initialized embedding_generator
+                        # and photo_search_engine's vector_store
+                        try:
+                            from .core.stores import vector_store
+                            if embedding_generator and vector_store:
+                                process_semantic_indexing([filepath], embedding_generator, vector_store)
+                        except Exception as si_err:
+                            print(f"Semantic indexing failed for {filepath}: {si_err}")
                 except Exception as e:
                     print(f"Real-time indexing failed for {filepath}: {e}")
 

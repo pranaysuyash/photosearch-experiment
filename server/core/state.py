@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 
 if TYPE_CHECKING:
     # Type hints only - not imported at runtime
@@ -83,3 +83,23 @@ class AppState:
     api_version_manager: Optional[Any] = None
     cache_manager: Optional[Any] = None
     log_search_operation: Optional[Any] = None  # Function reference
+    
+    # ─────────────────────────────────────────────────────────────────────────
+    # Helper Methods
+    # ─────────────────────────────────────────────────────────────────────────
+    def process_semantic_indexing(self, files_to_index: List[str]) -> None:
+        """
+        Wrapper for semantic indexing that provides dependencies.
+        
+        Args:
+            files_to_index: List of file paths to index
+        """
+        if not self.embedding_generator or not self.vector_store:
+            return
+        
+        from server.services.semantic_indexing import process_semantic_indexing
+        process_semantic_indexing(
+            files_to_index=files_to_index,
+            embedding_generator=self.embedding_generator,
+            vector_store=self.vector_store,
+        )

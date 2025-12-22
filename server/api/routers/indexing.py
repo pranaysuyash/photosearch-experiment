@@ -38,6 +38,9 @@ async def scan_directory(
         raise HTTPException(status_code=400, detail="Directory does not exist")
 
     photo_search_engine = state.photo_search_engine
+    # Capture references for background task closure
+    embedding_generator = state.embedding_generator
+    vector_store = state.vector_store
 
     # If background processing is requested (default)
     if background:
@@ -52,8 +55,8 @@ async def scan_directory(
 
                 # After scanning metadata, perform semantic indexing
                 all_files = scan_results.get("all_files", [])
-                if all_files:
-                    process_semantic_indexing(all_files)
+                if all_files and embedding_generator and vector_store:
+                    process_semantic_indexing(all_files, embedding_generator, vector_store)
 
                 job_store.update_job(
                     job_id,
@@ -75,7 +78,7 @@ async def scan_directory(
             # Perform semantic indexing synchronously if not in background
             all_files = results.get("all_files", [])
             if all_files:
-                process_semantic_indexing(all_files)
+                state.process_semantic_indexing(all_files)
 
             return results
         except Exception as e:
@@ -92,7 +95,7 @@ async def get_job_status(job_id: str):
 
 
 @router.post("/index")
-async def force_indexing(request: ScanRequest):
+async def force_indexing(request: ScanRequest, state: AppState = Depends(get_state)):
     """
     Force semantic indexing of a directory (without re-scanning metadata).
     """
@@ -104,7 +107,7 @@ async def force_indexing(request: ScanRequest):
                 files_to_index.append(os.path.join(root, file))
 
         if files_to_index:
-            process_semantic_indexing(files_to_index)
+            state.process_semantic_indexing(files_to_index)
 
         return {"status": "success", "indexed": len(files_to_index)}
     except Exception as e:

@@ -1,25 +1,33 @@
 import os
-from typing import List
+import time
+from typing import List, Optional, TYPE_CHECKING
 
-from server.embedding_generator import EmbeddingGenerator
 from server.image_loader import load_image
 
+if TYPE_CHECKING:
+    from server.embedding_generator import EmbeddingGenerator
+    from server.vector_store import VectorStore
 
-def process_semantic_indexing(files_to_index: List[str]):
+
+def process_semantic_indexing(
+    files_to_index: List[str],
+    embedding_generator: "EmbeddingGenerator",
+    vector_store: "VectorStore",
+):
     """
     Helper to generate embeddings for a list of file paths.
+    
+    Args:
+        files_to_index: List of file paths to index
+        embedding_generator: The embedding generator instance
+        vector_store: The vector store instance for storing embeddings
     """
-    from server import main as main_module
-
-    if not main_module.embedding_generator:
-        main_module.embedding_generator = EmbeddingGenerator()
-
     print(f"Indexing {len(files_to_index)} files for semantic search...")
 
     # 1. Deduplication: Filter out files that are already indexed
     # Using Full Path as ID to avoid collisions
     try:
-        existing_ids = main_module.vector_store.get_all_ids()
+        existing_ids = vector_store.get_all_ids()
         files_to_process = [f for f in files_to_index if f not in existing_ids]
     except Exception as e:
         print(f"Error checking existing IDs: {e}")
@@ -65,7 +73,7 @@ def process_semantic_indexing(files_to_index: List[str]):
                 img = load_image(file_path)
 
             if img:
-                vec = main_module.embedding_generator.generate_image_embedding(img)
+                vec = embedding_generator.generate_image_embedding(img)
                 if vec:
                     # FIX: Use full path as ID to ensure uniqueness
                     ids.append(file_path)
@@ -80,8 +88,8 @@ def process_semantic_indexing(files_to_index: List[str]):
             print(f"Failed to embed {file_path}: {e}")
 
     if ids:
-        time_start = __import__("time").time()
-        main_module.vector_store.add_batch(ids, vectors, metadatas)
+        time_start = time.time()
+        vector_store.add_batch(ids, vectors, metadatas)
         print(
-            f"Added {len(ids)} vectors to LanceDB in {__import__('time').time() - time_start:.2f}s."
+            f"Added {len(ids)} vectors to LanceDB in {time.time() - time_start:.2f}s."
         )

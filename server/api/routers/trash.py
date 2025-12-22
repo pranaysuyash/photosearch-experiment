@@ -25,14 +25,13 @@ def _trash_root() -> Path:
     return root
 
 
-def _trash_allowed_roots() -> List[Path]:
+def _trash_allowed_roots(state: AppState) -> List[Path]:
     roots: List[Path] = [
         settings.BASE_DIR.resolve(),
         settings.MEDIA_DIR.resolve(),
         (settings.BASE_DIR / "media_sources").resolve(),
     ]
     try:
-
         for s in state.source_store.list_sources(redact=False):
             if s.type != "local_folder":
                 continue
@@ -47,8 +46,8 @@ def _trash_allowed_roots() -> List[Path]:
     return roots
 
 
-def _assert_path_allowed_for_trash(p: Path) -> None:
-    roots = _trash_allowed_roots()
+def _assert_path_allowed_for_trash(p: Path, state: AppState) -> None:
+    roots = _trash_allowed_roots(state)
     rp = p.resolve()
     is_allowed = any(rp.is_relative_to(root) for root in roots)
     if not is_allowed:
@@ -57,7 +56,7 @@ def _assert_path_allowed_for_trash(p: Path) -> None:
         raise HTTPException(status_code=400, detail="Path is already in Trash")
 
 
-def _reindex_one_file(path: str) -> None:
+def _reindex_one_file(path: str, state: AppState) -> None:
     try:
         from src.metadata_extractor import extract_all_metadata
 
@@ -89,7 +88,7 @@ async def trash_move(req: TrashMoveRequest, state: AppState = Depends(get_state)
     for file_path in req.file_paths:
         try:
             src_path = Path(file_path)
-            _assert_path_allowed_for_trash(src_path)
+            _assert_path_allowed_for_trash(src_path, state)
             if not src_path.exists() or not src_path.is_file():
                 raise HTTPException(status_code=404, detail="File not found")
 
@@ -184,7 +183,7 @@ async def restore_from_trash(req: TrashRestoreRequest, state: AppState = Depends
 
             src = Path(item.trashed_path)
             dst = Path(item.original_path)
-            _assert_path_allowed_for_trash(dst)
+            _assert_path_allowed_for_trash(dst, state)
             if not src.exists():
                 raise HTTPException(status_code=404, detail="Trashed file missing")
 
@@ -192,7 +191,7 @@ async def restore_from_trash(req: TrashRestoreRequest, state: AppState = Depends
             shutil.move(str(src), str(dst))
 
             # Reindex restored path
-            _reindex_one_file(str(dst))
+            _reindex_one_file(str(dst), state)
 
             if item.source_id and item.remote_id:
                 try:
@@ -275,7 +274,7 @@ async def remove_from_library(req: LibraryRemoveRequest, state: AppState = Depen
     for file_path in req.file_paths:
         try:
             p = Path(file_path)
-            roots = _trash_allowed_roots()
+            roots = _trash_allowed_roots(state)
             rp = p.resolve()
             if not any(rp.is_relative_to(root) for root in roots):
                 raise HTTPException(status_code=403, detail="Path is outside connected sources")
