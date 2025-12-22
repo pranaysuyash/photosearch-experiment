@@ -3,7 +3,7 @@ import os
 import re
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from server.config import settings
 from server.utils.files import is_video_file
@@ -13,12 +13,15 @@ from server.utils.search_explanations import (
 )
 from server.utils.sorting import apply_date_filter, apply_sort
 from server.validation import validate_date_input, validate_pagination_params, validate_search_query
+from server.api.deps import get_state
+from server.core.state import AppState
 
 router = APIRouter()
 
 
 @router.get("/search")
 async def search_photos(
+    state: AppState = Depends(get_state),
     query: str = "",
     limit: int = 50,
     offset: int = 0,
@@ -46,15 +49,14 @@ async def search_photos(
     Favorites Filter: all (default), favorites_only
     """
     try:
-        from server import main as main_module
         from server.api.routers.semantic_search import search_semantic
 
-        photo_search_engine = main_module.photo_search_engine
-        face_clusterer = main_module.face_clusterer
-        intent_detector = main_module.intent_detector
-        saved_search_manager = main_module.saved_search_manager
-        ps_logger = main_module.ps_logger
-        log_search_operation = main_module.log_search_operation
+        photo_search_engine = state.photo_search_engine
+        face_clusterer = state.face_clusterer
+        intent_detector = state.intent_detector
+        saved_search_manager = state.saved_search_manager
+        ps_logger = state.ps_logger
+        log_search_operation = state.log_search_operation
         import time
         start_time = time.time()
 

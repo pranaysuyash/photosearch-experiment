@@ -1,24 +1,30 @@
+"""
+Face Recognition API Router
+
+Uses Depends(get_state) for accessing shared application state.
+"""
 import json
 import os
 import sqlite3
 from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
 
 from server.config import settings
 from server.face_clustering_db import get_face_clustering_db
+from server.api.deps import get_state
+from server.core.state import AppState
 
 
 router = APIRouter()
 
 
 @router.get("/api/faces/clusters")
-async def get_face_clusters():
+async def get_face_clusters(state: AppState = Depends(get_state)):
     """Get all face clusters."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         # Check if face clusterer is ready
         if not face_clusterer or not face_clusterer.models_loaded:
@@ -54,12 +60,11 @@ async def get_face_clusters():
 
 
 @router.post("/api/faces/scan")
-async def scan_faces(limit: Optional[int] = None):
+async def scan_faces(state: AppState = Depends(get_state), limit: Optional[int] = None):
     """Scan for faces in photos. Pass limit to scan only first N photos."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
-        photo_search_engine = main_module.photo_search_engine
+        face_clusterer = state.face_clusterer
+        photo_search_engine = state.photo_search_engine
 
         # Check if face clusterer is ready
         if not face_clusterer or not face_clusterer.models_loaded:
@@ -78,36 +83,24 @@ async def scan_faces(limit: Optional[int] = None):
 
         if not all_files:
             return {
-                "scanned": 0,
-                "clusters_found": 0,
+                "status": "completed",
                 "total_faces": 0,
-                "message": "No photos found in library",
+                "clusters": [],
+                "message": "No photos found to scan",
             }
 
+        # Scan and cluster faces
         result = face_clusterer.cluster_faces(all_files, min_samples=1)
 
-        # Handle error response from cluster_faces
-        if result.get("status") == "error":
-            raise HTTPException(status_code=500, detail=result.get("message", "Clustering failed"))
-
-        return {
-            "scanned": len(all_files),
-            "clusters_found": result.get("total_clusters", 0),
-            "total_faces": result.get("total_faces", 0),
-            "message": result.get("message", "Scan complete"),
-        }
+        return result
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _run_face_scan_job(job_id: str, files: list, min_samples: int = 1):
+def _run_face_scan_job(job_id: str, files: list, face_scan_jobs: dict, min_samples: int = 1):
     """Background task to run face scanning with progress updates."""
-    from server import main as main_module
-
-    face_scan_jobs = main_module.face_scan_jobs
-
     try:
         # Create new FaceClusterer in this thread to avoid SQLite threading issues
         from src.face_clustering import FaceClusterer
@@ -191,21 +184,23 @@ def _run_face_scan_job(job_id: str, files: list, min_samples: int = 1):
 
 
 @router.post("/api/faces/scan-async")
-async def scan_faces_async(background_tasks: BackgroundTasks, limit: Optional[int] = None):
+async def scan_faces_async(
+    background_tasks: BackgroundTasks,
+    state: AppState = Depends(get_state),
+    limit: Optional[int] = None
+):
     """Start an async face scan job. Returns immediately with job_id for polling."""
     import uuid
 
-    from server import main as main_module
-
-    face_clusterer = main_module.face_clusterer
-    photo_search_engine = main_module.photo_search_engine
-    face_scan_jobs = main_module.face_scan_jobs
+    face_clusterer = state.face_clusterer
+    photo_search_engine = state.photo_search_engine
+    face_scan_jobs = state.face_scan_jobs
 
     # Check if face clusterer is ready
     if not face_clusterer or not face_clusterer.models_loaded:
         raise HTTPException(
             status_code=503,
-            detail="Face recognition models are still loading. Please try again in a few seconds.",
+            detail="Face recognition models are still loading.",
         )
 
     # Get all photo paths from database
@@ -218,86 +213,64 @@ async def scan_faces_async(background_tasks: BackgroundTasks, limit: Optional[in
 
     if not all_files:
         return {
-            "job_id": None,
             "status": "completed",
-            "message": "No photos found in library",
+            "job_id": None,
+            "message": "No photos found to scan",
         }
 
-    # Create job ID and start background task
+    # Create job
     job_id = str(uuid.uuid4())
     face_scan_jobs[job_id] = {
-        "status": "starting",
+        "status": "pending",
         "progress": 0,
         "total": len(all_files),
         "current": 0,
         "current_file": "",
-        "message": "Initializing scan...",
+        "message": "Job queued...",
         "result": None,
         "error": None,
     }
 
-    background_tasks.add_task(_run_face_scan_job, job_id, all_files)
+    # Start background task
+    background_tasks.add_task(_run_face_scan_job, job_id, all_files, face_scan_jobs)
 
     return {
-        "job_id": job_id,
         "status": "started",
+        "job_id": job_id,
         "total_files": len(all_files),
-        "message": f"Scan started for {len(all_files)} photos",
+        "message": "Face scan job started",
     }
 
 
-@router.get("/api/faces/scan-async/{job_id}")
-async def get_scan_job_status(job_id: str):
+@router.get("/api/faces/scan-status/{job_id}")
+async def get_scan_job_status(job_id: str, state: AppState = Depends(get_state)):
     """Get status of an async face scan job."""
-    from server import main as main_module
-
-    face_scan_jobs = main_module.face_scan_jobs
+    face_scan_jobs = state.face_scan_jobs
 
     if job_id not in face_scan_jobs:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job = face_scan_jobs[job_id]
-    return {
-        "job_id": job_id,
-        "status": job.get("status"),
-        "progress": job.get("progress", 0),
-        "total": job.get("total", 0),
-        "current": job.get("current", 0),
-        "current_file": job.get("current_file", ""),
-        "message": job.get("message", ""),
-        "result": job.get("result") if job.get("status") == "completed" else None,
-        "error": job.get("error"),
-    }
+    return face_scan_jobs[job_id]
 
 
-@router.post("/api/faces/scan-file")
-async def scan_single_file(data: dict):
+@router.post("/api/faces/scan-single")
+async def scan_single_file(data: dict, state: AppState = Depends(get_state)):
     """Scan a specific file or list of files for faces."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
-
-        if not face_clusterer or not face_clusterer.models_loaded:
-            raise HTTPException(status_code=503, detail="Face recognition models not ready")
+        face_clusterer = state.face_clusterer
 
         files = data.get("files", [])
-        filepath = data.get("filepath")
-
-        if filepath:
-            files = [filepath]
-
         if not files:
             raise HTTPException(status_code=400, detail="No files specified")
 
-        result = face_clusterer.cluster_faces(files, min_samples=1)
+        if not face_clusterer or not face_clusterer.models_loaded:
+            raise HTTPException(
+                status_code=503,
+                detail="Face recognition models are still loading.",
+            )
 
-        return {
-            "status": result.get("status"),
-            "total_faces": result.get("total_faces", 0),
-            "matched_to_existing": result.get("matched_to_existing", 0),
-            "new_clusters": result.get("new_clusters_created", 0),
-            "message": result.get("message", "Scan complete"),
-        }
+        result = face_clusterer.cluster_faces(files, min_samples=1)
+        return result
     except HTTPException:
         raise
     except Exception as e:
@@ -305,406 +278,371 @@ async def scan_single_file(data: dict):
 
 
 @router.post("/api/faces/clusters/{cluster_id}/label")
-async def set_cluster_label(cluster_id: str, label_data: dict):
+async def set_cluster_label(cluster_id: str, label_data: dict, state: AppState = Depends(get_state)):
     """Set label for a face cluster."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
-
-        label = label_data.get("label", "").strip()
-        if not label:
-            raise HTTPException(status_code=400, detail="Label cannot be empty")
+        face_clusterer = state.face_clusterer
+        label = label_data.get("label", "")
 
         if not face_clusterer:
-            raise HTTPException(status_code=503, detail="Face clusterer not available")
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
-
-        # Check if cluster exists
-        cursor.execute("SELECT id FROM clusters WHERE id = ?", (cluster_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Cluster not found")
-
-        # Update the cluster label
-        cursor.execute("UPDATE clusters SET label = ? WHERE id = ?", (label, cluster_id))
-        face_clusterer.conn.commit()
-
-        return {"success": True, "cluster_id": cluster_id, "label": label}
+        face_clusterer.set_cluster_label(int(cluster_id), label)
+        return {"status": "success", "cluster_id": cluster_id, "label": label}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/faces/photos/{person_name}")
-async def get_photos_by_person(person_name: str, limit: int = 100, offset: int = 0):
+@router.get("/api/faces/person/{person_name}")
+async def get_photos_by_person(
+    person_name: str,
+    state: AppState = Depends(get_state),
+    limit: int = 100,
+    offset: int = 0
+):
     """Get photos for a specific person/cluster."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
+        photo_search_engine = state.photo_search_engine
 
         if not face_clusterer:
-            return {"count": 0, "results": [], "person": person_name}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
-
-        # Try to find cluster by label or ID
+        # Find cluster by label
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
         cursor.execute(
-            """
-            SELECT id FROM clusters 
-            WHERE label = ? OR id = ? OR label LIKE ?
-            LIMIT 1
-        """,
-            (person_name, person_name.replace("Person ", ""), f"%{person_name}%"),
+            "SELECT id FROM clusters WHERE label = ? LIMIT 1",
+            (person_name,)
         )
+        row = cursor.fetchone()
 
-        cluster_row = cursor.fetchone()
-        if not cluster_row:
-            return {"count": 0, "results": [], "person": person_name, "error": "Person not found"}
+        if not row:
+            return {"person": person_name, "photos": [], "total": 0}
 
-        cluster_id = cluster_row[0]
+        cluster_id = row[0]
 
-        # Get all unique image paths for this cluster
+        # Get photos for this cluster
         cursor.execute(
             """
-            SELECT DISTINCT f.image_path, f.id, f.bounding_box, f.confidence
+            SELECT DISTINCT f.image_path
             FROM faces f
-            JOIN cluster_membership cm ON f.id = cm.face_id
+            JOIN cluster_memberships cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
-            ORDER BY f.confidence DESC
             LIMIT ? OFFSET ?
-        """,
-            (cluster_id, limit, offset),
+            """,
+            (cluster_id, limit, offset)
         )
+        image_paths = [r[0] for r in cursor.fetchall()]
 
-        results = []
-        for row in cursor.fetchall():
-            results.append(
-                {
-                    "path": row[0],
-                    "face_id": row[1],
-                    "bounding_box": json.loads(row[2]) if row[2] else None,
-                    "confidence": row[3],
-                }
-            )
+        # Get metadata for these photos
+        photos = []
+        for path in image_paths:
+            try:
+                meta = photo_search_engine.db.get_metadata(path)
+                if meta:
+                    photos.append({
+                        "path": path,
+                        "filename": os.path.basename(path),
+                        "metadata": meta
+                    })
+            except Exception:
+                photos.append({
+                    "path": path,
+                    "filename": os.path.basename(path),
+                    "metadata": {}
+                })
 
         # Get total count
         cursor.execute(
             """
             SELECT COUNT(DISTINCT f.image_path)
             FROM faces f
-            JOIN cluster_membership cm ON f.id = cm.face_id
+            JOIN cluster_memberships cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
-        """,
-            (cluster_id,),
+            """,
+            (cluster_id,)
         )
-        total_count = cursor.fetchone()[0]
+        total = cursor.fetchone()[0]
 
-        return {
-            "count": total_count,
-            "results": results,
-            "person": person_name,
-            "cluster_id": cluster_id,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.delete("/api/faces/clusters/{cluster_id}")
-async def delete_cluster(cluster_id: str):
-    """Delete a face cluster and its memberships."""
-    try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
-
-        if not face_clusterer:
-            raise HTTPException(status_code=503, detail="Face clusterer not available")
-
-        cursor = face_clusterer.conn.cursor()
-
-        # Check if cluster exists
-        cursor.execute("SELECT id FROM clusters WHERE id = ?", (cluster_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Cluster not found")
-
-        # Delete cluster memberships
-        cursor.execute("DELETE FROM cluster_membership WHERE cluster_id = ?", (cluster_id,))
-
-        # Reset cluster_id on faces
-        cursor.execute("UPDATE faces SET cluster_id = NULL WHERE cluster_id = ?", (cluster_id,))
-
-        # Delete the cluster
-        cursor.execute("DELETE FROM clusters WHERE id = ?", (cluster_id,))
-
-        face_clusterer.conn.commit()
-
-        return {"success": True, "message": f"Cluster {cluster_id} deleted"}
+        return {"person": person_name, "photos": photos, "total": total}
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/faces/cluster/{cluster_id}/photos")
-async def get_cluster_photos(cluster_id: str, limit: int = 100, offset: int = 0):
-    """Get all photos containing faces from a specific cluster."""
+@router.delete("/api/faces/clusters/{cluster_id}")
+async def delete_cluster(cluster_id: str, state: AppState = Depends(get_state)):
+    """Delete a face cluster and its memberships."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            return {"count": 0, "results": [], "cluster_id": cluster_id}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
-        # Get unique image paths for this cluster (group by path to avoid duplicates)
+        # Delete memberships first
+        cursor.execute("DELETE FROM cluster_memberships WHERE cluster_id = ?", (int(cluster_id),))
+        # Delete cluster
+        cursor.execute("DELETE FROM clusters WHERE id = ?", (int(cluster_id),))
+        db.conn.commit()
+
+        return {"status": "success", "deleted_cluster_id": cluster_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/clusters/{cluster_id}/photos")
+async def get_cluster_photos(
+    cluster_id: str,
+    state: AppState = Depends(get_state),
+    limit: int = 100,
+    offset: int = 0
+):
+    """Get all photos containing faces from a specific cluster."""
+    try:
+        face_clusterer = state.face_clusterer
+        photo_search_engine = state.photo_search_engine
+
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
+
+        # Get photos for this cluster
         cursor.execute(
             """
-            SELECT f.image_path, 
-                   MAX(f.id) as face_id, 
-                   MAX(f.bounding_box) as bounding_box, 
-                   MAX(f.confidence) as confidence,
-                   COUNT(f.id) as face_count
+            SELECT DISTINCT f.image_path, f.id as face_id, f.confidence
             FROM faces f
-            JOIN cluster_membership cm ON f.id = cm.face_id
+            JOIN cluster_memberships cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
-            GROUP BY f.image_path
-            ORDER BY MAX(f.confidence) DESC
+            ORDER BY f.confidence DESC
             LIMIT ? OFFSET ?
-        """,
-            (cluster_id, limit, offset),
+            """,
+            (int(cluster_id), limit, offset)
         )
+        rows = cursor.fetchall()
 
-        results = []
-        for row in cursor.fetchall():
-            results.append(
-                {
-                    "path": row[0],
-                    "face_id": row[1],
-                    "bounding_box": json.loads(row[2]) if row[2] else None,
-                    "confidence": row[3],
-                    "face_count": row[4],  # How many faces of this person in this photo
-                }
-            )
+        photos = []
+        for path, face_id, confidence in rows:
+            try:
+                meta = photo_search_engine.db.get_metadata(path)
+                photos.append({
+                    "path": path,
+                    "filename": os.path.basename(path),
+                    "face_id": face_id,
+                    "confidence": confidence,
+                    "metadata": meta or {}
+                })
+            except Exception:
+                photos.append({
+                    "path": path,
+                    "filename": os.path.basename(path),
+                    "face_id": face_id,
+                    "confidence": confidence,
+                    "metadata": {}
+                })
 
-        return {
-            "count": len(results),
-            "results": results,
-            "cluster_id": cluster_id,
-        }
+        return {"cluster_id": cluster_id, "photos": photos, "count": len(photos)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/faces/unidentified")
-async def get_unidentified_clusters(limit: int = 100, offset: int = 0):
+async def get_unidentified_clusters(
+    state: AppState = Depends(get_state),
+    limit: int = 100,
+    offset: int = 0
+):
     """Get all clusters that have no user-assigned label (unlabeled clusters)."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            return {"clusters": [], "count": 0}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
-        # Get clusters with no user label (NULL or auto-generated like "Person X")
+        # Get clusters without labels
         cursor.execute(
             """
-            SELECT c.id, c.label, c.size, c.representative_face_id, c.created_at
+            SELECT c.id, c.label, COUNT(cm.face_id) as face_count
             FROM clusters c
-            WHERE c.label IS NULL OR c.label LIKE 'Person %'
-            ORDER BY c.size DESC, c.created_at DESC
+            LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+            WHERE c.label IS NULL OR c.label = '' OR c.label LIKE 'Person %'
+            GROUP BY c.id
+            ORDER BY face_count DESC
             LIMIT ? OFFSET ?
-        """,
-            (limit, offset),
+            """,
+            (limit, offset)
         )
+        rows = cursor.fetchall()
 
         clusters = []
-        for row in cursor.fetchall():
-            cluster_id = row[0]
-            # Get face IDs and images for this cluster
+        for cid, label, face_count in rows:
+            # Get sample faces
             cursor.execute(
                 """
-                SELECT f.id, f.image_path FROM faces f
-                JOIN cluster_membership cm ON f.id = cm.face_id
+                SELECT f.id, f.image_path
+                FROM faces f
+                JOIN cluster_memberships cm ON f.id = cm.face_id
                 WHERE cm.cluster_id = ?
-            """,
-                (cluster_id,),
+                LIMIT 4
+                """,
+                (cid,)
             )
             faces = cursor.fetchall()
+            clusters.append({
+                "id": str(cid),
+                "label": label or f"Person {cid}",
+                "face_count": face_count,
+                "face_ids": [f[0] for f in faces],
+                "images": [f[1] for f in faces]
+            })
 
-            clusters.append(
-                {
-                    "id": str(cluster_id),
-                    "label": row[1] or f"Person {cluster_id}",
-                    "face_count": row[2],
-                    "face_ids": [f[0] for f in faces],
-                    "images": [f[1] for f in faces],
-                    "created_at": row[4],
-                }
-            )
-
-        # Get total count
-        cursor.execute(
-            """
-            SELECT COUNT(*) FROM clusters 
-            WHERE label IS NULL OR label LIKE 'Person %'
-        """
-        )
-        total = cursor.fetchone()[0]
-
-        return {"clusters": clusters, "count": total}
+        return {"clusters": clusters, "count": len(clusters)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/faces/singletons")
-async def get_singleton_clusters(limit: int = 100, offset: int = 0):
+async def get_singleton_clusters(
+    state: AppState = Depends(get_state),
+    limit: int = 100,
+    offset: int = 0
+):
     """Get all clusters with only 1 face (appears only once in library)."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            return {"clusters": [], "count": 0}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
         cursor.execute(
             """
-            SELECT c.id, c.label, c.size, c.representative_face_id, c.created_at
+            SELECT c.id, c.label, f.id as face_id, f.image_path, f.confidence
             FROM clusters c
-            WHERE c.size = 1
-            ORDER BY c.created_at DESC
+            JOIN cluster_memberships cm ON c.id = cm.cluster_id
+            JOIN faces f ON cm.face_id = f.id
+            WHERE c.id IN (
+                SELECT cluster_id FROM cluster_memberships
+                GROUP BY cluster_id HAVING COUNT(*) = 1
+            )
+            ORDER BY f.confidence DESC
             LIMIT ? OFFSET ?
-        """,
-            (limit, offset),
-        )
-
-        clusters = []
-        for row in cursor.fetchall():
-            cluster_id = row[0]
-            cursor.execute(
-                """
-                SELECT f.id, f.image_path FROM faces f
-                JOIN cluster_membership cm ON f.id = cm.face_id
-                WHERE cm.cluster_id = ?
             """,
-                (cluster_id,),
-            )
-            faces = cursor.fetchall()
+            (limit, offset)
+        )
+        rows = cursor.fetchall()
 
-            clusters.append(
-                {
-                    "id": str(cluster_id),
-                    "label": row[1] or f"Person {cluster_id}",
-                    "face_count": row[2],
-                    "face_ids": [f[0] for f in faces],
-                    "images": [f[1] for f in faces],
-                    "created_at": row[4],
-                }
-            )
+        singletons = []
+        for cid, label, face_id, image_path, confidence in rows:
+            singletons.append({
+                "cluster_id": str(cid),
+                "label": label or f"Person {cid}",
+                "face_id": face_id,
+                "image_path": image_path,
+                "confidence": confidence
+            })
 
-        cursor.execute("SELECT COUNT(*) FROM clusters WHERE size = 1")
-        total = cursor.fetchone()[0]
-
-        return {"clusters": clusters, "count": total}
+        return {"singletons": singletons, "count": len(singletons)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/api/faces/low-confidence")
-async def get_low_confidence_faces(limit: int = 100, offset: int = 0, threshold: float = 0.8):
+async def get_low_confidence_faces(
+    state: AppState = Depends(get_state),
+    limit: int = 100,
+    offset: int = 0,
+    threshold: float = 0.8
+):
     """Get all faces with confidence below threshold."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            return {"faces": [], "count": 0}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
         cursor.execute(
             """
-            SELECT f.id, f.image_path, f.bounding_box, f.confidence, f.cluster_id
+            SELECT f.id, f.image_path, f.confidence, cm.cluster_id, c.label
             FROM faces f
+            LEFT JOIN cluster_memberships cm ON f.id = cm.face_id
+            LEFT JOIN clusters c ON cm.cluster_id = c.id
             WHERE f.confidence < ?
             ORDER BY f.confidence ASC
             LIMIT ? OFFSET ?
-        """,
-            (threshold, limit, offset),
+            """,
+            (threshold, limit, offset)
         )
+        rows = cursor.fetchall()
 
         faces = []
-        for row in cursor.fetchall():
-            faces.append(
-                {
-                    "id": row[0],
-                    "image_path": row[1],
-                    "bounding_box": json.loads(row[2]) if row[2] else None,
-                    "confidence": row[3],
-                    "cluster_id": row[4],
-                }
-            )
+        for fid, path, conf, cid, label in rows:
+            faces.append({
+                "face_id": fid,
+                "image_path": path,
+                "confidence": conf,
+                "cluster_id": str(cid) if cid else None,
+                "label": label
+            })
 
-        cursor.execute("SELECT COUNT(*) FROM faces WHERE confidence < ?", (threshold,))
-        total = cursor.fetchone()[0]
-
-        return {"faces": faces, "count": total}
+        return {"faces": faces, "count": len(faces), "threshold": threshold}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/api/faces/{face_id}/assign")
-async def assign_face_to_cluster(face_id: int, data: dict):
+async def assign_face_to_cluster(face_id: int, data: dict, state: AppState = Depends(get_state)):
     """Assign a face to an existing cluster/person."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
-
-        if not face_clusterer:
-            raise HTTPException(status_code=503, detail="Face clusterer not available")
-
+        face_clusterer = state.face_clusterer
         cluster_id = data.get("cluster_id")
+
         if not cluster_id:
             raise HTTPException(status_code=400, detail="cluster_id is required")
 
-        cursor = face_clusterer.conn.cursor()
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        # Check if face exists
-        cursor.execute("SELECT id FROM faces WHERE id = ?", (face_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Face not found")
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
-        # Check if cluster exists
-        cursor.execute("SELECT id FROM clusters WHERE id = ?", (cluster_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Cluster not found")
+        # Remove existing cluster membership if any
+        cursor.execute("DELETE FROM cluster_memberships WHERE face_id = ?", (face_id,))
 
-        # Add to cluster_membership
+        # Add to new cluster
         cursor.execute(
-            """
-            INSERT OR REPLACE INTO cluster_membership (face_id, cluster_id, confidence)
-            VALUES (?, ?, 1.0)
-        """,
-            (face_id, cluster_id),
+            "INSERT INTO cluster_memberships (face_id, cluster_id) VALUES (?, ?)",
+            (face_id, int(cluster_id))
         )
+        db.conn.commit()
 
-        # Update cluster size
-        cursor.execute(
-            """
-            UPDATE clusters SET size = (
-                SELECT COUNT(*) FROM cluster_membership WHERE cluster_id = ?
-            ) WHERE id = ?
-        """,
-            (cluster_id, cluster_id),
-        )
-
-        face_clusterer.conn.commit()
-
-        return {"success": True, "face_id": face_id, "cluster_id": cluster_id}
+        return {"status": "success", "face_id": face_id, "cluster_id": cluster_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -712,48 +650,36 @@ async def assign_face_to_cluster(face_id: int, data: dict):
 
 
 @router.post("/api/faces/{face_id}/create-person")
-async def create_person_from_face(face_id: int, data: dict):
+async def create_person_from_face(face_id: int, data: dict, state: AppState = Depends(get_state)):
     """Create a new person/cluster from an unidentified face."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
+        label = data.get("label", "")
 
         if not face_clusterer:
-            raise HTTPException(status_code=503, detail="Face clusterer not available")
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        label = data.get("label", "").strip()
-        if not label:
-            raise HTTPException(status_code=400, detail="label is required")
-
-        cursor = face_clusterer.conn.cursor()
-
-        # Check if face exists
-        cursor.execute("SELECT id FROM faces WHERE id = ?", (face_id,))
-        if not cursor.fetchone():
-            raise HTTPException(status_code=404, detail="Face not found")
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
         # Create new cluster
         cursor.execute(
-            """
-            INSERT INTO clusters (label, size, created_at,updated_at)
-            VALUES (?, 1, datetime('now'), datetime('now'))
-        """,
-            (label,),
+            "INSERT INTO clusters (label, created_at) VALUES (?, datetime('now'))",
+            (label,)
         )
         cluster_id = cursor.lastrowid
 
-        # Add face to cluster
+        # Remove existing membership if any
+        cursor.execute("DELETE FROM cluster_memberships WHERE face_id = ?", (face_id,))
+
+        # Assign face to new cluster
         cursor.execute(
-            """
-            INSERT INTO cluster_membership (face_id, cluster_id, confidence)
-            VALUES (?, ?, 1.0)
-        """,
-            (face_id, cluster_id),
+            "INSERT INTO cluster_memberships (face_id, cluster_id) VALUES (?, ?)",
+            (face_id, cluster_id)
         )
+        db.conn.commit()
 
-        face_clusterer.conn.commit()
-
-        return {"success": True, "face_id": face_id, "cluster_id": cluster_id, "label": label}
+        return {"status": "success", "face_id": face_id, "cluster_id": cluster_id, "label": label}
     except HTTPException:
         raise
     except Exception as e:
@@ -761,91 +687,89 @@ async def create_person_from_face(face_id: int, data: dict):
 
 
 @router.get("/api/faces/photos-with-faces")
-async def get_photos_with_faces(limit: int = 200, offset: int = 0):
+async def get_photos_with_faces(
+    state: AppState = Depends(get_state),
+    limit: int = 200,
+    offset: int = 0
+):
     """Get all photos that have at least one detected face."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            return {"photos": [], "count": 0}
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        cursor = face_clusterer.conn.cursor()
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
 
-        # Get unique photos with face counts
         cursor.execute(
             """
-            SELECT image_path, COUNT(*) as face_count
+            SELECT DISTINCT image_path, COUNT(*) as face_count
             FROM faces
             GROUP BY image_path
-            ORDER BY COUNT(*) DESC
+            ORDER BY face_count DESC
             LIMIT ? OFFSET ?
-        """,
-            (limit, offset),
+            """,
+            (limit, offset)
         )
+        rows = cursor.fetchall()
 
-        photos = []
-        for row in cursor.fetchall():
-            photos.append({"path": row[0], "face_count": row[1]})
+        photos = [{"path": r[0], "face_count": r[1]} for r in rows]
 
-        # Get total count
-        cursor.execute("SELECT COUNT(DISTINCT image_path) FROM faces")
-        total = cursor.fetchone()[0]
-
-        return {"photos": photos, "count": total}
+        return {"photos": photos, "count": len(photos)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/faces/{face_id}/crop")
-async def get_face_crop(face_id: int, size: int = 150):
+@router.get("/api/faces/crop/{face_id}")
+async def get_face_crop(face_id: int, state: AppState = Depends(get_state), size: int = 150):
     """Get a cropped face image by face ID."""
     try:
-        from server import main as main_module
-        face_clusterer = main_module.face_clusterer
+        face_clusterer = state.face_clusterer
 
         if not face_clusterer:
-            raise HTTPException(status_code=503, detail="Face clusterer not available")
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        # Get face info from database
-        cursor = face_clusterer.conn.cursor()
-        cursor.execute("SELECT image_path, bounding_box FROM faces WHERE id = ?", (face_id,))
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
+
+        cursor.execute(
+            "SELECT image_path, bbox_x, bbox_y, bbox_w, bbox_h FROM faces WHERE id = ?",
+            (face_id,)
+        )
         row = cursor.fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="Face not found")
 
-        image_path = row["image_path"]
-        bbox = json.loads(row["bounding_box"]) if row["bounding_box"] else None
+        image_path, x, y, w, h = row
 
-        if not bbox or not os.path.exists(image_path):
-            raise HTTPException(status_code=404, detail="Face image not available")
+        if not os.path.exists(image_path):
+            raise HTTPException(status_code=404, detail="Image file not found")
 
-        # Open and crop image
+        # Crop the face
         from PIL import Image
-        img = Image.open(image_path)
+        import io
 
-        x, y, w, h = bbox
-        # Add padding around face
-        padding = int(max(w, h) * 0.3)
-        x1 = max(0, x - padding)
-        y1 = max(0, y - padding)
-        x2 = min(img.width, x + w + padding)
-        y2 = min(img.height, y + h + padding)
+        img = Image.open(image_path)
+        # Add margin
+        margin = int(max(w, h) * 0.2)
+        x1 = max(0, x - margin)
+        y1 = max(0, y - margin)
+        x2 = min(img.width, x + w + margin)
+        y2 = min(img.height, y + h + margin)
 
         face_crop = img.crop((x1, y1, x2, y2))
-
-        # Resize to requested size
         face_crop.thumbnail((size, size), Image.Resampling.LANCZOS)
 
-        # Convert to bytes
-        import io
+        # Return as JPEG
         buffer = io.BytesIO()
         face_crop.save(buffer, format="JPEG", quality=85)
         buffer.seek(0)
 
         return Response(content=buffer.getvalue(), media_type="image/jpeg")
-
     except HTTPException:
         raise
     except Exception as e:
@@ -853,120 +777,125 @@ async def get_face_crop(face_id: int, size: int = 150):
 
 
 @router.get("/api/faces/stats")
-async def get_face_stats_api():
+async def get_face_stats_api(state: AppState = Depends(get_state)):
     """Get face recognition statistics."""
     try:
-        from server import main as main_module
+        face_clusterer = state.face_clusterer
 
-        face_clusterer = main_module.face_clusterer
-        photo_search_engine = main_module.photo_search_engine
-
-        cursor = photo_search_engine.db.conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM metadata WHERE deleted_at IS NULL")
-        total_photos = cursor.fetchone()[0]
-
-        # Get real stats from face_clusterer database
-        if face_clusterer:
-            stats = face_clusterer.get_cluster_statistics()
-            total_faces = stats.get("total_faces", 0)
-            total_clusters = stats.get("total_clusters", 0)
-
-            try:
-                face_cursor = face_clusterer.conn.cursor()
-
-                # Unidentified = clusters with no user label (NULL or auto-generated like "Person X")
-                face_cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM clusters 
-                    WHERE label IS NULL OR label LIKE 'Person %'
-                """
-                )
-                unidentified = face_cursor.fetchone()[0]
-
-                # Singletons = clusters with only 1 face (appears once)
-                face_cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM clusters WHERE size = 1
-                """
-                )
-                singletons = face_cursor.fetchone()[0]
-
-                # Low confidence = faces with confidence < 0.8
-                face_cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM faces WHERE confidence < 0.8
-                """
-                )
-                low_confidence = face_cursor.fetchone()[0]
-
-            except:
-                unidentified = 0
-                singletons = 0
-                low_confidence = 0
-
+        if not face_clusterer:
             return {
-                "total_photos": total_photos,
-                "faces_detected": total_faces,
-                "clusters_found": total_clusters,
-                "unidentified_faces": unidentified,
-                "singletons": singletons,
-                "low_confidence": low_confidence,
+                "status": "unavailable",
+                "message": "Face recognition not available"
             }
-        else:
-            return {
-                "total_photos": total_photos,
-                "faces_detected": 0,
-                "clusters_found": 0,
-                "unidentified_faces": 0,
-                "singletons": 0,
-                "low_confidence": 0,
-            }
+
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
+
+        # Total faces
+        cursor.execute("SELECT COUNT(*) FROM faces")
+        total_faces = cursor.fetchone()[0]
+
+        # Total clusters
+        cursor.execute("SELECT COUNT(*) FROM clusters")
+        total_clusters = cursor.fetchone()[0]
+
+        # Labeled clusters
+        cursor.execute(
+            "SELECT COUNT(*) FROM clusters WHERE label IS NOT NULL AND label != '' AND label NOT LIKE 'Person %'"
+        )
+        labeled_clusters = cursor.fetchone()[0]
+
+        # Unlabeled clusters
+        unlabeled_clusters = total_clusters - labeled_clusters
+
+        # Photos with faces
+        cursor.execute("SELECT COUNT(DISTINCT image_path) FROM faces")
+        photos_with_faces = cursor.fetchone()[0]
+
+        # Avg faces per photo
+        avg_faces = total_faces / photos_with_faces if photos_with_faces > 0 else 0
+
+        # Singletons
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM (
+                SELECT cluster_id FROM cluster_memberships
+                GROUP BY cluster_id HAVING COUNT(*) = 1
+            )
+            """
+        )
+        singletons = cursor.fetchone()[0]
+
+        return {
+            "status": "available",
+            "models_loaded": face_clusterer.models_loaded,
+            "total_faces": total_faces,
+            "total_clusters": total_clusters,
+            "labeled_clusters": labeled_clusters,
+            "unlabeled_clusters": unlabeled_clusters,
+            "photos_with_faces": photos_with_faces,
+            "avg_faces_per_photo": round(avg_faces, 2),
+            "singletons": singletons
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"status": "error", "error": str(e)}
 
 
 # People Search Endpoint
 
 @router.get("/api/people/search")
-async def search_people(query: Optional[str] = None, limit: int = 10, offset: int = 0):
+async def search_people(
+    state: AppState = Depends(get_state),
+    query: Optional[str] = None,
+    limit: int = 10,
+    offset: int = 0
+):
     """Search for people by name or other attributes."""
     try:
-        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        face_clusterer = state.face_clusterer
 
-        # Get all clusters (people)
-        clusters = face_clustering_db.get_all_clusters()
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
 
-        # Filter and search
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
+
         if query:
-            query_lower = query.lower()
-            clusters = [
-                cluster
-                for cluster in clusters
-                if cluster.label and query_lower in cluster.label.lower()
-            ]
+            cursor.execute(
+                """
+                SELECT c.id, c.label, COUNT(cm.face_id) as face_count
+                FROM clusters c
+                LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+                WHERE c.label LIKE ?
+                GROUP BY c.id
+                ORDER BY face_count DESC
+                LIMIT ? OFFSET ?
+                """,
+                (f"%{query}%", limit, offset)
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT c.id, c.label, COUNT(cm.face_id) as face_count
+                FROM clusters c
+                LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+                WHERE c.label IS NOT NULL AND c.label != '' AND c.label NOT LIKE 'Person %'
+                GROUP BY c.id
+                ORDER BY face_count DESC
+                LIMIT ? OFFSET ?
+                """,
+                (limit, offset)
+            )
 
-        # Paginate
-        paginated_clusters = clusters[offset : offset + limit]
-
-        # Format response
+        rows = cursor.fetchall()
         people = [
-            {
-                "cluster_id": cluster.cluster_id,
-                "label": cluster.label or f"Person {cluster.cluster_id[-4:]}",
-                "face_count": cluster.face_count,
-                "photo_count": cluster.photo_count,
-                "thumbnail": None,  # Would get thumbnail in real implementation
-            }
-            for cluster in paginated_clusters
+            {"id": str(r[0]), "name": r[1], "face_count": r[2]}
+            for r in rows
         ]
 
-        return {
-            "people": people,
-            "total": len(clusters),
-            "limit": limit,
-            "offset": offset,
-            "success": True,
-        }
+        return {"people": people, "count": len(people)}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -974,68 +903,82 @@ async def search_people(query: Optional[str] = None, limit: int = 10, offset: in
 # Person Analytics Endpoint
 
 @router.get("/api/people/{person_id}/analytics")
-async def get_person_analytics(person_id: str):
+async def get_person_analytics(person_id: str, state: AppState = Depends(get_state)):
     """Get analytics and insights for a specific person."""
     try:
-        face_clustering_db = get_face_clustering_db(settings.BASE_DIR / "face_clusters.db")
+        face_clusterer = state.face_clusterer
+        photo_search_engine = state.photo_search_engine
 
-        # Get basic cluster info
-        cluster = None
-        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
-            cluster = conn.execute(
-                """
-                SELECT * FROM face_clusters WHERE cluster_id = ?
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db()
+        cursor = db.conn.cursor()
+
+        # Get cluster info
+        cursor.execute(
+            "SELECT label FROM clusters WHERE id = ?",
+            (int(person_id),)
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Person not found")
+
+        label = row[0] or f"Person {person_id}"
+
+        # Get face count
+        cursor.execute(
+            "SELECT COUNT(*) FROM cluster_memberships WHERE cluster_id = ?",
+            (int(person_id),)
+        )
+        face_count = cursor.fetchone()[0]
+
+        # Get photo count
+        cursor.execute(
+            """
+            SELECT COUNT(DISTINCT f.image_path)
+            FROM faces f
+            JOIN cluster_memberships cm ON f.id = cm.face_id
+            WHERE cm.cluster_id = ?
             """,
-                (person_id,),
-            ).fetchone()
+            (int(person_id),)
+        )
+        photo_count = cursor.fetchone()[0]
 
-            if not cluster:
-                raise HTTPException(status_code=404, detail="Person not found")
-
-        # Get photos with this person
-        photos = face_clustering_db.get_photos_for_cluster(person_id)
-
-        # Get timeline data
-        timeline = []
-        with sqlite3.connect(str(face_clustering_db.db_path)) as conn:
-            timeline_rows = conn.execute(
-                """
-                SELECT ppa.photo_path, ppa.created_at, ppa.confidence
-                FROM photo_person_associations ppa
-                WHERE ppa.cluster_id = ?
-                ORDER BY ppa.created_at
+        # Get date range of photos
+        cursor.execute(
+            """
+            SELECT f.image_path
+            FROM faces f
+            JOIN cluster_memberships cm ON f.id = cm.face_id
+            WHERE cm.cluster_id = ?
             """,
-                (person_id,),
-            ).fetchall()
+            (int(person_id),)
+        )
+        paths = [r[0] for r in cursor.fetchall()]
 
-            for row in timeline_rows:
-                timeline.append(
-                    {
-                        "photo_path": row[0],
-                        "date": row[1],
-                        "confidence": row[2],
-                    }
-                )
+        dates = []
+        for path in paths:
+            try:
+                meta = photo_search_engine.db.get_metadata(path)
+                if meta and meta.get("date_taken"):
+                    dates.append(meta["date_taken"])
+            except Exception:
+                pass
 
-        # Calculate statistics
-        from datetime import datetime
-        from collections import Counter
-
-        years = [datetime.fromisoformat(t["date"]).year for t in timeline if t["date"]]
-        year_distribution = dict(Counter(years))
+        date_range = None
+        if dates:
+            dates.sort()
+            date_range = {"earliest": dates[0], "latest": dates[-1]}
 
         return {
             "person_id": person_id,
-            "label": cluster[1],
-            "stats": {
-                "total_photos": len(photos),
-                "total_faces": cluster[2],
-                "first_seen": min(years) if years else None,
-                "last_seen": max(years) if years else None,
-                "years_active": len(set(years)) if years else 0,
-            },
-            "timeline": timeline,
-            "year_distribution": year_distribution,
+            "name": label,
+            "face_count": face_count,
+            "photo_count": photo_count,
+            "date_range": date_range
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
