@@ -40,6 +40,11 @@ data/
 
 # AI/ML Models (downloaded on first use)
 models/
+!server/models/
+server/models/*
+!server/models/__init__.py
+!server/models/schemas/
+!server/models/schemas/**
 
 # Face thumbnails cache
 cache/
@@ -60,6 +65,7 @@ test_scan_dir/
 
 # Documentation & Review directories (internal only)
 docs/
+!docs/refactor-main-split.md
 codex-review/
 copilot_raptor_review/
 old_project_docs/
@@ -72,4 +78,3 @@ experiments/
 
 # Build artifacts
 ui/dist
-

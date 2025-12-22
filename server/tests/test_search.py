@@ -102,7 +102,7 @@ class TestSearchAPI:
     
     def test_is_video_file(self):
         """Test video file detection."""
-        from server.main import is_video_file
+        from server.utils.files import is_video_file
         
         assert is_video_file("video.mp4") == True
         assert is_video_file("video.mov") == True
@@ -112,7 +112,7 @@ class TestSearchAPI:
     
     def test_apply_sort(self):
         """Test sorting logic."""
-        from server.main import apply_sort
+        from server.utils.sorting import apply_sort
         
         results = [
             {"path": "/a.jpg", "metadata": {"date_taken": "2024-01-01", "file_size": 100}},
