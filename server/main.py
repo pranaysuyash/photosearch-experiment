@@ -1378,6 +1378,7 @@ async def search_photos(
     tag_logic: str = "OR",  # "AND" or "OR" for combining multiple tags
     date_from: Optional[str] = None,  # YYYY-MM or ISO date/datetime
     date_to: Optional[str] = None,    # YYYY-MM or ISO date/datetime
+    person: Optional[str] = None,  # Filter by person name (searches face clusters)
     log_history: bool = True  # Whether to log this search to history
 ):
     """
@@ -1490,6 +1491,34 @@ async def search_photos(
             except Exception as e:
                 print(f"Tag filtering error: {e}")
                 tagged_paths = set()
+        
+        # Person filter - get photo paths containing the person
+        person_paths = None
+        if person:
+            try:
+                if face_clusterer:
+                    cursor = face_clusterer.conn.cursor()
+                    # Find clusters matching the person name (case-insensitive)
+                    cursor.execute("""
+                        SELECT c.id FROM clusters c 
+                        WHERE LOWER(c.label) LIKE LOWER(?)
+                    """, (f"%{person}%",))
+                    matching_clusters = [row[0] for row in cursor.fetchall()]
+                    
+                    if matching_clusters:
+                        # Get all faces for these clusters
+                        placeholders = ','.join(['?'] * len(matching_clusters))
+                        cursor.execute(f"""
+                            SELECT DISTINCT image_path FROM faces 
+                            WHERE cluster_id IN ({placeholders})
+                        """, matching_clusters)
+                        person_paths = set(row[0] for row in cursor.fetchall())
+                    else:
+                        person_paths = set()  # No matching person, return empty
+            except Exception as e:
+                print(f"Person filtering error: {e}")
+                person_paths = None
+        
         # 1. Semantic Search
         if mode == "semantic":
             results_response = await search_semantic(query, limit * 2, 0)  # Get more for filtering
@@ -1497,6 +1526,10 @@ async def search_photos(
 
             if tagged_paths is not None:
                 results = [r for r in results if r.get("path") in tagged_paths]
+            
+            # Apply person filter
+            if person_paths is not None:
+                results = [r for r in results if r.get("path") in person_paths]
             
             # Apply type filter
             if type_filter == "photos":
@@ -1590,6 +1623,10 @@ async def search_photos(
 
             if tagged_paths is not None:
                 formatted_results = [r for r in formatted_results if r.get("path") in tagged_paths]
+            
+            # Apply person filter
+            if person_paths is not None:
+                formatted_results = [r for r in formatted_results if r.get("path") in person_paths]
             
             # Apply favorites filter
             if favorites_filter == "favorites_only":
@@ -1728,6 +1765,10 @@ async def search_photos(
 
             if tagged_paths is not None:
                 hybrid_results = [r for r in hybrid_results if r.get("path") in tagged_paths]
+            
+            # Apply person filter
+            if person_paths is not None:
+                hybrid_results = [r for r in hybrid_results if r.get("path") in person_paths]
             
             # Apply favorites filter
             if favorites_filter == "favorites_only":
