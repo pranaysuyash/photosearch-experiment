@@ -1472,14 +1472,9 @@ export const api = {
 
   // Performance and caching (getCacheStats already defined above)
 
-  clearCache: async (cacheType?: string) => {
-    const res = await apiClient.post(
-      '/cache/clear',
-      {},
-      {
-        params: { cache_type: cacheType },
-      }
-    );
+  clearCache: async (_cacheType?: string) => {
+    // Backend route is API-prefixed (see server/api/routers/system.py @ /api/cache/clear)
+    const res = await apiClient.post('/api/cache/clear');
     return res.data;
   },
 
@@ -1834,6 +1829,10 @@ export const api = {
       { label }
     );
     return res.data;
+  },
+
+  deletePerson: async (clusterId: string): Promise<void> => {
+    await apiClient.delete(`/api/faces/clusters/${encodeURIComponent(clusterId)}`);
   },
 
   getClusterQuality: async (clusterId: string) => {

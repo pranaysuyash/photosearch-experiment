@@ -29,7 +29,7 @@ Columns: Path | Method | Called by Frontend? | Purpose (inferred) | Backend Evid
 | `/api/advanced/scan-directory` | `POST` | ❌ | API: advanced | `server/main_advanced_features.py:197` |  |
 | `/api/advanced/status` | `GET` | ✅ | API: advanced | `server/main_advanced_features.py:147` | `ui/src/pages/AdvancedFeaturesPage.tsx:79` |
 | `/api/cache/cleanup` | `GET` | ✅ | Cache stats/cleanup | `server/api/routers/system.py:44` | `ui/src/api.ts:1197` |
-| `/api/cache/clear` | `POST` | ❌ | Cache stats/cleanup | `server/api/routers/system.py:37` |  |
+| `/api/cache/clear` | `POST` | ✅ | Cache stats/cleanup | `server/api/routers/system.py:37` | `ui/src/api.ts:1477` |
 | `/api/cache/stats` | `GET` | ✅ | Cache stats/cleanup | `server/api/routers/system.py:30` | `ui/src/api.ts:1190` |
 | `/api/clusters/{cluster_id}/merge` | `POST` | ✅ | API: clusters | `server/api/routers/people_photo_association.py:383` |  |
 | `/api/clusters/{cluster_id}/quality` | `GET` | ✅ | API: clusters | `server/api/routers/people_photo_association.py:341` |  |
@@ -46,20 +46,20 @@ Columns: Path | Method | Called by Frontend? | Purpose (inferred) | Backend Evid
 | `/api/faces/clusters/{cluster_id}` | `DELETE` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:377` |  |
 | `/api/faces/clusters/{cluster_id}/hide` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:991` |  |
 | `/api/faces/clusters/{cluster_id}/label` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:280` |  |
-| `/api/faces/clusters/{cluster_id}/photos` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:402` |  |
+| `/api/faces/clusters/{cluster_id}/photos` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:460` | `ui/src/pages/PersonDetail.tsx:81` |
 | `/api/faces/clusters/{cluster_id}/rename` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1224` |  |
 | `/api/faces/clusters/{cluster_id}/unhide` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1006` |  |
-| `/api/faces/crop/{face_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:726` |  |
+| `/api/faces/crop/{face_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:811` |  |
 | `/api/faces/low-confidence` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:571` |  |
 | `/api/faces/merge` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1158` | `ui/src/api.ts:1918` |
 | `/api/faces/move` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1137` | `ui/src/api.ts:1909` |
-| `/api/faces/person/{person_name}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:298` |  |
+| `/api/faces/person/{person_name}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:356` |  |
 | `/api/faces/photos-with-faces` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:689` |  |
 | `/api/faces/prototypes/recompute` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1243` | `ui/src/api.ts:1950` |
 | `/api/faces/scan` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:62` | `ui/src/api.ts:1821` |
 | `/api/faces/scan-async` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:186` |  |
-| `/api/faces/scan-single` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:256` |  |
-| `/api/faces/scan-status/{job_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:245` |  |
+| `/api/faces/scan-single` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:310` |  |
+| `/api/faces/scan-status/{job_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:299` |  |
 | `/api/faces/singletons` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:521` |  |
 | `/api/faces/split` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1111` | `ui/src/api.ts:1900` |
 | `/api/faces/stats` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:779` | `ui/src/api.ts:1816` |
@@ -68,16 +68,16 @@ Columns: Path | Method | Called by Frontend? | Purpose (inferred) | Backend Evid
 | `/api/faces/unidentified` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:461` |  |
 | `/api/faces/{detection_id}/similar` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/people_photo_association.py:294` |  |
 | `/api/faces/{detection_id}/thumbnail` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/people_photo_association.py:192` |  |
-| `/api/faces/{face_id}/assign` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:619` |  |
+| `/api/faces/{face_id}/assign` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:691` |  |
 | `/api/faces/{face_id}/confirm` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1073` |  |
-| `/api/faces/{face_id}/create-person` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:652` |  |
+| `/api/faces/{face_id}/create-person` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:728` |  |
 | `/api/faces/{face_id}/reject` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1092` |  |
 | `/api/intent/detect` | `GET` | ✅ | Intent detection (api-prefixed variant) | `server/api/routers/intent.py:9` | `ui/src/components/search/IntentRecognition.tsx:47` |
 | `/api/logs/test` | `GET` | ✅ | API: logs | `server/api/routers/system.py:51` | `ui/src/api.ts:1203` |
 | `/api/notes/search` | `GET` | ✅ | Notes CRUD + search | `server/api/routers/notes.py:61` | `ui/src/api.ts:1291` |
 | `/api/notes/stats` | `GET` | ✅ | Notes CRUD + search | `server/api/routers/notes.py:94` | `ui/src/api.ts:1298` |
 | `/api/people/search` | `GET` | ✅ | People/faces analytics and person views | `server/api/routers/face_recognition.py:846` | `ui/src/api.ts:1750` |
-| `/api/people/{person_id}/analytics` | `GET` | ❌ | People/faces analytics and person views | `server/api/routers/face_recognition.py:905` |  |
+| `/api/people/{person_id}/analytics` | `GET` | ❌ | People/faces analytics and person views | `server/api/routers/face_recognition.py:995` |  |
 | `/api/photos/batch/faces/detect` | `POST` | ✅ | API: photos | `server/api/routers/people_photo_association.py:213` | `ui/src/api.ts:1779` |
 | `/api/photos/{file_path:path}/edit` | `GET` | ✅ | API: photos | `server/api/routers/photo_edits.py:11` |  |
 | `/api/photos/{file_path:path}/edit` | `POST` | ✅ | API: photos | `server/api/routers/photo_edits.py:21` |  |

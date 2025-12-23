@@ -1159,6 +1159,8 @@ class FaceClusteringDB:
                     self._undo_hide(conn, op_data)
                 elif op_type == "reject":
                     self._undo_reject(conn, op_data)
+                elif op_type == "delete_person":
+                    self._undo_delete_person(conn, op_data)
                 elif op_type == "rename":
                     self._undo_rename(conn, op_data)
                 elif op_type == "review_confirm":
@@ -3270,6 +3272,155 @@ class FaceClusteringDB:
                 (status, detection_id),
             )
 
+            return True
+
+    def _undo_delete_person(self, conn: sqlite3.Connection, op_data: dict):
+        """Undo a delete person operation."""
+        cluster_row = op_data["cluster"]
+        associations = op_data.get("associations", [])
+        review_items = op_data.get("review_items", [])
+        rejections = op_data.get("rejections", [])
+
+        # Restore cluster
+        keys = list(cluster_row.keys())
+        placeholders = ",".join(["?"] * len(keys))
+        columns = ",".join(keys)
+        conn.execute(
+            f"INSERT INTO face_clusters ({columns}) VALUES ({placeholders})",
+            list(cluster_row.values()),
+        )
+
+        # Restore associations
+        if associations:
+            conn.executemany(
+                """
+                INSERT INTO photo_person_associations
+                (photo_path, cluster_id, detection_id, confidence, assignment_state)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        a["photo_path"],
+                        a["cluster_id"],
+                        a["detection_id"],
+                        a["confidence"],
+                        a.get("assignment_state"),
+                    )
+                    for a in associations
+                ],
+            )
+
+        # Restore review queue items
+        if review_items:
+            conn.executemany(
+                """
+                INSERT INTO face_review_queue
+                (detection_id, candidate_cluster_id, similarity, reason, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        r["detection_id"],
+                        r["candidate_cluster_id"],
+                        r["similarity"],
+                        r["reason"],
+                        r["status"],
+                        r["created_at"],
+                    )
+                    for r in review_items
+                ],
+            )
+
+        # Restore rejections
+        if rejections:
+            conn.executemany(
+                """
+                INSERT INTO face_rejections (detection_id, cluster_id, created_at)
+                VALUES (?, ?, ?)
+                """,
+                [
+                    (r["detection_id"], r["cluster_id"], r["created_at"])
+                    for r in rejections
+                ],
+            )
+
+    def delete_face_cluster(self, cluster_id: str) -> bool:
+        """
+        Delete a face cluster (person) and all its data.
+        Features robust undo support.
+
+        Args:
+            cluster_id: ID of the cluster to delete
+
+        Returns:
+            True if successful
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # 1. Fetch data for undo
+            # Cluster info
+            cluster_row = conn.execute(
+                "SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
+            ).fetchone()
+            if not cluster_row:
+                return False  # Already deleted?
+
+            # Associations
+            associations = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM photo_person_associations WHERE cluster_id = ?",
+                    (cluster_id,),
+                ).fetchall()
+            ]
+
+            # Review queue items
+            review_items = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM face_review_queue WHERE candidate_cluster_id = ?",
+                    (cluster_id,),
+                ).fetchall()
+            ]
+
+            # Rejections
+            rejections = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT * FROM face_rejections WHERE cluster_id = ?", (cluster_id,)
+                ).fetchall()
+            ]
+
+            # Log for undo
+            self._log_operation(
+                conn,
+                "delete_person",
+                {
+                    "cluster": dict(cluster_row),
+                    "associations": associations,
+                    "review_items": review_items,
+                    "rejections": rejections,
+                },
+            )
+
+            # 2. Delete everything
+            conn.execute(
+                "DELETE FROM photo_person_associations WHERE cluster_id = ?",
+                (cluster_id,),
+            )
+            conn.execute(
+                "DELETE FROM face_review_queue WHERE candidate_cluster_id = ?",
+                (cluster_id,),
+            )
+            conn.execute(
+                "DELETE FROM face_rejections WHERE cluster_id = ?", (cluster_id,)
+            )
+            conn.execute(
+                "DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
+            )
+
+            logger.info(f"Deleted person {cluster_id}")
             return True
 
 

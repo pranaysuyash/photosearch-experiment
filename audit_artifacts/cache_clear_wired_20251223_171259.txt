@@ -1,0 +1,4 @@
+ui/src/api.ts:1476:    // Backend route is API-prefixed (see server/api/routers/system.py @ /api/cache/clear)
+ui/src/api.ts:1477:    const res = await apiClient.post('/api/cache/clear');
+server/api/routers/system.py:37:@router.post("/api/cache/clear")
+93:      await api.clearCache();

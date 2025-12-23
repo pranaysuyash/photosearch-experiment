@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { glass } from '../design/glass';
 import { useAmbientThemeContext } from '../contexts/AmbientThemeContext';
+import { api } from '../api';
+import { useNavigate } from 'react-router-dom';
 
 // Import advanced features components
 import {
@@ -60,12 +62,28 @@ interface Feature {
 
 export function AdvancedFeaturesPage() {
   const { isDark } = useAmbientThemeContext();
+  const navigate = useNavigate();
   const [selectedFeature, setSelectedFeature] =
     useState<FeatureType>('face-recognition');
   const [features, setFeatures] = useState<Feature[]>([]);
   const [systemStatus, setSystemStatus] = useState<
     'loading' | 'ready' | 'error'
   >('loading');
+
+  // Hidden Genius: expose /api/advanced/scan-directory
+  const [scanDirectoryPath, setScanDirectoryPath] = useState('');
+  const [scanFaces, setScanFaces] = useState(true);
+  const [scanDuplicates, setScanDuplicates] = useState(true);
+  const [scanOcr, setScanOcr] = useState(true);
+  const [scanSubmitting, setScanSubmitting] = useState(false);
+  const [scanResult, setScanResult] = useState<
+    | null
+    | {
+        job_ids: string[];
+        message?: string;
+      }
+  >(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   // Load system status and feature availability
   useEffect(() => {
@@ -76,8 +94,7 @@ export function AdvancedFeaturesPage() {
 
   const loadSystemStatus = async () => {
     try {
-      const response = await fetch('/api/advanced/status');
-      const data = await response.json();
+      const data = await api.get('/api/advanced/status');
 
       setSystemStatus('ready');
 
@@ -169,6 +186,38 @@ export function AdvancedFeaturesPage() {
     } catch (error) {
       console.error('Failed to load system status:', error);
       setSystemStatus('error');
+    }
+  };
+
+  const startComprehensiveScan = async () => {
+    const directory_path = scanDirectoryPath.trim();
+    if (!directory_path) {
+      setScanError('Please enter a directory path to scan.');
+      return;
+    }
+
+    setScanSubmitting(true);
+    setScanError(null);
+    setScanResult(null);
+
+    try {
+      const res = await api.post('/api/advanced/scan-directory', {
+        directory_path,
+        scan_faces: scanFaces,
+        scan_duplicates: scanDuplicates,
+        scan_ocr: scanOcr,
+      });
+
+      setScanResult({
+        job_ids: Array.isArray(res?.job_ids) ? res.job_ids : [],
+        message: res?.message,
+      });
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail || err?.message || 'Failed to start scan';
+      setScanError(String(detail));
+    } finally {
+      setScanSubmitting(false);
     }
   };
 
@@ -284,10 +333,115 @@ export function AdvancedFeaturesPage() {
                 <p className='text-sm text-gray-400'>System Status</p>
                 <p className='text-lg font-semibold text-green-400'>Ready</p>
               </div>
-              <button className='p-2 bg-white/10 rounded-lg hover:bg-white/20 text-gray-400 hover:text-white'>
+              <button
+                className='p-2 bg-white/10 rounded-lg hover:bg-white/20 text-gray-400 hover:text-white'
+                aria-label='Advanced settings'
+                title='Advanced settings'
+              >
                 <Settings className='w-5 h-5' />
               </button>
             </div>
+          </div>
+
+          {/* Comprehensive scan quick action (high leverage) */}
+          <div className={`${glass.card} p-4 border border-white/10 mb-4`}>
+            <div className='flex items-start justify-between gap-4'>
+              <div>
+                <h2 className='text-white font-semibold flex items-center gap-2'>
+                  <Zap className='w-4 h-4 text-yellow-500' />
+                  Comprehensive directory scan
+                </h2>
+                <p className='text-gray-400 text-sm mt-1'>
+                  Starts face clustering, duplicate detection, and OCR scans for a directory (runs as background jobs).
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/jobs')}
+                className='px-3 py-2 bg-white/10 rounded-lg hover:bg-white/20 text-gray-200 text-sm'
+                title='Open job monitor'
+              >
+                View Jobs
+              </button>
+            </div>
+
+            <div className='mt-3 grid grid-cols-1 md:grid-cols-3 gap-3'>
+              <div className='md:col-span-2'>
+                <label className='block text-xs text-gray-400 mb-1'>Directory path</label>
+                <input
+                  value={scanDirectoryPath}
+                  onChange={(e) => setScanDirectoryPath(e.target.value)}
+                  placeholder='/path/to/photos'
+                  className='w-full px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50'
+                />
+              </div>
+              <div className='flex items-end'>
+                <button
+                  onClick={startComprehensiveScan}
+                  disabled={scanSubmitting}
+                  className='w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2'
+                >
+                  {scanSubmitting ? (
+                    <>
+                      <RefreshCw className='w-4 h-4 animate-spin' />
+                      Starting…
+                    </>
+                  ) : (
+                    <>
+                      <Play className='w-4 h-4' />
+                      Start scan
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className='mt-3 flex flex-wrap gap-4'>
+              <label className='flex items-center gap-2 text-sm text-gray-300'>
+                <input
+                  type='checkbox'
+                  checked={scanFaces}
+                  onChange={(e) => setScanFaces(e.target.checked)}
+                />
+                Faces
+              </label>
+              <label className='flex items-center gap-2 text-sm text-gray-300'>
+                <input
+                  type='checkbox'
+                  checked={scanDuplicates}
+                  onChange={(e) => setScanDuplicates(e.target.checked)}
+                />
+                Duplicates
+              </label>
+              <label className='flex items-center gap-2 text-sm text-gray-300'>
+                <input
+                  type='checkbox'
+                  checked={scanOcr}
+                  onChange={(e) => setScanOcr(e.target.checked)}
+                />
+                OCR
+              </label>
+            </div>
+
+            {scanError && (
+              <div className='mt-3 text-sm text-red-400 flex items-center gap-2'>
+                <AlertCircle className='w-4 h-4' />
+                {scanError}
+              </div>
+            )}
+
+            {scanResult && (
+              <div className='mt-3 text-sm text-green-400'>
+                <div className='flex items-center gap-2'>
+                  <Check className='w-4 h-4' />
+                  {scanResult.message || 'Scan started'}
+                </div>
+                {scanResult.job_ids.length > 0 && (
+                  <div className='mt-2 text-gray-300'>
+                    Job IDs: {scanResult.job_ids.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Feature Navigation */}

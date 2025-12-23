@@ -445,15 +445,12 @@ async def delete_cluster(cluster_id: str, state: AppState = Depends(get_state)):
             )
 
         db = get_face_clustering_db()
-        cursor = db.conn.cursor()
+        success = db.delete_face_cluster(cluster_id)
 
-        # Delete memberships first
-        cursor.execute(
-            "DELETE FROM cluster_memberships WHERE cluster_id = ?", (int(cluster_id),)
-        )
-        # Delete cluster
-        cursor.execute("DELETE FROM clusters WHERE id = ?", (int(cluster_id),))
-        db.conn.commit()
+        if not success:
+            raise HTTPException(
+                status_code=404, detail="Cluster not found or could not be deleted"
+            )
 
         return {"status": "success", "deleted_cluster_id": cluster_id}
     except HTTPException:

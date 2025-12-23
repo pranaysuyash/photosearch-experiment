@@ -26,6 +26,8 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/bundle-report.html` — **asset-size bundle report** (fallback; sourcemap analyzers failed).
 - `audit_artifacts/merge_suggestions_evidence_20251223_161343.txt` — evidence that Merge Suggestions exists in code but is not imported by any route/page.
 - `audit_artifacts/merge_suggestions_wired_20251223_163850.txt` — evidence that Merge Suggestions is now wired into the People page (reachable via UI).
+- `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt` — evidence that PersonDetail calls `/api/faces/clusters/{cluster_id}/photos` and the backend route exists.
+- `audit_artifacts/ui-build_20251223_164126.txt` — fresh UI build output after wiring Merge Suggestions (exit code in `audit_artifacts/ui-build_20251223_164126_exitcode.txt`).
 
 ---
 
@@ -34,22 +36,22 @@ These files were generated during discovery and are intended to be treated as ap
 ### Backend capability utilization (P0 metric)
 
 - **Total backend endpoints:** 325
-- **Matched as used by frontend:** 205
-- **Unused by frontend:** 120
+- **Matched as used by frontend:** 207
+- **Unused by frontend:** 118
 - **Frontend unique endpoint references captured:** 242
 
 Evidence:
 
 - `audit_artifacts/backend_endpoint_inventory_stats.txt` (generated):
   - `Total endpoints: 325`
-  - `Used by frontend: 205`
-  - `Unused by frontend: 120`
+  - `Used by frontend: 207`
+  - `Unused by frontend: 118`
   - `Unique frontend evidence paths captured: 112`
 - `audit_artifacts/frontend_endpoints_called_count.txt`: `242`
 
 ### The “Hidden Genius” list (highest ROI)
 
-There are **11 unused `/api*` endpoints** that represent **user-facing power features** (face workflows, cache management, advanced scan/analytics) that exist server-side but are not surfaced in the UI.
+There are **9 unused `/api*` endpoints** that represent **user-facing power features** (face workflows, cache management, advanced scan/analytics) that exist server-side but are not surfaced in the UI.
 
 Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
@@ -65,7 +67,6 @@ Evidence: `audit_artifacts/backend_endpoints_unused_api_only.txt`
 
 Unused endpoints include:
 
-- `GET /api/faces/clusters/{cluster_id}/photos` (returns photos + face confidence per cluster)
 - `GET /api/faces/crop/{face_id}` (face thumbnails / crops)
 - `POST /api/faces/{face_id}/assign` (manual correction)
 - `POST /api/faces/{face_id}/create-person` (promote unidentified face into a person)
@@ -74,23 +75,28 @@ Unused endpoints include:
 Evidence:
 
 - Unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt`
-- Cluster photos endpoint behavior: `server/api/routers/face_recognition.py:456` (`@router.get("/api/faces/clusters/{cluster_id}/photos")`)
 - Face crop endpoint: `server/api/routers/face_recognition.py:807` (`@router.get("/api/faces/crop/{face_id}")`)
 - Assign face endpoint: `server/api/routers/face_recognition.py:687` (`@router.post("/api/faces/{face_id}/assign")`)
 - Create person endpoint: `server/api/routers/face_recognition.py:724` (`@router.post("/api/faces/{face_id}/create-person")`)
 - Person analytics endpoint: `server/api/routers/face_recognition.py:991` (`@router.get("/api/people/{person_id}/analytics")`)
 
+Update:
+
+- Cluster photo browsing is now wired through the UI by `PersonDetail` calling the canonical endpoint:
+  - Backend route: `server/api/routers/face_recognition.py:460` (`@router.get("/api/faces/clusters/{cluster_id}/photos")`)
+  - UI call site: `ui/src/pages/PersonDetail.tsx:81`
+  - Evidence artifact: `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt`
+
 Impact:
 
-- Users can’t perform the most valuable “face product loop”: **review → correct → name → browse photos per person → see analytics**.
+- Users still can’t perform the full “face product loop”: **review → correct → name → (optionally browse) → see analytics**.
 - This directly undercuts “Smart Search” credibility (people intent) and reduces retention.
 
 Smallest viable fix (UI surfacing plan):
 
-1. In the People/Face UI, add a “Photos” tab that calls `GET /api/faces/clusters/{cluster_id}/photos` and renders results.
-2. Use `GET /api/faces/crop/{face_id}` to show face thumbnails in review lists.
-3. Add “Assign to person…” and “Create person…” actions in the Unidentified/Low-confidence face review panel.
-4. Add a lightweight “Insights” section in Person detail that calls `GET /api/people/{person_id}/analytics`.
+1. Use `GET /api/faces/crop/{face_id}` to show face thumbnails in review lists.
+2. Add “Assign to person…” and “Create person…” actions in the Unidentified/Low-confidence face review panel.
+3. Add a lightweight “Insights” section in Person detail that calls `GET /api/people/{person_id}/analytics`.
 
 Acceptance criteria:
 
@@ -192,36 +198,25 @@ Effort sizing:
 
 ---
 
-#### Finding P0.3 — Cache clear endpoint exists but is not exposed
+#### Finding P0.3 — Cache clear endpoint is now exposed (and wiring was corrected)
 
-Unused endpoint:
+Update:
 
-- `POST /api/cache/clear`
+- The backend endpoint exists and is now **called by the UI** via the Performance page.
+- The frontend previously used a non-existent `/cache/clear` path; this was corrected to `/api/cache/clear`.
 
 Evidence:
 
-- Unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt`
-- Implementation: `server/api/routers/system.py:37` (`@router.post("/api/cache/clear")`)
+- Backend route: `server/api/routers/system.py:37` (`@router.post("/api/cache/clear")`)
+- Frontend API call: `ui/src/api.ts:1477` (`apiClient.post('/api/cache/clear')`)
+- UI entry point + button: `ui/src/pages/PerformanceDashboard.tsx:93` (`await api.clearCache()`)
+- Route exposure: `ui/src/router/MainRouter.tsx:89` (`Route path='/performance'`)
+- Navigation exposure: `ui/src/components/navigation/SidebarNavigation.tsx:45` (`href: '/performance'`)
+- Evidence artifact: `audit_artifacts/cache_clear_wired_20251223_171259.txt`
 
 Impact:
 
-- Debugging/performance support is harder (especially for Tauri/offline flows).
-
-Smallest viable fix:
-
-- Add Settings → Diagnostics → “Clear cache” button.
-
-Acceptance criteria:
-
-- Clicking button calls endpoint and shows success message.
-
-Rollback plan:
-
-- Remove button.
-
-Effort sizing:
-
-- **XS (1–2 hours)**.
+- Debugging/performance support is easier, and users have a deterministic “reset caches” escape hatch.
 
 ---
 

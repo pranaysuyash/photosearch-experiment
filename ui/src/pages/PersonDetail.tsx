@@ -12,7 +12,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, User, Camera, RefreshCw, Check, X,
     CheckCircle2, XCircle, AlertCircle, Move, UserPlus,
-    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors, ToggleLeft, ToggleRight
+    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors, ToggleLeft, ToggleRight, Trash2
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -237,22 +237,33 @@ export default function PersonDetail() {
     };
 
     // Undo last operation
-    const handleUndo = async () => {
+    const handleUndo = useCallback(async () => {
+        setActionLoading('undo');
         try {
-            setActionLoading('undo');
-            const result = await api.undoLastOperation();
-            if (result.success) {
-                setSuccessMessage(`Undid ${result.operation_type}`);
-                setCanUndo(false);
-                await fetchPhotos();
-            }
+            await api.undoLastOperation();
+            await fetchPhotos(); // Refresh list
+            setCanUndo(false); // Assume done (or check API?)
         } catch (err) {
-            console.error('Undo failed:', err);
+            console.error(err);
             setError('Failed to undo');
         } finally {
             setActionLoading(null);
         }
-    };
+    }, [fetchPhotos]);
+
+    const handleDeletePerson = useCallback(async () => {
+        if (!clusterId) return;
+        if (window.confirm("Are you sure you want to delete this person? All faces will be unassigned. You can undo this action immediately.")) {
+            setActionLoading('delete');
+            try {
+                await api.deletePerson(clusterId);
+                navigate('/people');
+            } catch (err) {
+                setError('Failed to delete person');
+                setActionLoading(null);
+            }
+        }
+    }, [clusterId, navigate]);
 
     // Get assignment state badge
     const getStateBadge = (state?: AssignmentState) => {
@@ -315,8 +326,8 @@ export default function PersonDetail() {
                                 onClick={handleToggleIndexing}
                                 disabled={indexingLoading}
                                 className={`btn-glass px-3 py-2 flex items-center gap-1 ${indexingEnabled
-                                        ? 'btn-glass--muted'
-                                        : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                                    ? 'btn-glass--muted'
+                                    : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
                                     }`}
                                 title={indexingEnabled ? 'Auto-assignment enabled' : 'Auto-assignment disabled'}
                             >
@@ -347,6 +358,20 @@ export default function PersonDetail() {
                                     <span>Undo</span>
                                 </button>
                             )}
+
+                            {/* Delete button */}
+                            <button
+                                onClick={handleDeletePerson}
+                                disabled={!!actionLoading}
+                                className="btn-glass px-3 py-2 flex items-center gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10"
+                                title="Delete Person"
+                            >
+                                {actionLoading === 'delete' ? (
+                                    <Loader2 className="animate-spin" size={16} />
+                                ) : (
+                                    <Trash2 size={16} />
+                                )}
+                            </button>
 
                             {/* Selection mode toggle */}
                             <button

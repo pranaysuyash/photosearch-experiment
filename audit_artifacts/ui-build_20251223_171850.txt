@@ -1,0 +1,49 @@
+vite v7.2.7 building client environment for production...
+transforming...
+✓ 2831 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                       2.42 kB │ gzip:   0.82 kB
+dist/assets/OCRSearch-Da1e3O6V.css                    3.00 kB │ gzip:   0.99 kB
+dist/assets/TauriIntegration-BXcnnTma.css             4.17 kB │ gzip:   1.14 kB
+dist/assets/ModalSystem-DGgWxpts.css                  4.52 kB │ gzip:   1.23 kB
+dist/assets/FaceClustering-RhNhsmBA.css               4.99 kB │ gzip:   1.28 kB
+dist/assets/CodeSplitting-P_2FQFxv.css                5.00 kB │ gzip:   1.30 kB
+dist/assets/index-CPkCGRuF.css                      102.38 kB │ gzip:  18.06 kB
+dist/assets/cloud-Dbi1Hh-E.js                         0.16 kB │ gzip:   0.16 kB
+dist/assets/arrow-left-BA-EvdpV.js                    0.17 kB │ gzip:   0.16 kB
+dist/assets/circle-check-big-DhhG00YV.js              0.19 kB │ gzip:   0.18 kB
+dist/assets/toggle-left-bFX8NabM.js                   0.20 kB │ gzip:   0.19 kB
+dist/assets/user-plus-Nt607ywa.js                     0.31 kB │ gzip:   0.23 kB
+dist/assets/tag-fWNV4-xc.js                           0.32 kB │ gzip:   0.25 kB
+dist/assets/Videos-BqiliP1U.js                        0.62 kB │ gzip:   0.37 kB
+dist/assets/NotFound-CPxEfMWb.js                      0.65 kB │ gzip:   0.37 kB
+dist/assets/Favorites-C_sMIuPg.js                     0.98 kB │ gzip:   0.52 kB
+dist/assets/index-ZqTJLjwd.js                         1.30 kB │ gzip:   0.45 kB
+dist/assets/About-B6-vJyHN.js                         2.41 kB │ gzip:   0.68 kB
+dist/assets/LowConfidence-BtYhsPky.js                 2.63 kB │ gzip:   1.07 kB
+dist/assets/Singletons-DPjVyO7v.js                    2.64 kB │ gzip:   1.07 kB
+dist/assets/AllFacePhotos-Bg6FNbUF.js                 2.89 kB │ gzip:   1.18 kB
+dist/assets/Tags-DRCohqDZ.js                          3.43 kB │ gzip:   1.31 kB
+dist/assets/Trash-cHK2FUZN.js                         3.60 kB │ gzip:   1.45 kB
+dist/assets/SavedSearches-TG8pE40J.js                 3.96 kB │ gzip:   1.37 kB
+dist/assets/OCRSearch-CGKZTc92.js                     4.14 kB │ gzip:   1.51 kB
+dist/assets/UnidentifiedFaces-7pAIGhNR.js             5.65 kB │ gzip:   1.93 kB
+dist/assets/PerformanceDashboard-zHOXRMaR.js          5.88 kB │ gzip:   1.65 kB
+dist/assets/FaceClustering-BMQgh5Lu.js                5.96 kB │ gzip:   1.87 kB
+dist/assets/JobMonitor-CpT7W_H4.js                    6.06 kB │ gzip:   2.22 kB
+dist/assets/ModalSystem-DTJ-Un3f.js                   6.49 kB │ gzip:   1.84 kB
+dist/assets/TauriIntegration-BVUWUUKx.js              6.97 kB │ gzip:   1.65 kB
+dist/assets/CodeSplitting-Bx0Woj2F.js                 7.51 kB │ gzip:   2.09 kB
+dist/assets/PersonDetail-333aaXSa.js                 14.29 kB │ gzip:   4.27 kB
+dist/assets/Albums-BNcjigG0.js                       14.59 kB │ gzip:   3.91 kB
+dist/assets/FaceRecognitionPanel-Csh_aJ_-.js         14.77 kB │ gzip:   3.93 kB
+dist/assets/Import-BvV0TX-F.js                       17.24 kB │ gzip:   3.54 kB
+dist/assets/SmartAlbumsBuilder-BkRiwDy8.js           18.07 kB │ gzip:   3.99 kB
+dist/assets/Settings-DxD7ZPve.js                     18.99 kB │ gzip:   4.75 kB
+dist/assets/OCRTextSearchPanel-CH4r2h5n.js           19.53 kB │ gzip:   4.91 kB
+dist/assets/DuplicateManagementPanel-DSqebnHm.js     20.11 kB │ gzip:   4.72 kB
+dist/assets/AnalyticsDashboard-Cq6j3T38.js           24.41 kB │ gzip:   5.35 kB
+dist/assets/People-IQe6wiFq.js                       29.15 kB │ gzip:   6.86 kB
+dist/assets/index-B7b59jVE.js                     1,549.35 kB │ gzip: 443.59 kB
+✓ built in 5.84s
