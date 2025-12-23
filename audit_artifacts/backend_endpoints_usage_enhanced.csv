@@ -21,7 +21,7 @@ POST,/albums/{album_id}/photos,yes,server/api/routers/albums.py:112
 POST,/albums/{album_id}/refresh,yes,server/api/routers/albums.py:150
 GET,/api/actions/detect-apps,yes,server/api/routers/system.py:24
 GET,/api/advanced/comprehensive-stats,no,server/main_advanced_features.py:313
-POST,/api/advanced/scan-directory,no,server/main_advanced_features.py:197
+POST,/api/advanced/scan-directory,yes,server/main_advanced_features.py:197
 GET,/api/advanced/status,yes,server/main_advanced_features.py:147
 GET,/api/cache/cleanup,yes,server/api/routers/system.py:44
 POST,/api/cache/clear,yes,server/api/routers/system.py:37

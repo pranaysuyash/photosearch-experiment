@@ -25,6 +25,7 @@ import {
   Eye,
   Lock,
   Play,
+  RefreshCw,
   Check,
   AlertCircle,
   Info,
@@ -76,13 +77,10 @@ export function AdvancedFeaturesPage() {
   const [scanDuplicates, setScanDuplicates] = useState(true);
   const [scanOcr, setScanOcr] = useState(true);
   const [scanSubmitting, setScanSubmitting] = useState(false);
-  const [scanResult, setScanResult] = useState<
-    | null
-    | {
-        job_ids: string[];
-        message?: string;
-      }
-  >(null);
+  const [scanResult, setScanResult] = useState<null | {
+    job_ids: string[];
+    message?: string;
+  }>(null);
   const [scanError, setScanError] = useState<string | null>(null);
 
   // Load system status and feature availability
@@ -247,7 +245,10 @@ export function AdvancedFeaturesPage() {
       <div
         className={`w-12 h-12 rounded-lg bg-black/30 flex items-center justify-center mb-3 ${iconColor}`}
       >
-        {React.createElement(Icon as React.ElementType<{ className?: string }>, { className: "w-6 h-6" })}
+        {React.createElement(
+          Icon as React.ElementType<{ className?: string }>,
+          { className: 'w-6 h-6' }
+        )}
       </div>
     );
   };
@@ -352,7 +353,8 @@ export function AdvancedFeaturesPage() {
                   Comprehensive directory scan
                 </h2>
                 <p className='text-gray-400 text-sm mt-1'>
-                  Starts face clustering, duplicate detection, and OCR scans for a directory (runs as background jobs).
+                  Starts face clustering, duplicate detection, and OCR scans for
+                  a directory (runs as background jobs).
                 </p>
               </div>
               <button
@@ -366,7 +368,9 @@ export function AdvancedFeaturesPage() {
 
             <div className='mt-3 grid grid-cols-1 md:grid-cols-3 gap-3'>
               <div className='md:col-span-2'>
-                <label className='block text-xs text-gray-400 mb-1'>Directory path</label>
+                <label className='block text-xs text-gray-400 mb-1'>
+                  Directory path
+                </label>
                 <input
                   value={scanDirectoryPath}
                   onChange={(e) => setScanDirectoryPath(e.target.value)}

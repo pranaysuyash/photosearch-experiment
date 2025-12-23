@@ -14,7 +14,7 @@
 
 PhotoSearch v2 is a surprisingly feature-rich system already: a FastAPI backend with hundreds of routes and a React/Vite UI that calls a meaningful portion of them. Discovery confirms a split monorepo-ish structure with Python backend in `server/` and React frontend in `ui/`, plus an optional Tauri desktop wrapper in `src-tauri/` (`audit_artifacts/discovery_20251223_155700.txt`).
 
-The headline risk is still the **Hidden Genius Problem**—not because nothing is wired, but because several _high leverage_ capabilities (especially around advanced scan operations and certain face workflows) are present server-side but not consistently reachable from the UI. Utilization is decent in raw percentage terms (**207/325 endpoints used ≈ 64%**) yet the remaining ~36% includes endpoints that would directly improve “2 perfect results in 2 seconds” via better workflows and transparency (see `audit_artifacts/backend_endpoint_inventory_stats.txt`, `audit_artifacts/backend_endpoints_unused_api_only.txt`).
+The headline risk is still the **Hidden Genius Problem**—not because nothing is wired, but because several _high leverage_ capabilities (especially around deep stats and certain face workflows) are present server-side but not consistently reachable from the UI. Utilization is decent in raw percentage terms (**208/325 endpoints used ≈ 64%**) yet the remaining ~36% includes endpoints that would directly improve “2 perfect results in 2 seconds” via better workflows and transparency (see `audit_artifacts/backend_endpoint_inventory_stats.txt`, `audit_artifacts/backend_endpoints_unused_api_only.txt`).
 
 Search and intelligence tooling exists (intent detection endpoints, match explanations, semantic search scaffolding). The current UX, however, contains contradictory patterns: the UI both **auto-detects search mode** and offers **manual mode selection**, which can create user confusion and mode “flapping” (evidence in the prior audit: `ui/src/contexts/PhotoSearchContext.tsx:165–225` and `ui/src/components/layout/DynamicNotchSearch.tsx:417`). The smallest viable fix here is to formalize “Auto vs Manual override” and prevent auto-switching while manual override is active.
 
@@ -28,7 +28,7 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 1. **Tauri CSP disabled (desktop security regression risk)** — `src-tauri/tauri.conf.json:27–29` (`"csp": null`).
 2. **Smart Search UX contradiction (auto-routing vs manual mode selection) causes mode flapping** — `ui/src/contexts/PhotoSearchContext.tsx:165–225` + `ui/src/components/layout/DynamicNotchSearch.tsx:417`.
-3. **High-value endpoints not exposed in UI (advanced scan + stats)** — unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt` (e.g., `POST /api/advanced/scan-directory`, `GET /api/advanced/comprehensive-stats`).
+3. **High-value endpoint not exposed in UI (deep stats)** — unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt` (e.g., `GET /api/advanced/comprehensive-stats`).
 4. **Face workflows missing key affordances in UI (face crop, create-person, analytics)** — backend exists but frontend does not call these endpoints (`audit_artifacts/backend_endpoints_unused_api_only.txt` + current route anchors: `server/api/routers/face_recognition.py:811`, `:728`, `:995`).
 5. **Audit-grade truth maintenance risk: generated inventories can drift from current line anchors** — example: `audit_artifacts/backend_endpoint_inventory.md` lists older anchors for some face endpoints; current anchors verified via decorators in `server/api/routers/face_recognition.py`.
 
@@ -42,18 +42,18 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 ### Quick Wins (Top 10)
 
-|   # | Item                                                   | Effort |  Impact   | Evidence                                                                                    |
-| --: | ------------------------------------------------------ | :----: | :-------: | ------------------------------------------------------------------------------------------- |
-|   1 | Add non-null CSP for Tauri                             |   S    | Very High | `src-tauri/tauri.conf.json:27–29`                                                           |
+|   # | Item                                                                        | Effort |  Impact   | Evidence                                                                                                                                                                             |
+| --: | --------------------------------------------------------------------------- | :----: | :-------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|   1 | Add non-null CSP for Tauri                                                  |   S    | Very High | `src-tauri/tauri.conf.json:27–29`                                                                                                                                                    |
 |   2 | Cache clear is already exposed (Performance page) (`POST /api/cache/clear`) |   XS   |   High    | Backend: `server/api/routers/system.py:37`; UI: `ui/src/pages/PerformanceDashboard.tsx:93` + `ui/src/api.ts:1477`; artifact: `audit_artifacts/cache_clear_wired_20251223_171259.txt` |
-|   3 | Expose “Advanced scan directory” in UI                 |   M    |   High    | `server/main_advanced_features.py:197`                                                      |
-|   4 | Expose “Comprehensive stats” panel                     |  S–M   |   High    | `server/main_advanced_features.py:313`                                                      |
-|   5 | Cluster photos drill-down is already exposed (PersonDetail) |   XS   |   High    | Backend: `server/api/routers/face_recognition.py:460`; UI: `ui/src/pages/PersonDetail.tsx:81`; artifact: `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt` |
-|   6 | Add face crop preview endpoint usage                   |   S    |  Medium   | `server/api/routers/face_recognition.py:807`                                                |
-|   7 | Add Create Person action to UI                         |   S    |   High    | `server/api/routers/face_recognition.py:724`                                                |
-|   8 | Add Person analytics view                              |   M    |   High    | `server/api/routers/face_recognition.py:991`                                                |
-|   9 | Enforce search mode semantics: Auto vs Manual override |   S    |   High    | `ui/src/contexts/PhotoSearchContext.tsx:165–225`                                            |
-|  10 | Standardize “Why this matched” component               |   M    |   High    | `server/utils/search_explanations.py:*` + `ui/src/api.ts:84–95`                             |
+|   3 | Advanced scan directory is now exposed (verify + polish)                     |   XS   |   High    | Backend: `server/main_advanced_features.py:197`; UI: `ui/src/pages/AdvancedFeaturesPage.tsx:202`; artifact: `audit_artifacts/scan_directory_wired_20251223_185027.txt`               |
+|   4 | Expose “Comprehensive stats” panel                                          |  S–M   |   High    | `server/main_advanced_features.py:313`                                                                                                                                               |
+|   5 | Cluster photos drill-down is already exposed (PersonDetail)                 |   XS   |   High    | Backend: `server/api/routers/face_recognition.py:460`; UI: `ui/src/pages/PersonDetail.tsx:81`; artifact: `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt`              |
+|   6 | Add face crop preview endpoint usage                                        |   S    |  Medium   | `server/api/routers/face_recognition.py:807`                                                                                                                                         |
+|   7 | Add Create Person action to UI                                              |   S    |   High    | `server/api/routers/face_recognition.py:724`                                                                                                                                         |
+|   8 | Add Person analytics view                                                   |   M    |   High    | `server/api/routers/face_recognition.py:991`                                                                                                                                         |
+|   9 | Enforce search mode semantics: Auto vs Manual override                      |   S    |   High    | `ui/src/contexts/PhotoSearchContext.tsx:165–225`                                                                                                                                     |
+|  10 | Standardize “Why this matched” component                                    |   M    |   High    | `server/utils/search_explanations.py:*` + `ui/src/api.ts:84–95`                                                                                                                      |
 
 ### Overall Health Scores
 
@@ -61,7 +61,7 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 | Category             | Score (0-4) | Justification                                                                                                                              |
 | -------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Backend Utilization  | 2.8         | 207/325 endpoints used (~64%); but some high-leverage endpoints remain unexposed (`audit_artifacts/backend_endpoint_inventory_stats.txt`). |
+| Backend Utilization  | 2.8         | 208/325 endpoints used (~64%); but some high-leverage endpoints remain unexposed (`audit_artifacts/backend_endpoint_inventory_stats.txt`). |
 | Search Experience    | 2.6         | Intent + multiple modes exist, but UX contradictions and explanation surfacing gaps remain.                                                |
 | Glass Design System  | 2.7         | Glass surfaces present, but needs token governance and contrast verification across components.                                            |
 | Adaptive UI          | 2.5         | Multiple modes exist (notch/bubble/mobile), but needs parity and stable mode selection.                                                    |
@@ -89,17 +89,17 @@ Verification credibility: backend tests are green under test-mode controls (evid
 **Gap summary**
 
 - Total endpoints: **325**
-- Used by frontend: **207** (~64%)
-- Unused by frontend: **118**
+- Used by frontend: **208** (~64%)
+- Unused by frontend: **117**
 
 **High-value endpoints (API-prefixed, audit-minimal list)**
 (These are immediately product-relevant and are currently flagged as not called by the UI per `audit_artifacts/backend_endpoints_unused_api_only.txt`.)
 
 | Endpoint                                  | Method | Purpose                             | Called by Frontend? | Evidence                                                                                      | Priority to Expose |
 | ----------------------------------------- | ------ | ----------------------------------- | :-----------------: | --------------------------------------------------------------------------------------------- | :----------------: |
-| `/api/advanced/scan-directory`            | POST   | Power indexing / ingestion workflow |         ❌          | `server/main_advanced_features.py:197`                                                        |         P0         |
+| `/api/advanced/scan-directory`            | POST   | Power indexing / ingestion workflow |         ✅          | Backend: `server/main_advanced_features.py:197`; UI: `ui/src/pages/AdvancedFeaturesPage.tsx:202` |         P0         |
 | `/api/advanced/comprehensive-stats`       | GET    | System/library deep stats           |         ❌          | `server/main_advanced_features.py:313`                                                        |         P1         |
-| `/api/cache/clear`                        | POST   | Clear caches deterministically      |         ✅          | Backend: `server/api/routers/system.py:37`; UI: `ui/src/api.ts:1477`                           |         P0         |
+| `/api/cache/clear`                        | POST   | Clear caches deterministically      |         ✅          | Backend: `server/api/routers/system.py:37`; UI: `ui/src/api.ts:1477`                          |         P0         |
 | `/api/faces/clusters/{cluster_id}/photos` | GET    | Browse photos in a face cluster     |         ✅          | Backend: `server/api/routers/face_recognition.py:460`; UI: `ui/src/pages/PersonDetail.tsx:81` |         P0         |
 | `/api/faces/crop/{face_id}`               | GET    | Face crop preview / inline UI       |         ❌          | `server/api/routers/face_recognition.py:811`                                                  |         P1         |
 | `/api/faces/person/{person_name}`         | GET    | Direct person-name face lookup      |         ❌          | `server/api/routers/face_recognition.py:356`                                                  |         P2         |
@@ -113,16 +113,16 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 ### A2. Hidden Features Audit
 
-| Feature                        | Backend Implementation                                                                                          | Frontend Exposure              | Impact of Hiding                                      | Effort to Surface | Priority |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------ | ----------------------------------------------------- | :---------------: | :------: |
-| Cache clear (ops reset)        | `POST /api/cache/clear` (`server/api/routers/system.py:37`)                                                     | **Exposed via Performance UI** | Improves recovery from stale/bad caches; easier debugging |         XS        |    P0    |
-| Advanced scan directory        | `POST /api/advanced/scan-directory` (`server/main_advanced_features.py:197`)                                    | Not exposed                    | Power users can’t batch ingest/repair                 |         M         |    P0    |
-| Deep stats                     | `GET /api/advanced/comprehensive-stats` (`server/main_advanced_features.py:313`)                                | Not exposed                    | No “health dashboard” / no trust in pipeline          |        S–M        |    P1    |
-| Face cluster merge suggestions | `GET /api/faces/clusters/merge-suggestions` (`server/api/routers/face_recognition.py:1694`) + dismiss (`:1724`) | **Exposed in People UI**       | Improves People quality by merging duplicates         |       XS–S        |    P0    |
-| Face: browse cluster photos    | `GET /api/faces/clusters/{cluster_id}/photos` (`server/api/routers/face_recognition.py:460`)                    | **Exposed via PersonDetail**   | Improves drill-down from People into real photos      |        XS         |    P0    |
-| Face: assign/create person     | `POST /api/faces/{face_id}/assign` (`:691`), `POST /api/faces/{face_id}/create-person` (`:728`)                 | Not exposed                    | Core people workflow becomes fragile/opaque           |         S         |    P0    |
-| Person analytics               | `GET /api/people/{person_id}/analytics` (`:995`)                                                                | Not exposed                    | Lost differentiation (“memory intelligence”)          |         M         |    P1    |
-| Match explanations             | `server/utils/search_explanations.py:*`                                                                         | Typed but inconsistently shown | AI feels arbitrary; weak trust                        |         M         |    P0    |
+| Feature                        | Backend Implementation                                                                                          | Frontend Exposure              | Impact of Hiding                                          | Effort to Surface | Priority |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------- | :---------------: | :------: |
+| Cache clear (ops reset)        | `POST /api/cache/clear` (`server/api/routers/system.py:37`)                                                     | **Exposed via Performance UI** | Improves recovery from stale/bad caches; easier debugging |        XS         |    P0    |
+| Advanced scan directory        | `POST /api/advanced/scan-directory` (`server/main_advanced_features.py:197`)                                    | **Exposed via Advanced Features UI** | Power users can batch ingest/repair                       |        XS–S       |    P0    |
+| Deep stats                     | `GET /api/advanced/comprehensive-stats` (`server/main_advanced_features.py:313`)                                | Not exposed                    | No “health dashboard” / no trust in pipeline              |        S–M        |    P1    |
+| Face cluster merge suggestions | `GET /api/faces/clusters/merge-suggestions` (`server/api/routers/face_recognition.py:1694`) + dismiss (`:1724`) | **Exposed in People UI**       | Improves People quality by merging duplicates             |       XS–S        |    P0    |
+| Face: browse cluster photos    | `GET /api/faces/clusters/{cluster_id}/photos` (`server/api/routers/face_recognition.py:460`)                    | **Exposed via PersonDetail**   | Improves drill-down from People into real photos          |        XS         |    P0    |
+| Face: assign/create person     | `POST /api/faces/{face_id}/assign` (`:691`), `POST /api/faces/{face_id}/create-person` (`:728`)                 | Not exposed                    | Core people workflow becomes fragile/opaque               |         S         |    P0    |
+| Person analytics               | `GET /api/people/{person_id}/analytics` (`:995`)                                                                | Not exposed                    | Lost differentiation (“memory intelligence”)              |         M         |    P1    |
+| Match explanations             | `server/utils/search_explanations.py:*`                                                                         | Typed but inconsistently shown | AI feels arbitrary; weak trust                            |         M         |    P0    |
 
 Merge Suggestions UI evidence:
 

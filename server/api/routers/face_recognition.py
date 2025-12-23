@@ -459,6 +459,27 @@ async def delete_cluster(cluster_id: str, state: AppState = Depends(get_state)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api/faces/clusters/{cluster_id}/export")
+async def export_cluster(cluster_id: str):
+    """
+    Export face cluster data as JSON.
+    Detailed export including all face detections and metadata.
+    Does NOT include vector embeddings by default.
+    """
+    try:
+        db = get_face_clustering_db()
+        data = db.get_face_cluster_export_data(cluster_id)
+
+        if not data:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/api/faces/clusters/{cluster_id}/photos")
 async def get_cluster_photos(
     cluster_id: str,

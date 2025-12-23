@@ -12,7 +12,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, User, Camera, RefreshCw, Check, X,
     CheckCircle2, XCircle, AlertCircle, Move, UserPlus,
-    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors, ToggleLeft, ToggleRight, Trash2
+    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors, ToggleLeft, ToggleRight, Trash2, Download
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -265,6 +265,29 @@ export default function PersonDetail() {
         }
     }, [clusterId, navigate]);
 
+    const handleExport = useCallback(async () => {
+        if (!clusterId) return;
+        try {
+            setActionLoading('export');
+            const data = await api.exportPersonData(clusterId);
+
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `person_${clusterId}_export.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error(err);
+            setError('Failed to export data');
+        } finally {
+            setActionLoading(null);
+        }
+    }, [clusterId]);
+
     // Get assignment state badge
     const getStateBadge = (state?: AssignmentState) => {
         switch (state) {
@@ -358,6 +381,20 @@ export default function PersonDetail() {
                                     <span>Undo</span>
                                 </button>
                             )}
+
+                            {/* Export button */}
+                            <button
+                                onClick={handleExport}
+                                disabled={!!actionLoading}
+                                className="btn-glass px-3 py-2 flex items-center gap-1"
+                                title="Export Data"
+                            >
+                                {actionLoading === 'export' ? (
+                                    <Loader2 className="animate-spin" size={16} />
+                                ) : (
+                                    <Download size={16} />
+                                )}
+                            </button>
 
                             {/* Delete button */}
                             <button

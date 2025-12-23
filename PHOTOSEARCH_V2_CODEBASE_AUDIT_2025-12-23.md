@@ -27,7 +27,10 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/merge_suggestions_evidence_20251223_161343.txt` — evidence that Merge Suggestions exists in code but is not imported by any route/page.
 - `audit_artifacts/merge_suggestions_wired_20251223_163850.txt` — evidence that Merge Suggestions is now wired into the People page (reachable via UI).
 - `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt` — evidence that PersonDetail calls `/api/faces/clusters/{cluster_id}/photos` and the backend route exists.
+- `audit_artifacts/cache_clear_wired_20251223_171259.txt` — evidence that Performance UI calls the correct backend cache clear endpoint (`/api/cache/clear`).
+- `audit_artifacts/scan_directory_wired_20251223_185027.txt` — evidence that Advanced Features UI calls `POST /api/advanced/scan-directory`.
 - `audit_artifacts/ui-build_20251223_164126.txt` — fresh UI build output after wiring Merge Suggestions (exit code in `audit_artifacts/ui-build_20251223_164126_exitcode.txt`).
+- `audit_artifacts/ui-build_20251223_175128.txt` — fresh UI build output after exposing scan-directory (exit code in `audit_artifacts/ui-build_20251223_175128.exitcode.txt`).
 
 ---
 
@@ -36,22 +39,22 @@ These files were generated during discovery and are intended to be treated as ap
 ### Backend capability utilization (P0 metric)
 
 - **Total backend endpoints:** 325
-- **Matched as used by frontend:** 207
-- **Unused by frontend:** 118
+- **Matched as used by frontend:** 208
+- **Unused by frontend:** 117
 - **Frontend unique endpoint references captured:** 242
 
 Evidence:
 
 - `audit_artifacts/backend_endpoint_inventory_stats.txt` (generated):
   - `Total endpoints: 325`
-  - `Used by frontend: 207`
-  - `Unused by frontend: 118`
+  - `Used by frontend: 208`
+  - `Unused by frontend: 117`
   - `Unique frontend evidence paths captured: 112`
 - `audit_artifacts/frontend_endpoints_called_count.txt`: `242`
 
 ### The “Hidden Genius” list (highest ROI)
 
-There are **9 unused `/api*` endpoints** that represent **user-facing power features** (face workflows, cache management, advanced scan/analytics) that exist server-side but are not surfaced in the UI.
+There are **8 unused `/api*` endpoints** that represent **user-facing power features** (face workflows + advanced stats/analytics) that exist server-side but are not surfaced in the UI.
 
 Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
@@ -132,7 +135,7 @@ What exists today:
 Update:
 
 - `MergeSuggestions` is now wired into the People page as a tab, making it reachable from the UI.
-  - UI wiring: `ui/src/pages/People.tsx:27` (import), `ui/src/pages/People.tsx:384` (render)
+  - UI wiring: `ui/src/pages/People.tsx:28` (import), `ui/src/pages/People.tsx:420` (render)
   - Evidence artifact: `audit_artifacts/merge_suggestions_wired_20251223_163850.txt`
 
 Impact:
@@ -159,11 +162,10 @@ Effort sizing:
 
 ---
 
-#### Finding P0.2 — Advanced “scan directory” and “comprehensive stats” exist but are not reachable
+#### Finding P0.2 — Advanced scan directory is now reachable; comprehensive stats still isn’t
 
-Unused endpoints include:
+Unused endpoint still includes:
 
-- `POST /api/advanced/scan-directory` (kicks off background jobs for faces/duplicates/OCR)
 - `GET /api/advanced/comprehensive-stats` (feature stats + library stats)
 
 Evidence:
@@ -173,15 +175,19 @@ Evidence:
   - `server/main_advanced_features.py:197` (`@app.post("/api/advanced/scan-directory")`)
   - `server/main_advanced_features.py:313` (`@app.get("/api/advanced/comprehensive-stats")`)
 
+Update:
+
+- `POST /api/advanced/scan-directory` is now exposed in the UI via a “Comprehensive directory scan” panel on the Advanced Features page.
+  - UI call site: `ui/src/pages/AdvancedFeaturesPage.tsx:202`
+  - Evidence artifact: `audit_artifacts/scan_directory_wired_20251223_185027.txt`
+
 Impact:
 
 - You have a “one-click power user workflow” implemented, but users can’t discover or use it.
 
-Smallest viable fix:
+Smallest viable fix (remaining):
 
-- Add a Settings → Advanced page section:
-  - Directory picker + “Run comprehensive scan” (calls `/api/advanced/scan-directory`).
-  - A “Stats” panel (calls `/api/advanced/comprehensive-stats`).
+- Add a small “Stats” panel on Advanced Features (or Performance) that calls `/api/advanced/comprehensive-stats`.
 
 Acceptance criteria:
 

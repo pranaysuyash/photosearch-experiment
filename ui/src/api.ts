@@ -522,11 +522,15 @@ export const api = {
 
     if (!parsedPerson && query) {
       // Match patterns like "person:Name" or "person:Full Name" (quoted) or "person:Name with spaces"
-      const personMatch = query.match(/\bperson:(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+      const personMatch = query.match(
+        /\bperson:(?:"([^"]+)"|'([^']+)'|(\S+))/i
+      );
       if (personMatch) {
         parsedPerson = personMatch[1] || personMatch[2] || personMatch[3];
         // Remove the person: prefix from the query
-        cleanQuery = query.replace(/\bperson:(?:"[^"]+"|'[^']+'|\S+)/i, '').trim();
+        cleanQuery = query
+          .replace(/\bperson:(?:"[^"]+"|'[^']+'|\S+)/i, '')
+          .trim();
       }
     }
 
@@ -1832,7 +1836,16 @@ export const api = {
   },
 
   deletePerson: async (clusterId: string): Promise<void> => {
-    await apiClient.delete(`/api/faces/clusters/${encodeURIComponent(clusterId)}`);
+    await apiClient.delete(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}`
+    );
+  },
+
+  exportPersonData: async (clusterId: string) => {
+    const res = await apiClient.get(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/export`
+    );
+    return res.data;
   },
 
   getClusterQuality: async (clusterId: string) => {
@@ -1919,7 +1932,10 @@ export const api = {
   },
 
   // Merge clusters with full undo support
-  mergeClustersWithUndo: async (sourceClusterId: string, targetClusterId: string) => {
+  mergeClustersWithUndo: async (
+    sourceClusterId: string,
+    targetClusterId: string
+  ) => {
     const res = await apiClient.post('/api/faces/merge', {
       source_cluster_id: sourceClusterId,
       target_cluster_id: targetClusterId,
@@ -1977,7 +1993,10 @@ export const api = {
   // Phase 5.4: Merge Suggestions
 
   // Get conservative merge suggestions based on prototype similarity
-  getMergeSuggestions: async (threshold: number = 0.62, maxSuggestions: number = 10) => {
+  getMergeSuggestions: async (
+    threshold: number = 0.62,
+    maxSuggestions: number = 10
+  ) => {
     const res = await apiClient.get('/api/faces/clusters/merge-suggestions', {
       params: { threshold, max_suggestions: maxSuggestions },
     });
@@ -1986,10 +2005,13 @@ export const api = {
 
   // Dismiss a merge suggestion so it won't appear again
   dismissMergeSuggestion: async (clusterAId: string, clusterBId: string) => {
-    const res = await apiClient.post('/api/faces/clusters/merge-suggestions/dismiss', {
-      cluster_a_id: clusterAId,
-      cluster_b_id: clusterBId,
-    });
+    const res = await apiClient.post(
+      '/api/faces/clusters/merge-suggestions/dismiss',
+      {
+        cluster_a_id: clusterAId,
+        cluster_b_id: clusterBId,
+      }
+    );
     return res.data;
   },
 
@@ -1997,16 +2019,25 @@ export const api = {
 
   // Get indexing status for a specific person cluster
   getPersonIndexingStatus: async (clusterId: string) => {
-    const res = await apiClient.get(`/api/faces/clusters/${clusterId}/indexing`);
+    const res = await apiClient.get(
+      `/api/faces/clusters/${clusterId}/indexing`
+    );
     return res.data;
   },
 
   // Enable or disable auto-assignment to a specific person
-  setPersonIndexingEnabled: async (clusterId: string, enabled: boolean, reason?: string) => {
-    const res = await apiClient.post(`/api/faces/clusters/${clusterId}/indexing`, {
-      enabled,
-      reason,
-    });
+  setPersonIndexingEnabled: async (
+    clusterId: string,
+    enabled: boolean,
+    reason?: string
+  ) => {
+    const res = await apiClient.post(
+      `/api/faces/clusters/${clusterId}/indexing`,
+      {
+        enabled,
+        reason,
+      }
+    );
     return res.data;
   },
 
@@ -2030,13 +2061,12 @@ export const api = {
 
   // Phase 3: Speed & Scale APIs
 
-
   // Assign a single face to the best matching cluster
   assignFaceToCluster: async (
     detectionId: string,
     embedding: number[],
     autoAssignMin: number = 0.55,
-    reviewMin: number = 0.50
+    reviewMin: number = 0.5
   ) => {
     const res = await apiClient.post('/api/faces/assign', {
       detection_id: detectionId,
@@ -2051,7 +2081,7 @@ export const api = {
   batchAssignFaces: async (
     faces: Array<{ detection_id: string; embedding: number[] }>,
     autoAssignMin: number = 0.55,
-    reviewMin: number = 0.50
+    reviewMin: number = 0.5
   ) => {
     const res = await apiClient.post('/api/faces/batch-assign', {
       faces,

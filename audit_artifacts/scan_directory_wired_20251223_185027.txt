@@ -1,0 +1,10 @@
+# Evidence: /api/advanced/scan-directory UI wiring
+
+## UI calls
+205:      const res = await api.post('/api/advanced/scan-directory', {
+
+## Backend route
+server/main_advanced_features.py:197:@app.post("/api/advanced/scan-directory")
+
+## Advanced status (UI uses API base)
+98:      const data = await api.get('/api/advanced/status');

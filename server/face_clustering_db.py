@@ -3423,6 +3423,56 @@ class FaceClusteringDB:
             logger.info(f"Deleted person {cluster_id}")
             return True
 
+    def get_face_cluster_export_data(self, cluster_id: str) -> Optional[dict]:
+        """Get all data for a cluster for export."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Cluster info
+            cluster = conn.execute(
+                "SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
+            ).fetchone()
+            if not cluster:
+                return None
+
+            cluster_dict = dict(cluster)
+
+            # Faces with details
+            faces = [
+                dict(row)
+                for row in conn.execute(
+                    """
+                SELECT
+                    a.detection_id, a.photo_path, a.confidence, a.assignment_state,
+                    d.bounding_box, d.quality_score, d.created_at as detected_at
+                FROM photo_person_associations a
+                LEFT JOIN face_detections d ON a.detection_id = d.detection_id
+                WHERE a.cluster_id = ?
+            """,
+                    (cluster_id,),
+                ).fetchall()
+            ]
+
+            # Rejections
+            rejections = [
+                dict(row)
+                for row in conn.execute(
+                    """
+                SELECT detection_id, created_at
+                FROM face_rejections
+                WHERE cluster_id = ?
+            """,
+                    (cluster_id,),
+                ).fetchall()
+            ]
+
+            return {
+                "cluster": cluster_dict,
+                "faces": faces,
+                "rejections": rejections,
+                "exported_at": datetime.now().isoformat(),
+            }
+
 
 def get_face_clustering_db(db_path: Path) -> FaceClusteringDB:
     """Get face clustering database instance."""

@@ -1,5 +1,4 @@
 GET /api/advanced/comprehensive-stats (server/main_advanced_features.py:313)
-POST /api/advanced/scan-directory (server/main_advanced_features.py:197)
 GET /api/faces/crop/{face_id} (server/api/routers/face_recognition.py:811)
 GET /api/faces/person/{person_name} (server/api/routers/face_recognition.py:356)
 POST /api/faces/scan-single (server/api/routers/face_recognition.py:310)
