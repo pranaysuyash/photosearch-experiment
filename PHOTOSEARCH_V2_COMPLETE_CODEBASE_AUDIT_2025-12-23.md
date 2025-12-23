@@ -18,7 +18,7 @@ The headline risk is still the **Hidden Genius Problem**—not because nothing i
 
 Search and intelligence tooling exists (intent detection endpoints, match explanations, semantic search scaffolding). The current UX, however, contains contradictory patterns: the UI both **auto-detects search mode** and offers **manual mode selection**, which can create user confusion and mode “flapping” (evidence in the prior audit: `ui/src/contexts/PhotoSearchContext.tsx:165–225` and `ui/src/components/layout/DynamicNotchSearch.tsx:417`). The smallest viable fix here is to formalize “Auto vs Manual override” and prevent auto-switching while manual override is active.
 
-On desktop security, Tauri is configured with minimal permissions (`src-tauri/capabilities/default.json`), but the app CSP is currently disabled (`src-tauri/tauri.conf.json` sets `app.security.csp: null`). That is a P0 security footgun for any desktop distribution because it removes an important defense-in-depth layer.
+On desktop security, Tauri is configured with minimal permissions (`src-tauri/capabilities/default.json`) and the app CSP is now enabled (prod `csp` + dev-only `devCsp`) in `src-tauri/tauri.conf.json:25–28` (see `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`). A follow-up desktop runtime smoke test is still recommended to ensure the tightened CSP does not break UI features.
 
 Verification credibility: backend tests are green under test-mode controls (evidence: `audit_artifacts/pytest_full_green_20251223_154836.txt`).
 
@@ -26,7 +26,7 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 **Top 5 Blockers (P0):**
 
-1. **Tauri CSP disabled (desktop security regression risk)** — `src-tauri/tauri.conf.json:27–29` (`"csp": null`).
+1. **Desktop security verification gap: CSP enabled but needs runtime validation + tightening pass** — config: `src-tauri/tauri.conf.json:25–28`; evidence artifacts: `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`, `audit_artifacts/tauri_cargo_check_20251223_233420.txt`.
 2. **Smart Search UX contradiction (auto-routing vs manual mode selection) causes mode flapping** — `ui/src/contexts/PhotoSearchContext.tsx:165–225` + `ui/src/components/layout/DynamicNotchSearch.tsx:417`.
 3. **Code splitting blocked: oversized main bundle + dynamic+static import conflict** — evidence: `audit_artifacts/ui-build.txt` and `audit_artifacts/bundle-report.html`.
 4. **Audit-grade truth maintenance risk: generated inventories can drift from current line anchors** — example: `audit_artifacts/backend_endpoint_inventory.md` can list older anchors; current anchors should be re-verified against decorators.
@@ -44,7 +44,7 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 |   # | Item                                                                        | Effort |  Impact   | Evidence                                                                                                                                                                                                |
 | --: | --------------------------------------------------------------------------- | :----: | :-------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-|   1 | Add non-null CSP for Tauri                                                  |   S    | Very High | `src-tauri/tauri.conf.json:27–29`                                                                                                                                                                       |
+|   1 | Tauri CSP enabled (verify + tighten)                                        |   S    | Very High | Config: `src-tauri/tauri.conf.json:25–28`; artifacts: `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`, `audit_artifacts/tauri_cargo_check_20251223_233420.txt`                                  |
 |   2 | Cache clear is already exposed (Performance page) (`POST /api/cache/clear`) |   XS   |   High    | Backend: `server/api/routers/system.py:37`; UI: `ui/src/pages/PerformanceDashboard.tsx:93` + `ui/src/api.ts:1477`; artifact: `audit_artifacts/cache_clear_wired_20251223_171259.txt`                    |
 |   3 | Advanced scan directory is now exposed (verify + polish)                    |   XS   |   High    | Backend: `server/main_advanced_features.py:197`; UI: `ui/src/pages/AdvancedFeaturesPage.tsx:202`; artifact: `audit_artifacts/scan_directory_wired_20251223_185027.txt`                                  |
 |   4 | Comprehensive stats is now exposed (verify + polish)                        |   XS   |   High    | Backend: `server/main_advanced_features.py:313`; UI: `ui/src/pages/AdvancedFeaturesPage.tsx:232`; artifact: `audit_artifacts/comprehensive_stats_wired_20251223_200847.txt`                             |
@@ -517,6 +517,8 @@ Evidence of embedding infrastructure exists across `server/embedding_generator.p
 
 Backend face clustering is extensive; some key endpoints remain unexposed (A1).
 
+Update (2025-12-23): the remaining high-ROI face scan/status/person endpoints have been surfaced in the UI; the “unused API-only” list is now empty (see `audit_artifacts/backend_endpoints_unused_api_only_count.txt` and `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`).
+
 ### J3. OCR for Text in Photos
 
 UI calls OCR endpoints (`audit_artifacts/frontend_endpoints_called.txt` contains `/api/ocr/*`), but product surface needs consolidation.
@@ -529,17 +531,22 @@ UI calls OCR endpoints (`audit_artifacts/frontend_endpoints_called.txt` contains
 
 Evidence:
 
-- CSP disabled: `src-tauri/tauri.conf.json:27–29` (`"csp": null`).
+- CSP enabled (prod + dev): `src-tauri/tauri.conf.json:25–28` (see `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`).
 - Minimal permissions: `src-tauri/capabilities/default.json` contains `"core:default"` only.
 
-P0 fix
+Status
 
-- Set a real CSP (deny by default; allow self; restrict connect-src to known origins in dev).
+- CSP is now enabled and split correctly between production (`security.csp`) and development (`security.devCsp`). Rust compile check is green (see `audit_artifacts/tauri_cargo_check_20251223_233420.txt`).
+
+Follow-ups
+
+- Run a desktop runtime smoke test (load app, navigate core flows) to confirm the CSP does not break required `connect-src` / asset loading.
+- Tighten CSP further once runtime evidence exists (reduce localhost allowances for production if not required).
 
 Acceptance criteria
 
-- App loads with CSP enabled.
-- No remote code execution vectors via relaxed CSP.
+- App loads with CSP enabled (desktop runtime smoke test evidence captured).
+- No remote code execution vectors via overly-relaxed CSP (no production `unsafe-eval`; no unnecessary remote origins).
 
 Rollback
 
@@ -625,12 +632,12 @@ Smallest viable fix:
 
 ### P0 Blockers
 
-|   # | Issue                                 | User Impact                        | Evidence                                                                                                | Fix (smallest viable)         | Effort |
-| --: | ------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------- | :----: |
-|   1 | Tauri CSP disabled                    | Desktop app attack surface widened | `src-tauri/tauri.conf.json:27–29`                                                                       | Set CSP (self-only baseline)  |   S    |
-|   2 | Smart Search UX contradiction         | Confusing search behavior          | `ui/src/contexts/PhotoSearchContext.tsx:165–225`, `ui/src/components/layout/DynamicNotchSearch.tsx:417` | Auto vs Manual override       |   S    |
-|   3 | Bundle too large / splitting blocked  | Slower UI, poorer interactivity    | `audit_artifacts/ui-build.txt`, `audit_artifacts/bundle-report.html`                                    | Fix imports + enforce budgets |   M    |
-|   4 | Match explanations inconsistent in UI | Low trust in AI                    | `server/utils/search_explanations.py:*`, `ui/src/api.ts:84–95`                                          | Reusable “Why matched” UI     |   M    |
+|   # | Issue                                 | User Impact                      | Evidence                                                                                                                                                               | Fix (smallest viable)         | Effort |
+| --: | ------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | :----: |
+|   1 | Desktop CSP validation + tightening   | Desktop security regression risk | Config: `src-tauri/tauri.conf.json:25–28`; artifacts: `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`, `audit_artifacts/tauri_cargo_check_20251223_233420.txt` | Runtime smoke + tighten CSP   |   S    |
+|   2 | Smart Search UX contradiction         | Confusing search behavior        | `ui/src/contexts/PhotoSearchContext.tsx:165–225`, `ui/src/components/layout/DynamicNotchSearch.tsx:417`                                                                | Auto vs Manual override       |   S    |
+|   3 | Bundle too large / splitting blocked  | Slower UI, poorer interactivity  | `audit_artifacts/ui-build.txt`, `audit_artifacts/bundle-report.html`                                                                                                   | Fix imports + enforce budgets |   M    |
+|   4 | Match explanations inconsistent in UI | Low trust in AI                  | `server/utils/search_explanations.py:*`, `ui/src/api.ts:84–95`                                                                                                         | Reusable “Why matched” UI     |   M    |
 
 ### P1 Critical
 
@@ -698,6 +705,8 @@ Summarized; expand after evidence passes in sections C–J.
 - UI build logs: `audit_artifacts/ui-build.txt`
 - Bundle report: `audit_artifacts/bundle-report.html`
 - Backend tests (green): `audit_artifacts/pytest_full_green_20251223_154836.txt`
+- Tauri CSP enabled evidence: `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`
+- Tauri compile check (green): `audit_artifacts/tauri_cargo_check_20251223_233420.txt`
 
 ### B. Commands Reference
 
@@ -718,8 +727,8 @@ PhotoSearch v2 is already a real product skeleton with substantial backend and a
 
 ### Next Steps
 
-1. **Week 1:** Ship CSP hardening + cache clear + search mode stability.
-2. **Weeks 2-4:** Surface match explanations + face workflow completion + advanced scan directory.
+1. **Week 1:** Desktop CSP runtime smoke test + search mode stability + bundle splitting fix.
+2. **Weeks 2-4:** Surface match explanations + advanced scan directory polish + face workflow polish.
 3. **Months 2-3:** Globe performance proof + gamification + accessibility hardening.
 
 ### Success Metrics
@@ -731,5 +740,5 @@ PhotoSearch v2 is already a real product skeleton with substantial backend and a
 ---
 
 **Audit Completed:** 2025-12-23
-**Total Issues:** P0: 5, P1: 3 (starter set; expand as evidence passes complete)
+**Total Issues:** P0: 4, P1: 3 (starter set; expand as evidence passes complete)
 **Estimated Effort:** ~2–4 person-weeks for Phase 1, depending on UI polish depth

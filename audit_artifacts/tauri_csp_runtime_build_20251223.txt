@@ -1,0 +1,22 @@
+Command: cd ui && pnpm build
+Date: 2025-12-23
+Purpose: desktop CSP runtime smoke coverage (front-end build sanity under current CSP config)
+
+Output:
+> ui@0.0.0 build /Users/pranay/Projects/photosearch_experiment/ui
+> tsc -b && vite build
+
+vite v7.2.7 building client environment for production...
+✓ 2833 modules transformed.
+[plugin vite:reporter]
+(!) /Users/pranay/Projects/photosearch_experiment/ui/src/components/search/IntentRecognition.tsx is dynamically imported by /Users/pranay/Projects/photosearch_experiment/ui/src/router/MainRouter.tsx but also statically imported by /Users/pranay/Projects/photosearch_experiment/ui/src/components/search/EnhancedSearchUI.tsx, /Users/pranay/Projects/photosearch_experiment/ui/src/pages/Search.tsx, dynamic import will not move module into another chunk.
+
+Asset sizes (top):
+dist/assets/index-CJcPkGvn.js 1,556.80 kB │ gzip: 445.38 kB
+(dist CSS/JS summary omitted for brevity; see command output)
+
+Warnings:
+- Mixed static + dynamic imports for IntentRecognition (blocks code-splitting)
+- Chunk size warning (>500 kB) for main bundle
+
+Result: SUCCESS (build completed)

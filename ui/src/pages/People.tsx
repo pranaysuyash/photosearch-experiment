@@ -280,8 +280,8 @@ export function People() {
       console.error('Failed to scan single file(s) for faces:', err);
       setScanSingleError(
         err?.response?.data?.detail ||
-          err?.message ||
-          'Failed to scan file(s) for faces'
+        err?.message ||
+        'Failed to scan file(s) for faces'
       );
     } finally {
       setScanSingleLoading(false);
@@ -305,8 +305,8 @@ export function People() {
       console.error('Failed to fetch scan job status:', err);
       setScanStatusError(
         err?.response?.data?.detail ||
-          err?.message ||
-          'Failed to fetch scan job status'
+        err?.message ||
+        'Failed to fetch scan job status'
       );
     } finally {
       setScanStatusLoading(false);
@@ -344,8 +344,7 @@ export function People() {
     try {
       setDeleteLoading(true);
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}`,
         { method: 'DELETE' }
       );
@@ -405,11 +404,10 @@ export function People() {
               <button
                 onClick={handleTogglePause}
                 disabled={pauseLoading}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  isIndexingPaused
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
                     ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
+                  }`}
                 title={
                   isIndexingPaused
                     ? 'Resume Face Indexing'
@@ -431,9 +429,8 @@ export function People() {
               <button
                 onClick={handleScan}
                 disabled={scanning}
-                className={`btn-glass ${
-                  scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                } text-sm px-4 py-2`}
+                className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                  } text-sm px-4 py-2`}
               >
                 {scanning ? (
                   <div className='flex items-center gap-2'>
@@ -458,22 +455,20 @@ export function People() {
           <div className='flex gap-1'>
             <button
               onClick={() => setActiveTab('people')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === 'people'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'people'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Users size={16} className='inline mr-2' />
               People
             </button>
             <button
               onClick={() => setActiveTab('review')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
-                activeTab === 'review'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <CheckCircle size={16} />
               Needs Review
@@ -486,11 +481,10 @@ export function People() {
 
             <button
               onClick={() => setActiveTab('merge')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
-                activeTab === 'merge'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Users size={16} />
               Merge Suggestions
@@ -531,7 +525,7 @@ export function People() {
                       </div>
                       <div>
                         <div className='text-2xl font-bold text-foreground'>
-                          {stats.total_photos.toLocaleString()}
+                          {(stats.total_photos ?? 0).toLocaleString()}
                         </div>
                         <div className='text-xs text-muted-foreground'>
                           Total Photos
@@ -573,7 +567,7 @@ export function People() {
                       </div>
                       <div>
                         <div className='text-2xl font-bold text-foreground'>
-                          {stats.faces_detected.toLocaleString()}
+                          {(stats.faces_detected ?? 0).toLocaleString()}
                         </div>
                         <div className='text-xs text-muted-foreground'>
                           Faces Detected
@@ -585,7 +579,7 @@ export function People() {
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-orange-500/50 cursor-pointer transition-colors`}
                     onClick={() =>
-                      stats.unidentified_faces > 0 &&
+                      (stats.unidentified_faces ?? 0) > 0 &&
                       navigate('/people/unidentified')
                     }
                   >
@@ -921,9 +915,8 @@ export function People() {
                 <button
                   onClick={handleScan}
                   disabled={scanning}
-                  className={`btn-glass ${
-                    scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                  }`}
+                  className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                    }`}
                 >
                   {scanning ? (
                     <div className='flex items-center gap-2'>
@@ -958,10 +951,9 @@ export function People() {
                         .map((faceId, index) => (
                           <img
                             key={index}
-                            src={`${
-                              import.meta.env.VITE_API_URL ||
+                            src={`${import.meta.env.VITE_API_URL ||
                               'http://localhost:8000'
-                            }/api/faces/crop/${faceId}?size=150`}
+                              }/api/faces/crop/${faceId}?size=150`}
                             alt={`Face ${index + 1}`}
                             className='w-full h-20 object-cover rounded'
                             loading='lazy'

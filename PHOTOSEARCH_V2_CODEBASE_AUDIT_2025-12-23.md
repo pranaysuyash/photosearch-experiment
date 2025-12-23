@@ -37,6 +37,8 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/ui-build_20251223_202544.txt` — fresh UI build output after wiring face correction loop + analytics (exit code in `audit_artifacts/ui-build_20251223_202544.exitcode.txt`).
 - `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt` — evidence that People UI now calls person-name lookup + scan-single + scan-status endpoints.
 - `audit_artifacts/ui_build_latest.txt` — latest production UI build output after surfacing the remaining face endpoints (exit code in `audit_artifacts/ui_build_latest.exitcode.txt`).
+- `audit_artifacts/tauri_csp_enabled_20251223_233200.txt` — evidence that Tauri now has a non-null CSP configured (plus `devCsp`).
+- `audit_artifacts/tauri_cargo_check_20251223_233420.txt` — verification artifact: `cargo check` passes for `src-tauri/`.
 
 ---
 
@@ -355,29 +357,33 @@ Bundle appendix:
 
 ---
 
-### P1 — Tauri security: CSP disabled
+### P1 — Tauri security: CSP now enabled (follow-ups remain)
 
-#### Finding P1.3 — Tauri CSP is explicitly null
+#### Finding P1.3 — Tauri CSP is now configured (closed), but should be tightened over time
 
 Evidence:
 
-- `src-tauri/tauri.conf.json:26` → `"csp": null`
+- `src-tauri/tauri.conf.json:25–28` → `app.security.csp` and `app.security.devCsp` are set (non-null)
+- `audit_artifacts/tauri_csp_enabled_20251223_233200.txt`
+- Compile verification: `audit_artifacts/tauri_cargo_check_20251223_233420.txt`
 
 Impact:
 
-- Disabling CSP materially increases risk of XSS-style payloads becoming RCE-adjacent inside a desktop shell.
+- This removes the “CSP completely disabled” footgun, materially reducing XSS blast radius in the Tauri shell.
+- Follow-up risk: `devCsp` includes `unsafe-eval` to support Vite dev/HMR, and `style-src` includes `unsafe-inline` to accommodate inline styles in the current UI.
 
 Smallest viable fix:
 
-- Set a restrictive CSP appropriate for the shipped UI:
-  - allow `self` for scripts/styles
-  - allow images from `self`, `data:`, and any required file/custom protocols
-  - if you need inline styles/scripts, prefer nonces/hashes rather than `unsafe-inline`
+- ✅ Set a CSP appropriate for the shipped UI (done).
+- Next tightening steps (optional):
+  - Reduce/remove inline styles across the UI so `style-src` can drop `unsafe-inline`.
+  - Keep `unsafe-eval` limited to `devCsp` only (already done).
+  - Consider switching to the `isolation` app pattern if/when feasible (`app.security.pattern.use`).
 
 Acceptance criteria:
 
-- Tauri app runs with CSP enabled and the UI loads.
-- No CSP-related console errors for normal operation.
+- Tauri config has non-null CSP for production builds and a separate dev-only CSP (`devCsp`).
+- `cargo check` passes for the desktop wrapper (`src-tauri/`).
 
 Rollback plan:
 
@@ -385,7 +391,7 @@ Rollback plan:
 
 Effort sizing:
 
-- **S (0.5–2 days)** depending on required allowances.
+- **XS/S** for enabling CSP; further tightening depends on removing inline styles and any runtime allowances.
 
 ---
 
