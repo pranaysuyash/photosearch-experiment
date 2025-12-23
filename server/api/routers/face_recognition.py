@@ -1827,3 +1827,95 @@ async def resolve_review_item(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Phase 6: Privacy Control Endpoints
+# ===================================================================
+
+
+@router.get("/api/faces/clusters/{cluster_id}/indexing")
+async def get_person_indexing_status(
+    cluster_id: str,
+    state: AppState = Depends(get_state),
+):
+    """Get indexing status for a specific person cluster."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        status = face_db.get_person_indexing_status(cluster_id)
+
+        if "error" in status:
+            raise HTTPException(status_code=404, detail=status["error"])
+
+        return {"cluster_id": cluster_id, **status}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/clusters/{cluster_id}/indexing")
+async def set_person_indexing_status(
+    cluster_id: str,
+    data: dict,
+    state: AppState = Depends(get_state),
+):
+    """
+    Enable or disable auto-assignment to a specific person cluster.
+
+    When disabled, new face detections will NOT be auto-assigned to this person.
+    Used when user wants to manually control a person's cluster.
+    """
+    try:
+        enabled = data.get("enabled", True)
+        reason = data.get("reason")
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        success = face_db.set_person_indexing_enabled(cluster_id, enabled, reason)
+
+        return {
+            "success": success,
+            "cluster_id": cluster_id,
+            "enabled": enabled,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/indexing/status")
+async def get_global_indexing_status(state: AppState = Depends(get_state)):
+    """Get global face indexing pause status."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        paused = face_db.is_face_indexing_paused()
+
+        return {
+            "paused": paused,
+            "status": "paused" if paused else "active",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/indexing/pause")
+async def pause_global_indexing(state: AppState = Depends(get_state)):
+    """Pause all global face indexing and auto-assignment."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        success = face_db.set_face_indexing_paused(True)
+
+        return {"success": success, "status": "paused"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/indexing/resume")
+async def resume_global_indexing(state: AppState = Depends(get_state)):
+    """Resume global face indexing and auto-assignment."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        success = face_db.set_face_indexing_paused(False)
+
+        return {"success": success, "status": "active"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

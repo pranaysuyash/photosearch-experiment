@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -235,6 +235,53 @@ def migration_v3_review_queue_and_representative(conn: sqlite3.Connection):
         logger.info("Added representative_updated_at column to face_clusters")
 
 
+def migration_v4_privacy_controls(conn: sqlite3.Connection):
+    """
+    Version 4: Add privacy controls.
+
+    Changes:
+    - Add indexing_disabled to face_clusters (per-person toggle)
+    - Add indexing_disabled_at timestamp
+    - Add indexing_disabled_reason
+    - Create app_settings table for global settings
+    """
+
+    # === Add columns to face_clusters for per-person indexing toggle ===
+    cluster_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
+    }
+
+    if "indexing_disabled" not in cluster_cols:
+        conn.execute(
+            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled INTEGER DEFAULT 0"
+        )
+        logger.info("Added indexing_disabled column to face_clusters")
+
+    if "indexing_disabled_at" not in cluster_cols:
+        conn.execute(
+            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled_at TIMESTAMP"
+        )
+        logger.info("Added indexing_disabled_at column to face_clusters")
+
+    if "indexing_disabled_reason" not in cluster_cols:
+        conn.execute(
+            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled_reason TEXT"
+        )
+        logger.info("Added indexing_disabled_reason column to face_clusters")
+
+    # === Create app_settings table for global settings ===
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """
+    )
+    logger.info("Created app_settings table")
+
+
 # Migration registry: version -> (migration_function, description)
 MIGRATIONS = {
     1: (migration_v1_base_schema, "Base schema for face clustering"),
@@ -245,6 +292,10 @@ MIGRATIONS = {
     3: (
         migration_v3_review_queue_and_representative,
         "Add review queue table and representative face",
+    ),
+    4: (
+        migration_v4_privacy_controls,
+        "Add privacy controls: indexing toggle, global pause",
     ),
 }
 

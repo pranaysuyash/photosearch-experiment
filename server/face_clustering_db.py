@@ -2034,6 +2034,104 @@ class FaceClusteringDB:
                 return False
 
     # ===================================================================
+    # Phase 6: Privacy Controls
+    # ===================================================================
+
+    def set_person_indexing_enabled(
+        self, cluster_id: str, enabled: bool, reason: str | None = None
+    ) -> bool:
+        """
+        Enable or disable auto-assignment to a specific person cluster.
+
+        When disabled, PrototypeAssigner will skip this cluster when
+        finding candidates for new face detections.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            try:
+                conn.execute(
+                    """
+                    UPDATE face_clusters
+                    SET indexing_disabled = ?,
+                        indexing_disabled_at = CASE WHEN ? = 0 THEN NULL ELSE CURRENT_TIMESTAMP END,
+                        indexing_disabled_reason = ?
+                    WHERE cluster_id = ?
+                """,
+                    (0 if enabled else 1, 0 if enabled else 1, reason, cluster_id),
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Error setting indexing toggle: {e}")
+                return False
+
+    def get_person_indexing_status(self, cluster_id: str) -> dict:
+        """Get the indexing status for a specific person cluster."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """
+                SELECT indexing_disabled, indexing_disabled_at, indexing_disabled_reason
+                FROM face_clusters
+                WHERE cluster_id = ?
+            """,
+                (cluster_id,),
+            ).fetchone()
+
+            if not row:
+                return {"error": "Cluster not found"}
+
+            return {
+                "enabled": row["indexing_disabled"] != 1,
+                "disabled_at": row["indexing_disabled_at"],
+                "reason": row["indexing_disabled_reason"],
+            }
+
+    def get_indexing_enabled_cluster_ids(self) -> List[str]:
+        """Get list of cluster IDs that have indexing enabled (not disabled)."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            rows = conn.execute(
+                """
+                SELECT cluster_id FROM face_clusters
+                WHERE indexing_disabled = 0 OR indexing_disabled IS NULL
+            """
+            ).fetchall()
+            return [row[0] for row in rows]
+
+    # Global settings methods
+    def get_app_setting(self, key: str, default: str | None = None) -> str | None:
+        """Get an app setting value."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            row = conn.execute(
+                "SELECT value FROM app_settings WHERE key = ?", (key,)
+            ).fetchone()
+            return row[0] if row else default
+
+    def set_app_setting(self, key: str, value: str) -> bool:
+        """Set an app setting value."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            try:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO app_settings (key, value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                """,
+                    (key, value),
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Error setting app setting {key}: {e}")
+                return False
+
+    def is_face_indexing_paused(self) -> bool:
+        """Check if global face indexing is paused."""
+        return self.get_app_setting("faces_indexing_paused", "false") == "true"
+
+    def set_face_indexing_paused(self, paused: bool) -> bool:
+        """Pause or resume global face indexing."""
+        return self.set_app_setting(
+            "faces_indexing_paused", "true" if paused else "false"
+        )
+
+    # ===================================================================
     # Phase 0: Unknown Bucket (Unassigned Faces)
     # ===================================================================
 
