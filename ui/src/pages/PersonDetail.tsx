@@ -12,7 +12,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, User, Camera, RefreshCw, Check, X,
     CheckCircle2, XCircle, AlertCircle, Move, UserPlus,
-    Loader2, Undo2
+    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -55,6 +55,18 @@ export default function PersonDetail() {
     const [showSplitDialog, setShowSplitDialog] = useState(false);
     const [newPersonName, setNewPersonName] = useState('');
 
+    // Phase 5.2: Mixed cluster warning state
+    interface CoherenceData {
+        coherence_score: number;
+        variance: number;
+        low_quality_ratio: number;
+        is_mixed_suspected: boolean;
+        face_count: number;
+        avg_confidence: number;
+    }
+    const [coherence, setCoherence] = useState<CoherenceData | null>(null);
+    const [showMixedDetails, setShowMixedDetails] = useState(false);
+
     const fetchPhotos = useCallback(async () => {
         if (!clusterId) return;
 
@@ -91,6 +103,15 @@ export default function PersonDetail() {
     useEffect(() => {
         fetchPhotos();
     }, [fetchPhotos]);
+
+    // Fetch coherence data for mixed cluster detection
+    useEffect(() => {
+        if (clusterId) {
+            api.getClusterCoherence(clusterId)
+                .then(setCoherence)
+                .catch(console.error);
+        }
+    }, [clusterId]);
 
     // Clear success message after delay
     useEffect(() => {
@@ -330,6 +351,81 @@ export default function PersonDetail() {
                 </div>
             )}
 
+            {/* Mixed Cluster Warning Panel - Phase 5.2 */}
+            {coherence?.is_mixed_suspected && (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                    <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                                <AlertTriangle size={20} className="text-yellow-500 mt-0.5" />
+                                <div>
+                                    <h3 className="font-semibold text-yellow-400">
+                                        This cluster may contain multiple people
+                                    </h3>
+                                    <p className="text-sm text-yellow-400/80 mt-1">
+                                        Our analysis detected higher than normal variance in face embeddings.
+                                        Review the faces below and use Split mode to separate different people.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowMixedDetails(!showMixedDetails)}
+                                className="text-yellow-400 hover:text-yellow-300 p-1"
+                            >
+                                {showMixedDetails ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                            </button>
+                        </div>
+
+                        {/* Expandable stats */}
+                        {showMixedDetails && (
+                            <div className="mt-4 pt-4 border-t border-yellow-500/20 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-yellow-400">
+                                        {(coherence.coherence_score * 100).toFixed(0)}%
+                                    </div>
+                                    <div className="text-xs text-yellow-400/60">Coherence</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-yellow-400">
+                                        {coherence.variance.toFixed(3)}
+                                    </div>
+                                    <div className="text-xs text-yellow-400/60">Variance</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-yellow-400">
+                                        {(coherence.low_quality_ratio * 100).toFixed(0)}%
+                                    </div>
+                                    <div className="text-xs text-yellow-400/60">Low Quality</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-yellow-400">
+                                        {(coherence.avg_confidence * 100).toFixed(0)}%
+                                    </div>
+                                    <div className="text-xs text-yellow-400/60">Avg Confidence</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Split Mode CTA */}
+                        <div className="mt-4 flex gap-3">
+                            <button
+                                onClick={() => setSelectionMode(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-medium rounded-lg transition-colors"
+                            >
+                                <Scissors size={16} />
+                                Enter Split Mode
+                            </button>
+                            <button
+                                onClick={() => setShowMixedDetails(!showMixedDetails)}
+                                className="text-yellow-400/70 hover:text-yellow-400 text-sm"
+                            >
+                                {showMixedDetails ? 'Hide' : 'Show'} Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Loading */}
@@ -365,8 +461,8 @@ export default function PersonDetail() {
                                 <div
                                     key={`${photo.path}-${index}`}
                                     className={`${glass.surface} rounded-xl overflow-hidden border transition-all relative group ${isSelected
-                                            ? 'border-blue-400 ring-2 ring-blue-400/50'
-                                            : 'border-white/10 hover:border-white/20'
+                                        ? 'border-blue-400 ring-2 ring-blue-400/50'
+                                        : 'border-white/10 hover:border-white/20'
                                         } ${selectionMode ? 'cursor-pointer' : ''}`}
                                     onClick={() => {
                                         if (selectionMode) {
@@ -404,8 +500,8 @@ export default function PersonDetail() {
                                         {/* Selection checkbox */}
                                         {selectionMode && (
                                             <div className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
-                                                    ? 'bg-blue-500 border-blue-500'
-                                                    : 'bg-black/40 border-white/50'
+                                                ? 'bg-blue-500 border-blue-500'
+                                                : 'bg-black/40 border-white/50'
                                                 }`}>
                                                 {isSelected && <Check size={14} className="text-white" />}
                                             </div>

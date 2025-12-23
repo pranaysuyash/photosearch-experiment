@@ -45,6 +45,18 @@ class VersionStack:
     updated_at: Optional[str] = None
     versions: List[PhotoVersion] = field(default_factory=list)
 
+    # Backwards/forwards compatibility:
+    # - Some callers treat VersionStack as an object with `.versions`.
+    # - Some legacy tests treat it like a list of dicts.
+    def __len__(self) -> int:  # pragma: no cover
+        return len(self.versions or [])
+
+    def __iter__(self):  # pragma: no cover
+        return iter([v.dict() for v in (self.versions or [])])
+
+    def __getitem__(self, idx):  # pragma: no cover
+        return (self.versions or [])[idx].dict()
+
     def dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -212,7 +224,17 @@ class PhotoVersionsDB:
 
                 return version_id
         except sqlite3.IntegrityError:
-            return ""  # Version already exists
+            # Version already exists. Return the existing id for idempotency.
+            try:
+                with sqlite3.connect(self.db_path) as conn:
+                    conn.row_factory = sqlite3.Row
+                    row = conn.execute(
+                        "SELECT id FROM photo_versions WHERE version_path = ?",
+                        (version_path,),
+                    ).fetchone()
+                    return str(row["id"]) if row else ""
+            except Exception:
+                return ""
 
     def get_versions_for_original(self, original_path: str) -> List[Dict[str, Any]]:
         """Return all versions for a given original photo (as dicts)."""
@@ -261,14 +283,10 @@ class PhotoVersionsDB:
         except Exception:
             return []
 
-    def get_version_stack(self, photo_path: str) -> List[Dict[str, Any]]:
-        """Return the full version stack for a photo path (original or version).
+    def get_version_stack(self, photo_path: str) -> Optional[VersionStack]:
+        """Return the full version stack for a photo path (original or version)."""
 
-        Note: This is a legacy helper used by older code/tests and returns a list
-        of dicts (not a VersionStack object).
-        """
-
-        return self.get_version_stack_list(photo_path)
+        return self.get_version_stack_for_photo(photo_path)
 
     def get_version_stack_for_original(
         self, original_path: str
@@ -311,6 +329,27 @@ class PhotoVersionsDB:
                     )
                     for row in version_rows
                 ]
+
+                # If the database has derived versions but no explicit original row,
+                # synthesize an implicit original entry for stack-oriented views.
+                if versions and not any(
+                    v.version_path == original_path for v in versions
+                ):
+                    versions.insert(
+                        0,
+                        PhotoVersion(
+                            id=f"original:{original_path}",
+                            original_path=original_path,
+                            version_path=original_path,
+                            version_type="original",
+                            version_name="Original",
+                            version_description=None,
+                            edit_instructions={},
+                            parent_version_id=None,
+                            created_at=stack_info["created_at"],
+                            updated_at=stack_info["updated_at"],
+                        ),
+                    )
 
                 return VersionStack(
                     id=stack_info["id"],

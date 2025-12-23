@@ -56,13 +56,15 @@ async def get_version_stack_legacy(version_path: str):
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
         normalized_path = "/" + version_path.lstrip("/")
         stack = versions_db.get_version_stack(normalized_path)
-        return {"stack": stack}
+        return {"stack": stack.dict() if stack else None}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.put("/versions-legacy/{version_path:path}")
-async def update_version_metadata_legacy(version_path: str, request: LegacyVersionUpdateRequest):
+async def update_version_metadata_legacy(
+    version_path: str, request: LegacyVersionUpdateRequest
+):
     """Update metadata for a specific version."""
     try:
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
@@ -128,9 +130,13 @@ async def create_photo_version(request: VersionCreateRequest):
         )
 
         if not version_id:
-            raise HTTPException(status_code=400, detail="Failed to create photo version")
+            raise HTTPException(
+                status_code=400, detail="Failed to create photo version"
+            )
 
         return {"success": True, "version_id": version_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -164,17 +170,25 @@ async def get_version_stack(original_path: str):
         version_stack = versions_db.get_version_stack_for_original(original_path)
 
         if not version_stack:
-            raise HTTPException(status_code=404, detail="No version stack found for this photo")
+            raise HTTPException(
+                status_code=404, detail="No version stack found for this photo"
+            )
 
+        versions = [v.dict() for v in version_stack.versions]
         return {
+            # New shape
             "stack": {
                 "id": version_stack.id,
                 "original_path": version_stack.original_path,
                 "version_count": version_stack.version_count,
                 "created_at": version_stack.created_at,
                 "updated_at": version_stack.updated_at,
-                "versions": [v.dict() for v in version_stack.versions],
-            }
+                "versions": versions,
+            },
+            # Back-compat convenience fields expected by some tests/clients
+            "original_path": version_stack.original_path,
+            "versions": versions,
+            "count": len(versions),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -249,13 +263,17 @@ async def merge_version_stacks(payload: dict):
         path2 = payload.get("path2")
 
         if not path1 or not path2:
-            raise HTTPException(status_code=400, detail="Both path1 and path2 are required")
+            raise HTTPException(
+                status_code=400, detail="Both path1 and path2 are required"
+            )
 
         versions_db = get_photo_versions_db(settings.BASE_DIR / "versions.db")
         success = versions_db.merge_version_stacks(path1, path2)
 
         if not success:
-            raise HTTPException(status_code=400, detail="Failed to merge version stacks")
+            raise HTTPException(
+                status_code=400, detail="Failed to merge version stacks"
+            )
 
         return {"success": True}
     except Exception as e:

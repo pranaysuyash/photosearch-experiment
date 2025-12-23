@@ -18,6 +18,7 @@ from server.notes_db import get_notes_db
 from server.tags_db import get_tags_db
 from server.smart_collections_db import get_smart_collections_db
 from server.people_tags_db import get_people_tags_db
+from server.locations_db import get_locations_db
 
 
 router = APIRouter()
@@ -196,6 +197,47 @@ async def legacy_people_get(photo_path: str):
         people_db = get_people_tags_db(base_dir / "people_tags.db")
         names = people_db.get_people(photo_path)
         return {"photo_path": photo_path, "people": [{"name": n} for n in names]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -------------------------------
+# Locations (legacy: /locations/{path})
+# Current APIs live under /locations/*; tests expect the simpler legacy shape.
+# -------------------------------
+
+
+@router.post("/locations/{photo_path:path}")
+async def legacy_set_location(photo_path: str, payload: dict[str, Any]):
+    try:
+        base_dir = _runtime_base_dir()
+        locations_db = get_locations_db(base_dir / "locations.db")
+
+        lat = payload.get("latitude")
+        lng = payload.get("longitude")
+        if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
+            raise HTTPException(
+                status_code=400, detail="latitude and longitude are required"
+            )
+
+        location_id = locations_db.add_photo_location(
+            photo_path=photo_path,
+            latitude=float(lat),
+            longitude=float(lng),
+            original_place_name=payload.get("original_place_name"),
+            corrected_place_name=payload.get("corrected_place_name"),
+            country=payload.get("country"),
+            region=payload.get("region"),
+            city=payload.get("city"),
+            accuracy=payload.get("accuracy"),
+        )
+
+        if not location_id:
+            raise HTTPException(status_code=500, detail="Failed to add location")
+
+        return {"success": True, "location_id": location_id}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
