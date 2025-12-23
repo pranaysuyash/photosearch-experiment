@@ -1,6 +1,6 @@
 /**
  * Unidentified Faces Page - Manage faces not yet assigned to a person
- * 
+ *
  * This page shows all detected faces that haven't been clustered/identified,
  * allowing users to assign them to existing people or create new person entries.
  */
@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Camera, RefreshCw, UserPlus } from 'lucide-react';
 import { glass } from '../design/glass';
+import { api } from '../api';
 
 interface UnidentifiedFace {
     id: number;
@@ -40,10 +41,7 @@ export default function UnidentifiedFaces() {
     const fetchUnidentifiedFaces = async () => {
         try {
             setLoading(true);
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/unidentified`
-            );
-            const data = await response.json();
+            const data = await api.get('/api/faces/unidentified');
             // API now returns clusters (unlabeled ones)
             // Convert to face-like format for display
             const clusterData = data.clusters || [];
@@ -69,10 +67,7 @@ export default function UnidentifiedFaces() {
 
     const fetchClusters = async () => {
         try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters`
-            );
-            const data = await response.json();
+            const data = await api.get('/api/faces/clusters');
             setClusters(data.clusters || []);
         } catch (err) {
             console.error('Failed to fetch clusters:', err);
@@ -81,19 +76,10 @@ export default function UnidentifiedFaces() {
 
     const assignToPerson = async (faceId: number, clusterId: string) => {
         try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/assign`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cluster_id: clusterId })
-                }
-            );
-            if (response.ok) {
-                setFaces(faces.filter(f => f.id !== faceId));
-                setShowAssignModal(false);
-                setSelectedFace(null);
-            }
+            await api.post(`/api/faces/${faceId}/assign`, { cluster_id: clusterId });
+            setFaces(faces.filter(f => f.id !== faceId));
+            setShowAssignModal(false);
+            setSelectedFace(null);
         } catch (err) {
             console.error('Failed to assign face:', err);
         }
@@ -101,28 +87,19 @@ export default function UnidentifiedFaces() {
 
     const createNewPerson = async (faceId: number, name: string) => {
         try {
-            const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/create-person`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ label: name })
-                }
-            );
-            if (response.ok) {
-                setFaces(faces.filter(f => f.id !== faceId));
-                setShowAssignModal(false);
-                setSelectedFace(null);
-                setNewPersonName('');
-                fetchClusters();
-            }
+            await api.post(`/api/faces/${faceId}/create-person`, { label: name });
+            setFaces(faces.filter(f => f.id !== faceId));
+            setShowAssignModal(false);
+            setSelectedFace(null);
+            setNewPersonName('');
+            fetchClusters();
         } catch (err) {
             console.error('Failed to create person:', err);
         }
     };
 
     const getFaceCropUrl = (faceId: number) => {
-        return `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/crop?size=200`;
+        return `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${faceId}?size=200`;
     };
 
     return (
@@ -131,7 +108,12 @@ export default function UnidentifiedFaces() {
             <div className="border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/people')} className="btn-glass btn-glass--muted p-2">
+                        <button
+                            onClick={() => navigate('/people')}
+                            className="btn-glass btn-glass--muted p-2"
+                            aria-label="Back to People"
+                            title="Back to People"
+                        >
                             <ArrowLeft size={20} />
                         </button>
                         <div className="flex items-center gap-3">

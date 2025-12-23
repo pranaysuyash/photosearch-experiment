@@ -29,8 +29,10 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/cluster_photos_wired_fix_20251223_165102.txt` — evidence that PersonDetail calls `/api/faces/clusters/{cluster_id}/photos` and the backend route exists.
 - `audit_artifacts/cache_clear_wired_20251223_171259.txt` — evidence that Performance UI calls the correct backend cache clear endpoint (`/api/cache/clear`).
 - `audit_artifacts/scan_directory_wired_20251223_185027.txt` — evidence that Advanced Features UI calls `POST /api/advanced/scan-directory`.
+- `audit_artifacts/comprehensive_stats_wired_20251223_200847.txt` — evidence that Advanced Features UI calls `GET /api/advanced/comprehensive-stats`.
 - `audit_artifacts/ui-build_20251223_164126.txt` — fresh UI build output after wiring Merge Suggestions (exit code in `audit_artifacts/ui-build_20251223_164126_exitcode.txt`).
 - `audit_artifacts/ui-build_20251223_175128.txt` — fresh UI build output after exposing scan-directory (exit code in `audit_artifacts/ui-build_20251223_175128.exitcode.txt`).
+- `audit_artifacts/ui-build_20251223_201045.txt` — fresh UI build output after exposing comprehensive stats (exit code in `audit_artifacts/ui-build_20251223_201045.exitcode.txt`).
 
 ---
 
@@ -39,22 +41,22 @@ These files were generated during discovery and are intended to be treated as ap
 ### Backend capability utilization (P0 metric)
 
 - **Total backend endpoints:** 325
-- **Matched as used by frontend:** 208
-- **Unused by frontend:** 117
+- **Matched as used by frontend:** 209
+- **Unused by frontend:** 116
 - **Frontend unique endpoint references captured:** 242
 
 Evidence:
 
 - `audit_artifacts/backend_endpoint_inventory_stats.txt` (generated):
   - `Total endpoints: 325`
-  - `Used by frontend: 208`
-  - `Unused by frontend: 117`
+  - `Used by frontend: 209`
+  - `Unused by frontend: 116`
   - `Unique frontend evidence paths captured: 112`
 - `audit_artifacts/frontend_endpoints_called_count.txt`: `242`
 
 ### The “Hidden Genius” list (highest ROI)
 
-There are **8 unused `/api*` endpoints** that represent **user-facing power features** (face workflows + advanced stats/analytics) that exist server-side but are not surfaced in the UI.
+There are **7 unused `/api*` endpoints** that represent **user-facing power features** (primarily face workflows) that exist server-side but are not surfaced in the UI.
 
 Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
@@ -162,11 +164,11 @@ Effort sizing:
 
 ---
 
-#### Finding P0.2 — Advanced scan directory is now reachable; comprehensive stats still isn’t
+#### Finding P0.2 — Advanced scan directory + comprehensive stats are now reachable
 
-Unused endpoint still includes:
+Update:
 
-- `GET /api/advanced/comprehensive-stats` (feature stats + library stats)
+- `GET /api/advanced/comprehensive-stats` is now exposed via the Advanced Features page.
 
 Evidence:
 
@@ -174,6 +176,11 @@ Evidence:
 - Implementation:
   - `server/main_advanced_features.py:197` (`@app.post("/api/advanced/scan-directory")`)
   - `server/main_advanced_features.py:313` (`@app.get("/api/advanced/comprehensive-stats")`)
+
+UI exposure evidence:
+
+- UI call site: `ui/src/pages/AdvancedFeaturesPage.tsx:232`
+- Evidence artifact: `audit_artifacts/comprehensive_stats_wired_20251223_200847.txt`
 
 Update:
 
@@ -187,7 +194,7 @@ Impact:
 
 Smallest viable fix (remaining):
 
-- Add a small “Stats” panel on Advanced Features (or Performance) that calls `/api/advanced/comprehensive-stats`.
+- Polish: collapse raw JSON behind a disclosure + add a "copy stats" button.
 
 Acceptance criteria:
 

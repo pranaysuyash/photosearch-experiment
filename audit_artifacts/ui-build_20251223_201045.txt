@@ -1,0 +1,61 @@
+
+> ui@0.0.0 build
+> tsc -b && vite build
+
+vite v7.2.7 building client environment for production...
+transforming...
+✓ 2831 modules transformed.
+rendering chunks...
+[plugin vite:reporter]
+(!) /Users/pranay/Projects/photosearch_experiment/ui/src/components/search/IntentRecognition.tsx is dynamically imported by /Users/pranay/Projects/photosearch_experiment/ui/src/router/MainRouter.tsx but also statically imported by /Users/pranay/Projects/photosearch_experiment/ui/src/components/search/EnhancedSearchUI.tsx, /Users/pranay/Projects/photosearch_experiment/ui/src/pages/Search.tsx, dynamic import will not move module into another chunk.
+
+computing gzip size...
+dist/index.html                                       2.42 kB │ gzip:   0.82 kB
+dist/assets/OCRSearch-Da1e3O6V.css                    3.00 kB │ gzip:   0.99 kB
+dist/assets/TauriIntegration-BXcnnTma.css             4.17 kB │ gzip:   1.14 kB
+dist/assets/ModalSystem-DGgWxpts.css                  4.52 kB │ gzip:   1.23 kB
+dist/assets/FaceClustering-RhNhsmBA.css               4.99 kB │ gzip:   1.28 kB
+dist/assets/CodeSplitting-P_2FQFxv.css                5.00 kB │ gzip:   1.30 kB
+dist/assets/index-V-nUlkjf.css                      102.79 kB │ gzip:  18.10 kB
+dist/assets/cloud-DEqqqGa2.js                         0.16 kB │ gzip:   0.16 kB
+dist/assets/arrow-left-GctAZFRJ.js                    0.17 kB │ gzip:   0.16 kB
+dist/assets/circle-check-big-DQks6SHD.js              0.19 kB │ gzip:   0.18 kB
+dist/assets/toggle-left-C4yeNMbb.js                   0.20 kB │ gzip:   0.19 kB
+dist/assets/user-plus-DWPBv6Fp.js                     0.31 kB │ gzip:   0.23 kB
+dist/assets/tag-BfAd-8TY.js                           0.32 kB │ gzip:   0.25 kB
+dist/assets/Videos-C2W0g14a.js                        0.62 kB │ gzip:   0.37 kB
+dist/assets/NotFound-BC2DVq_V.js                      0.65 kB │ gzip:   0.37 kB
+dist/assets/Favorites-BBZ-lxAj.js                     0.98 kB │ gzip:   0.52 kB
+dist/assets/index-ZqTJLjwd.js                         1.30 kB │ gzip:   0.45 kB
+dist/assets/About-CukFn_WQ.js                         2.41 kB │ gzip:   0.68 kB
+dist/assets/LowConfidence-EkvOORXG.js                 2.63 kB │ gzip:   1.08 kB
+dist/assets/Singletons-ssTUIIHp.js                    2.64 kB │ gzip:   1.07 kB
+dist/assets/AllFacePhotos-ECHXDQ3l.js                 2.89 kB │ gzip:   1.18 kB
+dist/assets/Tags-DF44KEPN.js                          3.43 kB │ gzip:   1.31 kB
+dist/assets/Trash-CYURHL39.js                         3.60 kB │ gzip:   1.45 kB
+dist/assets/SavedSearches-CzakEywI.js                 3.96 kB │ gzip:   1.37 kB
+dist/assets/OCRSearch-BrxdBc6P.js                     4.14 kB │ gzip:   1.51 kB
+dist/assets/UnidentifiedFaces-cKqmg0v-.js             5.65 kB │ gzip:   1.93 kB
+dist/assets/PerformanceDashboard-FMt-QIDr.js          5.88 kB │ gzip:   1.65 kB
+dist/assets/FaceClustering-Cy-3h3TQ.js                5.96 kB │ gzip:   1.87 kB
+dist/assets/JobMonitor-DZQgqRH0.js                    6.06 kB │ gzip:   2.22 kB
+dist/assets/ModalSystem-Cu3yX_XT.js                   6.49 kB │ gzip:   1.84 kB
+dist/assets/TauriIntegration-COOCNhCj.js              6.97 kB │ gzip:   1.64 kB
+dist/assets/CodeSplitting-oTZYq1Wa.js                 7.51 kB │ gzip:   2.09 kB
+dist/assets/Albums-C0VH_boW.js                       14.59 kB │ gzip:   3.91 kB
+dist/assets/FaceRecognitionPanel-J9iI-ch-.js         14.77 kB │ gzip:   3.93 kB
+dist/assets/PersonDetail-CN0J8LGf.js                 14.92 kB │ gzip:   4.47 kB
+dist/assets/Import-lhVZlqG_.js                       17.24 kB │ gzip:   3.55 kB
+dist/assets/SmartAlbumsBuilder-B4bEdVR_.js           18.07 kB │ gzip:   3.99 kB
+dist/assets/Settings-B2jy_NvP.js                     18.99 kB │ gzip:   4.75 kB
+dist/assets/OCRTextSearchPanel-CvD5xfk6.js           19.53 kB │ gzip:   4.91 kB
+dist/assets/DuplicateManagementPanel-Ctb4JBgT.js     20.11 kB │ gzip:   4.72 kB
+dist/assets/AnalyticsDashboard-9irzkqt_.js           24.41 kB │ gzip:   5.35 kB
+dist/assets/People-Bq0iq4C4.js                       29.15 kB │ gzip:   6.86 kB
+dist/assets/index-B8J8zFU4.js                     1,549.55 kB │ gzip: 443.67 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 5.15s

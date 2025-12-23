@@ -2506,7 +2506,9 @@ class FaceClusteringDB:
             rows = conn.execute("""
                 SELECT cluster_id, label, prototype_embedding
                 FROM face_clusters
-                WHERE hidden = 0 AND prototype_embedding IS NOT NULL
+                WHERE hidden = 0
+                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                AND prototype_embedding IS NOT NULL
             """).fetchall()
 
             for row in rows:
@@ -3472,6 +3474,41 @@ class FaceClusteringDB:
                 "rejections": rejections,
                 "exported_at": datetime.now().isoformat(),
             }
+
+    def delete_all_face_data(self) -> dict:
+        """
+        Delete ALL face data from the system.
+        Irreversible. Wipes clusters, detections, associations, logs.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            # Stats
+            stats = {}
+            try:
+                stats["associations"] = conn.execute(
+                    "SELECT COUNT(*) FROM photo_person_associations"
+                ).fetchone()[0]
+                stats["clusters"] = conn.execute(
+                    "SELECT COUNT(*) FROM face_clusters"
+                ).fetchone()[0]
+                stats["detections"] = conn.execute(
+                    "SELECT COUNT(*) FROM face_detections"
+                ).fetchone()[0]
+            except sqlite3.OperationalError:
+                stats = {"error": "Could not fetch stats"}
+
+            # Delete in order
+            try:
+                conn.execute("DELETE FROM photo_person_associations")
+                conn.execute("DELETE FROM face_review_queue")
+                conn.execute("DELETE FROM face_rejections")
+                conn.execute("DELETE FROM face_clusters")
+                conn.execute("DELETE FROM face_detections")
+                conn.execute("DELETE FROM person_operations_log")
+            except sqlite3.OperationalError as e:
+                logger.warning(f"Error deleting tables: {e}")
+
+            logger.warning(f"Deleted ALL face data: {stats}")
+            return stats
 
 
 def get_face_clustering_db(db_path: Path) -> FaceClusteringDB:

@@ -37,6 +37,17 @@ interface ClusterInfo {
 
 type AssignmentState = 'auto' | 'user_confirmed' | 'user_rejected';
 
+type PersonAnalytics = {
+    person_id?: string;
+    person_name?: string;
+    face_count?: number;
+    photo_count?: number;
+    first_seen?: string;
+    last_seen?: string;
+    cluster_ids?: string[];
+    [key: string]: unknown;
+};
+
 export default function PersonDetail() {
     const { clusterId } = useParams<{ clusterId: string }>();
     const navigate = useNavigate();
@@ -71,6 +82,11 @@ export default function PersonDetail() {
     const [indexingEnabled, setIndexingEnabled] = useState(true);
     const [indexingLoading, setIndexingLoading] = useState(false);
 
+    // Analytics (Hidden Genius: expose backend analytics)
+    const [analytics, setAnalytics] = useState<PersonAnalytics | null>(null);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
+    const [analyticsError, setAnalyticsError] = useState<string | null>(null);
+
     const fetchPhotos = useCallback(async () => {
         if (!clusterId) return;
 
@@ -104,9 +120,29 @@ export default function PersonDetail() {
         }
     }, [clusterId]);
 
+    const fetchAnalytics = useCallback(async () => {
+        if (!clusterId) return;
+        try {
+            setAnalyticsLoading(true);
+            setAnalyticsError(null);
+            const data = await api.get(`/api/people/${encodeURIComponent(clusterId)}/analytics`);
+            setAnalytics(data || null);
+        } catch (err: any) {
+            console.error('Failed to fetch analytics:', err);
+            setAnalytics(null);
+            setAnalyticsError(err?.message || 'Failed to load analytics');
+        } finally {
+            setAnalyticsLoading(false);
+        }
+    }, [clusterId]);
+
     useEffect(() => {
         fetchPhotos();
     }, [fetchPhotos]);
+
+    useEffect(() => {
+        fetchAnalytics();
+    }, [fetchAnalytics]);
 
     // Fetch coherence data for mixed cluster detection
     useEffect(() => {
@@ -323,6 +359,8 @@ export default function PersonDetail() {
                             <button
                                 onClick={() => navigate('/people')}
                                 className="btn-glass btn-glass--muted p-2"
+                                aria-label="Back to People"
+                                title="Back to People"
                             >
                                 <ArrowLeft size={20} />
                             </button>
@@ -455,7 +493,7 @@ export default function PersonDetail() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
                     <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 flex items-center justify-between">
                         <span>{error}</span>
-                        <button onClick={() => setError(null)}>
+                        <button onClick={() => setError(null)} aria-label="Dismiss error" title="Dismiss error">
                             <X size={16} />
                         </button>
                     </div>
@@ -539,6 +577,66 @@ export default function PersonDetail() {
 
             {/* Content */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {/* Analytics */}
+                <div className={`${glass.surface} rounded-xl border border-white/10 p-4 mb-6`}>
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h2 className="text-lg font-semibold text-foreground">Person analytics</h2>
+                            <p className="text-sm text-muted-foreground">
+                                Powered by <code>GET /api/people/{'{'}person_id{'}'}/analytics</code>
+                            </p>
+                        </div>
+                        <button
+                            onClick={fetchAnalytics}
+                            disabled={!clusterId || analyticsLoading}
+                            className="btn-glass btn-glass--muted px-3 py-2 flex items-center gap-2"
+                            title="Refresh analytics"
+                            aria-label="Refresh analytics"
+                        >
+                            {analyticsLoading ? (
+                                <RefreshCw size={16} className="animate-spin" />
+                            ) : (
+                                <RefreshCw size={16} />
+                            )}
+                            <span className="hidden sm:inline">Refresh</span>
+                        </button>
+                    </div>
+
+                    {analyticsError && (
+                        <div className="mt-3 text-sm text-red-400">{analyticsError}</div>
+                    )}
+
+                    {!analyticsError && analytics && (
+                        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="text-xs text-muted-foreground">Faces</div>
+                                <div className="text-lg font-semibold text-foreground">{analytics.face_count ?? '—'}</div>
+                            </div>
+                            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="text-xs text-muted-foreground">Photos</div>
+                                <div className="text-lg font-semibold text-foreground">{analytics.photo_count ?? '—'}</div>
+                            </div>
+                            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="text-xs text-muted-foreground">First seen</div>
+                                <div className="text-sm font-medium text-foreground truncate">{analytics.first_seen ?? '—'}</div>
+                            </div>
+                            <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                                <div className="text-xs text-muted-foreground">Last seen</div>
+                                <div className="text-sm font-medium text-foreground truncate">{analytics.last_seen ?? '—'}</div>
+                            </div>
+                        </div>
+                    )}
+
+                    {!analyticsError && analytics && (
+                        <details className="mt-4">
+                            <summary className="text-sm text-muted-foreground cursor-pointer select-none">Raw analytics JSON</summary>
+                            <pre className="mt-2 text-xs overflow-auto bg-black/20 rounded-lg p-3">
+                                {JSON.stringify(analytics, null, 2)}
+                            </pre>
+                        </details>
+                    )}
+                </div>
+
                 {/* Loading */}
                 {loading && (
                     <div className="flex items-center justify-center py-20">

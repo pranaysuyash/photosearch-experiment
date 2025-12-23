@@ -12,6 +12,7 @@ import {
 } from '../utils/storage';
 import { SourcesPanel } from '../components/sources/SourcesPanel';
 import ServerConfigPanel from '../components/ServerConfigPanel';
+import { PrivacyPanel } from '../components/settings/PrivacyPanel';
 
 const Settings = () => {
   const [focusMode, setFocusMode] = useState(() => {
@@ -56,9 +57,8 @@ const Settings = () => {
 
             <button
               onClick={toggleFocusMode}
-              className={`btn-glass ${
-                focusMode ? 'btn-glass--primary' : 'btn-glass--muted'
-              } text-xs px-3 py-2`}
+              className={`btn-glass ${focusMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                } text-xs px-3 py-2`}
             >
               {focusMode ? 'On' : 'Off'}
             </button>
@@ -75,6 +75,13 @@ const Settings = () => {
           </h2>
 
           <ServerConfigPanel />
+        </section>
+
+        <section className='space-y-2'>
+          <h2 className='text-sm font-semibold text-foreground'>
+            Privacy
+          </h2>
+          <PrivacyPanel />
         </section>
 
         <section className='space-y-2'>

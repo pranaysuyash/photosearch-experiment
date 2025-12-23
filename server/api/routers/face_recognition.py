@@ -480,6 +480,27 @@ async def export_cluster(cluster_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class DeleteAllConfirmation(BaseModel):
+    confirmation: str
+
+
+@router.delete("/api/faces/all")
+async def delete_all_faces(body: DeleteAllConfirmation):
+    """
+    Delete ALL face data. Irreversible.
+    Requires body: {"confirmation": "DELETE"}
+    """
+    if body.confirmation != "DELETE":
+        raise HTTPException(status_code=400, detail="Confirmation 'DELETE' required")
+
+    try:
+        db = get_face_clustering_db()
+        stats = db.delete_all_face_data()
+        return {"status": "success", "deleted": stats}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/api/faces/clusters/{cluster_id}/photos")
 async def get_cluster_photos(
     cluster_id: str,

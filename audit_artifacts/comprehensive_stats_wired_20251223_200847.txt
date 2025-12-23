@@ -1,0 +1,9 @@
+Comprehensive stats UI wiring evidence
+Timestamp: 20251223_200847
+
+UI callsite:
+86:  // Hidden Genius: expose /api/advanced/comprehensive-stats
+232:      const data = await api.get('/api/advanced/comprehensive-stats');
+
+Backend route decorator:
+313:@app.get("/api/advanced/comprehensive-stats")

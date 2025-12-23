@@ -1848,6 +1848,13 @@ export const api = {
     return res.data;
   },
 
+  deleteAllFaceData: async () => {
+    const res = await apiClient.delete('/api/faces/all', {
+      data: { confirmation: 'DELETE' }
+    });
+    return res.data;
+  },
+
   getClusterQuality: async (clusterId: string) => {
     const res = await apiClient.get(
       `/api/clusters/${encodeURIComponent(clusterId)}/quality`

@@ -83,6 +83,11 @@ export function AdvancedFeaturesPage() {
   }>(null);
   const [scanError, setScanError] = useState<string | null>(null);
 
+  // Hidden Genius: expose /api/advanced/comprehensive-stats
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [comprehensiveStats, setComprehensiveStats] = useState<any>(null);
+
   // Load system status and feature availability
   useEffect(() => {
     loadSystemStatus();
@@ -216,6 +221,24 @@ export function AdvancedFeaturesPage() {
       setScanError(String(detail));
     } finally {
       setScanSubmitting(false);
+    }
+  };
+
+  const loadComprehensiveStats = async () => {
+    setStatsLoading(true);
+    setStatsError(null);
+
+    try {
+      const data = await api.get('/api/advanced/comprehensive-stats');
+      setComprehensiveStats(data);
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail ||
+        err?.message ||
+        'Failed to load comprehensive stats';
+      setStatsError(String(detail));
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -444,6 +467,85 @@ export function AdvancedFeaturesPage() {
                     Job IDs: {scanResult.job_ids.join(', ')}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Comprehensive stats quick action (high leverage) */}
+          <div className={`${glass.card} p-4 border border-white/10 mb-4`}>
+            <div className='flex items-start justify-between gap-4'>
+              <div>
+                <h2 className='text-white font-semibold flex items-center gap-2'>
+                  <TrendingUp className='w-4 h-4 text-green-400' />
+                  Comprehensive stats
+                </h2>
+                <p className='text-gray-400 text-sm mt-1'>
+                  Loads deep library and pipeline statistics (faces, duplicates,
+                  OCR, and active jobs).
+                </p>
+              </div>
+              <div className='flex items-center gap-2'>
+                <button
+                  onClick={loadComprehensiveStats}
+                  disabled={statsLoading}
+                  className='px-3 py-2 bg-white/10 rounded-lg hover:bg-white/20 text-gray-200 text-sm disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2'
+                  title='Load comprehensive stats'
+                >
+                  {statsLoading ? (
+                    <>
+                      <RefreshCw className='w-4 h-4 animate-spin' />
+                      Loading…
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className='w-4 h-4' />
+                      Load stats
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {statsError && (
+              <div className='mt-3 text-sm text-red-400 flex items-center gap-2'>
+                <AlertCircle className='w-4 h-4' />
+                {statsError}
+              </div>
+            )}
+
+            {comprehensiveStats && (
+              <div className='mt-3 grid grid-cols-1 md:grid-cols-3 gap-3'>
+                <div className='bg-black/30 border border-white/10 rounded-lg p-3'>
+                  <div className='text-xs text-gray-400'>Total photos</div>
+                  <div className='text-lg text-white font-semibold'>
+                    {comprehensiveStats?.library_stats?.total_photos ?? '—'}
+                  </div>
+                </div>
+                <div className='bg-black/30 border border-white/10 rounded-lg p-3'>
+                  <div className='text-xs text-gray-400'>Total size (GB)</div>
+                  <div className='text-lg text-white font-semibold'>
+                    {typeof comprehensiveStats?.library_stats?.total_size_gb ===
+                    'number'
+                      ? comprehensiveStats.library_stats.total_size_gb.toFixed(2)
+                      : '—'}
+                  </div>
+                </div>
+                <div className='bg-black/30 border border-white/10 rounded-lg p-3'>
+                  <div className='text-xs text-gray-400'>Active jobs</div>
+                  <div className='text-lg text-white font-semibold'>
+                    {comprehensiveStats?.active_jobs ?? '—'}
+                  </div>
+                </div>
+
+                <div className='md:col-span-3'>
+                  <div className='flex items-center gap-2 text-xs text-gray-400 mb-1'>
+                    <Info className='w-3.5 h-3.5' />
+                    Raw payload (for debugging / trust)
+                  </div>
+                  <pre className='max-h-64 overflow-auto text-xs text-gray-200 bg-black/40 border border-white/10 rounded-lg p-3 whitespace-pre-wrap'>
+                    {JSON.stringify(comprehensiveStats, null, 2)}
+                  </pre>
+                </div>
               </div>
             )}
           </div>

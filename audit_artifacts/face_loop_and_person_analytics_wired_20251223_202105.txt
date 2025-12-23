@@ -1,0 +1,14 @@
+Face correction loop + person analytics wiring evidence (2025-12-23)
+
+Frontend callsites
+- ui/src/pages/UnidentifiedFaces.tsx:79  await api.post(`/api/faces/${faceId}/assign`, { cluster_id: clusterId });
+- ui/src/pages/UnidentifiedFaces.tsx:90  await api.post(`/api/faces/${faceId}/create-person`, { label: name });
+- ui/src/pages/UnidentifiedFaces.tsx:102 getFaceCropUrl(): `/api/faces/crop/${faceId}?size=200`
+- ui/src/pages/PersonDetail.tsx:128 const data = await api.get(`/api/people/${encodeURIComponent(clusterId)}/analytics`);
+  NOTE: PersonDetail is routed by {clusterId} (used as person_id for analytics).
+
+Backend route definitions
+- server/api/routers/face_recognition.py:735  @router.post("/api/faces/{face_id}/assign")
+- server/api/routers/face_recognition.py:772  @router.post("/api/faces/{face_id}/create-person")
+- server/api/routers/face_recognition.py:855  @router.get("/api/faces/crop/{face_id}")
+- server/api/routers/face_recognition.py:1039 @router.get("/api/people/{person_id}/analytics")
