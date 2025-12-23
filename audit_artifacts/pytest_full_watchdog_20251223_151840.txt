@@ -1,0 +1,1367 @@
+[1m====================================== test session starts =======================================[0m
+platform darwin -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/photosearch_experiment
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0m[1mcollecting 28 items                                                                              [0mUsing persistent job store
+[1mcollecting 45 items                                                                              [0m[1mcollecting 57 items                                                                              [0mLoaded Settings: Living Museum API in development mode
+CORS: ['http://localhost:5173', 'http://127.0.0.1:5173', 'tauri://localhost']
+Media Dir: /Users/pranay/Projects/photosearch_experiment/media
+[1mcollected 133 items                                                                              [0m
+
+server/tests/test_automatic_clustering.py::test_cosine_similarity 🧪 Testing cosine similarity calculation...
+✅ Identical vectors: similarity = 1.0
+✅ Orthogonal vectors: similarity = 0.0
+✅ Similar vectors: similarity = 0.992
+✅ Different vectors: similarity = 0.577
+✅ Cosine similarity calculation tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_face_embedding_retrieval
+🧪 Testing face embedding retrieval...
+✅ Retrieved 5 face embeddings
+✅ All embeddings retrieved correctly
+✅ Face embedding retrieval tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_similar_face_finding
+🧪 Testing similar face finding...
+✅ Found 3 similar faces with similarity >= 0.7
+✅ Found 3 very similar faces with similarity >= 0.85
+   Extremely similar faces (>= 0.95): 3
+     - Detection face_3b40f5dcddfab764f0ddd1174cd44f40: similarity = 0.999
+     - Detection face_491472ea93c11e747d550192a78967f8: similarity = 0.993
+     - Detection face_7575ff8b06f8e2d99e95a6beb0127eda: similarity = 0.985
+✅ Found 3 extremely similar faces with similarity >= 0.95
+✅ Similar face finding tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_cluster_quality_analysis
+🧪 Testing cluster quality analysis...
+✅ Cluster quality analysis:
+   - Face count: 5
+   - Avg confidence: 0.890
+   - Avg quality: 0.840
+   - Coherence: 0.997
+   - Rating: Excellent
+✅ Cluster quality analysis tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_cluster_merging
+🧪 Testing cluster merging...
+✅ Created two clusters with 3 and 2 faces respectively
+✅ Cluster merging successful:
+   - Merged 2 faces into cluster with 3 faces
+   - Result: 5 faces in merged cluster
+   - Source cluster deleted
+✅ Cluster merging tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_quality_rating_calculation
+🧪 Testing quality rating calculation...
+✅ Quality 0.95 + Coherence 0.95 = Excellent
+✅ Quality 0.90 + Coherence 0.90 = Excellent
+✅ Quality 0.85 + Coherence 0.85 = Good
+✅ Quality 0.80 + Coherence 0.80 = Good
+✅ Quality 0.75 + Coherence 0.75 = Fair
+✅ Quality 0.70 + Coherence 0.70 = Fair
+✅ Quality 0.65 + Coherence 0.65 = Poor
+✅ Quality 0.60 + Coherence 0.60 = Poor
+✅ Quality 0.50 + Coherence 0.50 = Low
+✅ Quality 0.40 + Coherence 0.40 = Low
+✅ Quality rating calculation tests passed!
+[32mPASSED[0m
+server/tests/test_face_clustering_db.py::test_face_clustering_db_basic_operations ✅ All basic operations tests passed!
+[32mPASSED[0m
+server/tests/test_face_clustering_db.py::test_face_clustering_db_edge_cases ✅ All edge case tests passed!
+[32mPASSED[0m
+server/tests/test_face_detection_integration.py::test_face_detection_service_initialization ✅ Face detection service is available
+[32mPASSED[0m
+server/tests/test_face_detection_integration.py::test_face_detection_with_mock_data ✅ Graceful fallback for non-existent files works
+✅ Error handling for missing files works
+[32mPASSED[0m
+server/tests/test_face_detection_integration.py::test_face_database_integration ✅ Manual face detection storage works
+✅ Face retrieval from database works
+✅ Face thumbnail fallback works
+[32mPASSED[0m
+server/tests/test_face_detection_integration.py::test_face_detection_workflow ✅ Photo processing workflow handles missing files gracefully
+✅ Complete face detection workflow works
+[32mPASSED[0m
+server/tests/test_face_detection_integration.py::test_batch_face_detection ✅ Batch processing handles missing files gracefully
+✅ Batch face detection storage works
+[32mPASSED[0m
+server/tests/test_face_regression.py::TestUndoRestoresExactState::test_undo_merge_restores_associations [32mPASSED[0m
+server/tests/test_face_regression.py::TestUndoRestoresExactState::test_undo_merge_restores_assignment_state [32mPASSED[0m
+server/tests/test_face_regression.py::TestPrototypeHandling::test_undo_merge_restores_prototype [32mPASSED[0m
+server/tests/test_face_regression.py::TestTransactionality::test_merge_is_atomic [32mPASSED[0m
+server/tests/test_face_regression.py::TestReviewQueue::test_add_to_review_queue [32mPASSED[0m
+server/tests/test_face_regression.py::TestReviewQueue::test_review_queue_count [32mPASSED[0m
+server/tests/test_face_regression.py::TestReviewQueue::test_resolve_confirm [32mPASSED[0m
+server/tests/test_face_regression.py::TestReviewQueue::test_resolve_reject [32mPASSED[0m
+server/tests/test_face_regression.py::TestReviewQueue::test_resolve_skip [32mPASSED[0m
+server/tests/test_people_integration.py::test_people_api_integration ✅ People API integration test passed!
+[32mPASSED[0m
+server/tests/test_search.py::TestLanceDBStore::test_add_and_search [32mPASSED[0m
+server/tests/test_search.py::TestLanceDBStore::test_add_batch [32mPASSED[0m
+server/tests/test_search.py::TestLanceDBStore::test_get_all_records_pagination [32mPASSED[0m
+server/tests/test_search.py::TestLanceDBStore::test_delete [32mPASSED[0m
+server/tests/test_search.py::TestLanceDBStore::test_get_all_ids [32mPASSED[0m
+server/tests/test_search.py::TestSearchAPI::test_is_video_file [32mPASSED[0m
+server/tests/test_search.py::TestSearchAPI::test_apply_sort [32mPASSED[0m
+server/tests/test_source_items.py::test_upsert_and_mark_deleted [32mPASSED[0m
+server/tests/test_source_items.py::test_upsert_preserves_trashed_and_removed [32mPASSED[0m
+server/tests/test_sources.py::test_create_list_redact [32mPASSED[0m
+server/tests/test_sources.py::test_update_and_delete [32mPASSED[0m
+server/tests/test_tags_db.py::test_tags_db_basic [32mPASSED[0m
+server/tests/test_trash_db.py::test_trash_db_lifecycle [32mPASSED[0m
+test_people_endpoints.py::test_people_endpoints 🚀 Starting test server...
+🧪 Testing people endpoints...
+Test 1: GET people in photo (empty)
+Status: 200
+Response: {'photo_path': 'test/people/photo.jpg', 'people': []}
+
+Test 2: POST add person to photo
+Status: 200
+Response: {'success': True, 'photo_path': 'test/people/photo.jpg', 'person_id': 'test_person_123', 'detection_id': 'temp_face_ef5426f1beb78a50d93f974f1e997a47'}
+
+Test 3: GET people in photo (with person)
+Status: 200
+Response: {'photo_path': 'test/people/photo.jpg', 'people': ['test_person_123']}
+
+Test 4: DELETE remove person from photo
+Status: 200
+Response: {'success': True, 'photo_path': 'test/people/photo.jpg', 'person_id': 'test_person_123', 'detection_id': 'temp_face_ef5426f1beb78a50d93f974f1e997a47'}
+
+Test 5: GET people in photo (empty again)
+Status: 200
+Response: {'photo_path': 'test/people/photo.jpg', 'people': []}
+
+✅ All people endpoint tests passed!
+[32mPASSED[0m
+test_pricing.py::test_pricing_tiers Testing pricing tiers...
+✓ Found 4 pricing tiers
+  - Free: $0.0/month, 5000 images
+  - Basic: $9.99/month, 25000 images
+  - Pro: $29.99/month, 100000 images
+  - Enterprise: $0.0/month, -1 images
+✓ Free tier retrieval works
+✓ Pro tier retrieval works
+✓ Non-existent tier handling works
+[32mPASSED[0m
+test_pricing.py::test_tier_recommendation
+Testing tier recommendations...
+✓ 1000 images → Free tier
+✓ 10000 images → Basic tier
+✓ 50000 images → Pro tier
+✓ 200000 images → Enterprise tier
+[32mPASSED[0m
+test_pricing.py::test_usage_tracking
+Testing usage tracking...
+✓ Initial usage tracking works
+✓ Usage percentage calculation works: 20.0%
+✓ Limit checking works for allowed addition
+✓ Limit checking works for denied addition
+[32mPASSED[0m
+test_pricing.py::test_tier_upgrades
+Testing tier upgrades...
+✓ Upgrade to Basic tier works
+✓ Tier upgrade reflected in usage stats
+✓ Invalid tier upgrade handling works
+[32mPASSED[0m
+test_video_analysis.py::test_video_analyzer_database 🎬 Testing Video Analysis Database...
+Warning: OCR libraries not available. Install with:
+pip install pytesseract opencv-python pillow numpy
+And install Tesseract OCR on your system
+✅ Database tests passed!
+[32mPASSED[0m
+test_video_analysis.py::test_video_analysis_imports 📦 Testing Video Analysis Imports...
+✅ OpenCV available
+✅ ffmpeg-python available
+✅ PIL available
+✅ Import tests passed!
+[32mPASSED[0m
+test_video_analysis.py::test_api_endpoints 🌐 Testing API Endpoints...
+❌ API endpoint test failed: cannot import name 'video_analyzer' from 'server.main' (/Users/pranay/Projects/photosearch_experiment/server/main.py)
+[32mPASSED[0m
+test_video_analysis.py::test_ui_component 🎨 Testing UI Component...
+✅ UI component tests passed!
+[32mPASSED[0m
+tests/test_admin_unmask.py::test_admin_unmask [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_database_schema_extensions [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_face_clustering [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_duplicate_detection [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_ocr_search [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_api_endpoints_structure [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmpx635bhkz/test_images/similar_0.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmpx635bhkz/test_images/similar_1.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmpx635bhkz/test_images/similar_2.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmpx635bhkz/test_images/with_text.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmpx635bhkz/test_images/face.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+[32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_performance_benchmarks Face clusterer initialization: 0.007s
+Image 1 processing: 0.021s
+Image 2 processing: 0.018s
+[32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_error_handling [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations [32mPASSED[0m
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_memory_usage Memory usage: 697.0MB -> 697.2MB (+0.2MB)
+[32mPASSED[0m
+tests/test_embedding.py::test_embeddings
+==================================================
+Testing Embedding Generator (Task 10)
+==================================================
+1. Initializing Model (CLIP)...
+Using a slow image processor as `use_fast` is unset and a slow processor was saved with this model. `use_fast=True` will be the default behavior in v4.52, even if the model was saved with a slow processor. This will result in minor differences in outputs. You'll still be able to use a slow processor with `use_fast=False`.
+   ✓ Model loaded in 2.57s
+   ✓ Dimension: None
+
+2. Generating Text Embedding...
+   ✓ Vector length: 512
+   ✓ Sample: [-0.013996210880577564, 0.008263973519206047, -0.024941278621554375]...
+
+3. Generating Image Embedding...
+   ✓ Vector length: 512
+   ✓ Sample: [0.030957072973251343, -0.02924671396613121, 0.002327130874618888]...
+
+==================================================
+✓ Task 10 (Embeddings) Verified
+==================================================
+[32mPASSED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_notes_integration_with_search [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_location_clustering_with_photo_tags [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_version_stack_integration_with_notes [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_people_integration_with_collaborative_spaces [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_multi_tag_filtering_with_location [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_encryption_integration_with_sharing [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_bulk_actions_with_various_photo_states [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_smart_collections_with_filtered_photos [31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_performance_with_combined_features Elapsed time for setting up 10 photos with location, tags, and notes: 0.05s
+[31mFAILED[0m
+tests/test_features_integration.py::TestFeatureIntegrations::test_access_control_interactions [32mPASSED[0m
+tests/test_features_integration.py::TestAPIEndpointIntegration::test_version_stack_endpoints_integration [32mPASSED[0m
+tests/test_features_integration.py::TestAPIEndpointIntegration::test_tag_filtering_endpoints_integration [31mFAILED[0m
+tests/test_features_integration.py::TestAPIEndpointIntegration::test_location_clustering_endpoints_integration Error clustering locations: No item with that key
+[32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_set_and_get_note [32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_update_note [32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_delete_note [32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_get_photos_with_notes [32mPASSED[0m
+tests/test_features_unit.py::TestNotesDB::test_search_notes [32mPASSED[0m
+tests/test_features_unit.py::TestPhotoVersionsDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestPhotoVersionsDB::test_create_and_get_version [32mPASSED[0m
+tests/test_features_unit.py::TestPhotoVersionsDB::test_update_version_metadata [32mPASSED[0m
+tests/test_features_unit.py::TestPhotoVersionsDB::test_delete_version [32mPASSED[0m
+tests/test_features_unit.py::TestLocationClustersDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestLocationClustersDB::test_add_and_get_photo_location [32mPASSED[0m
+tests/test_features_unit.py::TestLocationClustersDB::test_update_photo_location [32mPASSED[0m
+tests/test_features_unit.py::TestLocationClustersDB::test_get_photos_by_place [32mPASSED[0m
+tests/test_features_unit.py::TestMultiTagFilterDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestMultiTagFilterDB::test_create_and_get_tag_filter [32mPASSED[0m
+tests/test_features_unit.py::TestMultiTagFilterDB::test_apply_tag_filter [32mPASSED[0m
+tests/test_features_unit.py::TestCollaborativeSpacesDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestCollaborativeSpacesDB::test_create_and_get_collaborative_space [32mPASSED[0m
+tests/test_features_unit.py::TestCollaborativeSpacesDB::test_add_and_remove_member [32mPASSED[0m
+tests/test_features_unit.py::TestAIInsightsDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestAIInsightsDB::test_create_and_get_insight [32mPASSED[0m
+tests/test_features_unit.py::TestAIInsightsDB::test_get_insights_by_type [32mPASSED[0m
+tests/test_features_unit.py::TestPrivacyControlsDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestPrivacyControlsDB::test_set_and_get_photo_privacy [32mPASSED[0m
+tests/test_features_unit.py::TestBulkActionsDB::test_initialization [32mPASSED[0m
+tests/test_features_unit.py::TestBulkActionsDB::test_record_and_get_bulk_action [32mPASSED[0m
+tests/test_features_unit.py::TestBulkActionsDB::test_mark_action_undone [32mPASSED[0m
+tests/test_image_security.py::test_thumbnail_path_outside_media_denied [32mPASSED[0m
+tests/test_image_token_endpoint.py::test_issue_token_and_fetch_thumbnail [32mPASSED[0m
+tests/test_image_token_endpoint.py::test_issue_token_path_outside_media [32mPASSED[0m
+tests/test_image_token_jwt_auth.py::test_issue_token_with_jwt [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_notes_and_version_integration [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_location_and_tag_integration [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_collaborative_spaces_with_privacy_controls [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_multi_tag_filter_with_notes [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_version_stacks_with_people_tags [32mPASSED[0m
+tests/test_integration.py::TestFeatureIntegration::test_search_with_multiple_feature_filters [32mPASSED[0m
+tests/test_integration.py::TestAPIIntegration::test_notes_api_integration [32mPASSED[0m
+tests/test_integration.py::TestAPIIntegration::test_version_stacks_api_integration [32mPASSED[0m
+tests/test_integration.py::TestAPIIntegration::test_search_integration [32mPASSED[0m
+tests/test_loader.py::test_loader
+--- Testing Metadata Extraction ---
+Success!
+  filename: sample1.jpg
+  path: /Users/pranay/Projects/photosearch_experiment/media/sample1.jpg
+  size_bytes: 52346
+  created: 1765121244.9280517
+  modified: 1765121244.9280517
+  width: 800
+  height: 600
+  format: JPEG
+  mode: RGB
+  is_animated: False
+  n_frames: 1
+
+--- Testing Image Loading ---
+Success! Loaded JPEG image: (800, 600) mode=RGB
+
+--- Testing Image Processing (Resize to 100px) ---
+Success! New size: (100, 75)
+
+--- Testing Error Handling (Missing File) ---
+Unexpected error: ValueError: Invalid image format or corrupted file: non_existent_image.jpg
+[32mPASSED[0m
+tests/test_new_features.py::TestNotesDB::test_set_and_get_note [32mPASSED[0m
+tests/test_new_features.py::TestNotesDB::test_delete_note [32mPASSED[0m
+tests/test_new_features.py::TestNotesDB::test_get_photos_with_notes [32mPASSED[0m
+tests/test_new_features.py::TestNotesDB::test_search_notes [32mPASSED[0m
+tests/test_new_features.py::TestPhotoVersionsDB::test_create_and_get_version [31mFAILED[0m
+tests/test_new_features.py::TestPhotoVersionsDB::test_version_stack [31mFAILED[0m
+tests/test_new_features.py::TestLocationsDB::test_add_and_get_photo_location [32mPASSED[0m
+tests/test_new_features.py::TestLocationsDB::test_update_place_name [32mPASSED[0m
+tests/test_new_features.py::TestLocationsDB::test_get_nearby_locations [32mPASSED[0m
+tests/test_new_features.py::TestLocationsDB::test_get_place_clusters [32mPASSED[0m
+tests/test_new_features.py::TestPhotoEditsDB::test_set_and_get_edit [32mPASSED[0m
+tests/test_new_features.py::TestDuplicatesDB::test_add_and_get_duplicate_group [32mPASSED[0m
+tests/test_rate_limit.py::test_rate_limit_triggers [31mFAILED[0m
+tests/test_search_source_filter.py::test_search_with_source_filter_returns_ok [31mFAILED[0m
+tests/test_server_config.py::test_server_config_endpoint [32mPASSED[0m
+tests/test_signed_token.py::test_issue_and_verify_token [32mPASSED[0m
+tests/test_thumbnail_cache_headers.py::test_thumbnail_cache_headers_and_conditional [32mPASSED[0m
+tests/test_thumbnail_sandbox_symlink.py::test_symlink_outside_media_is_denied [32mPASSED[0m
+tests/test_thumbnail_sandbox_symlink.py::test_sandbox_strict_blocks_non_loopback_without_token [32mPASSED[0m
+tests/test_vector_store.py::test_vector_store
+==================================================
+Testing Vector Store (Task 10.2)
+==================================================
+1. Adding data...
+   ✓ Added 3 items
+
+2. Searching for 'puppy' (similar to dog)...
+   1. dog_pic: Score 0.9980
+   2. cat_pic: Score 0.9975
+   3. car_pic: Score 0.2815
+   ✓ Search Result Valid (Animal ranked first)
+
+3. Testing Persistence...
+   ✓ Saved to disk
+   ✓ Loaded 3 items
+
+==================================================
+✓ Vector Store Verified
+==================================================
+[32mPASSED[0m
+
+============================================ FAILURES ============================================
+[31m[1m___________________ TestFeatureIntegrations.test_notes_integration_with_search ___________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c869e90>
+client = <starlette.testclient.TestClient object at 0x36c8eb890>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_notes_integration_with_search[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that notes are searchable and appear in search results."""[39;49;00m[90m[39;49;00m
+        [90m# Create a photo with a note[39;49;00m[90m[39;49;00m
+        photo_path = [33m"[39;49;00m[33m/test/integration_note_test.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        note_content = [33m"[39;49;00m[33mThis is a test note for integration testing[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add note to the photo[39;49;00m[90m[39;49;00m
+        response = client.post([33mf[39;49;00m[33m"[39;49;00m[33m/notes/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[33m"[39;49;00m[33mnote[39;49;00m[33m"[39;49;00m: note_content})[90m[39;49;00m
+>       [94massert[39;49;00m response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 404 == 200[0m
+[1m[31mE        +  where 404 = <Response [404 Not Found]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:45: AssertionError
+[31m[1m________________ TestFeatureIntegrations.test_location_clustering_with_photo_tags ________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c86a290>
+client = <starlette.testclient.TestClient object at 0x36f358b90>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_location_clustering_with_photo_tags[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that photos in location clusters can be tagged and searched."""[39;49;00m[90m[39;49;00m
+        [90m# First, add some photos to the same location[39;49;00m[90m[39;49;00m
+        photos_data = [[90m[39;49;00m
+            ([33m"[39;49;00m[33m/test/cluster1.jpg[39;49;00m[33m"[39;49;00m, [94m40.7128[39;49;00m, -[94m74.0060[39;49;00m, [33m"[39;49;00m[33mNew York[39;49;00m[33m"[39;49;00m),[90m[39;49;00m
+            ([33m"[39;49;00m[33m/test/cluster2.jpg[39;49;00m[33m"[39;49;00m, [94m40.7228[39;49;00m, -[94m74.0160[39;49;00m, [33m"[39;49;00m[33mNew York[39;49;00m[33m"[39;49;00m),  [90m# Close by, should cluster[39;49;00m[90m[39;49;00m
+            ([33m"[39;49;00m[33m/test/outside.jpg[39;49;00m[33m"[39;49;00m, [94m34.0522[39;49;00m, -[94m118.2437[39;49;00m, [33m"[39;49;00m[33mLos Angeles[39;49;00m[33m"[39;49;00m)  [90m# Far away, different cluster[39;49;00m[90m[39;49;00m
+        ][90m[39;49;00m
+    [90m[39;49;00m
+        [94mfor[39;49;00m path, lat, lng, place_name [95min[39;49;00m photos_data:[90m[39;49;00m
+            [90m# Add location data for each photo[39;49;00m[90m[39;49;00m
+            client.post([33mf[39;49;00m[33m"[39;49;00m[33m/locations/[39;49;00m[33m{[39;49;00mpath[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+                [33m"[39;49;00m[33mlatitude[39;49;00m[33m"[39;49;00m: lat,[90m[39;49;00m
+                [33m"[39;49;00m[33mlongitude[39;49;00m[33m"[39;49;00m: lng,[90m[39;49;00m
+                [33m"[39;49;00m[33moriginal_place_name[39;49;00m[33m"[39;49;00m: place_name[90m[39;49;00m
+            })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add tags to the clustered photos[39;49;00m[90m[39;49;00m
+        client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33m/test/cluster1.jpg[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33m/test/cluster2.jpg[39;49;00m[33m"[39;49;00m],[90m[39;49;00m
+            [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mcluster_test[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mintegration[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Search by tag - should find the clustered photos[39;49;00m[90m[39;49;00m
+>       search_response = client.get([33m"[39;49;00m[33m/search[39;49;00m[33m"[39;49;00m, params={[33m"[39;49;00m[33mquery[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mtag:cluster_test[39;49;00m[33m"[39;49;00m})[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_features_integration.py[0m:80:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:473: in get
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().get([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1053: in get
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:445: in request
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:825: in request
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.send(request, auth=auth, follow_redirects=follow_redirects)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:914: in send
+    [0mresponse = [96mself[39;49;00m._send_handling_auth([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:942: in _send_handling_auth
+    [0mresponse = [96mself[39;49;00m._send_handling_redirects([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:979: in _send_handling_redirects
+    [0mresponse = [96mself[39;49;00m._send_single_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1014: in _send_single_request
+    [0mresponse = transport.handle_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:348: in handle_request
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:345: in handle_request
+    [0mportal.call([96mself[39;49;00m.app, scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:326: in call
+    [0m[94mreturn[39;49;00m cast(T_Retval, [96mself[39;49;00m.start_task_soon(func, *args).result())[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:456: in result
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.__get_result()[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:401: in __get_result
+    [0m[94mraise[39;49;00m [96mself[39;49;00m._exception[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:257: in _call_func
+    [0mretval = [94mawait[39;49;00m retval_or_awaitable[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/applications.py[0m:1139: in __call__
+    [0m[94mawait[39;49;00m [96msuper[39;49;00m().[92m__call__[39;49;00m(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/applications.py[0m:107: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:186: in __call__
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:164: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, _send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:191: in __call__
+    [0m[94mwith[39;49;00m recv_stream, send_stream, collapse_excgroups():[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/contextlib.py[0m:158: in __exit__
+    [0m[96mself[39;49;00m.gen.throw(typ, value, traceback)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_utils.py[0m:85: in collapse_excgroups
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:193: in __call__
+    [0mresponse = [94mawait[39;49;00m [96mself[39;49;00m.dispatch_func(request, call_next)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mserver/main.py[0m:274: in _ensure_cors_header
+    [0mresponse = [94mawait[39;49;00m call_next(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:168: in call_next
+    [0m[94mraise[39;49;00m app_exc [94mfrom[39;49;00m[90m [39;49;00m[04m[96mapp_exc[39;49;00m[04m[96m.[39;49;00m[04m[96m__cause__[39;49;00m [95mor[39;49;00m app_exc.__context__[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:144: in coro
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive_or_disconnect, send_no_error)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/cors.py[0m:85: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py[0m:63: in __call__
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions([96mself[39;49;00m.app, conn)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py[0m:18: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:716: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:736: in app
+    [0m[94mawait[39;49;00m route.handle(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:290: in handle
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:120: in app
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions(app, request)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:106: in app
+    [0mresponse = [94mawait[39;49;00m f(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:420: in app
+    [0msolved_result = [94mawait[39;49;00m solve_dependencies([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py[0m:676: in solve_dependencies
+    [0msolved = [94mawait[39;49;00m run_in_threadpool(call, **solved_result.values)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/concurrency.py[0m:32: in run_in_threadpool
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m anyio.to_thread.run_sync(func)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/to_thread.py[0m:61: in run_sync
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m get_async_backend().run_sync_in_worker_thread([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:2525: in run_sync_in_worker_thread
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m future[90m[39;49;00m
+           ^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:986: in run
+    [0mresult = context.run(func, *args)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = <starlette.requests.Request object at 0x388607d50>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mget_state[39;49;00m(request: Request) -> AppState:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""[39;49;00m
+    [33m    Get application state from request.[39;49;00m
+    [33m[39;49;00m
+    [33m    Use with: state: AppState = Depends(get_state)[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        st = [96mgetattr[39;49;00m(request.app.state, [33m"[39;49;00m[33mps[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m st [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+>           [94mraise[39;49;00m [96mRuntimeError[39;49;00m([90m[39;49;00m
+                [33m"[39;49;00m[33mAppState not initialized. Did lifespan run? [39;49;00m[33m"[39;49;00m[90m[39;49;00m
+                [33m"[39;49;00m[33mCheck that app.state.ps was set during startup.[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            )[90m[39;49;00m
+[1m[31mE           RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.[0m
+
+[1m[31mserver/api/deps.py[0m:36: RuntimeError
+[31m[1m_______________ TestFeatureIntegrations.test_version_stack_integration_with_notes ________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c86a910>
+client = <starlette.testclient.TestClient object at 0x16f9cc950>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_version_stack_integration_with_notes[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that photo versions maintain notes across edits."""[39;49;00m[90m[39;49;00m
+        original_photo = [33m"[39;49;00m[33m/test/version_original.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        edited_photo = [33m"[39;49;00m[33m/test/version_edited.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add a note to the original photo[39;49;00m[90m[39;49;00m
+        note_content = [33m"[39;49;00m[33mOriginal version with important note[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        response = client.post([33mf[39;49;00m[33m"[39;49;00m[33m/notes/[39;49;00m[33m{[39;49;00moriginal_photo[33m}[39;49;00m[33m"[39;49;00m, json={[33m"[39;49;00m[33mnote[39;49;00m[33m"[39;49;00m: note_content})[90m[39;49;00m
+>       [94massert[39;49;00m response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 404 == 200[0m
+[1m[31mE        +  where 404 = <Response [404 Not Found]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:97: AssertionError
+[31m[1m___________ TestFeatureIntegrations.test_people_integration_with_collaborative_spaces ____________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c86afd0>
+client = <starlette.testclient.TestClient object at 0x16f481c90>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_people_integration_with_collaborative_spaces[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that people tagging works within collaborative spaces."""[39;49;00m[90m[39;49;00m
+        [90m# Create a collaborative space[39;49;00m[90m[39;49;00m
+        space_response = client.post([33m"[39;49;00m[33m/collaborative/spaces[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mname[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mFamily Gathering[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mdescription[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mPhotos from family event[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mprivacy_level[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mshared[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+        [94massert[39;49;00m space_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+        space_id = space_response.json()[[33m"[39;49;00m[33mspace_id[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add a photo to the space[39;49;00m[90m[39;49;00m
+        photo_path = [33m"[39;49;00m[33m/test/family_event.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        add_photo_response = client.post([33mf[39;49;00m[33m"[39;49;00m[33m/collaborative/spaces/[39;49;00m[33m{[39;49;00mspace_id[33m}[39;49;00m[33m/photos[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mphoto_path[39;49;00m[33m"[39;49;00m: photo_path,[90m[39;49;00m
+            [33m"[39;49;00m[33mcaption[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mFamily at gathering[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+        [94massert[39;49;00m add_photo_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Tag people in the photo[39;49;00m[90m[39;49;00m
+        people_tag_response = client.post([33mf[39;49;00m[33m"[39;49;00m[33m/people/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpeople[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mJohn Doe[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mJane Smith[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+>       [94massert[39;49;00m people_tag_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 404 == 200[0m
+[1m[31mE        +  where 404 = <Response [404 Not Found]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:150: AssertionError
+[31m[1m_________________ TestFeatureIntegrations.test_multi_tag_filtering_with_location _________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c86b650>
+client = <starlette.testclient.TestClient object at 0x16f43dd50>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_multi_tag_filtering_with_location[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that multi-tag filtering works alongside location-based search."""[39;49;00m[90m[39;49;00m
+        [90m# Add location for a photo[39;49;00m[90m[39;49;00m
+        photo_with_tags_and_location = [33m"[39;49;00m[33m/test/composite_search.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        client.post([33mf[39;49;00m[33m"[39;49;00m[33m/locations/[39;49;00m[33m{[39;49;00mphoto_with_tags_and_location[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mlatitude[39;49;00m[33m"[39;49;00m: [94m40.7128[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mlongitude[39;49;00m[33m"[39;49;00m: -[94m74.0060[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33moriginal_place_name[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mCentral Park[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add multiple tags to the photo[39;49;00m[90m[39;49;00m
+        client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [photo_with_tags_and_location],[90m[39;49;00m
+            [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mbeach[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvacation[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mfriends[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Search by multiple tags AND location[39;49;00m[90m[39;49;00m
+        [90m# In a real system, we would need to test actual search queries that combine these[39;49;00m[90m[39;49;00m
+        [90m# For now, we'll check that both systems can coexist[39;49;00m[90m[39;49;00m
+>       tag_search_response = client.get([33m"[39;49;00m[33m/search[39;49;00m[33m"[39;49;00m, params={[33m"[39;49;00m[33mquery[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mtag:beach AND tag:vacation[39;49;00m[33m"[39;49;00m})[90m[39;49;00m
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_features_integration.py[0m:184:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:473: in get
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().get([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1053: in get
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:445: in request
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:825: in request
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.send(request, auth=auth, follow_redirects=follow_redirects)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:914: in send
+    [0mresponse = [96mself[39;49;00m._send_handling_auth([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:942: in _send_handling_auth
+    [0mresponse = [96mself[39;49;00m._send_handling_redirects([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:979: in _send_handling_redirects
+    [0mresponse = [96mself[39;49;00m._send_single_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1014: in _send_single_request
+    [0mresponse = transport.handle_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:348: in handle_request
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:345: in handle_request
+    [0mportal.call([96mself[39;49;00m.app, scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:326: in call
+    [0m[94mreturn[39;49;00m cast(T_Retval, [96mself[39;49;00m.start_task_soon(func, *args).result())[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:456: in result
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.__get_result()[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:401: in __get_result
+    [0m[94mraise[39;49;00m [96mself[39;49;00m._exception[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:257: in _call_func
+    [0mretval = [94mawait[39;49;00m retval_or_awaitable[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/applications.py[0m:1139: in __call__
+    [0m[94mawait[39;49;00m [96msuper[39;49;00m().[92m__call__[39;49;00m(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/applications.py[0m:107: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:186: in __call__
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:164: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, _send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:191: in __call__
+    [0m[94mwith[39;49;00m recv_stream, send_stream, collapse_excgroups():[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/contextlib.py[0m:158: in __exit__
+    [0m[96mself[39;49;00m.gen.throw(typ, value, traceback)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_utils.py[0m:85: in collapse_excgroups
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:193: in __call__
+    [0mresponse = [94mawait[39;49;00m [96mself[39;49;00m.dispatch_func(request, call_next)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mserver/main.py[0m:274: in _ensure_cors_header
+    [0mresponse = [94mawait[39;49;00m call_next(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:168: in call_next
+    [0m[94mraise[39;49;00m app_exc [94mfrom[39;49;00m[90m [39;49;00m[04m[96mapp_exc[39;49;00m[04m[96m.[39;49;00m[04m[96m__cause__[39;49;00m [95mor[39;49;00m app_exc.__context__[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:144: in coro
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive_or_disconnect, send_no_error)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/cors.py[0m:85: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py[0m:63: in __call__
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions([96mself[39;49;00m.app, conn)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py[0m:18: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:716: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:736: in app
+    [0m[94mawait[39;49;00m route.handle(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:290: in handle
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:120: in app
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions(app, request)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:106: in app
+    [0mresponse = [94mawait[39;49;00m f(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:420: in app
+    [0msolved_result = [94mawait[39;49;00m solve_dependencies([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py[0m:676: in solve_dependencies
+    [0msolved = [94mawait[39;49;00m run_in_threadpool(call, **solved_result.values)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/concurrency.py[0m:32: in run_in_threadpool
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m anyio.to_thread.run_sync(func)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/to_thread.py[0m:61: in run_sync
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m get_async_backend().run_sync_in_worker_thread([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:2525: in run_sync_in_worker_thread
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m future[90m[39;49;00m
+           ^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:986: in run
+    [0mresult = context.run(func, *args)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = <starlette.requests.Request object at 0x16f3a9c10>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mget_state[39;49;00m(request: Request) -> AppState:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""[39;49;00m
+    [33m    Get application state from request.[39;49;00m
+    [33m[39;49;00m
+    [33m    Use with: state: AppState = Depends(get_state)[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        st = [96mgetattr[39;49;00m(request.app.state, [33m"[39;49;00m[33mps[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m st [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+>           [94mraise[39;49;00m [96mRuntimeError[39;49;00m([90m[39;49;00m
+                [33m"[39;49;00m[33mAppState not initialized. Did lifespan run? [39;49;00m[33m"[39;49;00m[90m[39;49;00m
+                [33m"[39;49;00m[33mCheck that app.state.ps was set during startup.[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            )[90m[39;49;00m
+[1m[31mE           RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.[0m
+
+[1m[31mserver/api/deps.py[0m:36: RuntimeError
+[31m[1m________________ TestFeatureIntegrations.test_encryption_integration_with_sharing ________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c86bcd0>
+client = <starlette.testclient.TestClient object at 0x16f825590>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_encryption_integration_with_sharing[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that encrypted photos can be shared while maintaining privacy."""[39;49;00m[90m[39;49;00m
+        photo_path = [33m"[39;49;00m[33m/test/encrypted_share_test.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Set privacy controls to encrypt the photo[39;49;00m[90m[39;49;00m
+        privacy_response = client.post([33mf[39;49;00m[33m"[39;49;00m[33m/privacy/control/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mowner_id[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mtest_user[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mvisibility[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mprivate[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mencryption_enabled[39;49;00m[33m"[39;49;00m: [94mTrue[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mencryption_key_hash[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33msome_hash_value[39;49;00m[33m"[39;49;00m,  [90m# In a real test, this would be a proper hash[39;49;00m[90m[39;49;00m
+            [33m"[39;49;00m[33mshare_permissions[39;49;00m[33m"[39;49;00m: {[33m"[39;49;00m[33mview[39;49;00m[33m"[39;49;00m: [94mTrue[39;49;00m, [33m"[39;49;00m[33mdownload[39;49;00m[33m"[39;49;00m: [94mFalse[39;49;00m}[90m[39;49;00m
+        })[90m[39;49;00m
+        [94massert[39;49;00m privacy_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Try to create a share link[39;49;00m[90m[39;49;00m
+        share_response = client.post([33m"[39;49;00m[33m/share[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [photo_path],[90m[39;49;00m
+            [33m"[39;49;00m[33mexpiration_hours[39;49;00m[33m"[39;49;00m: [94m24[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+        [90m# Even though the photo is encrypted, it should still be possible to share it[39;49;00m[90m[39;49;00m
+        [90m# (the share link would give access to the encrypted version)[39;49;00m[90m[39;49;00m
+>       [94massert[39;49;00m share_response.status_code [95min[39;49;00m [[94m200[39;49;00m, [94m403[39;49;00m]  [90m# May be restricted based on privacy[39;49;00m[90m[39;49;00m
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE       assert 400 in [200, 403][0m
+[1m[31mE        +  where 400 = <Response [400 Bad Request]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:221: AssertionError
+[31m[1m______________ TestFeatureIntegrations.test_bulk_actions_with_various_photo_states _______________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c884390>
+client = <starlette.testclient.TestClient object at 0x16f536a10>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_bulk_actions_with_various_photo_states[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test bulk actions work with photos in different states (tagged, noted, location-marked)."""[39;49;00m[90m[39;49;00m
+        [90m# Prepare several photos in different states[39;49;00m[90m[39;49;00m
+        test_photos = [[90m[39;49;00m
+            [33m"[39;49;00m[33m/test/bulk_action_1.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33m/test/bulk_action_2.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33m/test/bulk_action_3.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        ][90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add different metadata to each photo[39;49;00m[90m[39;49;00m
+        client.post([33mf[39;49;00m[33m"[39;49;00m[33m/notes/[39;49;00m[33m{[39;49;00mtest_photos[[94m0[39;49;00m][33m}[39;49;00m[33m"[39;49;00m, json={[33m"[39;49;00m[33mnote[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mFirst bulk photo[39;49;00m[33m"[39;49;00m})[90m[39;49;00m
+        client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [test_photos[[94m1[39;49;00m]], [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mbulk_test[39;49;00m[33m"[39;49;00m]})[90m[39;49;00m
+        client.post([33mf[39;49;00m[33m"[39;49;00m[33m/locations/[39;49;00m[33m{[39;49;00mtest_photos[[94m2[39;49;00m][33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mlatitude[39;49;00m[33m"[39;49;00m: [94m40.7128[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mlongitude[39;49;00m[33m"[39;49;00m: -[94m74.0060[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33moriginal_place_name[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mNew York[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Perform a bulk action (like tagging all photos)[39;49;00m[90m[39;49;00m
+        bulk_tag_response = client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: test_photos,[90m[39;49;00m
+            [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mbulk_action_test[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+>       [94massert[39;49;00m bulk_tag_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 405 == 200[0m
+[1m[31mE        +  where 405 = <Response [405 Method Not Allowed]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:256: AssertionError
+[31m[1m______________ TestFeatureIntegrations.test_smart_collections_with_filtered_photos _______________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c884a10>
+client = <starlette.testclient.TestClient object at 0x388e1b2d0>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_smart_collections_with_filtered_photos[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that smart collections work with photos that have various filters applied."""[39;49;00m[90m[39;49;00m
+        [90m# Create a photo with specific properties[39;49;00m[90m[39;49;00m
+        photo_path = [33m"[39;49;00m[33m/test/smart_collection_test.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add location, tags, and notes[39;49;00m[90m[39;49;00m
+        client.post([33mf[39;49;00m[33m"[39;49;00m[33m/locations/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mlatitude[39;49;00m[33m"[39;49;00m: [94m48.8566[39;49;00m,  [90m# Paris[39;49;00m[90m[39;49;00m
+            [33m"[39;49;00m[33mlongitude[39;49;00m[33m"[39;49;00m: [94m2.3522[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33moriginal_place_name[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mParis[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [photo_path],[90m[39;49;00m
+            [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33meurope[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvacation[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mtrip[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        client.post([33mf[39;49;00m[33m"[39;49;00m[33m/notes/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mnote[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mBeautiful photo from our Paris trip[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Create a smart collection based on location[39;49;00m[90m[39;49;00m
+        collection_response = client.post([33m"[39;49;00m[33m/smart-collections[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mname[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mEuropean Trips[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mdescription[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mPhotos from Europe[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            [33m"[39;49;00m[33mrule_definition[39;49;00m[33m"[39;49;00m: {[90m[39;49;00m
+                [33m"[39;49;00m[33mtype[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mlocation[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33moperator[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mcontains[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33mvalue[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mEurope[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            }[90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Verify the collection was created[39;49;00m[90m[39;49;00m
+>       [94massert[39;49;00m collection_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 404 == 200[0m
+[1m[31mE        +  where 404 = <Response [404 Not Found]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:298: AssertionError
+[31m[1m________________ TestFeatureIntegrations.test_performance_with_combined_features _________________[0m
+
+self = <test_features_integration.TestFeatureIntegrations object at 0x36c885090>
+client = <starlette.testclient.TestClient object at 0x388e19590>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_performance_with_combined_features[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test performance when multiple features are used together."""[39;49;00m[90m[39;49;00m
+        [94mimport[39;49;00m[90m [39;49;00m[04m[96mtime[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Create multiple photos with various associated data[39;49;00m[90m[39;49;00m
+        test_photos = [[33mf[39;49;00m[33m"[39;49;00m[33m/test/performance_[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m.jpg[39;49;00m[33m"[39;49;00m [94mfor[39;49;00m i [95min[39;49;00m [96mrange[39;49;00m([94m10[39;49;00m)][90m[39;49;00m
+    [90m[39;49;00m
+        start_time = time.time()[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add location, tags, notes to multiple photos[39;49;00m[90m[39;49;00m
+        [94mfor[39;49;00m i, photo_path [95min[39;49;00m [96menumerate[39;49;00m(test_photos):[90m[39;49;00m
+            [90m# Add location[39;49;00m[90m[39;49;00m
+            client.post([33mf[39;49;00m[33m"[39;49;00m[33m/locations/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+                [33m"[39;49;00m[33mlatitude[39;49;00m[33m"[39;49;00m: [94m40.7[39;49;00m + i * [94m0.001[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33mlongitude[39;49;00m[33m"[39;49;00m: -[94m74.0[39;49;00m + i * [94m0.001[39;49;00m,[90m[39;49;00m
+                [33m"[39;49;00m[33moriginal_place_name[39;49;00m[33m"[39;49;00m: [33mf[39;49;00m[33m"[39;49;00m[33mLocation [39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            })[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Add tags[39;49;00m[90m[39;49;00m
+            client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+                [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [photo_path],[90m[39;49;00m
+                [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33mf[39;49;00m[33m"[39;49;00m[33mtag_[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mperformance_test[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+            })[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Add note[39;49;00m[90m[39;49;00m
+            client.post([33mf[39;49;00m[33m"[39;49;00m[33m/notes/[39;49;00m[33m{[39;49;00mphoto_path[33m}[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+                [33m"[39;49;00m[33mnote[39;49;00m[33m"[39;49;00m: [33mf[39;49;00m[33m"[39;49;00m[33mPerformance test note for photo [39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Measure time for multiple API calls[39;49;00m[90m[39;49;00m
+        elapsed = time.time() - start_time[90m[39;49;00m
+        [96mprint[39;49;00m([33mf[39;49;00m[33m"[39;49;00m[33mElapsed time for setting up 10 photos with location, tags, and notes: [39;49;00m[33m{[39;49;00melapsed[33m:[39;49;00m[33m.2f[39;49;00m[33m}[39;49;00m[33ms[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# All operations should have completed within a reasonable time[39;49;00m[90m[39;49;00m
+        [90m# (This is a basic sanity check; actual performance requirements may vary)[39;49;00m[90m[39;49;00m
+        [94massert[39;49;00m elapsed < [94m10.0[39;49;00m  [90m# Less than 10 seconds for setup[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Search for all the performance test photos[39;49;00m[90m[39;49;00m
+        search_start = time.time()[90m[39;49;00m
+>       search_response = client.get([33m"[39;49;00m[33m/search[39;49;00m[33m"[39;49;00m, params={[33m"[39;49;00m[33mquery[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33mperformance_test[39;49;00m[33m"[39;49;00m})[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_features_integration.py[0m:344:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:473: in get
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().get([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1053: in get
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:445: in request
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:825: in request
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.send(request, auth=auth, follow_redirects=follow_redirects)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:914: in send
+    [0mresponse = [96mself[39;49;00m._send_handling_auth([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:942: in _send_handling_auth
+    [0mresponse = [96mself[39;49;00m._send_handling_redirects([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:979: in _send_handling_redirects
+    [0mresponse = [96mself[39;49;00m._send_single_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1014: in _send_single_request
+    [0mresponse = transport.handle_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:348: in handle_request
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:345: in handle_request
+    [0mportal.call([96mself[39;49;00m.app, scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:326: in call
+    [0m[94mreturn[39;49;00m cast(T_Retval, [96mself[39;49;00m.start_task_soon(func, *args).result())[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:456: in result
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.__get_result()[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:401: in __get_result
+    [0m[94mraise[39;49;00m [96mself[39;49;00m._exception[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:257: in _call_func
+    [0mretval = [94mawait[39;49;00m retval_or_awaitable[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/applications.py[0m:1139: in __call__
+    [0m[94mawait[39;49;00m [96msuper[39;49;00m().[92m__call__[39;49;00m(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/applications.py[0m:107: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:186: in __call__
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:164: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, _send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:191: in __call__
+    [0m[94mwith[39;49;00m recv_stream, send_stream, collapse_excgroups():[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/contextlib.py[0m:158: in __exit__
+    [0m[96mself[39;49;00m.gen.throw(typ, value, traceback)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_utils.py[0m:85: in collapse_excgroups
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:193: in __call__
+    [0mresponse = [94mawait[39;49;00m [96mself[39;49;00m.dispatch_func(request, call_next)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mserver/main.py[0m:274: in _ensure_cors_header
+    [0mresponse = [94mawait[39;49;00m call_next(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:168: in call_next
+    [0m[94mraise[39;49;00m app_exc [94mfrom[39;49;00m[90m [39;49;00m[04m[96mapp_exc[39;49;00m[04m[96m.[39;49;00m[04m[96m__cause__[39;49;00m [95mor[39;49;00m app_exc.__context__[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:144: in coro
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive_or_disconnect, send_no_error)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/cors.py[0m:85: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py[0m:63: in __call__
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions([96mself[39;49;00m.app, conn)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py[0m:18: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:716: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:736: in app
+    [0m[94mawait[39;49;00m route.handle(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:290: in handle
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:120: in app
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions(app, request)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:106: in app
+    [0mresponse = [94mawait[39;49;00m f(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:420: in app
+    [0msolved_result = [94mawait[39;49;00m solve_dependencies([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py[0m:676: in solve_dependencies
+    [0msolved = [94mawait[39;49;00m run_in_threadpool(call, **solved_result.values)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/concurrency.py[0m:32: in run_in_threadpool
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m anyio.to_thread.run_sync(func)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/to_thread.py[0m:61: in run_sync
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m get_async_backend().run_sync_in_worker_thread([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:2525: in run_sync_in_worker_thread
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m future[90m[39;49;00m
+           ^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:986: in run
+    [0mresult = context.run(func, *args)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = <starlette.requests.Request object at 0x16f622910>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mget_state[39;49;00m(request: Request) -> AppState:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""[39;49;00m
+    [33m    Get application state from request.[39;49;00m
+    [33m[39;49;00m
+    [33m    Use with: state: AppState = Depends(get_state)[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        st = [96mgetattr[39;49;00m(request.app.state, [33m"[39;49;00m[33mps[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m st [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+>           [94mraise[39;49;00m [96mRuntimeError[39;49;00m([90m[39;49;00m
+                [33m"[39;49;00m[33mAppState not initialized. Did lifespan run? [39;49;00m[33m"[39;49;00m[90m[39;49;00m
+                [33m"[39;49;00m[33mCheck that app.state.ps was set during startup.[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            )[90m[39;49;00m
+[1m[31mE           RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.[0m
+
+[1m[31mserver/api/deps.py[0m:36: RuntimeError
+[31m[1m______________ TestAPIEndpointIntegration.test_tag_filtering_endpoints_integration _______________[0m
+
+self = <test_features_integration.TestAPIEndpointIntegration object at 0x36c884790>
+client = <starlette.testclient.TestClient object at 0x16f2fed90>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_tag_filtering_endpoints_integration[39;49;00m([96mself[39;49;00m, client):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test that multi-tag filtering API endpoints work together."""[39;49;00m[90m[39;49;00m
+        [90m# Create a photo[39;49;00m[90m[39;49;00m
+        photo_path = [33m"[39;49;00m[33m/test/tag_filter_integration.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Add multiple tags to the photo[39;49;00m[90m[39;49;00m
+        client.post([33m"[39;49;00m[33m/tags/add[39;49;00m[33m"[39;49;00m, json={[90m[39;49;00m
+            [33m"[39;49;00m[33mpaths[39;49;00m[33m"[39;49;00m: [photo_path],[90m[39;49;00m
+            [33m"[39;49;00m[33mtags[39;49;00m[33m"[39;49;00m: [[33m"[39;49;00m[33mbeach[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33msunset[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mvacation[39;49;00m[33m"[39;49;00m][90m[39;49;00m
+        })[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Test getting photos by tag[39;49;00m[90m[39;49;00m
+        by_tag_response = client.get([33mf[39;49;00m[33m"[39;49;00m[33m/tags/photos/beach[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+>       [94massert[39;49;00m by_tag_response.status_code == [94m200[39;49;00m[90m[39;49;00m
+[1m[31mE       assert 404 == 200[0m
+[1m[31mE        +  where 404 = <Response [404 Not Found]>.status_code[0m
+
+[1m[31mtests/test_features_integration.py[0m:435: AssertionError
+[31m[1m________________________ TestPhotoVersionsDB.test_create_and_get_version _________________________[0m
+
+self = <test_new_features.TestPhotoVersionsDB object at 0x36c843e10>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_create_and_get_version[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test creating and getting a photo version"""[39;49;00m[90m[39;49;00m
+        original_path = [33m"[39;49;00m[33m/path/to/original.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        version_path = [33m"[39;49;00m[33m/path/to/edited.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        version_type = [33m"[39;49;00m[33medited[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        version_name = [33m"[39;49;00m[33mBrighter Colors[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        version_description = [33m"[39;49;00m[33mIncreased brightness and saturation[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Create a version[39;49;00m[90m[39;49;00m
+        version_id = [96mself[39;49;00m.versions_db.create_version([90m[39;49;00m
+            original_path=original_path,[90m[39;49;00m
+            version_path=version_path,[90m[39;49;00m
+            version_type=version_type,[90m[39;49;00m
+            version_name=version_name,[90m[39;49;00m
+            version_description=version_description[90m[39;49;00m
+        )[90m[39;49;00m
+    [90m[39;49;00m
+        [94massert[39;49;00m version_id != [33m"[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Get versions for original[39;49;00m[90m[39;49;00m
+        versions = [96mself[39;49;00m.versions_db.get_versions_for_original(original_path)[90m[39;49;00m
+>       [94massert[39;49;00m [96mlen[39;49;00m(versions) == [94m1[39;49;00m[90m[39;49;00m
+[1m[31mE       AssertionError: assert 2 == 1[0m
+[1m[31mE        +  where 2 = len([{'id': '2b316ccf-bc17-4e8a-9bb2-0a46ab033698', 'original_path': '/path/to/original.jpg', 'version_path': '/path/to/original.jpg', 'version_type': 'original', 'version_name': 'Original', 'version_description': None, 'edit_instructions': {}, 'parent_version_id': None, 'created_at': '2025-12-23 09:49:07', 'updated_at': '2025-12-23 09:49:07'}, {'id': 'b8d89ec4-3c17-4eb5-92ec-45709ff9ee13', 'original_path': '/path/to/original.jpg', 'version_path': '/path/to/edited.jpg', 'version_type': 'edited', 'version_name': 'Brighter Colors', 'version_description': 'Increased brightness and saturation', 'edit_instructions': {}, 'parent_version_id': None, 'created_at': '2025-12-23 09:49:07', 'updated_at': '2025-12-23 09:49:07'}])[0m
+
+[1m[31mtests/test_new_features.py[0m:135: AssertionError
+[31m[1m_____________________________ TestPhotoVersionsDB.test_version_stack _____________________________[0m
+
+self = <test_new_features.TestPhotoVersionsDB object at 0x36c8c12d0>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_version_stack[39;49;00m([96mself[39;49;00m):[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test getting a complete version stack"""[39;49;00m[90m[39;49;00m
+        original_path = [33m"[39;49;00m[33m/path/to/original.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Create original version[39;49;00m[90m[39;49;00m
+        [96mself[39;49;00m.versions_db.create_version([90m[39;49;00m
+            original_path=original_path,[90m[39;49;00m
+            version_path=original_path,[90m[39;49;00m
+            version_type=[33m"[39;49;00m[33moriginal[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Create some edited versions[39;49;00m[90m[39;49;00m
+        [96mself[39;49;00m.versions_db.create_version([90m[39;49;00m
+            original_path=original_path,[90m[39;49;00m
+            version_path=[33m"[39;49;00m[33m/path/to/edits/edit1.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            version_type=[33m"[39;49;00m[33medited[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            version_name=[33m"[39;49;00m[33mEdit 1[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+    [90m[39;49;00m
+        [96mself[39;49;00m.versions_db.create_version([90m[39;49;00m
+            original_path=original_path,[90m[39;49;00m
+            version_path=[33m"[39;49;00m[33m/path/to/edits/edit2.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            version_type=[33m"[39;49;00m[33medited[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+            version_name=[33m"[39;49;00m[33mEdit 2[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+        )[90m[39;49;00m
+    [90m[39;49;00m
+        [90m# Get the complete stack[39;49;00m[90m[39;49;00m
+        stack = [96mself[39;49;00m.versions_db.get_version_stack(original_path)[90m[39;49;00m
+    [90m[39;49;00m
+>       [94massert[39;49;00m [96mlen[39;49;00m(stack) == [94m3[39;49;00m[90m[39;49;00m
+               ^^^^^^^^^^[90m[39;49;00m
+[1m[31mE       TypeError: object of type 'VersionStack' has no len()[0m
+
+[1m[31mtests/test_new_features.py[0m:169: TypeError
+[31m[1m____________________________________ test_rate_limit_triggers ____________________________________[0m
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x3881c14d0>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_rate_limit_triggers[39;49;00m(monkeypatch):[90m[39;49;00m
+        monkeypatch.setattr(settings, [33m"[39;49;00m[33mRATE_LIMIT_ENABLED[39;49;00m[33m"[39;49;00m, [94mTrue[39;49;00m)[90m[39;49;00m
+        monkeypatch.setattr(settings, [33m"[39;49;00m[33mRATE_LIMIT_REQS_PER_MIN[39;49;00m[33m"[39;49;00m, [94m2[39;49;00m)[90m[39;49;00m
+    [90m[39;49;00m
+        [94mwith[39;49;00m tempfile.TemporaryDirectory() [94mas[39;49;00m td:[90m[39;49;00m
+            media_dir = Path(td)[90m[39;49;00m
+            monkeypatch.setattr(settings, [33m"[39;49;00m[33mMEDIA_DIR[39;49;00m[33m"[39;49;00m, media_dir)[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Create a small JPEG file[39;49;00m[90m[39;49;00m
+            [94mfrom[39;49;00m[90m [39;49;00m[04m[96mPIL[39;49;00m[90m [39;49;00m[94mimport[39;49;00m Image[90m[39;49;00m
+            img_path = media_dir / [33m"[39;49;00m[33msample.jpg[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            Image.new([33m"[39;49;00m[33mRGB[39;49;00m[33m"[39;49;00m, ([94m32[39;49;00m, [94m32[39;49;00m), color=([94m255[39;49;00m, [94m0[39;49;00m, [94m0[39;49;00m)).save(img_path)[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Issue token via issuer key to allow thumbnail access[39;49;00m[90m[39;49;00m
+            monkeypatch.setattr(settings, [33m"[39;49;00m[33mSIGNED_URL_SECRET[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33mtest_secret[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            monkeypatch.setattr(settings, [33m"[39;49;00m[33mIMAGE_TOKEN_ISSUER_KEY[39;49;00m[33m"[39;49;00m, [33m"[39;49;00m[33missuer-key[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            res = client.post([33m"[39;49;00m[33m/image/token[39;49;00m[33m"[39;49;00m, headers={[33m"[39;49;00m[33mx-api-key[39;49;00m[33m"[39;49;00m: [33m"[39;49;00m[33missuer-key[39;49;00m[33m"[39;49;00m}, json={[33m"[39;49;00m[33mpath[39;49;00m[33m"[39;49;00m: [96mstr[39;49;00m(img_path), [33m"[39;49;00m[33mttl[39;49;00m[33m"[39;49;00m: [94m60[39;49;00m})[90m[39;49;00m
+            token = res.json().get([33m"[39;49;00m[33mtoken[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# First request OK[39;49;00m[90m[39;49;00m
+            r1 = client.get([33mf[39;49;00m[33m"[39;49;00m[33m/image/thumbnail?token=[39;49;00m[33m{[39;49;00mtoken[33m}[39;49;00m[33m&size=64[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94massert[39;49;00m r1.status_code == [94m200[39;49;00m[90m[39;49;00m
+            [90m# Second request OK[39;49;00m[90m[39;49;00m
+            r2 = client.get([33mf[39;49;00m[33m"[39;49;00m[33m/image/thumbnail?token=[39;49;00m[33m{[39;49;00mtoken[33m}[39;49;00m[33m&size=64[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+            [94massert[39;49;00m r2.status_code == [94m200[39;49;00m[90m[39;49;00m
+            [90m# Third request should be rate-limited[39;49;00m[90m[39;49;00m
+            r3 = client.get([33mf[39;49;00m[33m"[39;49;00m[33m/image/thumbnail?token=[39;49;00m[33m{[39;49;00mtoken[33m}[39;49;00m[33m&size=64[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+>           [94massert[39;49;00m r3.status_code == [94m429[39;49;00m[90m[39;49;00m
+[1m[31mE           assert 200 == 429[0m
+[1m[31mE            +  where 200 = <Response [200 OK]>.status_code[0m
+
+[1m[31mtests/test_rate_limit.py[0m:37: AssertionError
+[31m[1m___________________________ test_search_with_source_filter_returns_ok ____________________________[0m
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x16fc1f750>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_search_with_source_filter_returns_ok[39;49;00m(monkeypatch):[90m[39;49;00m
+        [90m# Basic smoke test to ensure source_filter parameter is accepted[39;49;00m[90m[39;49;00m
+>       res = client.get([33m'[39;49;00m[33m/search[39;49;00m[33m'[39;49;00m, params={[33m'[39;49;00m[33mquery[39;49;00m[33m'[39;49;00m: [33m'[39;49;00m[33m'[39;49;00m, [33m'[39;49;00m[33mmode[39;49;00m[33m'[39;49;00m: [33m'[39;49;00m[33mmetadata[39;49;00m[33m'[39;49;00m, [33m'[39;49;00m[33msource_filter[39;49;00m[33m'[39;49;00m: [33m'[39;49;00m[33mcloud[39;49;00m[33m'[39;49;00m})[90m[39;49;00m
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mtests/test_search_source_filter.py[0m:10:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:473: in get
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().get([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1053: in get
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:445: in request
+    [0m[94mreturn[39;49;00m [96msuper[39;49;00m().request([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:825: in request
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.send(request, auth=auth, follow_redirects=follow_redirects)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:914: in send
+    [0mresponse = [96mself[39;49;00m._send_handling_auth([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:942: in _send_handling_auth
+    [0mresponse = [96mself[39;49;00m._send_handling_redirects([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:979: in _send_handling_redirects
+    [0mresponse = [96mself[39;49;00m._send_single_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/httpx/_client.py[0m:1014: in _send_single_request
+    [0mresponse = transport.handle_request(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:348: in handle_request
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/testclient.py[0m:345: in handle_request
+    [0mportal.call([96mself[39;49;00m.app, scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:326: in call
+    [0m[94mreturn[39;49;00m cast(T_Retval, [96mself[39;49;00m.start_task_soon(func, *args).result())[90m[39;49;00m
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:456: in result
+    [0m[94mreturn[39;49;00m [96mself[39;49;00m.__get_result()[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/concurrent/futures/_base.py[0m:401: in __get_result
+    [0m[94mraise[39;49;00m [96mself[39;49;00m._exception[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/from_thread.py[0m:257: in _call_func
+    [0mretval = [94mawait[39;49;00m retval_or_awaitable[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/applications.py[0m:1139: in __call__
+    [0m[94mawait[39;49;00m [96msuper[39;49;00m().[92m__call__[39;49;00m(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/applications.py[0m:107: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:186: in __call__
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/errors.py[0m:164: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, _send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:191: in __call__
+    [0m[94mwith[39;49;00m recv_stream, send_stream, collapse_excgroups():[90m[39;49;00m
+[1m[31m../../.local/share/uv/python/cpython-3.11.9-macos-aarch64-none/lib/python3.11/contextlib.py[0m:158: in __exit__
+    [0m[96mself[39;49;00m.gen.throw(typ, value, traceback)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_utils.py[0m:85: in collapse_excgroups
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:193: in __call__
+    [0mresponse = [94mawait[39;49;00m [96mself[39;49;00m.dispatch_func(request, call_next)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mserver/main.py[0m:274: in _ensure_cors_header
+    [0mresponse = [94mawait[39;49;00m call_next(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:168: in call_next
+    [0m[94mraise[39;49;00m app_exc [94mfrom[39;49;00m[90m [39;49;00m[04m[96mapp_exc[39;49;00m[04m[96m.[39;49;00m[04m[96m__cause__[39;49;00m [95mor[39;49;00m app_exc.__context__[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/base.py[0m:144: in coro
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive_or_disconnect, send_no_error)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/cors.py[0m:85: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/middleware/exceptions.py[0m:63: in __call__
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions([96mself[39;49;00m.app, conn)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/middleware/asyncexitstack.py[0m:18: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:716: in __call__
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.middleware_stack(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:736: in app
+    [0m[94mawait[39;49;00m route.handle(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/routing.py[0m:290: in handle
+    [0m[94mawait[39;49;00m [96mself[39;49;00m.app(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:120: in app
+    [0m[94mawait[39;49;00m wrap_app_handling_exceptions(app, request)(scope, receive, send)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:53: in wrapped_app
+    [0m[94mraise[39;49;00m exc[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/_exception_handler.py[0m:42: in wrapped_app
+    [0m[94mawait[39;49;00m app(scope, receive, sender)[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:106: in app
+    [0mresponse = [94mawait[39;49;00m f(request)[90m[39;49;00m
+               ^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/routing.py[0m:420: in app
+    [0msolved_result = [94mawait[39;49;00m solve_dependencies([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/fastapi/dependencies/utils.py[0m:676: in solve_dependencies
+    [0msolved = [94mawait[39;49;00m run_in_threadpool(call, **solved_result.values)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/starlette/concurrency.py[0m:32: in run_in_threadpool
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m anyio.to_thread.run_sync(func)[90m[39;49;00m
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/to_thread.py[0m:61: in run_sync
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m get_async_backend().run_sync_in_worker_thread([90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:2525: in run_sync_in_worker_thread
+    [0m[94mreturn[39;49;00m [94mawait[39;49;00m future[90m[39;49;00m
+           ^^^^^^^^^^^^[90m[39;49;00m
+[1m[31m.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py[0m:986: in run
+    [0mresult = context.run(func, *args)[90m[39;49;00m
+             ^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+request = <starlette.requests.Request object at 0x3881c3b10>
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mget_state[39;49;00m(request: Request) -> AppState:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""[39;49;00m
+    [33m    Get application state from request.[39;49;00m
+    [33m[39;49;00m
+    [33m    Use with: state: AppState = Depends(get_state)[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        st = [96mgetattr[39;49;00m(request.app.state, [33m"[39;49;00m[33mps[39;49;00m[33m"[39;49;00m, [94mNone[39;49;00m)[90m[39;49;00m
+        [94mif[39;49;00m st [95mis[39;49;00m [94mNone[39;49;00m:[90m[39;49;00m
+>           [94mraise[39;49;00m [96mRuntimeError[39;49;00m([90m[39;49;00m
+                [33m"[39;49;00m[33mAppState not initialized. Did lifespan run? [39;49;00m[33m"[39;49;00m[90m[39;49;00m
+                [33m"[39;49;00m[33mCheck that app.state.ps was set during startup.[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+            )[90m[39;49;00m
+[1m[31mE           RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.[0m
+
+[1m[31mserver/api/deps.py[0m:36: RuntimeError
+[33m======================================== warnings summary ========================================[0m
+server/validation.py:373
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:373: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('query')
+
+server/validation.py:380
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:380: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('limit')
+
+server/validation.py:387
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:387: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('offset')
+
+server/validation.py:399
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:399: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('path')
+
+server/validation.py:412
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:412: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('date_from', 'date_to')
+
+test_video_analysis.py::test_video_analyzer_database
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_video_analyzer_database returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_video_analysis_imports
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_video_analysis_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_api_endpoints
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_api_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_ui_component
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_ui_component returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================================== slowest 25 durations ======================================
+12.48s call     test_people_endpoints.py::test_people_endpoints
+5.69s call     tests/test_embedding.py::test_embeddings
+0.18s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations
+0.11s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_duplicate_detection
+0.11s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_api_endpoints_structure
+0.10s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline
+0.10s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_memory_usage
+0.08s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_error_handling
+0.05s call     tests/test_features_integration.py::TestFeatureIntegrations::test_performance_with_combined_features
+0.05s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_performance_benchmarks
+0.04s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_database_schema_extensions
+0.03s call     tests/test_integration.py::TestFeatureIntegration::test_location_and_tag_integration
+0.03s call     tests/test_integration.py::TestFeatureIntegration::test_multi_tag_filter_with_notes
+0.03s call     tests/test_integration.py::TestFeatureIntegration::test_search_with_multiple_feature_filters
+0.03s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_face_clustering
+0.03s call     tests/test_integration.py::TestFeatureIntegration::test_version_stacks_with_people_tags
+0.03s call     tests/test_integration.py::TestFeatureIntegration::test_notes_and_version_integration
+0.02s call     tests/test_features_unit.py::TestMultiTagFilterDB::test_apply_tag_filter
+0.02s call     tests/test_integration.py::TestFeatureIntegration::test_collaborative_spaces_with_privacy_controls
+0.02s call     tests/test_features_integration.py::TestFeatureIntegrations::test_location_clustering_with_photo_tags
+0.02s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency
+0.02s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_ocr_search
+0.02s call     server/tests/test_face_detection_integration.py::test_batch_face_detection
+0.02s call     test_video_analysis.py::test_video_analyzer_database
+0.02s call     tests/test_features_integration.py::TestFeatureIntegrations::test_people_integration_with_collaborative_spaces
+[36m[1m==================================== short test summary info =====================================[0m
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_notes_integration_with_search[0m - assert 404 == 200
+ +  where 404 = <Response [404 Not Found]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_location_clustering_with_photo_tags[0m - RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_version_stack_integration_with_notes[0m - assert 404 == 200
+ +  where 404 = <Response [404 Not Found]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_people_integration_with_collaborative_spaces[0m - assert 404 == 200
+ +  where 404 = <Response [404 Not Found]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_multi_tag_filtering_with_location[0m - RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_encryption_integration_with_sharing[0m - assert 400 in [200, 403]
+ +  where 400 = <Response [400 Bad Request]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_bulk_actions_with_various_photo_states[0m - assert 405 == 200
+ +  where 405 = <Response [405 Method Not Allowed]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_smart_collections_with_filtered_photos[0m - assert 404 == 200
+ +  where 404 = <Response [404 Not Found]>.status_code
+[31mFAILED[0m tests/test_features_integration.py::[1mTestFeatureIntegrations::test_performance_with_combined_features[0m - RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.
+[31mFAILED[0m tests/test_features_integration.py::[1mTestAPIEndpointIntegration::test_tag_filtering_endpoints_integration[0m - assert 404 == 200
+ +  where 404 = <Response [404 Not Found]>.status_code
+[31mFAILED[0m tests/test_new_features.py::[1mTestPhotoVersionsDB::test_create_and_get_version[0m - AssertionError: assert 2 == 1
+ +  where 2 = len([{'id': '2b316ccf-bc17-4e8a-9bb2-0a46ab033698', 'original_path': '/path/to/original.jpg', 'version_path': '/path/to/original.jpg', 'version_type': 'original', 'version_name': 'Original', 'version_description': None, 'edit_instructions': {}, 'parent_version_id': None, 'created_at': '2025-12-23 09:49:07', 'updated_at': '2025-12-23 09:49:07'}, {'id': 'b8d89ec4-3c17-4eb5-92ec-45709ff9ee13', 'original_path': '/path/to/original.jpg', 'version_path': '/path/to/edited.jpg', 'version_type': 'edited', 'version_name': 'Brighter Colors', 'version_description': 'Increased brightness and saturation', 'edit_instructions': {}, 'parent_version_id': None, 'created_at': '2025-12-23 09:49:07', 'updated_at': '2025-12-23 09:49:07'}])
+[31mFAILED[0m tests/test_new_features.py::[1mTestPhotoVersionsDB::test_version_stack[0m - TypeError: object of type 'VersionStack' has no len()
+[31mFAILED[0m tests/test_rate_limit.py::[1mtest_rate_limit_triggers[0m - assert 200 == 429
+ +  where 200 = <Response [200 OK]>.status_code
+[31mFAILED[0m tests/test_search_source_filter.py::[1mtest_search_with_source_filter_returns_ok[0m - RuntimeError: AppState not initialized. Did lifespan run? Check that app.state.ps was set during startup.
+[31m========================== [31m[1m14 failed[0m, [32m119 passed[0m, [33m9 warnings[0m[31m in 27.64s[0m[31m ===========================[0m
+
+== pytest exit code: 1 ==
+== elapsed: 28.81s ==

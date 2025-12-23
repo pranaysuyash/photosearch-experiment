@@ -2,8 +2,9 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 
-from fastapi import APIRouter, Body, HTTPException, Request, Depends
+from fastapi import APIRouter, Body, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 
 from server.auth import AuthError, verify_jwt
@@ -12,12 +13,15 @@ from server.security_utils import hash_for_logs
 from server.signed_urls import TokenError, issue_token, verify_token
 from server.utils.http import _make_cache_headers
 from server.utils.images import _negotiate_image_format
-from server.api.deps import get_state
-from server.core.state import AppState
-
 
 router = APIRouter()
 logger = logging.getLogger("photosearch")
+
+
+# Simple in-memory rate limiting counters (per-IP sliding window)
+_rate_lock = Lock()
+_rate_counters: dict[str, list[float]] = {}
+_rate_last_conf: tuple[bool, int] | None = None
 
 
 @router.get("/image/thumbnail")
@@ -61,7 +65,9 @@ async def get_thumbnail(
         if settings.SIGNED_URL_ENABLED and settings.SANDBOX_STRICT:
             # Allow loopback clients to use path param for local desktop flows
             if client_host not in ("127.0.0.1", "::1", "localhost"):
-                raise HTTPException(status_code=401, detail="Signed URL required for this deployment")
+                raise HTTPException(
+                    status_code=401, detail="Signed URL required for this deployment"
+                )
 
         requested_path_str = path
 
@@ -84,7 +90,10 @@ async def get_thumbnail(
                 f"Access denied to image: {hash_for_logs(requested_path_str)} "
                 f"ip={request.client.host if request.client else 'unknown'}"
             )
-            raise HTTPException(status_code=403, detail="Access denied: File outside allowed directories")
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied: File outside allowed directories",
+            )
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -101,13 +110,14 @@ async def get_thumbnail(
     cache_headers = _make_cache_headers(stat_result, max_age=86400)
 
     # Conditional requests (ETag / If-Modified-Since)
+    cors_origins = {str(origin) for origin in settings.CORS_ORIGINS}
     inm = request.headers.get("if-none-match")
     ims = request.headers.get("if-modified-since")
     if inm and inm == cache_headers.get("ETag"):
         # Add CORS headers to 304 responses
         response_headers = dict(cache_headers)
         origin = request.headers.get("origin")
-        if origin and origin in state.cors_origins:
+        if origin and origin in cors_origins:
             response_headers["Access-Control-Allow-Origin"] = origin
             response_headers["Access-Control-Allow-Credentials"] = "true"
         return Response(status_code=304, headers=response_headers)
@@ -118,7 +128,7 @@ async def get_thumbnail(
                 # Add CORS headers to 304 responses
                 response_headers = dict(cache_headers)
                 origin = request.headers.get("origin")
-                if origin and origin in state.cors_origins:
+                if origin and origin in cors_origins:
                     response_headers["Access-Control-Allow-Origin"] = origin
                     response_headers["Access-Control-Allow-Credentials"] = "true"
                 return Response(status_code=304, headers=response_headers)
@@ -166,19 +176,25 @@ async def get_thumbnail(
             # Rate limiting: check per-IP quota
             try:
                 if settings.RATE_LIMIT_ENABLED:
-                    conf = (bool(settings.RATE_LIMIT_ENABLED), int(settings.RATE_LIMIT_REQS_PER_MIN))
+                    conf = (
+                        bool(settings.RATE_LIMIT_ENABLED),
+                        int(settings.RATE_LIMIT_REQS_PER_MIN),
+                    )
                     client_ip = request.client.host if request.client else "unknown"
                     now = __import__("time").time()
-                    with state._rate_lock:
-                        if state._rate_last_conf != conf:
-                            state._rate_counters.clear()
-                            state._rate_last_conf = conf
-                        lst = state._rate_counters.get(client_ip, [])
+                    global _rate_last_conf
+                    with _rate_lock:
+                        if _rate_last_conf != conf:
+                            _rate_counters.clear()
+                            _rate_last_conf = conf
+                        lst = _rate_counters.get(client_ip, [])
                         lst = [t for t in lst if now - t < 60]
                         if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
-                            raise HTTPException(status_code=429, detail="Rate limit exceeded")
+                            raise HTTPException(
+                                status_code=429, detail="Rate limit exceeded"
+                            )
                         lst.append(now)
-                        state._rate_counters[client_ip] = lst
+                        _rate_counters[client_ip] = lst
             except HTTPException:
                 raise
             except Exception:
@@ -197,7 +213,7 @@ async def get_thumbnail(
 
             # Explicit CORS headers for cross-origin image requests
             origin = request.headers.get("origin")
-            if origin and origin in state.cors_origins:
+            if origin and origin in cors_origins:
                 headers["Access-Control-Allow-Origin"] = origin
                 headers["Access-Control-Allow-Credentials"] = "true"
 
@@ -220,7 +236,7 @@ async def get_thumbnail(
 
     # Add explicit CORS headers for cross-origin image requests
     origin = request.headers.get("origin")
-    if origin and origin in state.cors_origins:
+    if origin and origin in cors_origins:
         fallback_headers["Access-Control-Allow-Origin"] = origin
         fallback_headers["Access-Control-Allow-Credentials"] = "true"
 
@@ -245,7 +261,9 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
     if settings.JWT_AUTH_ENABLED:
         auth_header = None
         if request:
-            auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
+            auth_header = request.headers.get("authorization") or request.headers.get(
+                "Authorization"
+            )
         if not auth_header:
             raise HTTPException(status_code=401, detail="Authorization required")
         try:
@@ -266,9 +284,13 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
         if request:
             api_key = request.headers.get("x-api-key")
         if api_key != settings.IMAGE_TOKEN_ISSUER_KEY:
-            raise HTTPException(status_code=401, detail="Missing or invalid issuer API key")
+            raise HTTPException(
+                status_code=401, detail="Missing or invalid issuer API key"
+            )
     else:
-        logger.warning("No token issuer configured; token issuance is unprotected (dev only)")
+        logger.warning(
+            "No token issuer configured; token issuance is unprotected (dev only)"
+        )
 
     # Basic sandbox check - ensure path is inside allowed directories
     try:
@@ -285,7 +307,9 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
         )
 
         if not is_allowed:
-            raise HTTPException(status_code=403, detail="Path is outside allowed directories")
+            raise HTTPException(
+                status_code=403, detail="Path is outside allowed directories"
+            )
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 

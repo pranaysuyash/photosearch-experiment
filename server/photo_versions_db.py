@@ -177,18 +177,6 @@ class PhotoVersionsDB:
 
         try:
             with sqlite3.connect(self.db_path) as conn:
-                # Ensure the original photo exists as a first-class row.
-                # Tests and some callers expect the stack to include the original.
-                if version_path != original_path:
-                    conn.execute(
-                        """
-                        INSERT OR IGNORE INTO photo_versions
-                        (id, original_path, version_path, version_type, version_name, version_description, edit_instructions, parent_version_id)
-                        VALUES (?, ?, ?, 'original', 'Original', NULL, NULL, NULL)
-                        """,
-                        (str(uuid.uuid4()), original_path, original_path),
-                    )
-
                 # Create the version record
                 conn.execute(
                     """
@@ -273,10 +261,14 @@ class PhotoVersionsDB:
         except Exception:
             return []
 
-    def get_version_stack(self, photo_path: str) -> Optional[VersionStack]:
-        """Return the full version stack for a photo path (original or version)."""
+    def get_version_stack(self, photo_path: str) -> List[Dict[str, Any]]:
+        """Return the full version stack for a photo path (original or version).
 
-        return self.get_version_stack_for_photo(photo_path)
+        Note: This is a legacy helper used by older code/tests and returns a list
+        of dicts (not a VersionStack object).
+        """
+
+        return self.get_version_stack_list(photo_path)
 
     def get_version_stack_for_original(
         self, original_path: str

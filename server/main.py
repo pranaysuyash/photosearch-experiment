@@ -79,6 +79,7 @@ from server.api.routers.indexing import router as indexing_router
 from server.api.routers.sources import router as sources_router
 from server.api.routers.search import router as search_router
 from server.api.routers.trash import router as trash_router
+from server.api.routers.legacy_compat import router as legacy_compat_router
 
 
 if TYPE_CHECKING:
@@ -333,6 +334,7 @@ app.include_router(images_router)
 app.include_router(semantic_search_router)
 app.include_router(search_router)
 app.include_router(faces_legacy_router)
+app.include_router(legacy_compat_router)
 app.include_router(favorites_router)
 app.include_router(bulk_router)
 app.include_router(indexing_router)
