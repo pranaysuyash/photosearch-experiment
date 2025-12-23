@@ -12,7 +12,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeft, User, Camera, RefreshCw, Check, X,
     CheckCircle2, XCircle, AlertCircle, Move, UserPlus,
-    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors
+    Loader2, Undo2, AlertTriangle, ChevronDown, ChevronUp, Scissors, ToggleLeft, ToggleRight
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -67,6 +67,10 @@ export default function PersonDetail() {
     const [coherence, setCoherence] = useState<CoherenceData | null>(null);
     const [showMixedDetails, setShowMixedDetails] = useState(false);
 
+    // Phase 6: Privacy controls state
+    const [indexingEnabled, setIndexingEnabled] = useState(true);
+    const [indexingLoading, setIndexingLoading] = useState(false);
+
     const fetchPhotos = useCallback(async () => {
         if (!clusterId) return;
 
@@ -112,6 +116,29 @@ export default function PersonDetail() {
                 .catch(console.error);
         }
     }, [clusterId]);
+
+    // Fetch indexing status for privacy controls
+    useEffect(() => {
+        if (clusterId) {
+            api.getPersonIndexingStatus(clusterId)
+                .then((data) => setIndexingEnabled(data.enabled))
+                .catch(console.error);
+        }
+    }, [clusterId]);
+
+    // Toggle indexing enabled/disabled
+    const handleToggleIndexing = async () => {
+        if (!clusterId) return;
+        setIndexingLoading(true);
+        try {
+            await api.setPersonIndexingEnabled(clusterId, !indexingEnabled);
+            setIndexingEnabled(!indexingEnabled);
+        } catch (err) {
+            console.error('Failed to toggle indexing:', err);
+        } finally {
+            setIndexingLoading(false);
+        }
+    };
 
     // Clear success message after delay
     useEffect(() => {
@@ -283,6 +310,28 @@ export default function PersonDetail() {
 
                         {/* Action buttons */}
                         <div className="flex items-center gap-2">
+                            {/* Indexing toggle - Phase 6 */}
+                            <button
+                                onClick={handleToggleIndexing}
+                                disabled={indexingLoading}
+                                className={`btn-glass px-3 py-2 flex items-center gap-1 ${indexingEnabled
+                                        ? 'btn-glass--muted'
+                                        : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                                    }`}
+                                title={indexingEnabled ? 'Auto-assignment enabled' : 'Auto-assignment disabled'}
+                            >
+                                {indexingLoading ? (
+                                    <Loader2 className="animate-spin" size={16} />
+                                ) : indexingEnabled ? (
+                                    <ToggleRight size={16} className="text-green-400" />
+                                ) : (
+                                    <ToggleLeft size={16} />
+                                )}
+                                <span className="hidden sm:inline">
+                                    {indexingEnabled ? 'Auto-assign ON' : 'Auto-assign OFF'}
+                                </span>
+                            </button>
+
                             {/* Undo button */}
                             {canUndo && (
                                 <button

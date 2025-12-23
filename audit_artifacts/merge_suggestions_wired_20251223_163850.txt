@@ -1,0 +1,6 @@
+ui/src/pages/People.tsx:27:import MergeSuggestions from '../components/people/MergeSuggestions';
+ui/src/pages/People.tsx:384:          <MergeSuggestions />
+ui/src/components/people/MergeSuggestions.tsx:2: * MergeSuggestions Component - Phase 5.4
+ui/src/components/people/MergeSuggestions.tsx:24:interface MergeSuggestionsProps {
+ui/src/components/people/MergeSuggestions.tsx:28:export default function MergeSuggestions({ onMerge }: MergeSuggestionsProps) {
+ui/src/components/people/MergeSuggestions.tsx:38:            const data = await api.getMergeSuggestions(0.62, 10);

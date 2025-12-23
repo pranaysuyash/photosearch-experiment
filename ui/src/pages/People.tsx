@@ -17,11 +17,14 @@ import {
   Image as ImageIcon,
   Trash2,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Pause,
+  Play
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
 import ReviewQueue from '../components/people/ReviewQueue';
+import MergeSuggestions from '../components/people/MergeSuggestions';
 
 interface FaceCluster {
   id: string;
@@ -55,9 +58,13 @@ export function People() {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState<{ progress: number; message: string } | null>(null);
+
+  // Phase 6: Privacy controls
+  const [isIndexingPaused, setIsIndexingPaused] = useState(false);
+  const [pauseLoading, setPauseLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'people' | 'review'>('people');
+  const [activeTab, setActiveTab] = useState<'people' | 'review' | 'merge'>('people');
   const [reviewCount, setReviewCount] = useState(0);
 
   // Modal states
@@ -71,10 +78,37 @@ export function People() {
   const [renameLoading, setRenameLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  const fetchIndexingStatus = async () => {
+    try {
+      const status = await api.getGlobalIndexingStatus();
+      setIsIndexingPaused(status.paused);
+    } catch (err) {
+      console.error('Failed to fetch indexing status:', err);
+    }
+  };
+
+  const handleTogglePause = async () => {
+    setPauseLoading(true);
+    try {
+      if (isIndexingPaused) {
+        await api.resumeGlobalIndexing();
+        setIsIndexingPaused(false);
+      } else {
+        await api.pauseGlobalIndexing();
+        setIsIndexingPaused(true);
+      }
+    } catch (err) {
+      console.error('Failed to toggle indexing pause:', err);
+    } finally {
+      setPauseLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchClusters();
     fetchStats();
     fetchReviewCount();
+    fetchIndexingStatus();
   }, []);
 
   const fetchReviewCount = useCallback(async () => {
@@ -249,6 +283,28 @@ export function People() {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Global Pause Button - Phase 6 */}
+              <button
+                onClick={handleTogglePause}
+                disabled={pauseLoading}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
+                    ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
+                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  }`}
+                title={isIndexingPaused ? 'Resume Face Indexing' : 'Pause Face Indexing'}
+              >
+                {pauseLoading ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : isIndexingPaused ? (
+                  <Play size={14} /> // Show Play when paused (to resume)
+                ) : (
+                  <Pause size={14} /> // Show Pause when active (to pause)
+                )}
+                <span className="hidden sm:inline">
+                  {isIndexingPaused ? 'Resume Indexing' : 'Pause Indexing'}
+                </span>
+              </button>
+
               <button
                 onClick={handleScan}
                 disabled={scanning}
@@ -300,6 +356,17 @@ export function People() {
                 </span>
               )}
             </button>
+
+            <button
+              onClick={() => setActiveTab('merge')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Users size={16} />
+              Merge Suggestions
+            </button>
           </div>
         </div>
       </div>
@@ -308,6 +375,13 @@ export function People() {
       {activeTab === 'review' && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <ReviewQueue onCountChange={setReviewCount} />
+        </div>
+      )}
+
+      {/* Merge Suggestions Tab Content */}
+      {activeTab === 'merge' && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <MergeSuggestions />
         </div>
       )}
 

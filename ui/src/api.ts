@@ -1994,6 +1994,41 @@ export const api = {
     return res.data;
   },
 
+  // Phase 6: Privacy Controls
+
+  // Get indexing status for a specific person cluster
+  getPersonIndexingStatus: async (clusterId: string) => {
+    const res = await apiClient.get(`/api/faces/clusters/${clusterId}/indexing`);
+    return res.data;
+  },
+
+  // Enable or disable auto-assignment to a specific person
+  setPersonIndexingEnabled: async (clusterId: string, enabled: boolean, reason?: string) => {
+    const res = await apiClient.post(`/api/faces/clusters/${clusterId}/indexing`, {
+      enabled,
+      reason,
+    });
+    return res.data;
+  },
+
+  // Get global face indexing pause status
+  getGlobalIndexingStatus: async () => {
+    const res = await apiClient.get('/api/faces/indexing/status');
+    return res.data;
+  },
+
+  // Pause global face indexing
+  pauseGlobalIndexing: async () => {
+    const res = await apiClient.post('/api/faces/indexing/pause');
+    return res.data;
+  },
+
+  // Resume global face indexing
+  resumeGlobalIndexing: async () => {
+    const res = await apiClient.post('/api/faces/indexing/resume');
+    return res.data;
+  },
+
   // Phase 3: Speed & Scale APIs
 
 

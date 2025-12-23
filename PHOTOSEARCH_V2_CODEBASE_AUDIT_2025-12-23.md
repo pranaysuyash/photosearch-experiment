@@ -24,6 +24,8 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/frontend_endpoints_called_count.txt` — frontend endpoint references count.
 - `audit_artifacts/ui-build.txt` — production build output (chunk sizes + warnings).
 - `audit_artifacts/bundle-report.html` — **asset-size bundle report** (fallback; sourcemap analyzers failed).
+- `audit_artifacts/merge_suggestions_evidence_20251223_161343.txt` — evidence that Merge Suggestions exists in code but is not imported by any route/page.
+- `audit_artifacts/merge_suggestions_wired_20251223_163850.txt` — evidence that Merge Suggestions is now wired into the People page (reachable via UI).
 
 ---
 
@@ -48,6 +50,8 @@ Evidence:
 ### The “Hidden Genius” list (highest ROI)
 
 There are **11 unused `/api*` endpoints** that represent **user-facing power features** (face workflows, cache management, advanced scan/analytics) that exist server-side but are not surfaced in the UI.
+
+Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
 Evidence: `audit_artifacts/backend_endpoints_unused_api_only.txt`
 
@@ -101,6 +105,51 @@ Rollback plan:
 Effort sizing:
 
 - **M (2–4 days)** for UI integration + basic UX + error handling; **S** if minimal UI only.
+
+---
+
+#### Finding P0.1b — Merge Suggestions exists end-to-end, but appears not reachable from any UI route/page
+
+What exists today:
+
+- Backend endpoints:
+  - `GET /api/faces/clusters/merge-suggestions`: `server/api/routers/face_recognition.py:1694`
+  - `POST /api/faces/clusters/merge-suggestions/dismiss`: `server/api/routers/face_recognition.py:1724`
+- Backend DB logic:
+  - `server/face_clustering_db.py:1862` (`get_merge_suggestions`)
+  - `server/face_clustering_db.py:2002` (`dismiss_merge_suggestion`)
+- Frontend API client methods:
+  - `ui/src/api.ts:1981–1992` (`getMergeSuggestions`, `dismissMergeSuggestion`)
+- UI component implementation:
+  - `ui/src/components/people/MergeSuggestions.tsx:1–90` (component + fetch/dismiss/merge flows)
+
+Update:
+
+- `MergeSuggestions` is now wired into the People page as a tab, making it reachable from the UI.
+  - UI wiring: `ui/src/pages/People.tsx:27` (import), `ui/src/pages/People.tsx:384` (render)
+  - Evidence artifact: `audit_artifacts/merge_suggestions_wired_20251223_163850.txt`
+
+Impact:
+
+- This is a high-ROI “people hygiene” feature (merge duplicates) that directly improves People quality and reduces user frustration from duplicate clusters.
+
+Smallest viable fix (UI surfacing plan):
+
+1. Add a People → “Merge Suggestions” tab/section that renders `MergeSuggestions`.
+2. Link to it from the primary People/Clusters UI (e.g., a small badge “Potential duplicates”).
+
+Acceptance criteria:
+
+- A user can navigate to Merge Suggestions from the People UI without deep-linking.
+- The screen loads suggestions via `GET /api/faces/clusters/merge-suggestions` and supports Dismiss via the POST endpoint.
+
+Rollback plan:
+
+- UI-only rollback: remove the tab/entry point; keep endpoints and component available for later.
+
+Effort sizing:
+
+- **XS/S (1–6 hours)** depending on routing/nav wiring.
 
 ---
 
