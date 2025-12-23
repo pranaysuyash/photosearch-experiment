@@ -519,7 +519,7 @@ export const api = {
     // Parse "person:Name" from the query if person is not explicitly provided
     let parsedPerson = person || null;
     let cleanQuery = query;
-    
+
     if (!parsedPerson && query) {
       // Match patterns like "person:Name" or "person:Full Name" (quoted) or "person:Name with spaces"
       const personMatch = query.match(/\bperson:(?:"([^"]+)"|'([^']+)'|(\S+))/i);
@@ -529,7 +529,7 @@ export const api = {
         cleanQuery = query.replace(/\bperson:(?:"[^"]+"|'[^']+'|\S+)/i, '').trim();
       }
     }
-    
+
     const res = await apiClient.get('/search', {
       params: {
         query: cleanQuery,
@@ -1796,11 +1796,17 @@ export const api = {
     return res.data;
   },
 
-  findSimilarFaces: async (detectionId: string, threshold: number = 0.7) => {
+  // Find similar faces with extended options (Phase 4)
+  findSimilarFaces: async (
+    detectionId: string,
+    threshold: number = 0.5,
+    limit: number = 20,
+    includeSameCluster: boolean = false
+  ) => {
     const res = await apiClient.get(
       `/api/faces/${encodeURIComponent(detectionId)}/similar`,
       {
-        params: { threshold },
+        params: { threshold, limit, include_same_cluster: includeSameCluster },
       }
     );
     return res.data;
@@ -1847,7 +1853,217 @@ export const api = {
     return res.data;
   },
 
+  // Phase 1: Reversibility and Trust APIs
+
+  // Hide a cluster from the main gallery
+  hideCluster: async (clusterId: string) => {
+    const res = await apiClient.post(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/hide`
+    );
+    return res.data;
+  },
+
+  // Unhide a cluster
+  unhideCluster: async (clusterId: string) => {
+    const res = await apiClient.post(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/unhide`
+    );
+    return res.data;
+  },
+
+  // Get only visible (non-hidden) clusters
+  getVisibleClusters: async () => {
+    const res = await apiClient.get('/api/faces/clusters/visible');
+    return res.data;
+  },
+
+  // Get hidden clusters
+  getHiddenClusters: async () => {
+    const res = await apiClient.get('/api/faces/clusters/hidden');
+    return res.data;
+  },
+
+  // Confirm a face assignment (user verified)
+  confirmFace: async (faceId: string, clusterId: string) => {
+    const res = await apiClient.post(
+      `/api/faces/${encodeURIComponent(faceId)}/confirm`,
+      { cluster_id: clusterId }
+    );
+    return res.data;
+  },
+
+  // Reject a face from a cluster (not this person)
+  rejectFace: async (faceId: string, clusterId: string) => {
+    const res = await apiClient.post(
+      `/api/faces/${encodeURIComponent(faceId)}/reject`,
+      { cluster_id: clusterId }
+    );
+    return res.data;
+  },
+
+  // Split selected faces into a new person cluster
+  splitFaces: async (detectionIds: string[], label?: string) => {
+    const res = await apiClient.post('/api/faces/split', {
+      detection_ids: detectionIds,
+      label,
+    });
+    return res.data;
+  },
+
+  // Move a single face to a different cluster
+  moveFace: async (detectionId: string, toClusterId: string) => {
+    const res = await apiClient.post('/api/faces/move', {
+      detection_id: detectionId,
+      to_cluster_id: toClusterId,
+    });
+    return res.data;
+  },
+
+  // Merge clusters with full undo support
+  mergeClustersWithUndo: async (sourceClusterId: string, targetClusterId: string) => {
+    const res = await apiClient.post('/api/faces/merge', {
+      source_cluster_id: sourceClusterId,
+      target_cluster_id: targetClusterId,
+    });
+    return res.data;
+  },
+
+  // Undo the last person operation
+  undoLastOperation: async () => {
+    const res = await apiClient.post('/api/faces/undo');
+    return res.data;
+  },
+
+  // Get unassigned faces (unknown bucket)
+  getUnassignedFaces: async (limit: number = 100, offset: number = 0) => {
+    const res = await apiClient.get('/api/faces/unassigned', {
+      params: { limit, offset },
+    });
+    return res.data;
+  },
+
+  // Rename a cluster with undo support
+  renameCluster: async (clusterId: string, label: string) => {
+    const res = await apiClient.post(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/rename`,
+      { label }
+    );
+    return res.data;
+  },
+
+  // Recompute prototype embeddings for all clusters
+  recomputePrototypes: async () => {
+    const res = await apiClient.post('/api/faces/prototypes/recompute');
+    return res.data;
+  },
+
+  // Phase 2: Trust Signals APIs
+
+  // Get coherence analysis for a cluster (detect mixed clusters)
+  getClusterCoherence: async (clusterId: string) => {
+    const res = await apiClient.get(
+      `/api/faces/clusters/${encodeURIComponent(clusterId)}/coherence`
+    );
+    return res.data;
+  },
+
+  // Get all clusters suspected to contain multiple people
+  getMixedClusters: async (threshold: number = 0.5) => {
+    const res = await apiClient.get('/api/faces/mixed-clusters', {
+      params: { threshold },
+    });
+    return res.data;
+  },
+
+  // Get faces that need human review (borderline confidence)
+  getReviewQueue: async (
+    similarityMin: number = 0.50,
+    similarityMax: number = 0.55,
+    limit: number = 50
+  ) => {
+    const res = await apiClient.get('/api/faces/review-queue', {
+      params: {
+        similarity_min: similarityMin,
+        similarity_max: similarityMax,
+        limit,
+      },
+    });
+    return res.data;
+  },
+
+  // Phase 3: Speed & Scale APIs
+
+  // Assign a single face to the best matching cluster
+  assignFaceToCluster: async (
+    detectionId: string,
+    embedding: number[],
+    autoAssignMin: number = 0.55,
+    reviewMin: number = 0.50
+  ) => {
+    const res = await apiClient.post('/api/faces/assign', {
+      detection_id: detectionId,
+      embedding,
+      auto_assign_min: autoAssignMin,
+      review_min: reviewMin,
+    });
+    return res.data;
+  },
+
+  // Batch assign multiple faces to clusters
+  batchAssignFaces: async (
+    faces: Array<{ detection_id: string; embedding: number[] }>,
+    autoAssignMin: number = 0.55,
+    reviewMin: number = 0.50
+  ) => {
+    const res = await apiClient.post('/api/faces/batch-assign', {
+      faces,
+      auto_assign_min: autoAssignMin,
+      review_min: reviewMin,
+    });
+    return res.data;
+  },
+
+  // Get embedding index statistics
+  getEmbeddingIndexStats: async () => {
+    const res = await apiClient.get('/api/faces/index/stats');
+    return res.data;
+  },
+
+  // Phase 4: Search & Retrieval APIs
+
+  // Search photos by people IDs (co-occurrence)
+  searchPhotosByPeopleIds: async (
+    includePeople: string[],
+    excludePeople?: string[],
+    requireAll: boolean = true,
+    limit: number = 100,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.post('/api/photos/by-people', {
+      include_people: includePeople,
+      exclude_people: excludePeople,
+      require_all: requireAll,
+      limit,
+      offset,
+    });
+    return res.data;
+  },
+
+  // Search photos by people names (natural language-like)
+  searchPhotosByPeopleNames: async (
+    query: string,
+    mode: 'and' | 'or' = 'and',
+    limit: number = 100,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get('/api/photos/by-people-names', {
+      params: { query, mode, limit, offset },
+    });
+    return res.data;
+  },
+
   // Privacy Controls
+
   setPhotoPrivacy: async (
     photoPath: string,
     ownerId: string,

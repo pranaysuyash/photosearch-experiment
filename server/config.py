@@ -1,18 +1,18 @@
-import os
 from pathlib import Path
 from typing import List, Union
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import AnyHttpUrl, computed_field
+
 
 class Settings(BaseSettings):
     # App Info
     APP_NAME: str = "Living Museum API"
     ENV: str = "development"
     DEBUG: bool = True
-    
+
     # API Configuration
     API_V1_STR: str = "/api/v1"
-    
+
     # CORS
     # In production, this should be a list of allowed origins
     CORS_ORIGINS: List[Union[str, AnyHttpUrl]] = [
@@ -33,12 +33,18 @@ class Settings(BaseSettings):
     # Optional: local path to Ultralytics YOLO face weights (.pt) when using the "yolo" backend.
     # Kept optional so the server can start without heavyweight deps.
     FACE_YOLO_WEIGHTS: str | None = None
-    
+
+    # Path to face clustering database (SQLite)
+    FACE_CLUSTERS_DB_PATH: str = str(
+        Path(__file__).resolve().parent / "face_clusters.db"
+    )
+
     @computed_field
     def DEVICE(self) -> str:
         """Auto-detect most capable device available."""
         try:
             import torch
+
             if torch.backends.mps.is_available():
                 return "mps"
             elif torch.cuda.is_available():
@@ -54,14 +60,16 @@ class Settings(BaseSettings):
 
     # Media storage roots (defaults are inside project for dev)
     MEDIA_DIR: Path = Path(__file__).resolve().parent.parent / "media"
-    VECTOR_STORE_PATH: Path = Path(__file__).resolve().parent.parent / "data" / "vector_store"
-    
+    VECTOR_STORE_PATH: Path = (
+        Path(__file__).resolve().parent.parent / "data" / "vector_store"
+    )
+
     # JWT Auth for cloud deployments
     JWT_AUTH_ENABLED: bool = False
     JWT_SECRET: str | None = None
     JWT_ALGO: str = "HS256"
     JWT_ISSUER: str | None = None
-    
+
     # Allow admin unmasking via API when enabled (audited)
     ACCESS_LOG_UNMASK_ENABLED: bool = False
 
@@ -85,13 +93,12 @@ class Settings(BaseSettings):
     RATE_LIMIT_REQS_PER_MIN: int = 300  # Higher limit for development
 
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )
 
+
 settings = Settings()
+
 
 def validate_production_config():
     """Validate critical security settings for production deployment."""
@@ -119,6 +126,7 @@ def validate_production_config():
         if not settings.ACCESS_LOG_HASH_SALT:
             import secrets
             import warnings
+
             warnings.warn("ACCESS_LOG_HASH_SALT not set, using auto-generated value")
             settings.ACCESS_LOG_HASH_SALT = secrets.token_urlsafe(32)
 
@@ -129,10 +137,12 @@ def validate_production_config():
 
     return True
 
+
 # Validate configuration on import
 try:
     validate_production_config()
 except ValueError as e:
     import warnings
+
     warnings.warn(f"Configuration validation warning: {e}")
     # Don't fail startup for configuration issues in development
