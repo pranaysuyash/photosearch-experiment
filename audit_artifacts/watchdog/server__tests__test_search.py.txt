@@ -3,3 +3,10 @@ file: server/tests/test_search.py
 watchdog_seconds: 90
 python: /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
 
+[1m====================================== test session starts =======================================[0m
+platform darwin -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/photosearch_experiment
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0m

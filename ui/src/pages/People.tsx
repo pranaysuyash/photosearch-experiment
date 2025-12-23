@@ -31,6 +31,7 @@ interface FaceCluster {
   face_ids?: number[];  // IDs for face crop endpoint
   images: string[];
   created_at?: string;
+  is_mixed?: boolean;
 }
 
 interface FaceStats {
@@ -496,9 +497,19 @@ export function People() {
                     {/* Cluster Info */}
                     <div className="p-4">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-medium text-foreground truncate">
-                          {cluster.label || `Person ${cluster.id}`}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium text-foreground truncate">
+                            {cluster.label || `Person ${cluster.id}`}
+                          </h3>
+                          {cluster.is_mixed && (
+                            <span
+                              className="px-1.5 py-0.5 text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 rounded"
+                              title="This cluster may contain multiple people"
+                            >
+                              Mixed?
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Camera size={12} />
                           {cluster.face_count}

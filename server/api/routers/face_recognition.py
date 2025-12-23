@@ -46,6 +46,18 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
             cluster_details = face_clusterer.get_cluster_details(cluster["id"])
             if cluster_details.get("status") != "error":
                 faces = cluster_details.get("faces", [])
+                # Check if cluster is potentially mixed (face_count >= 3)
+                is_mixed = False
+                if cluster.get("face_count", 0) >= 3:
+                    try:
+                        face_db = get_face_clustering_db(
+                            Path(settings.FACE_CLUSTERS_DB_PATH)
+                        )
+                        coherence = face_db.get_cluster_coherence(str(cluster["id"]))
+                        is_mixed = coherence.get("is_mixed_suspected", False)
+                    except Exception:
+                        pass
+
                 formatted_clusters.append(
                     {
                         "id": str(cluster["id"]),
@@ -57,6 +69,7 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                         # Also return image paths as fallback
                         "images": [f.get("image_path") for f in faces[:6]],
                         "created_at": cluster.get("created_at"),
+                        "is_mixed": is_mixed,
                     }
                 )
 

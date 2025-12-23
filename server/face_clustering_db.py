@@ -2127,6 +2127,16 @@ class FaceClusteringDB:
                         result["assigned"] = False
                         result["reason"] = "Previously rejected"
 
+        # If review action, add to review queue
+        elif result["action"] == "review" and result["cluster_id"]:
+            self.add_to_review_queue(
+                detection_id=detection_id,
+                candidate_cluster_id=result["cluster_id"],
+                similarity=result["similarity"],
+                reason="gray_zone",
+            )
+            result["added_to_review"] = True
+
         return result
 
     def batch_assign_new_faces(
@@ -2198,6 +2208,38 @@ class FaceClusteringDB:
         Returns:
             List of similar faces with similarity scores and cluster info
         """
+
+        def _embedding_to_unit_vec(raw: Any) -> Optional[np.ndarray]:
+            """Decode an embedding value from SQLite into a unit-normalized float32 vector.
+
+            Historical note: embeddings have been stored both as JSON strings (via json.dumps)
+            and as bytes-like blobs. SQLite doesn't enforce column types, so we must handle both.
+            """
+            if raw is None:
+                return None
+
+            try:
+                if isinstance(raw, (bytes, bytearray, memoryview)):
+                    vec = np.frombuffer(raw, dtype=np.float32)
+                elif isinstance(raw, str):
+                    vec = np.asarray(json.loads(raw), dtype=np.float32)
+                elif isinstance(raw, (list, tuple)):
+                    vec = np.asarray(raw, dtype=np.float32)
+                else:
+                    # Best-effort fallback for other buffer-protocol objects.
+                    try:
+                        vec = np.frombuffer(raw, dtype=np.float32)  # type: ignore[arg-type]
+                    except Exception:
+                        vec = np.asarray(raw, dtype=np.float32)
+            except Exception as e:
+                logger.warning(f"Failed to decode embedding: {e}")
+                return None
+
+            if vec.size == 0:
+                return None
+
+            return vec / (np.linalg.norm(vec) + 1e-8)
+
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
@@ -2215,8 +2257,9 @@ class FaceClusteringDB:
             if not ref_row or not ref_row["embedding"]:
                 return []
 
-            ref_embedding = np.frombuffer(ref_row["embedding"], dtype=np.float32)
-            ref_embedding = ref_embedding / (np.linalg.norm(ref_embedding) + 1e-8)
+            ref_embedding = _embedding_to_unit_vec(ref_row["embedding"])
+            if ref_embedding is None:
+                return []
             ref_cluster = ref_row["cluster_id"]
 
             # Get all other face embeddings
@@ -2240,12 +2283,17 @@ class FaceClusteringDB:
             results = []
             for row in rows:
                 # Skip same cluster if requested
-                if not include_same_cluster and row["cluster_id"] == ref_cluster:
+                if (
+                    not include_same_cluster
+                    and ref_cluster is not None
+                    and row["cluster_id"] == ref_cluster
+                ):
                     continue
 
                 try:
-                    embedding = np.frombuffer(row["embedding"], dtype=np.float32)
-                    embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
+                    embedding = _embedding_to_unit_vec(row["embedding"])
+                    if embedding is None:
+                        continue
 
                     # Cosine similarity
                     similarity = float(np.dot(ref_embedding, embedding))

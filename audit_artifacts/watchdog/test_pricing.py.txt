@@ -1,30 +1,60 @@
-=== WATCHDOG RUN start 2025-12-23 15:04:24 ===
+=== WATCHDOG RUN start 2025-12-23 15:05:30 ===
 file: test_pricing.py
 watchdog_seconds: 90
 python: /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
 
-INTERNALERROR> Traceback (most recent call last):
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/main.py", line 314, in wrap_session
-INTERNALERROR>     config._do_configure()
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/config/__init__.py", line 1159, in _do_configure
-INTERNALERROR>     self.hook.pytest_configure.call_historic(kwargs=dict(config=self))
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/pluggy/_hooks.py", line 534, in call_historic
-INTERNALERROR>     res = self._hookexec(self.name, self._hookimpls.copy(), kwargs, False)
-INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/pluggy/_manager.py", line 120, in _hookexec
-INTERNALERROR>     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
-INTERNALERROR>            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 167, in _multicall
-INTERNALERROR>     raise exception
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/pluggy/_callers.py", line 121, in _multicall
-INTERNALERROR>     res = hook_impl.function(*args)
-INTERNALERROR>           ^^^^^^^^^^^^^^^^^^^^^^^^^
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/terminal.py", line 291, in pytest_configure
-INTERNALERROR>     reporter = TerminalReporter(config, sys.stdout)
-INTERNALERROR>                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-INTERNALERROR>   File "/Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/terminal.py", line 401, in __init__
-INTERNALERROR>     self.isatty = compat.CallableBool(file.isatty())
-INTERNALERROR>                                       ^^^^^^^^^^^
-INTERNALERROR> AttributeError: 'Tee' object has no attribute 'isatty'
+[1m====================================== test session starts =======================================[0m
+platform darwin -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/photosearch_experiment
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0m[1mcollected 4 items                                                                                [0m
 
-=== WATCHDOG RUN end status=failed rc=3 elapsed=0.03s ===
+test_pricing.py::test_pricing_tiers Testing pricing tiers...
+✓ Found 4 pricing tiers
+  - Free: $0.0/month, 5000 images
+  - Basic: $9.99/month, 25000 images
+  - Pro: $29.99/month, 100000 images
+  - Enterprise: $0.0/month, -1 images
+✓ Free tier retrieval works
+✓ Pro tier retrieval works
+✓ Non-existent tier handling works
+[32mPASSED[0m
+test_pricing.py::test_tier_recommendation
+Testing tier recommendations...
+✓ 1000 images → Free tier
+✓ 10000 images → Basic tier
+✓ 50000 images → Pro tier
+✓ 200000 images → Enterprise tier
+[32mPASSED[0m
+test_pricing.py::test_usage_tracking
+Testing usage tracking...
+✓ Initial usage tracking works
+✓ Usage percentage calculation works: 20.0%
+✓ Limit checking works for allowed addition
+✓ Limit checking works for denied addition
+[32mPASSED[0m
+test_pricing.py::test_tier_upgrades
+Testing tier upgrades...
+✓ Upgrade to Basic tier works
+✓ Tier upgrade reflected in usage stats
+✓ Invalid tier upgrade handling works
+[32mPASSED[0m
+
+====================================== slowest 25 durations ======================================
+0.00s call     test_pricing.py::test_usage_tracking
+0.00s call     test_pricing.py::test_pricing_tiers
+0.00s setup    test_pricing.py::test_pricing_tiers
+0.00s call     test_pricing.py::test_tier_upgrades
+0.00s call     test_pricing.py::test_tier_recommendation
+0.00s teardown test_pricing.py::test_tier_upgrades
+0.00s setup    test_pricing.py::test_tier_upgrades
+0.00s teardown test_pricing.py::test_usage_tracking
+0.00s setup    test_pricing.py::test_tier_recommendation
+0.00s setup    test_pricing.py::test_usage_tracking
+0.00s teardown test_pricing.py::test_pricing_tiers
+0.00s teardown test_pricing.py::test_tier_recommendation
+[32m======================================= [32m[1m4 passed[0m[32m in 0.01s[0m[32m ========================================[0m
+
+=== WATCHDOG RUN end status=passed rc=0 elapsed=0.48s ===

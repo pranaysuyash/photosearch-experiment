@@ -402,6 +402,18 @@ Verified in this session:
 - UI tests: `pnpm test:run` exit code `0` (per terminal history)
 - Backend feature/integration subset: `tests/test_features_unit.py` + `tests/test_integration.py` → **37 passed**
 
+Additional verification (watchdog runs, 2025-12-23):
+
+- `server/tests/test_automatic_clustering.py` → **6 passed**
+  - Evidence: `audit_artifacts/watchdog/server__tests__test_automatic_clustering.py.after_fix.txt`
+- `test_people_endpoints.py` → **1 passed** (uvicorn subprocess integration)
+  - Evidence: `audit_artifacts/watchdog/test_people_endpoints.py.after_fix.txt`
+
+These were previously identified as failing/stalling under watchdog runs; fixes were applied to:
+
+- `server/face_clustering_db.py` (robust embedding decoding + NULL-cluster filter)
+- `server/main.py` (skip auto-scan/watcher in test mode; use runtime base dir for media)
+
 Not yet re-verified in this session:
 
 - Full backend pytest suite (`python -m pytest`) — the most recent full run attempt was canceled before completion, so the audit does **not** claim full-green backend tests at this time.

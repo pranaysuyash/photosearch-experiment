@@ -7,6 +7,7 @@ Routers should use Depends(get_state) from server/api/deps.py to access state.
 MIGRATION NOTE: This file still exports module-level globals for backward compatibility
 during the router migration. Once all routers use Depends(get_state), these can be removed.
 """
+
 import sys
 import os
 from typing import Any, TYPE_CHECKING
@@ -17,9 +18,9 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+# ruff: noqa: E402 - imports must be after sys.path modification above
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from server.jobs import job_store
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from threading import Lock
@@ -31,20 +32,19 @@ _rate_last_conf: tuple | None = None
 
 from src.photo_search import PhotoSearch
 from src.api_versioning import api_version_manager
-from src.cache_manager import cache_manager
-from src.logging_config import setup_logging, log_search_operation
+from src.logging_config import setup_logging
 
 from server.config import settings
 from server.embedding_generator import EmbeddingGenerator
-from server.core.state import AppState
 from server.core.bootstrap import build_state
-from server.services.semantic_indexing import process_semantic_indexing
 
 # Router imports
 from server.api.routers.core import router as core_router
 from server.api.routers.smart_collections import router as smart_collections_router
 from server.api.routers.ai_insights import router as ai_insights_router
-from server.api.routers.collaborative_spaces import router as collaborative_spaces_router
+from server.api.routers.collaborative_spaces import (
+    router as collaborative_spaces_router,
+)
 from server.api.routers.privacy import router as privacy_router
 from server.api.routers.stories import router as stories_router
 from server.api.routers.bulk_actions import router as bulk_actions_router
@@ -58,14 +58,18 @@ from server.api.routers.notes import router as notes_router
 from server.api.routers.photo_edits import router as photo_edits_router
 from server.api.routers.edits import router as edits_router
 from server.api.routers.transforms import router as transforms_router
-from server.api.routers.people_photo_association import router as people_photo_association_router
+from server.api.routers.people_photo_association import (
+    router as people_photo_association_router,
+)
 from server.api.routers.face_recognition import router as face_recognition_router
 from server.api.routers.duplicates import router as duplicates_router
 from server.api.routers.video_analysis import router as video_analysis_router
 from server.api.routers.image_analysis import router as image_analysis_router
 from server.api.routers.video import router as video_router
 from server.api.routers.intent import router as intent_router
-from server.api.routers.advanced_intent_search import router as advanced_intent_search_router
+from server.api.routers.advanced_intent_search import (
+    router as advanced_intent_search_router,
+)
 from server.api.routers.file import router as file_router
 from server.api.routers.saved_searches import router as saved_searches_router
 from server.api.routers.stats import router as stats_router
@@ -106,18 +110,8 @@ photo_search_engine: Any | None = None
 face_scan_jobs: dict = {}
 
 # Import components for backward compat (until routers migrated)
-from server.core.components import (
-    code_splitting_config,
-    face_clusterer,
-    lazy_load_tracker,
-    modal_system,
-    ocr_search,
-    tauri_integration,
-    video_analyzer,
-)
 
 # Also expose stores for backward compat
-from server.core.state import AppState  # Already imported above
 # Note: Old state.py exports are no longer needed since we use build_state
 
 
@@ -125,23 +119,34 @@ from server.core.state import AppState  # Already imported above
 async def lifespan(app: FastAPI):
     """
     Application lifespan - builds AppState and attaches to app.state.ps.
-    
+
     Also updates module-level globals for backward compatibility during migration.
     """
-    global embedding_generator, file_watcher, ps_logger, perf_tracker, photo_search_engine
-    
+    global \
+        embedding_generator, \
+        file_watcher, \
+        ps_logger, \
+        perf_tracker, \
+        photo_search_engine
+
+    test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or (
+        "PYTEST_CURRENT_TEST" in os.environ
+    )
+
     # ─────────────────────────────────────────────────────────────────────────
     # Build AppState using bootstrap (this triggers component init)
     # ─────────────────────────────────────────────────────────────────────────
     print("Building application state...")
-    state = build_state(skip_heavy_components=False)
-    
+    state = build_state(skip_heavy_components=test_mode)
+
     # ─────────────────────────────────────────────────────────────────────────
     # Initialize logging
     # ─────────────────────────────────────────────────────────────────────────
     print("Initializing logging...")
     try:
-        state.ps_logger, state.perf_tracker = setup_logging(log_level="INFO", log_file="logs/app.log")
+        state.ps_logger, state.perf_tracker = setup_logging(
+            log_level="INFO", log_file="logs/app.log"
+        )
         ps_logger = state.ps_logger  # Backward compat
         perf_tracker = state.perf_tracker
         print("Logging initialized.")
@@ -151,6 +156,7 @@ async def lifespan(app: FastAPI):
         state.ps_logger = logging.getLogger("PhotoSearch")
         ps_logger = state.ps_logger
         from src.logging_config import PerformanceTracker
+
         state.perf_tracker = PerformanceTracker(state.ps_logger)
         perf_tracker = state.perf_tracker
 
@@ -173,10 +179,10 @@ async def lifespan(app: FastAPI):
         state.embedding_generator = EmbeddingGenerator()
         embedding_generator = state.embedding_generator  # Backward compat
         print("Embedding Model Loaded.")
-        
+
         # Auto-scan 'media' directory on startup
-        media_path = settings.BASE_DIR / "media"
-        if media_path.exists() and state.photo_search_engine:
+        media_path = state.base_dir / "media"
+        if not test_mode and media_path.exists() and state.photo_search_engine:
             print(f"Auto-scanning {media_path}...")
             try:
                 state.photo_search_engine.scan(str(media_path), force=False)
@@ -185,50 +191,59 @@ async def lifespan(app: FastAPI):
                 print(f"Auto-scan failed: {e}")
 
             # Start Real-time Watcher
-            def handle_new_file(filepath: str):
-                """Callback for new files detected by watcher"""
-                try:
-                    print(f"Index trigger: {filepath}")
-                    from src.metadata_extractor import extract_all_metadata
-                    
-                    metadata = extract_all_metadata(filepath)
-                    if metadata and state.photo_search_engine:
-                        state.photo_search_engine.db.store_metadata(filepath, metadata)
-                        print(f"Metadata indexed: {filepath}")
-                        
-                        # Trigger Semantic Indexing
-                        state.process_semantic_indexing([filepath])
-                        
-                        # Trigger Face Detection (if models loaded)
-                        fc = state.face_clusterer
-                        if fc and fc.models_loaded:
-                            try:
-                                result = fc.cluster_faces([filepath], min_samples=1)
-                                if result.get("status") == "completed":
-                                    faces_found = result.get("total_faces", 0)
-                                    if faces_found > 0:
-                                        print(f"Face detection: found {faces_found} faces in {filepath}")
-                            except Exception as face_err:
-                                print(f"Face detection failed for {filepath}: {face_err}")
-                except Exception as e:
-                    print(f"Real-time indexing failed for {filepath}: {e}")
+            if not test_mode:
 
-            print("Starting file watcher...")
-            from server.watcher import start_watcher
-            state.file_watcher = start_watcher(str(media_path), handle_new_file)
-            file_watcher = state.file_watcher  # Backward compat
-                
+                def handle_new_file(filepath: str):
+                    """Callback for new files detected by watcher"""
+                    try:
+                        print(f"Index trigger: {filepath}")
+                        from src.metadata_extractor import extract_all_metadata
+
+                        metadata = extract_all_metadata(filepath)
+                        if metadata and state.photo_search_engine:
+                            state.photo_search_engine.db.store_metadata(
+                                filepath, metadata
+                            )
+                            print(f"Metadata indexed: {filepath}")
+
+                            # Trigger Semantic Indexing
+                            state.process_semantic_indexing([filepath])
+
+                            # Trigger Face Detection (if models loaded)
+                            fc = state.face_clusterer
+                            if fc and fc.models_loaded:
+                                try:
+                                    result = fc.cluster_faces([filepath], min_samples=1)
+                                    if result.get("status") == "completed":
+                                        faces_found = result.get("total_faces", 0)
+                                        if faces_found > 0:
+                                            print(
+                                                f"Face detection: found {faces_found} faces in {filepath}"
+                                            )
+                                except Exception as face_err:
+                                    print(
+                                        f"Face detection failed for {filepath}: {face_err}"
+                                    )
+                    except Exception as e:
+                        print(f"Real-time indexing failed for {filepath}: {e}")
+
+                print("Starting file watcher...")
+                from server.watcher import start_watcher
+
+                state.file_watcher = start_watcher(str(media_path), handle_new_file)
+                file_watcher = state.file_watcher  # Backward compat
+
     except Exception as e:
         print(f"Startup error: {e}")
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # Attach state to app for Depends(get_state) access
     # ─────────────────────────────────────────────────────────────────────────
     app.state.ps = state
     print("Application state attached to app.state.ps")
-    
+
     yield
-    
+
     # ─────────────────────────────────────────────────────────────────────────
     # Shutdown
     # ─────────────────────────────────────────────────────────────────────────
@@ -244,10 +259,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title=settings.APP_NAME, 
-    description="Backend for the Living Museum Interface", 
+    title=settings.APP_NAME,
+    description="Backend for the Living Museum Interface",
     debug=settings.DEBUG,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Configure CORS
@@ -267,7 +282,12 @@ async def _ensure_cors_header(request: Request, call_next):
     response = await call_next(request)
     try:
         origin = request.headers.get("origin")
-        if origin and origin in cors_origins and "access-control-allow-origin" not in (k.lower() for k in response.headers.keys()):
+        if (
+            origin
+            and origin in cors_origins
+            and "access-control-allow-origin"
+            not in (k.lower() for k in response.headers.keys())
+        ):
             response.headers["Access-Control-Allow-Origin"] = origin
             if settings.DEBUG:
                 response.headers.setdefault("Access-Control-Allow-Credentials", "true")
@@ -334,17 +354,18 @@ api_version_manager.register_endpoint(
     path="/search",
     method="GET",
     summary="Search Photos",
-    description="Unified search endpoint supporting metadata, semantic, and hybrid search modes"
+    description="Unified search endpoint supporting metadata, semantic, and hybrid search modes",
 )
 
 api_version_manager.register_endpoint(
     path="/search/semantic",
     method="GET",
     summary="Semantic Search",
-    description="Semantic search using CLIP embeddings"
+    description="Semantic search using CLIP embeddings",
 )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
