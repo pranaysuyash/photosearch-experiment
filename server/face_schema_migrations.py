@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -185,12 +185,66 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
     logger.info("Created person_operations_log table")
 
 
+def migration_v3_review_queue_and_representative(conn: sqlite3.Connection):
+    """
+    Version 3: Add review queue table and representative face.
+
+    Changes:
+    - Create face_review_queue table for pending face assignments
+    - Add representative_detection_id to face_clusters
+    """
+
+    # === Create face_review_queue table ===
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS face_review_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            detection_id TEXT NOT NULL,
+            candidate_cluster_id TEXT NOT NULL,
+            similarity REAL NOT NULL,
+            reason TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            resolved_at TIMESTAMP NULL,
+            FOREIGN KEY (detection_id) REFERENCES face_detections(detection_id),
+            FOREIGN KEY (candidate_cluster_id) REFERENCES face_clusters(cluster_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_review_queue_status ON face_review_queue(status)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_review_queue_detection ON face_review_queue(detection_id)"
+    )
+    logger.info("Created face_review_queue table")
+
+    # === Add representative_detection_id to face_clusters ===
+    cluster_cols = {
+        r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
+    }
+
+    if "representative_detection_id" not in cluster_cols:
+        conn.execute(
+            "ALTER TABLE face_clusters ADD COLUMN representative_detection_id TEXT"
+        )
+        logger.info("Added representative_detection_id column to face_clusters")
+
+    if "representative_updated_at" not in cluster_cols:
+        conn.execute(
+            "ALTER TABLE face_clusters ADD COLUMN representative_updated_at TIMESTAMP"
+        )
+        logger.info("Added representative_updated_at column to face_clusters")
+
+
 # Migration registry: version -> (migration_function, description)
 MIGRATIONS = {
     1: (migration_v1_base_schema, "Base schema for face clustering"),
     2: (
         migration_v2_reversibility_and_trust,
         "Add reversibility and trust infrastructure",
+    ),
+    3: (
+        migration_v3_review_queue_and_representative,
+        "Add review queue table and representative face",
     ),
 }
 

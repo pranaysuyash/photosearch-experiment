@@ -1903,7 +1903,7 @@ class FaceClusteringDB:
                 else 0.0,
             }
 
-    def get_review_queue(
+    def get_gray_zone_faces(
         self,
         similarity_min: float = 0.50,
         similarity_max: float = 0.55,
@@ -1911,6 +1911,7 @@ class FaceClusteringDB:
     ) -> List[Dict[str, Any]]:
         """
         Get faces in the gray-zone that need human review.
+
 
         These are faces with confidence between similarity_min and similarity_max,
         which are uncertain assignments that should be reviewed by the user.
@@ -2505,6 +2506,241 @@ class FaceClusteringDB:
                 limit=limit,
                 offset=offset,
             )
+
+    # =========================================================================
+    # Review Queue Methods
+    # =========================================================================
+
+    def get_review_queue(
+        self,
+        limit: int = 20,
+        offset: int = 0,
+        sort: str = "similarity_desc",
+    ) -> List[Dict[str, Any]]:
+        """
+        Get pending items from the review queue.
+
+        Args:
+            limit: Maximum number of items to return
+            offset: Number of items to skip
+            sort: Sort order (similarity_desc, similarity_asc, created_at_desc)
+
+        Returns:
+            List of review queue items with face details and candidate info
+        """
+        order_by = {
+            "similarity_desc": "rq.similarity DESC",
+            "similarity_asc": "rq.similarity ASC",
+            "created_at_desc": "rq.created_at DESC",
+        }.get(sort, "rq.similarity DESC")
+
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                f"""
+                SELECT
+                    rq.id,
+                    rq.detection_id,
+                    rq.candidate_cluster_id,
+                    rq.similarity,
+                    rq.reason,
+                    rq.status,
+                    rq.created_at,
+                    fd.photo_path,
+                    fd.bounding_box,
+                    fd.quality_score,
+                    fc.label as candidate_label,
+                    fc.face_count as candidate_face_count
+                FROM face_review_queue rq
+                JOIN face_detections fd ON rq.detection_id = fd.detection_id
+                LEFT JOIN face_clusters fc ON rq.candidate_cluster_id = fc.cluster_id
+                WHERE rq.status = 'pending'
+                ORDER BY {order_by}
+                LIMIT ? OFFSET ?
+                """,
+                (limit, offset),
+            ).fetchall()
+
+            return [
+                {
+                    "id": row["id"],
+                    "detection_id": row["detection_id"],
+                    "candidate_cluster_id": row["candidate_cluster_id"],
+                    "similarity": row["similarity"],
+                    "reason": row["reason"],
+                    "status": row["status"],
+                    "created_at": row["created_at"],
+                    "photo_path": row["photo_path"],
+                    "bounding_box": json.loads(row["bounding_box"])
+                    if row["bounding_box"]
+                    else {},
+                    "quality_score": row["quality_score"],
+                    "candidate_label": row["candidate_label"],
+                    "candidate_face_count": row["candidate_face_count"],
+                }
+                for row in rows
+            ]
+
+    def get_review_queue_count(self) -> int:
+        """Get count of pending items in review queue."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM face_review_queue WHERE status = 'pending'"
+            ).fetchone()
+            return row[0] if row else 0
+
+    def add_to_review_queue(
+        self,
+        detection_id: str,
+        candidate_cluster_id: str,
+        similarity: float,
+        reason: str = "gray_zone",
+    ) -> int:
+        """
+        Add a face detection to the review queue.
+
+        Args:
+            detection_id: ID of the face detection
+            candidate_cluster_id: Best matching cluster ID
+            similarity: Similarity score to the candidate
+            reason: Why this face needs review ('gray_zone', 'low_confidence', 'ambiguous')
+
+        Returns:
+            ID of the created review queue item
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO face_review_queue
+                (detection_id, candidate_cluster_id, similarity, reason)
+                VALUES (?, ?, ?, ?)
+                """,
+                (detection_id, candidate_cluster_id, similarity, reason),
+            )
+            return cursor.lastrowid or 0
+
+    def resolve_review_item(
+        self,
+        detection_id: str,
+        action: str,
+        cluster_id: Optional[str] = None,
+    ) -> bool:
+        """
+        Resolve a review queue item.
+
+        Args:
+            detection_id: ID of the face detection
+            action: 'confirm', 'reject', or 'skip'
+            cluster_id: Cluster to assign to (required for confirm)
+
+        Returns:
+            True if successful
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Get the review queue item
+            item = conn.execute(
+                """
+                SELECT * FROM face_review_queue
+                WHERE detection_id = ? AND status = 'pending'
+                """,
+                (detection_id,),
+            ).fetchone()
+
+            if not item:
+                return False
+
+            target_cluster = cluster_id or item["candidate_cluster_id"]
+
+            if action == "confirm":
+                # Update assignment state to confirmed
+                conn.execute(
+                    """
+                    UPDATE photo_person_associations
+                    SET assignment_state = 'user_confirmed'
+                    WHERE detection_id = ? AND cluster_id = ?
+                    """,
+                    (detection_id, target_cluster),
+                )
+
+                # If no association exists, create one
+                if conn.total_changes == 0:
+                    # Get photo_path from detection
+                    det = conn.execute(
+                        "SELECT photo_path FROM face_detections WHERE detection_id = ?",
+                        (detection_id,),
+                    ).fetchone()
+                    if det:
+                        conn.execute(
+                            """
+                            INSERT OR REPLACE INTO photo_person_associations
+                            (photo_path, cluster_id, detection_id, confidence, assignment_state)
+                            VALUES (?, ?, ?, ?, 'user_confirmed')
+                            """,
+                            (
+                                det["photo_path"],
+                                target_cluster,
+                                detection_id,
+                                item["similarity"],
+                            ),
+                        )
+
+                # Log for undo
+                self._log_operation(
+                    conn,
+                    "review_confirm",
+                    {
+                        "detection_id": detection_id,
+                        "cluster_id": target_cluster,
+                        "similarity": item["similarity"],
+                    },
+                )
+
+            elif action == "reject":
+                # Add to rejections
+                conn.execute(
+                    """
+                    INSERT OR IGNORE INTO face_rejections (detection_id, cluster_id)
+                    VALUES (?, ?)
+                    """,
+                    (detection_id, target_cluster),
+                )
+
+                # Remove association if exists
+                conn.execute(
+                    """
+                    DELETE FROM photo_person_associations
+                    WHERE detection_id = ? AND cluster_id = ?
+                    """,
+                    (detection_id, target_cluster),
+                )
+
+                # Log for undo
+                self._log_operation(
+                    conn,
+                    "review_reject",
+                    {
+                        "detection_id": detection_id,
+                        "cluster_id": target_cluster,
+                    },
+                )
+
+            # Update review queue status
+            status = "confirmed" if action == "confirm" else action + "ed"
+            if action == "skip":
+                status = "skipped"
+
+            conn.execute(
+                """
+                UPDATE face_review_queue
+                SET status = ?, resolved_at = CURRENT_TIMESTAMP
+                WHERE detection_id = ? AND status = 'pending'
+                """,
+                (status, detection_id),
+            )
+
+            return True
 
 
 def get_face_clustering_db(db_path: Path) -> FaceClusteringDB:

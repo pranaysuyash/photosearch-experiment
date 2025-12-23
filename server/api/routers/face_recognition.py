@@ -7,7 +7,9 @@ allow-big-file: This router consolidates all face recognition endpoints
 """
 
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import Response
@@ -1390,32 +1392,6 @@ async def get_mixed_clusters(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/api/faces/review-queue")
-async def get_review_queue(
-    state: AppState = Depends(get_state),
-    similarity_min: float = 0.50,
-    similarity_max: float = 0.55,
-    limit: int = 50,
-):
-    """
-    Get faces that need human review.
-
-    These are faces with borderline confidence scores that should be
-    confirmed or rejected by the user.
-    """
-    try:
-        from pathlib import Path
-
-        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
-        faces = face_db.get_review_queue(
-            similarity_min=similarity_min, similarity_max=similarity_max, limit=limit
-        )
-
-        return {"faces": faces, "count": len(faces)}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ===================================================================
 # Phase 3: Speed & Scale Endpoints
 # ===================================================================
@@ -1677,5 +1653,86 @@ async def get_people_in_photo(photo_path: str, state: AppState = Depends(get_sta
         ]
 
         return {"photo_path": decoded_path, "people": people, "count": len(people)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Phase 5: Review Queue Endpoints
+# ===================================================================
+
+
+@router.get("/review-queue")
+async def get_review_queue(
+    state: AppState = Depends(get_state),
+    limit: int = 20,
+    offset: int = 0,
+    sort: str = "similarity_desc",
+):
+    """Get pending items from the review queue."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        items = face_db.get_review_queue(limit=limit, offset=offset, sort=sort)
+        total = face_db.get_review_queue_count()
+        return {
+            "items": items,
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/review-queue/count")
+async def get_review_queue_count(state: AppState = Depends(get_state)):
+    """Get count of pending items in review queue."""
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        count = face_db.get_review_queue_count()
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ResolveRequest(BaseModel):
+    action: str  # 'confirm', 'reject', 'skip'
+    cluster_id: Optional[str] = None
+
+
+@router.post("/review-queue/{detection_id}/resolve")
+async def resolve_review_item(
+    detection_id: str,
+    request: ResolveRequest,
+    state: AppState = Depends(get_state),
+):
+    """Resolve a review queue item (confirm, reject, or skip)."""
+    try:
+        if request.action not in ("confirm", "reject", "skip"):
+            raise HTTPException(
+                status_code=400,
+                detail="action must be 'confirm', 'reject', or 'skip'",
+            )
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        success = face_db.resolve_review_item(
+            detection_id=detection_id,
+            action=request.action,
+            cluster_id=request.cluster_id,
+        )
+
+        if not success:
+            raise HTTPException(
+                status_code=404,
+                detail="Review item not found or already resolved",
+            )
+
+        return {
+            "success": True,
+            "detection_id": detection_id,
+            "action": request.action,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
