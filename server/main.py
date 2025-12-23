@@ -8,27 +8,14 @@ MIGRATION NOTE: This file still exports module-level globals for backward compat
 during the router migration. Once all routers use Depends(get_state), these can be removed.
 """
 
-import sys
+import logging
 import os
-from typing import Any, TYPE_CHECKING
-from pathlib import Path
-
-# Ensure the project root (parent of `server/`) is importable.
-_PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(_PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PROJECT_ROOT))
-
-# ruff: noqa: E402 - imports must be after sys.path modification above
 from contextlib import asynccontextmanager
+from threading import Lock
+from typing import TYPE_CHECKING, Any
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-import logging
-from threading import Lock
-
-# Simple in-memory rate limiting counters (per-IP sliding window)
-_rate_lock = Lock()
-_rate_counters: dict = {}
-_rate_last_conf: tuple | None = None
 
 from src.photo_search import PhotoSearch
 from src.api_versioning import api_version_manager
@@ -97,6 +84,11 @@ from server.api.routers.trash import router as trash_router
 if TYPE_CHECKING:
     from src.logging_config import PerformanceTracker
 
+
+# Simple in-memory rate limiting counters (per-IP sliding window)
+_rate_lock = Lock()
+_rate_counters: dict = {}
+_rate_last_conf: tuple | None = None
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BACKWARD COMPATIBILITY: Module-level globals for routers not yet migrated
