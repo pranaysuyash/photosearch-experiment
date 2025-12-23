@@ -125,6 +125,11 @@ class OCRResult:
 class EnhancedOCRSearch:
     """Enhanced OCR search with multi-language and highlighting support"""
 
+    # Under pytest, external OCR engines (Tesseract/EasyOCR) can be slow or
+    # non-deterministic (subprocess calls, model downloads). Keep test runs fast
+    # by default and allow opt-in.
+    _ENABLE_TESSERACT_TESTS_ENV = "PHOTOSEARCH_ENABLE_TESSERACT_TESTS"
+
     def _is_test_mode(self) -> bool:
         """Return True when running under pytest or explicit test mode.
 
@@ -209,8 +214,15 @@ class EnhancedOCRSearch:
 
     def _initialize_ocr_engines(self):
         """Initialize OCR engines"""
-        # Check Tesseract availability
-        if PYTESSERACT_AVAILABLE:
+        # Check Tesseract availability.
+        # Default to a lightweight, no-subprocess OCR mode under pytest.
+        if self._is_test_mode() and os.getenv(self._ENABLE_TESSERACT_TESTS_ENV) != "1":
+            self.tesseract_available = False
+            logger.info(
+                "Test mode: skipping Tesseract initialization. "
+                f"Set {self._ENABLE_TESSERACT_TESTS_ENV}=1 to enable."
+            )
+        elif PYTESSERACT_AVAILABLE:
             try:
                 pytesseract.get_tesseract_version()
                 self.tesseract_available = True

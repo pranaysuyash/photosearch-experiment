@@ -1975,23 +1975,8 @@ export const api = {
     return res.data;
   },
 
-  // Get faces that need human review (borderline confidence)
-  getReviewQueue: async (
-    similarityMin: number = 0.50,
-    similarityMax: number = 0.55,
-    limit: number = 50
-  ) => {
-    const res = await apiClient.get('/api/faces/review-queue', {
-      params: {
-        similarity_min: similarityMin,
-        similarity_max: similarityMax,
-        limit,
-      },
-    });
-    return res.data;
-  },
-
   // Phase 3: Speed & Scale APIs
+
 
   // Assign a single face to the best matching cluster
   assignFaceToCluster: async (
@@ -2575,6 +2560,41 @@ export const api = {
       photo_paths: photoPaths,
       corrected_name: correctedName,
     });
+    return res.data;
+  },
+
+  // ===================================================================
+  // Phase 5: Review Queue API
+  // ===================================================================
+
+  getReviewQueue: async (
+    limit: number = 20,
+    offset: number = 0,
+    sort: string = 'similarity_desc'
+  ) => {
+    const res = await apiClient.get('/api/faces/review-queue', {
+      params: { limit, offset, sort },
+    });
+    return res.data;
+  },
+
+  getReviewQueueCount: async () => {
+    const res = await apiClient.get('/api/faces/review-queue/count');
+    return res.data.count;
+  },
+
+  resolveReviewItem: async (
+    detectionId: string,
+    action: 'confirm' | 'reject' | 'skip',
+    clusterId?: string
+  ) => {
+    const res = await apiClient.post(
+      `/api/faces/review-queue/${detectionId}/resolve`,
+      {
+        action,
+        cluster_id: clusterId,
+      }
+    );
     return res.data;
   },
 };
