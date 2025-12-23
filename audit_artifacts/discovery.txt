@@ -1,0 +1,191 @@
+# PhotoSearch v2 discovery
+Tue Dec 23 04:08:32 UTC 2025
+
+## git
+e7d27ccee6e75f1608551e76ceb9c354b71acf8c
+ M photo_catalog.json
+ M server/api/routers/face_recognition.py
+ M server/config.py
+ M server/face_clustering_db.py
+ M ui/src/api.ts
+ M ui/src/components/people/ClusterManagement.tsx
+?? audit_artifacts/
+?? server/face_schema_migrations.py
+
+## root
+/Users/pranay/Projects/photosearch_experiment
+total 11392
+drwxr-xr-x   96 pranay    3072 Dec 23 09:38 .
+drwxr-xr-x   52 pranay    1664 Dec 12 11:02 ..
+drwxr-xr-x    3 pranay      96 Dec 23 09:30 .agent
+drwxr-xr-x    3 pranay      96 Dec 19 08:48 .claude
+-rw-r--r--    1 pranay     100 Dec 15 11:44 .dockerignore
+-rw-r--r--    1 pranay    6148 Dec 13 13:26 .DS_Store
+-rw-r--r--    1 pranay     326 Dec 20 16:05 .env
+-rw-r--r--    1 pranay     517 Dec 18 10:07 .env.example
+drwxr-xr-x   15 pranay     480 Dec 23 09:38 .git
+drwxr-xr-x    3 pranay      96 Dec 23 00:57 .github
+-rw-r--r--    1 pranay     953 Dec 23 01:00 .gitignore
+drwxr-xr-x    5 pranay     160 Dec 18 13:33 .kiro
+drwxr-xr-x    5 pranay     160 Dec 21 23:14 .mypy_cache
+drwxr-xr-x    3 pranay      96 Dec 12 22:53 .playwright-mcp
+-rw-r--r--    1 pranay    1071 Dec 22 23:16 .pre-commit-config.yaml
+drwxr-xr-x    6 pranay     192 Dec  8 21:06 .pytest_cache
+drwxr-xr-x    4 pranay     128 Dec 14 14:10 .run
+drwxr-xr-x   12 pranay     384 Dec 19 00:56 .venv
+drwxr-xr-x    3 pranay      96 Dec 12 14:07 .vscode
+-rw-r--r--    1 pranay   32768 Dec 20 13:28 albums.db
+drwxr-xr-x    3 pranay      96 Dec 23 09:38 audit_artifacts
+drwxr-xr-x    3 pranay      96 Dec 20 16:29 cache
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 cache.db
+drwxr-xr-x   15 pranay     480 Dec  9 16:56 codex-review
+-rw-r--r--    1 pranay   28672 Dec 20 13:37 collections.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 concurrent_duplicate.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 concurrent_ocr.db
+-rw-r--r--    1 pranay     248 Dec 17 23:13 config.py
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 consistency_test.db
+drwxr-xr-x    8 pranay     256 Dec  8 21:06 copilot_raptor_review
+drwxr-xr-x   12 pranay     384 Dec 11 09:42 data
+-rw-r--r--    1 pranay   45056 Dec 12 23:03 dialogs.db
+-rw-r--r--    1 pranay    1212 Dec 15 11:51 Dockerfile.full
+drwxr-xr-x  106 pranay    3392 Dec 23 00:58 docs
+-rw-r--r--    1 pranay  372736 Dec 20 13:28 duplicates.db
+-rw-r--r--    1 pranay   12288 Dec 20 13:28 edits.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 error_test.db
+drwxr-xr-x   12 pranay     384 Dec 12 16:21 experiments
+-rw-r--r--    1 pranay  483328 Dec 22 14:55 face_clusters.db
+-rw-r--r--    1 pranay   32768 Dec 22 14:55 face_clusters.db-shm
+-rw-r--r--    1 pranay 1285472 Dec 23 00:37 face_clusters.db-wal
+-rw-r--r--    1 pranay    1521 Dec 20 17:11 frontend.log
+-rw-r--r--    1 pranay   49152 Dec 12 22:30 jobs.db
+-rw-r--r--    1 pranay   81920 Dec 20 13:18 locations.db
+drwxr-xr-x    4 pranay     128 Dec 20 15:30 logs
+-rw-r--r--    1 pranay    5670 Dec 18 13:44 mcp-shell.log
+drwxr-xr-x 1071 pranay   34272 Dec 22 10:06 media
+-rw-r--r--    1 pranay  344064 Dec 19 01:00 memory_test.db
+drwxr-xr-x    4 pranay     128 Dec 19 00:53 models
+-rw-r--r--    1 pranay     237 Dec 20 18:29 mypy.ini
+-rw-r--r--    1 pranay     318 Dec 15 11:49 nginx.conf
+-rw-r--r--    1 pranay   24576 Dec 22 15:05 notes.db
+drwxr-xr-x    2 pranay      64 Dec 19 00:58 ocr_models
+-rw-r--r--    1 pranay   53248 Dec 12 23:01 ocr_search.db
+drwxr-xr-x   93 pranay    2976 Dec  9 14:52 old_project_docs
+-rw-r--r--    1 pranay  344064 Dec 19 13:29 perf_face.db
+-rw-r--r--    1 pranay  147622 Dec 23 01:02 photo_catalog.json
+-rw-r--r--    1 pranay    6243 Dec 21 11:03 PHOTO_EDITOR_IMPROVEMENTS_SUMMARY.md
+-rw-r--r--    1 pranay   12288 Dec 20 21:20 photo_edits.db
+-rw-r--r--    1 pranay 2572288 Dec 21 22:13 photo_metadata.db
+-rw-r--r--    1 pranay   32768 Dec 22 14:55 photo_metadata.db-shm
+-rw-r--r--    1 pranay  193672 Dec 22 10:06 photo_metadata.db-wal
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 pipeline_duplicates.db
+-rw-r--r--    1 pranay  344064 Dec 19 13:29 pipeline_face.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 pipeline_ocr.db
+-rw-r--r--    1 pranay   20480 Dec 21 15:13 ratings.db
+-rw-r--r--    1 pranay   27264 Dec 18 10:14 README.md
+-rw-r--r--    1 pranay    1369 Dec 20 16:19 requirements.txt
+-rw-r--r--    1 pranay    9566 Dec 19 01:05 ROADMAP.md
+-rw-r--r--    1 pranay   20480 Dec 22 14:15 saved_searches.db
+drwxr-xr-x   12 pranay     384 Dec 23 00:39 scripts
+drwxr-xr-x   64 pranay    2048 Dec 23 09:30 server
+-rw-r--r--    1 pranay   37259 Dec 20 19:37 server.log
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 sources_items.db
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 sources.db
+drwxr-xr-x   26 pranay     832 Dec 23 00:39 src
+drwxr-xr-x   12 pranay     384 Dec 17 22:08 src-tauri
+-rwxr-xr-x    1 pranay     263 Dec 13 11:21 start.sh
+-rwxr-xr-x    1 pranay     151 Dec 13 10:33 stop.sh
+-rw-r--r--    1 pranay     416 Dec 15 11:49 supervisord.conf
+-rw-r--r--    1 pranay   28672 Dec 20 13:37 tags.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 test_duplicates.db
+-rw-r--r--    1 pranay    8389 Dec 19 08:49 test_face_detection_demo.py
+-rw-r--r--    1 pranay  344064 Dec 21 23:12 test_face.db
+-rw-r--r--    1 pranay   28865 Dec 15 21:58 test_globe1.html
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 test_ocr.db
+-rw-r--r--    1 pranay    7152 Dec 19 22:46 test_people_endpoints.py
+-rw-r--r--    1 pranay    5408 Dec 11 09:51 test_pricing.py
+drwxr-xr-x    2 pranay      64 Dec  8 20:55 test_scan_dir
+-rw-r--r--    1 pranay    6048 Dec 20 16:24 test_video_analysis.py
+drwxr-xr-x    3 pranay      96 Dec 20 15:53 test-results
+drwxr-xr-x   23 pranay     736 Dec 23 00:39 tests
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 trash.db
+drwxr-xr-x   24 pranay     768 Dec 19 22:16 ui
+-rw-r--r--    1 pranay   53248 Dec 19 13:28 versions.db
+-rw-r--r--    1 pranay   49152 Dec 20 16:29 video_analysis.db
+
+## package.json (depth<=3)
+ui/package.json
+
+== ./ui/package.json ==
+  "name": "ui",
+  "version": "0.0.0",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.4.2",
+    "@tauri-apps/plugin-dialog": "^2.4.2",
+    "@types/react-window": "^1.8.8",
+    "@types/three": "^0.181.0",
+    "lucide-react": "^0.556.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-error-boundary": "^6.0.0",
+    "react-masonry-css": "^1.0.16",
+    "react-router-dom": "^7.10.1",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "react-window": "^1.8.8",
+    "three": "^0.181.2"
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/ui": "^4.0.15",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "vite": "^7.2.4",
+    "vitest": "^3.2.4"
+
+## python backend discovery (depth<=3)
+requirements.txt
+server/requirements.txt
+server/main.py
+
+## backend folders
+server
+server/api
+.mypy_cache/3.11/server
+
+## framework hints
+./tests/test_features_integration.py:17:from fastapi.testclient import TestClient
+./tests/test_image_token_jwt_auth.py:1:from fastapi.testclient import TestClient
+./tests/test_thumbnail_cache_headers.py:4:from fastapi.testclient import TestClient
+./tests/test_server_config.py:1:from fastapi.testclient import TestClient
+./tests/test_image_token_endpoint.py:3:from fastapi.testclient import TestClient
+./tests/test_rate_limit.py:1:from fastapi.testclient import TestClient
+./tests/test_search_source_filter.py:1:from fastapi.testclient import TestClient
+./tests/test_admin_unmask.py:1:from fastapi.testclient import TestClient
+./tests/test_image_security.py:2:from fastapi.testclient import TestClient
+./tests/test_thumbnail_sandbox_symlink.py:6:from fastapi.testclient import TestClient
+./server/main_advanced_features.py:14:from fastapi import FastAPI, HTTPException, Body, BackgroundTasks, Request
+./server/main_advanced_features.py:15:from fastapi.middleware.cors import CORSMiddleware
+./server/main_advanced_features.py:16:from fastapi.responses import FileResponse, HTMLResponse, Response
+./server/requirements.txt:2:fastapi>=0.104.0
+./server/advanced_features_api.py:19:from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
+./server/advanced_features_api.py:20:from fastapi.responses import JSONResponse, FileResponse
+./server/api/routers/intent.py:1:from fastapi import APIRouter, HTTPException, Depends
+./server/api/routers/tags.py:4:from fastapi import APIRouter, HTTPException, Depends
+./server/api/routers/transforms.py:4:from fastapi import APIRouter, Body, HTTPException
+./server/api/routers/duplicates.py:3:from fastapi import APIRouter, HTTPException, Depends
+
+## tauri
+-rw-r--r-- 1 pranay 879 Dec 14 20:57 src-tauri/tauri.conf.json
+
+## endpoint decorator count (rough)
+327
+
+## component counts (ui/src)
+100
+23

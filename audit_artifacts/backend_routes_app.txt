@@ -1,0 +1,3 @@
+server/main_advanced_features.py:147:@app.get("/api/advanced/status")
+server/main_advanced_features.py:197:@app.post("/api/advanced/scan-directory")
+server/main_advanced_features.py:313:@app.get("/api/advanced/comprehensive-stats")

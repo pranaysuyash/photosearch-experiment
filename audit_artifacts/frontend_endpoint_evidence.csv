@@ -1,0 +1,113 @@
+path,file,line,snippet
+/api/actions/cloud-download,ui/src/actions/defaultActions.ts,311,"const response = await fetch('/api/actions/cloud-download', {"
+/api/actions/detect-apps,ui/src/services/ActionService.ts,121,"const response = await fetch('/api/actions/detect-apps', {"
+/api/actions/launch-app,ui/src/actions/defaultActions.ts,263,"const response = await fetch('/api/actions/launch-app', {"
+/api/actions/open-location,ui/src/actions/defaultActions.ts,75,"const response = await fetch('/api/actions/open-location', {"
+/api/advanced/status,ui/src/pages/AdvancedFeaturesPage.tsx,79,const response = await fetch('/api/advanced/status');
+/api/albums,ui/src/components/advanced/SmartAlbumsBuilder.tsx,108,const response = await api.get('/api/albums');
+/api/albums/create,ui/src/components/advanced/SmartAlbumsBuilder.tsx,171,"const response = await api.post('/api/albums/create', {"
+/api/albums/preview,ui/src/components/advanced/SmartAlbumsBuilder.tsx,152,"const response = await api.post('/api/albums/preview', {"
+/api/albums/templates,ui/src/components/advanced/SmartAlbumsBuilder.tsx,99,const response = await api.get('/api/albums/templates');
+/api/analytics/library,ui/src/components/advanced/OCRTextSearchPanel.tsx,130,"const response = await api.get('/api/analytics/library', {"
+/api/cache/cleanup,ui/src/api.ts,1197,const res = await apiClient.get('/api/cache/cleanup');
+/api/cache/stats,ui/src/api.ts,1190,const res = await apiClient.get('/api/cache/stats');
+/api/clusters/${encodeURIComponent(clusterId)}/merge,ui/src/api.ts,1842,"`/api/clusters/${encodeURIComponent(clusterId)}/merge`,"
+/api/clusters/${encodeURIComponent(clusterId)}/quality,ui/src/api.ts,1835,`/api/clusters/${encodeURIComponent(clusterId)}/quality`
+/api/code-splitting/chunk/${newChunk.name},ui/src/components/features/CodeSplitting.tsx,129,"`/api/code-splitting/chunk/${newChunk.name}`,"
+/api/code-splitting/config,ui/src/components/features/CodeSplitting.tsx,50,const configResponse = await fetch('/api/code-splitting/config');
+/api/code-splitting/enabled,ui/src/components/features/CodeSplitting.tsx,57,const enabledResponse = await fetch('/api/code-splitting/enabled');
+/api/code-splitting/performance,ui/src/components/features/CodeSplitting.tsx,65,'/api/code-splitting/performance'
+/api/code-splitting/performance/chunks,ui/src/components/features/CodeSplitting.tsx,74,'/api/code-splitting/performance/chunks'
+/api/dialogs/${dialogId}/action,ui/src/components/common/ModalSystem.tsx,122,"const response = await fetch(`/api/dialogs/${dialogId}/action`, {"
+/api/dialogs/${dialogId}/close,ui/src/components/common/ModalSystem.tsx,138,"await fetch(`/api/dialogs/${dialogId}/close`, {"
+/api/dialogs/${dialogId}/dismiss,ui/src/components/common/ModalSystem.tsx,158,"const response = await fetch(`/api/dialogs/${dialogId}/dismiss`, {"
+/api/dialogs/active,ui/src/components/common/ModalSystem.tsx,49,const response = await fetch('/api/dialogs/active');
+/api/dialogs/create,ui/src/components/common/ModalSystem.tsx,84,"const response = await fetch('/api/dialogs/create', {"
+/api/dialogs/stats,ui/src/components/common/ModalSystem.tsx,58,const statsResponse = await fetch('/api/dialogs/stats');
+/api/duplicates,ui/src/api.ts,891,"const res = await apiClient.get('/api/duplicates', {"
+/api/duplicates/${groupId},ui/src/api.ts,929,const res = await apiClient.delete(`/api/duplicates/${groupId}`);
+/api/duplicates/${groupId}/resolve,ui/src/api.ts,918,"const res = await apiClient.post(`/api/duplicates/${groupId}/resolve`, {"
+/api/duplicates/cleanup,ui/src/api.ts,925,const res = await apiClient.post('/api/duplicates/cleanup');
+/api/duplicates/groups,ui/src/api.ts,935,const res = await apiClient.get('/api/duplicates/groups');
+/api/duplicates/resolve,ui/src/components/advanced/DuplicateManagementPanel.tsx,194,"await api.post('/api/duplicates/resolve', {"
+/api/duplicates/scan,ui/src/api.ts,908,"const res = await apiClient.post('/api/duplicates/scan', null, {"
+/api/duplicates/stats,ui/src/api.ts,901,const res = await apiClient.get('/api/duplicates/stats');
+/api/duplicates/suggestions/${groupId},ui/src/components/advanced/DuplicateManagementPanel.tsx,183,const response = await api.get(`/api/duplicates/suggestions/${groupId}`);
+/api/face/clusters,ui/src/components/advanced/FaceRecognitionPanel.tsx,93,const response = await api.get('/api/face/clusters?min_faces=2');
+/api/face/label,ui/src/components/advanced/FaceRecognitionPanel.tsx,165,"await api.post('/api/face/label', {"
+/api/face/process-directory,ui/src/components/advanced/FaceRecognitionPanel.tsx,105,"'/api/face/process-directory',"
+/api/face/search/${encodeURIComponent(personName)},ui/src/components/advanced/FaceRecognitionPanel.tsx,195,`/api/face/search/${encodeURIComponent(personName)}`
+/api/faces/${encodeURIComponent(detectionId)}/similar,ui/src/api.ts,1801,"`/api/faces/${encodeURIComponent(detectionId)}/similar`,"
+/api/faces/${encodeURIComponent(detectionId)}/thumbnail,ui/src/api.ts,1773,`/api/faces/${encodeURIComponent(detectionId)}/thumbnail`
+/api/faces/${encodeURIComponent(faceId)}/confirm,ui/src/api.ts,1883,"`/api/faces/${encodeURIComponent(faceId)}/confirm`,"
+/api/faces/${encodeURIComponent(faceId)}/reject,ui/src/api.ts,1892,"`/api/faces/${encodeURIComponent(faceId)}/reject`,"
+/api/faces/cluster,ui/src/api.ts,1790,"const res = await apiClient.post('/api/faces/cluster', null, {"
+/api/faces/clusters,ui/src/api.ts,1811,const res = await apiClient.get('/api/faces/clusters');
+/api/faces/clusters/${clusterId},ui/src/components/features/FaceClustering.tsx,144,"const response = await fetch(`/api/faces/clusters/${clusterId}`, {"
+/api/faces/clusters/${encodeURIComponent(clusterId)}/coherence,ui/src/api.ts,1959,`/api/faces/clusters/${encodeURIComponent(clusterId)}/coherence`
+/api/faces/clusters/${encodeURIComponent(clusterId)}/hide,ui/src/api.ts,1855,`/api/faces/clusters/${encodeURIComponent(clusterId)}/hide`
+/api/faces/clusters/${encodeURIComponent(clusterId)}/label,ui/src/api.ts,1827,"`/api/faces/clusters/${encodeURIComponent(clusterId)}/label`,"
+/api/faces/clusters/${encodeURIComponent(clusterId)}/rename,ui/src/api.ts,1942,"`/api/faces/clusters/${encodeURIComponent(clusterId)}/rename`,"
+/api/faces/clusters/${encodeURIComponent(clusterId)}/unhide,ui/src/api.ts,1863,`/api/faces/clusters/${encodeURIComponent(clusterId)}/unhide`
+/api/faces/clusters/${selectedCluster.id}/label,ui/src/components/features/FaceClustering.tsx,115,"`/api/faces/clusters/${selectedCluster.id}/label`,"
+/api/faces/clusters/hidden,ui/src/api.ts,1876,const res = await apiClient.get('/api/faces/clusters/hidden');
+/api/faces/clusters/visible,ui/src/api.ts,1870,const res = await apiClient.get('/api/faces/clusters/visible');
+/api/faces/merge,ui/src/api.ts,1918,"const res = await apiClient.post('/api/faces/merge', {"
+/api/faces/mixed-clusters,ui/src/api.ts,1966,"const res = await apiClient.get('/api/faces/mixed-clusters', {"
+/api/faces/move,ui/src/api.ts,1909,"const res = await apiClient.post('/api/faces/move', {"
+/api/faces/prototypes/recompute,ui/src/api.ts,1950,const res = await apiClient.post('/api/faces/prototypes/recompute');
+/api/faces/review-queue,ui/src/api.ts,1978,"const res = await apiClient.get('/api/faces/review-queue', {"
+/api/faces/scan,ui/src/api.ts,1821,const res = await apiClient.post('/api/faces/scan');
+/api/faces/split,ui/src/api.ts,1900,"const res = await apiClient.post('/api/faces/split', {"
+/api/faces/stats,ui/src/api.ts,1816,const res = await apiClient.get('/api/faces/stats');
+/api/faces/unassigned,ui/src/api.ts,1933,"const res = await apiClient.get('/api/faces/unassigned', {"
+/api/faces/undo,ui/src/api.ts,1927,const res = await apiClient.post('/api/faces/undo');
+/api/image/${encodeURIComponent(photo.path)},ui/src/components/advanced/DuplicateManagementPanel.tsx,405,src={`/api/image/${encodeURIComponent(photo.path)}`}
+/api/image/${encodeURIComponent(photoPath)},ui/src/components/advanced/FaceRecognitionPanel.tsx,558,src={`/api/image/${encodeURIComponent(photoPath)}`}
+/api/intent/badges,ui/src/components/search/IntentRecognition.tsx,84,`/api/intent/badges?query=${encodeURIComponent(searchQuery)}`
+/api/intent/detect,ui/src/components/search/IntentRecognition.tsx,47,`/api/intent/detect?query=${encodeURIComponent(searchQuery)}`
+/api/intent/suggestions,ui/src/components/search/IntentRecognition.tsx,70,`/api/intent/suggestions?query=${encodeURIComponent(searchQuery)}`
+/api/jobs/${jobId},ui/src/components/advanced/OCRTextSearchPanel.tsx,187,const jobResponse = await api.get(`/api/jobs/${jobId}`);
+/api/logs/test,ui/src/api.ts,1203,const res = await apiClient.get('/api/logs/test');
+/api/notes/search,ui/src/api.ts,1291,"const res = await apiClient.get('/api/notes/search', {"
+/api/notes/stats,ui/src/api.ts,1298,const res = await apiClient.get('/api/notes/stats');
+/api/ocr/all,ui/src/components/features/OCRSearch.tsx,119,"const response = await fetch('/api/ocr/all', {"
+/api/ocr/extract,ui/src/components/features/OCRSearch.tsx,82,"const response = await fetch('/api/ocr/extract', {"
+/api/ocr/extract-batch,ui/src/components/advanced/OCRTextSearchPanel.tsx,166,"const response = await api.post('/api/ocr/extract-batch', {"
+/api/ocr/regions/${encodeURIComponent(imagePath)},ui/src/components/advanced/OCRTextSearchPanel.tsx,221,`/api/ocr/regions/${encodeURIComponent(imagePath)}`
+/api/ocr/search,ui/src/components/advanced/OCRTextSearchPanel.tsx,143,"const response = await api.post('/api/ocr/search', {"
+/api/ocr/stats,ui/src/components/features/OCRSearch.tsx,34,const response = await fetch('/api/ocr/stats');
+/api/people/search,ui/src/api.ts,1750,"const res = await apiClient.get('/api/people/search', {"
+/api/photos/${encodeURIComponent(path)}/edits,ui/src/api.ts,1305,`/api/photos/${encodeURIComponent(path)}/edits`
+/api/photos/${encodeURIComponent(path)}/faces,ui/src/api.ts,1766,`/api/photos/${encodeURIComponent(path)}/faces`
+/api/photos/${encodeURIComponent(path)}/faces/detect,ui/src/api.ts,1759,`/api/photos/${encodeURIComponent(path)}/faces/detect`
+/api/photos/${encodeURIComponent(path)}/favorite/toggle,ui/src/services/BulkActionsService.ts,162,"fetch(`/api/photos/${encodeURIComponent(path)}/favorite/toggle`, {"
+/api/photos/${encodeURIComponent(path)}/notes,ui/src/api.ts,1266,`/api/photos/${encodeURIComponent(path)}/notes`
+/api/photos/${encodeURIComponent(path)}/people,ui/src/api.ts,1706,`/api/photos/${encodeURIComponent(path)}/people`
+/api/photos/${encodeURIComponent(path)}/rating,ui/src/api.ts,1227,`/api/photos/${encodeURIComponent(path)}/rating`
+/api/photos/${encodeURIComponent(photoPath)}/edit,ui/src/api.ts,953,"`/api/photos/${encodeURIComponent(photoPath)}/edit`,"
+/api/photos/batch/faces/detect,ui/src/api.ts,1779,"const res = await apiClient.post('/api/photos/batch/faces/detect', {"
+/api/ratings/photos/${rating},ui/src/api.ts,1252,"const res = await apiClient.get(`/api/ratings/photos/${rating}`, {"
+/api/ratings/stats,ui/src/api.ts,1259,const res = await apiClient.get('/api/ratings/stats');
+/api/schema,ui/src/api.ts,1184,const res = await apiClient.get('/api/schema');
+/api/search/count,ui/src/hooks/useLiveMatchCount.ts,37,"const response = await fetch('/api/search/count', {"
+/api/tauri/checklist,ui/src/components/features/TauriIntegration.tsx,94,const checklistResponse = await fetch('/api/tauri/checklist');
+/api/tauri/commands,ui/src/components/features/TauriIntegration.tsx,52,const commandsResponse = await fetch('/api/tauri/commands');
+/api/tauri/config,ui/src/components/features/TauriIntegration.tsx,73,const configResponse = await fetch('/api/tauri/config');
+/api/tauri/frontend-hooks,ui/src/components/features/TauriIntegration.tsx,66,const hooksResponse = await fetch('/api/tauri/frontend-hooks');
+/api/tauri/performance,ui/src/components/features/TauriIntegration.tsx,87,const performanceResponse = await fetch('/api/tauri/performance');
+/api/tauri/rust-skeleton,ui/src/components/features/TauriIntegration.tsx,59,const skeletonResponse = await fetch('/api/tauri/rust-skeleton');
+/api/tauri/security,ui/src/components/features/TauriIntegration.tsx,80,const securityResponse = await fetch('/api/tauri/security');
+/api/tauri/setup-guide,ui/src/components/features/TauriIntegration.tsx,101,const guideResponse = await fetch('/api/tauri/setup-guide');
+/api/trash/move,ui/src/services/BulkActionsService.ts,115,"fetch('/api/trash/move', {"
+/image/thumbnail,ui/src/test/api-caching.test.ts,24,expect(url).toContain('/image/thumbnail?path=');
+/image/token,ui/src/api.ts,703,"'/image/token',"
+/intent/badges,ui/src/api.ts,1400,"const res = await apiClient.get('/intent/badges', { params: { query } });"
+/intent/detect,ui/src/api.ts,1388,"const res = await apiClient.get('/intent/detect', { params: { query } });"
+/intent/suggestions,ui/src/api.ts,1393,"const res = await apiClient.get('/intent/suggestions', {"
+/search/intent,ui/src/api.ts,1370,"const res = await apiClient.post('/search/intent', params);"
+/search/refine,ui/src/api.ts,1379,"const res = await apiClient.post('/search/refine', {"
+/video/analysis/${encodeURIComponent(videoPath)},ui/src/components/video/VideoAnalysisPanel.tsx,145,const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
+/video/analyze,ui/src/components/video/VideoAnalysisPanel.tsx,134,"await api.post('/video/analyze', {"
+/video/search,ui/src/components/video/VideoAnalysisPanel.tsx,176,"const response = await api.post('/video/search', {"
+/video/stats,ui/src/components/video/VideoAnalysisPanel.tsx,116,const response = await api.get('/video/stats');

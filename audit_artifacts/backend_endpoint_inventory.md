@@ -1,0 +1,331 @@
+# Backend Endpoint Inventory (auto-generated)
+
+Columns: Path | Method | Called by Frontend? | Purpose (inferred) | Backend Evidence | Frontend Evidence
+
+| Path | Method | Called by Frontend? | Purpose (inferred) | Backend evidence | Frontend evidence |
+|---|---:|:---:|---|---|---|
+| `/` | `GET` | ✅ | — | `server/api/routers/core.py:9` |  |
+| `/admin/unmask` | `POST` | ❌ | — | `server/api/routers/admin.py:14` |  |
+| `/ai/analysis/{path:path}` | `GET` | ✅ | — | `server/api/routers/image_analysis.py:76` |  |
+| `/ai/analytics/patterns` | `POST` | ❌ | — | `server/api/routers/ai_insights.py:112` |  |
+| `/ai/analyze` | `POST` | ✅ | — | `server/api/routers/image_analysis.py:14` |  |
+| `/ai/insights` | `GET` | ✅ | — | `server/api/routers/ai_insights.py:56` |  |
+| `/ai/insights` | `POST` | ✅ | — | `server/api/routers/ai_insights.py:13` |  |
+| `/ai/insights/photo/{photo_path:path}` | `GET` | ✅ | — | `server/api/routers/ai_insights.py:34` |  |
+| `/ai/insights/stats` | `GET` | ✅ | — | `server/api/routers/ai_insights.py:101` |  |
+| `/ai/insights/type/{insight_type}` | `GET` | ✅ | — | `server/api/routers/ai_insights.py:45` |  |
+| `/ai/insights/{insight_id}` | `DELETE` | ✅ | — | `server/api/routers/ai_insights.py:86` |  |
+| `/ai/insights/{insight_id}` | `PUT` | ✅ | — | `server/api/routers/ai_insights.py:67` |  |
+| `/albums` | `GET` | ✅ | — | `server/api/routers/albums.py:33` |  |
+| `/albums` | `POST` | ✅ | — | `server/api/routers/albums.py:18` |  |
+| `/albums/{album_id}` | `DELETE` | ✅ | — | `server/api/routers/albums.py:94` |  |
+| `/albums/{album_id}` | `GET` | ✅ | — | `server/api/routers/albums.py:45` |  |
+| `/albums/{album_id}` | `PUT` | ✅ | — | `server/api/routers/albums.py:76` |  |
+| `/albums/{album_id}/photos` | `DELETE` | ✅ | — | `server/api/routers/albums.py:131` |  |
+| `/albums/{album_id}/photos` | `POST` | ✅ | — | `server/api/routers/albums.py:112` |  |
+| `/albums/{album_id}/refresh` | `POST` | ✅ | — | `server/api/routers/albums.py:150` |  |
+| `/api/actions/detect-apps` | `GET` | ✅ | API: actions | `server/api/routers/system.py:24` | `ui/src/services/ActionService.ts:121` |
+| `/api/advanced/comprehensive-stats` | `GET` | ❌ | API: advanced | `server/main_advanced_features.py:313` |  |
+| `/api/advanced/scan-directory` | `POST` | ❌ | API: advanced | `server/main_advanced_features.py:197` |  |
+| `/api/advanced/status` | `GET` | ✅ | API: advanced | `server/main_advanced_features.py:147` | `ui/src/pages/AdvancedFeaturesPage.tsx:79` |
+| `/api/cache/cleanup` | `GET` | ✅ | Cache stats/cleanup | `server/api/routers/system.py:44` | `ui/src/api.ts:1197` |
+| `/api/cache/clear` | `POST` | ❌ | Cache stats/cleanup | `server/api/routers/system.py:37` |  |
+| `/api/cache/stats` | `GET` | ✅ | Cache stats/cleanup | `server/api/routers/system.py:30` | `ui/src/api.ts:1190` |
+| `/api/clusters/{cluster_id}/merge` | `POST` | ✅ | API: clusters | `server/api/routers/people_photo_association.py:383` |  |
+| `/api/clusters/{cluster_id}/quality` | `GET` | ✅ | API: clusters | `server/api/routers/people_photo_association.py:341` |  |
+| `/api/duplicates` | `GET` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:15` | `ui/src/api.ts:891` |
+| `/api/duplicates/cleanup` | `POST` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:90` | `ui/src/api.ts:925` |
+| `/api/duplicates/scan` | `POST` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:26` | `ui/src/api.ts:908` |
+| `/api/duplicates/stats` | `GET` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:79` | `ui/src/api.ts:901` |
+| `/api/duplicates/{group_id}` | `DELETE` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:68` |  |
+| `/api/duplicates/{group_id}/resolve` | `POST` | ✅ | Duplicate detection + resolution | `server/api/routers/duplicates.py:56` |  |
+| `/api/faces/cluster` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/people_photo_association.py:246` | `ui/src/api.ts:1790` |
+| `/api/faces/clusters` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:23` | `ui/src/api.ts:1811` |
+| `/api/faces/clusters/hidden` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1047` | `ui/src/api.ts:1876` |
+| `/api/faces/clusters/visible` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1021` | `ui/src/api.ts:1870` |
+| `/api/faces/clusters/{cluster_id}` | `DELETE` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:377` |  |
+| `/api/faces/clusters/{cluster_id}/hide` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:991` |  |
+| `/api/faces/clusters/{cluster_id}/label` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:280` |  |
+| `/api/faces/clusters/{cluster_id}/photos` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:402` |  |
+| `/api/faces/clusters/{cluster_id}/rename` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1224` |  |
+| `/api/faces/clusters/{cluster_id}/unhide` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1006` |  |
+| `/api/faces/crop/{face_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:726` |  |
+| `/api/faces/low-confidence` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:571` |  |
+| `/api/faces/merge` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1158` | `ui/src/api.ts:1918` |
+| `/api/faces/move` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1137` | `ui/src/api.ts:1909` |
+| `/api/faces/person/{person_name}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:298` |  |
+| `/api/faces/photos-with-faces` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:689` |  |
+| `/api/faces/prototypes/recompute` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1243` | `ui/src/api.ts:1950` |
+| `/api/faces/scan` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:62` | `ui/src/api.ts:1821` |
+| `/api/faces/scan-async` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:186` |  |
+| `/api/faces/scan-single` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:256` |  |
+| `/api/faces/scan-status/{job_id}` | `GET` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:245` |  |
+| `/api/faces/singletons` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:521` |  |
+| `/api/faces/split` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1111` | `ui/src/api.ts:1900` |
+| `/api/faces/stats` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:779` | `ui/src/api.ts:1816` |
+| `/api/faces/unassigned` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1199` | `ui/src/api.ts:1933` |
+| `/api/faces/undo` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1184` | `ui/src/api.ts:1927` |
+| `/api/faces/unidentified` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:461` |  |
+| `/api/faces/{detection_id}/similar` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/people_photo_association.py:294` |  |
+| `/api/faces/{detection_id}/thumbnail` | `GET` | ✅ | Face detection/clustering/people management | `server/api/routers/people_photo_association.py:192` |  |
+| `/api/faces/{face_id}/assign` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:619` |  |
+| `/api/faces/{face_id}/confirm` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1073` |  |
+| `/api/faces/{face_id}/create-person` | `POST` | ❌ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:652` |  |
+| `/api/faces/{face_id}/reject` | `POST` | ✅ | Face detection/clustering/people management | `server/api/routers/face_recognition.py:1092` |  |
+| `/api/intent/detect` | `GET` | ✅ | Intent detection (api-prefixed variant) | `server/api/routers/intent.py:9` | `ui/src/components/search/IntentRecognition.tsx:47` |
+| `/api/logs/test` | `GET` | ✅ | API: logs | `server/api/routers/system.py:51` | `ui/src/api.ts:1203` |
+| `/api/notes/search` | `GET` | ✅ | Notes CRUD + search | `server/api/routers/notes.py:61` | `ui/src/api.ts:1291` |
+| `/api/notes/stats` | `GET` | ✅ | Notes CRUD + search | `server/api/routers/notes.py:94` | `ui/src/api.ts:1298` |
+| `/api/people/search` | `GET` | ✅ | People/faces analytics and person views | `server/api/routers/face_recognition.py:846` | `ui/src/api.ts:1750` |
+| `/api/people/{person_id}/analytics` | `GET` | ❌ | People/faces analytics and person views | `server/api/routers/face_recognition.py:905` |  |
+| `/api/photos/batch/faces/detect` | `POST` | ✅ | API: photos | `server/api/routers/people_photo_association.py:213` | `ui/src/api.ts:1779` |
+| `/api/photos/{file_path:path}/edit` | `GET` | ✅ | API: photos | `server/api/routers/photo_edits.py:11` |  |
+| `/api/photos/{file_path:path}/edit` | `POST` | ✅ | API: photos | `server/api/routers/photo_edits.py:21` |  |
+| `/api/photos/{file_path:path}/edits` | `DELETE` | ✅ | API: photos | `server/api/routers/edits.py:36` |  |
+| `/api/photos/{file_path:path}/edits` | `GET` | ✅ | API: photos | `server/api/routers/edits.py:11` |  |
+| `/api/photos/{file_path:path}/edits` | `POST` | ✅ | API: photos | `server/api/routers/edits.py:22` |  |
+| `/api/photos/{file_path:path}/notes` | `DELETE` | ✅ | API: photos | `server/api/routers/notes.py:44` |  |
+| `/api/photos/{file_path:path}/notes` | `GET` | ✅ | API: photos | `server/api/routers/notes.py:15` |  |
+| `/api/photos/{file_path:path}/notes` | `POST` | ✅ | API: photos | `server/api/routers/notes.py:26` |  |
+| `/api/photos/{file_path:path}/rating` | `GET` | ✅ | API: photos | `server/api/routers/ratings.py:13` |  |
+| `/api/photos/{file_path:path}/rating` | `POST` | ✅ | API: photos | `server/api/routers/ratings.py:24` |  |
+| `/api/photos/{photo_path:path}/faces` | `GET` | ✅ | API: photos | `server/api/routers/people_photo_association.py:148` |  |
+| `/api/photos/{photo_path:path}/faces/detect` | `POST` | ✅ | API: photos | `server/api/routers/people_photo_association.py:103` |  |
+| `/api/photos/{photo_path:path}/people` | `GET` | ✅ | API: photos | `server/api/routers/people_photo_association.py:16` |  |
+| `/api/photos/{photo_path:path}/people` | `POST` | ✅ | API: photos | `server/api/routers/people_photo_association.py:30` |  |
+| `/api/photos/{photo_path:path}/people/{person_id}` | `DELETE` | ✅ | API: photos | `server/api/routers/people_photo_association.py:75` |  |
+| `/api/ratings/photos/{rating}` | `GET` | ✅ | Ratings + stats | `server/api/routers/ratings.py:44` |  |
+| `/api/ratings/stats` | `GET` | ✅ | Ratings + stats | `server/api/routers/ratings.py:74` | `ui/src/api.ts:1259` |
+| `/api/schema` | `GET` | ✅ | API: schema | `server/api/routers/system.py:17` | `ui/src/api.ts:1184` |
+| `/api/search/count` | `POST` | ✅ | Search helpers (e.g., live count) / search APIs | `server/api/routers/semantic_search.py:19` | `ui/src/hooks/useLiveMatchCount.ts:37` |
+| `/bulk/action` | `POST` | ✅ | — | `server/api/routers/bulk_actions.py:13` |  |
+| `/bulk/can-undo/{action_id}` | `GET` | ✅ | — | `server/api/routers/bulk_actions.py:73` |  |
+| `/bulk/delete` | `POST` | ✅ | — | `server/api/routers/bulk.py:53` |  |
+| `/bulk/export` | `POST` | ✅ | — | `server/api/routers/bulk.py:12` |  |
+| `/bulk/favorite` | `POST` | ✅ | — | `server/api/routers/bulk.py:100` |  |
+| `/bulk/history/{user_id}` | `GET` | ✅ | — | `server/api/routers/bulk_actions.py:34` |  |
+| `/bulk/stats/{user_id}` | `GET` | ✅ | — | `server/api/routers/bulk_actions.py:85` |  |
+| `/bulk/undo/{action_id}` | `POST` | ✅ | — | `server/api/routers/bulk_actions.py:51` |  |
+| `/cache/clear` | `POST` | ✅ | — | `server/api/routers/cache.py:22` |  |
+| `/cache/health` | `GET` | ✅ | — | `server/api/routers/cache.py:34` |  |
+| `/cache/stats` | `GET` | ❌ | — | `server/api/routers/cache.py:10` |  |
+| `/code-splitting/api-endpoints` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:180` |  |
+| `/code-splitting/chunk/{chunk_name}` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:27` |  |
+| `/code-splitting/chunk/{chunk_name}` | `POST` | ❌ | — | `server/api/routers/code_splitting.py:49` |  |
+| `/code-splitting/config` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:11` |  |
+| `/code-splitting/enabled` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:69` |  |
+| `/code-splitting/enabled` | `POST` | ❌ | — | `server/api/routers/code_splitting.py:85` |  |
+| `/code-splitting/integration-guide` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:163` |  |
+| `/code-splitting/performance` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:128` |  |
+| `/code-splitting/performance` | `POST` | ❌ | — | `server/api/routers/code_splitting.py:104` |  |
+| `/code-splitting/performance/chunks` | `GET` | ❌ | — | `server/api/routers/code_splitting.py:147` |  |
+| `/collaborative/spaces` | `POST` | ✅ | — | `server/api/routers/collaborative_spaces.py:17` |  |
+| `/collaborative/spaces/user/{user_id}` | `GET` | ✅ | — | `server/api/routers/collaborative_spaces.py:54` |  |
+| `/collaborative/spaces/{space_id}` | `GET` | ✅ | — | `server/api/routers/collaborative_spaces.py:39` |  |
+| `/collaborative/spaces/{space_id}/members` | `GET` | ✅ | — | `server/api/routers/collaborative_spaces.py:101` |  |
+| `/collaborative/spaces/{space_id}/members` | `POST` | ✅ | — | `server/api/routers/collaborative_spaces.py:65` |  |
+| `/collaborative/spaces/{space_id}/members/{user_id}` | `DELETE` | ❌ | — | `server/api/routers/collaborative_spaces.py:85` |  |
+| `/collaborative/spaces/{space_id}/photos` | `GET` | ✅ | — | `server/api/routers/collaborative_spaces.py:149` |  |
+| `/collaborative/spaces/{space_id}/photos` | `POST` | ✅ | — | `server/api/routers/collaborative_spaces.py:112` |  |
+| `/collaborative/spaces/{space_id}/photos/{photo_path:path}` | `DELETE` | ❌ | — | `server/api/routers/collaborative_spaces.py:133` |  |
+| `/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments` | `GET` | ❌ | — | `server/api/routers/collaborative_spaces.py:186` |  |
+| `/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments` | `POST` | ❌ | — | `server/api/routers/collaborative_spaces.py:160` |  |
+| `/collaborative/spaces/{space_id}/stats` | `GET` | ✅ | — | `server/api/routers/collaborative_spaces.py:197` |  |
+| `/collections/smart` | `GET` | ✅ | — | `server/api/routers/smart_collections.py:36` |  |
+| `/collections/smart` | `POST` | ✅ | — | `server/api/routers/smart_collections.py:14` |  |
+| `/collections/smart/by-rule/{rule_type}` | `GET` | ✅ | — | `server/api/routers/smart_collections.py:115` |  |
+| `/collections/smart/stats` | `GET` | ✅ | — | `server/api/routers/smart_collections.py:126` |  |
+| `/collections/smart/{collection_id}` | `DELETE` | ✅ | — | `server/api/routers/smart_collections.py:86` |  |
+| `/collections/smart/{collection_id}` | `GET` | ✅ | — | `server/api/routers/smart_collections.py:47` |  |
+| `/collections/smart/{collection_id}` | `PUT` | ✅ | — | `server/api/routers/smart_collections.py:62` |  |
+| `/collections/smart/{collection_id}/photos` | `GET` | ✅ | — | `server/api/routers/smart_collections.py:101` |  |
+| `/dialogs/active` | `GET` | ❌ | — | `server/api/routers/dialogs.py:43` |  |
+| `/dialogs/confirmation` | `POST` | ❌ | — | `server/api/routers/dialogs.py:105` |  |
+| `/dialogs/create` | `POST` | ❌ | — | `server/api/routers/dialogs.py:23` |  |
+| `/dialogs/error` | `POST` | ❌ | — | `server/api/routers/dialogs.py:126` |  |
+| `/dialogs/history` | `GET` | ❌ | — | `server/api/routers/dialogs.py:213` |  |
+| `/dialogs/input` | `POST` | ❌ | — | `server/api/routers/dialogs.py:196` |  |
+| `/dialogs/progress` | `POST` | ❌ | — | `server/api/routers/dialogs.py:148` |  |
+| `/dialogs/progress/{dialog_id}` | `POST` | ❌ | — | `server/api/routers/dialogs.py:170` |  |
+| `/dialogs/progress/{dialog_id}/complete` | `POST` | ❌ | — | `server/api/routers/dialogs.py:186` |  |
+| `/dialogs/stats` | `GET` | ❌ | — | `server/api/routers/dialogs.py:223` |  |
+| `/dialogs/{dialog_id}` | `GET` | ❌ | — | `server/api/routers/dialogs.py:53` |  |
+| `/dialogs/{dialog_id}/action` | `POST` | ❌ | — | `server/api/routers/dialogs.py:66` |  |
+| `/dialogs/{dialog_id}/close` | `POST` | ❌ | — | `server/api/routers/dialogs.py:81` |  |
+| `/dialogs/{dialog_id}/dismiss` | `POST` | ❌ | — | `server/api/routers/dialogs.py:95` |  |
+| `/example` | `GET` | ❌ | — | `server/api/deps.py:16` |  |
+| `/export` | `POST` | ✅ | — | `server/api/routers/export.py:15` |  |
+| `/export/presets` | `GET` | ✅ | — | `server/api/routers/export.py:144` |  |
+| `/export/presets` | `POST` | ✅ | — | `server/api/routers/export.py:136` |  |
+| `/faces/cluster` | `POST` | ❌ | — | `server/api/routers/faces_legacy.py:11` |  |
+| `/faces/clusters` | `GET` | ❌ | — | `server/api/routers/faces_legacy.py:34` |  |
+| `/faces/clusters/{cluster_id}` | `DELETE` | ❌ | — | `server/api/routers/faces_legacy.py:112` |  |
+| `/faces/clusters/{cluster_id}` | `GET` | ❌ | — | `server/api/routers/faces_legacy.py:54` |  |
+| `/faces/clusters/{cluster_id}/label` | `PUT` | ❌ | — | `server/api/routers/faces_legacy.py:92` |  |
+| `/faces/image/{image_path:path}` | `GET` | ✅ | — | `server/api/routers/faces_legacy.py:73` |  |
+| `/faces/stats` | `GET` | ❌ | — | `server/api/routers/faces_legacy.py:131` |  |
+| `/favorites` | `DELETE` | ✅ | — | `server/api/routers/favorites.py:58` |  |
+| `/favorites` | `GET` | ✅ | — | `server/api/routers/favorites.py:30` |  |
+| `/favorites/check` | `GET` | ✅ | — | `server/api/routers/favorites.py:43` |  |
+| `/favorites/toggle` | `POST` | ✅ | — | `server/api/routers/favorites.py:9` |  |
+| `/file` | `GET` | ❌ | — | `server/api/routers/file.py:17` |  |
+| `/image/thumbnail` | `GET` | ❌ | — | `server/api/routers/images.py:23` | `ui/src/test/api-caching.test.ts:24` |
+| `/image/token` | `POST` | ❌ | — | `server/api/routers/images.py:230` | `ui/src/api.ts:703` |
+| `/index` | `POST` | ❌ | — | `server/api/routers/indexing.py:97` |  |
+| `/intent/all` | `GET` | ❌ | Intent detection/suggestions/badges | `server/api/routers/intent.py:110` |  |
+| `/intent/badges` | `GET` | ✅ | Intent detection/suggestions/badges | `server/api/routers/intent.py:91` | `ui/src/api.ts:1400` |
+| `/intent/detect` | `GET` | ✅ | Intent detection/suggestions/badges | `server/api/routers/intent.py:37` | `ui/src/api.ts:1388` |
+| `/intent/suggestions` | `GET` | ✅ | Intent detection/suggestions/badges | `server/api/routers/intent.py:71` | `ui/src/api.ts:1393` |
+| `/jobs/{job_id}` | `GET` | ✅ | — | `server/api/routers/indexing.py:88` |  |
+| `/library/remove` | `POST` | ✅ | — | `server/api/routers/trash.py:258` |  |
+| `/locations-legacy` | `POST` | ❌ | — | `server/api/routers/locations.py:18` |  |
+| `/locations-legacy/photo/{photo_path:path}` | `GET` | ❌ | — | `server/api/routers/locations.py:43` |  |
+| `/locations-legacy/photo/{photo_path:path}` | `PUT` | ❌ | — | `server/api/routers/locations.py:61` |  |
+| `/locations-legacy/stats` | `GET` | ❌ | — | `server/api/routers/locations.py:120` |  |
+| `/locations/clusterize` | `POST` | ✅ | — | `server/api/routers/locations.py:235` |  |
+| `/locations/clusters` | `GET` | ✅ | — | `server/api/routers/locations.py:109` |  |
+| `/locations/clusters/{cluster_id}/photos` | `GET` | ✅ | — | `server/api/routers/locations.py:204` |  |
+| `/locations/correct-bulk` | `POST` | ✅ | — | `server/api/routers/locations.py:269` |  |
+| `/locations/correct/{photo_path:path}` | `POST` | ✅ | — | `server/api/routers/locations.py:131` |  |
+| `/locations/nearby` | `GET` | ✅ | — | `server/api/routers/locations.py:94` |  |
+| `/locations/photo/{photo_path:path}` | `GET` | ✅ | — | `server/api/routers/locations.py:153` |  |
+| `/locations/photo/{photo_path:path}/cluster` | `GET` | ✅ | — | `server/api/routers/locations.py:220` |  |
+| `/locations/places/{place_name}` | `GET` | ❌ | — | `server/api/routers/locations.py:83` |  |
+| `/locations/stats` | `GET` | ✅ | — | `server/api/routers/locations.py:257` |  |
+| `/oauth/google/callback` | `GET` | ❌ | — | `server/api/routers/sources.py:917` |  |
+| `/ocr/all` | `DELETE` | ❌ | — | `server/api/routers/ocr.py:105` |  |
+| `/ocr/extract` | `POST` | ❌ | — | `server/api/routers/ocr.py:11` |  |
+| `/ocr/image/{image_path:path}` | `DELETE` | ❌ | — | `server/api/routers/ocr.py:86` |  |
+| `/ocr/image/{image_path:path}` | `GET` | ❌ | — | `server/api/routers/ocr.py:67` |  |
+| `/ocr/search` | `GET` | ❌ | — | `server/api/routers/ocr.py:30` |  |
+| `/ocr/stats` | `GET` | ❌ | — | `server/api/routers/ocr.py:51` |  |
+| `/photos/by-tags` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:384` |  |
+| `/photos/by-tags/legacy2` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:159` |  |
+| `/photos/flip` | `POST` | ✅ | — | `server/api/routers/transforms.py:65` |  |
+| `/photos/rotate` | `POST` | ✅ | — | `server/api/routers/transforms.py:11` |  |
+| `/photos/{path:path}/albums` | `GET` | ✅ | — | `server/api/routers/albums.py:180` |  |
+| `/photos/{path:path}/tags` | `GET` | ✅ | — | `server/api/routers/tags.py:82` |  |
+| `/pricing` | `GET` | ✅ | — | `server/api/routers/pricing.py:13` |  |
+| `/pricing/recommend` | `GET` | ✅ | — | `server/api/routers/pricing.py:32` |  |
+| `/pricing/{tier_name}` | `GET` | ✅ | — | `server/api/routers/pricing.py:21` |  |
+| `/privacy/access/{user_id}` | `GET` | ✅ | — | `server/api/routers/privacy.py:86` |  |
+| `/privacy/check-access/{photo_path:path}/{user_id}` | `GET` | ❌ | — | `server/api/routers/privacy.py:97` |  |
+| `/privacy/control/{photo_path:path}` | `GET` | ✅ | — | `server/api/routers/privacy.py:36` |  |
+| `/privacy/control/{photo_path:path}` | `POST` | ✅ | — | `server/api/routers/privacy.py:11` |  |
+| `/privacy/control/{photo_path:path}` | `PUT` | ✅ | — | `server/api/routers/privacy.py:51` |  |
+| `/privacy/encrypted/{owner_id}` | `GET` | ✅ | — | `server/api/routers/privacy.py:108` |  |
+| `/privacy/revoke-access/{photo_path:path}/{user_id}` | `DELETE` | ❌ | — | `server/api/routers/privacy.py:130` |  |
+| `/privacy/stats/{owner_id}` | `GET` | ✅ | — | `server/api/routers/privacy.py:119` |  |
+| `/privacy/visible/{visibility}/{owner_id}` | `GET` | ✅ | — | `server/api/routers/privacy.py:75` |  |
+| `/scan` | `POST` | ✅ | — | `server/api/routers/indexing.py:20` |  |
+| `/search` | `GET` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/search.py:22` |  |
+| `/search/intent` | `POST` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/advanced_intent_search.py:15` | `ui/src/api.ts:1370` |
+| `/search/refine` | `POST` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/advanced_intent_search.py:115` | `ui/src/api.ts:1379` |
+| `/search/semantic` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/semantic_search.py:111` |  |
+| `/searches` | `GET` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:34` |  |
+| `/searches/analytics` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:137` |  |
+| `/searches/analytics/detailed` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:146` |  |
+| `/searches/analytics/export` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:164` |  |
+| `/searches/analytics/trends` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:155` |  |
+| `/searches/history` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:186` |  |
+| `/searches/history/clear` | `POST` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:226` |  |
+| `/searches/performance` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:217` |  |
+| `/searches/recurring` | `GET` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:207` |  |
+| `/searches/save` | `POST` | ❌ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:16` |  |
+| `/searches/{search_id}` | `DELETE` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:125` |  |
+| `/searches/{search_id}` | `GET` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:57` |  |
+| `/searches/{search_id}` | `PUT` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:104` |  |
+| `/searches/{search_id}/execute` | `POST` | ✅ | Unified search (metadata/semantic/hybrid) + intent search | `server/api/routers/saved_searches.py:69` |  |
+| `/server/config` | `GET` | ❌ | — | `server/api/routers/core.py:14` |  |
+| `/share` | `POST` | ✅ | — | `server/api/routers/share.py:18` |  |
+| `/shared/{share_id}` | `GET` | ✅ | — | `server/api/routers/share.py:76` |  |
+| `/shared/{share_id}/download` | `GET` | ❌ | — | `server/api/routers/share.py:122` |  |
+| `/sources` | `GET` | ✅ | — | `server/api/routers/sources.py:45` |  |
+| `/sources/google-drive` | `POST` | ✅ | — | `server/api/routers/sources.py:890` |  |
+| `/sources/local-folder` | `POST` | ✅ | — | `server/api/routers/sources.py:487` |  |
+| `/sources/s3` | `POST` | ✅ | — | `server/api/routers/sources.py:544` |  |
+| `/sources/{source_id}` | `DELETE` | ✅ | — | `server/api/routers/sources.py:67` |  |
+| `/sources/{source_id}/rescan` | `POST` | ✅ | — | `server/api/routers/sources.py:78` |  |
+| `/sources/{source_id}/sync` | `POST` | ✅ | — | `server/api/routers/sources.py:1020` |  |
+| `/stats` | `GET` | ✅ | — | `server/api/routers/stats.py:9` |  |
+| `/stories` | `POST` | ✅ | — | `server/api/routers/stories.py:20` |  |
+| `/stories/owner/{owner_id}` | `GET` | ✅ | — | `server/api/routers/stories.py:57` |  |
+| `/stories/user/{user_id}/stats` | `GET` | ✅ | — | `server/api/routers/stories.py:262` |  |
+| `/stories/{story_id}` | `GET` | ✅ | — | `server/api/routers/stories.py:42` |  |
+| `/stories/{story_id}` | `PUT` | ✅ | — | `server/api/routers/stories.py:73` |  |
+| `/stories/{story_id}/photos` | `POST` | ✅ | — | `server/api/routers/stories.py:123` |  |
+| `/stories/{story_id}/publish` | `POST` | ✅ | — | `server/api/routers/stories.py:273` |  |
+| `/stories/{story_id}/stats` | `GET` | ✅ | — | `server/api/routers/stories.py:218` |  |
+| `/stories/{story_id}/timeline` | `GET` | ✅ | — | `server/api/routers/stories.py:145` |  |
+| `/tag-filters` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:281` |  |
+| `/tag-filters` | `POST` | ✅ | — | `server/api/routers/tag_filters.py:246` |  |
+| `/tag-filters/apply` | `POST` | ✅ | — | `server/api/routers/tag_filters.py:360` |  |
+| `/tag-filters/legacy2` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:56` |  |
+| `/tag-filters/legacy2` | `POST` | ❌ | — | `server/api/routers/tag_filters.py:21` |  |
+| `/tag-filters/legacy2/apply` | `POST` | ❌ | — | `server/api/routers/tag_filters.py:135` |  |
+| `/tag-filters/legacy2/{filter_id}` | `DELETE` | ❌ | — | `server/api/routers/tag_filters.py:120` |  |
+| `/tag-filters/legacy2/{filter_id}` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:41` |  |
+| `/tag-filters/legacy2/{filter_id}` | `PUT` | ❌ | — | `server/api/routers/tag_filters.py:76` |  |
+| `/tag-filters/{filter_id}` | `DELETE` | ✅ | — | `server/api/routers/tag_filters.py:345` |  |
+| `/tag-filters/{filter_id}` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:266` |  |
+| `/tag-filters/{filter_id}` | `PUT` | ✅ | — | `server/api/routers/tag_filters.py:301` |  |
+| `/tags` | `GET` | ✅ | — | `server/api/routers/tags.py:15` |  |
+| `/tags` | `POST` | ✅ | — | `server/api/routers/tags.py:22` |  |
+| `/tags/common` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:201` |  |
+| `/tags/common/legacy2` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:426` |  |
+| `/tags/search` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:222` |  |
+| `/tags/search/legacy2` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:451` |  |
+| `/tags/stats` | `GET` | ✅ | — | `server/api/routers/tag_filters.py:234` |  |
+| `/tags/stats/legacy2` | `GET` | ❌ | — | `server/api/routers/tag_filters.py:463` |  |
+| `/tags/{tag_name}` | `DELETE` | ✅ | — | `server/api/routers/tags.py:34` |  |
+| `/tags/{tag_name}` | `GET` | ✅ | — | `server/api/routers/tags.py:43` |  |
+| `/tags/{tag_name}/photos` | `DELETE` | ✅ | — | `server/api/routers/tags.py:75` |  |
+| `/tags/{tag_name}/photos` | `POST` | ✅ | — | `server/api/routers/tags.py:68` |  |
+| `/tauri/checklist` | `GET` | ❌ | — | `server/api/routers/tauri.py:127` |  |
+| `/tauri/commands` | `GET` | ❌ | — | `server/api/routers/tauri.py:9` |  |
+| `/tauri/commands/{command_name}` | `GET` | ❌ | — | `server/api/routers/tauri.py:25` |  |
+| `/tauri/config` | `GET` | ❌ | — | `server/api/routers/tauri.py:79` |  |
+| `/tauri/frontend-hooks` | `GET` | ❌ | — | `server/api/routers/tauri.py:63` |  |
+| `/tauri/performance` | `GET` | ❌ | — | `server/api/routers/tauri.py:111` |  |
+| `/tauri/rust-skeleton` | `GET` | ❌ | — | `server/api/routers/tauri.py:47` |  |
+| `/tauri/security` | `GET` | ❌ | — | `server/api/routers/tauri.py:95` |  |
+| `/tauri/setup-guide` | `GET` | ❌ | — | `server/api/routers/tauri.py:143` |  |
+| `/timeline` | `GET` | ✅ | — | `server/api/routers/stats.py:23` |  |
+| `/timeline/entries/{entry_id}` | `DELETE` | ✅ | — | `server/api/routers/stories.py:202` |  |
+| `/timeline/entries/{entry_id}` | `PUT` | ✅ | — | `server/api/routers/stories.py:160` |  |
+| `/trash` | `GET` | ✅ | — | `server/api/routers/trash.py:148` |  |
+| `/trash/empty` | `POST` | ✅ | — | `server/api/routers/trash.py:213` |  |
+| `/trash/move` | `POST` | ✅ | — | `server/api/routers/trash.py:72` |  |
+| `/trash/restore` | `POST` | ✅ | — | `server/api/routers/trash.py:168` |  |
+| `/usage/check/{user_id}` | `GET` | ✅ | — | `server/api/routers/pricing.py:63` |  |
+| `/usage/company-analytics` | `GET` | ❌ | — | `server/api/routers/pricing.py:153` |  |
+| `/usage/growth/{user_id}` | `GET` | ❌ | — | `server/api/routers/pricing.py:119` |  |
+| `/usage/history/{user_id}` | `GET` | ❌ | — | `server/api/routers/pricing.py:96` |  |
+| `/usage/tier-averages` | `GET` | ❌ | — | `server/api/routers/pricing.py:138` |  |
+| `/usage/upgrade/{user_id}` | `POST` | ✅ | — | `server/api/routers/pricing.py:79` |  |
+| `/usage/{user_id}` | `GET` | ✅ | — | `server/api/routers/pricing.py:43` |  |
+| `/versions` | `POST` | ✅ | — | `server/api/routers/versions.py:114` |  |
+| `/versions-legacy` | `POST` | ❌ | — | `server/api/routers/versions.py:16` |  |
+| `/versions-legacy/original/{original_path:path}` | `GET` | ❌ | — | `server/api/routers/versions.py:40` |  |
+| `/versions-legacy/stack/{version_path:path}` | `GET` | ❌ | — | `server/api/routers/versions.py:52` |  |
+| `/versions-legacy/stats` | `GET` | ❌ | — | `server/api/routers/versions.py:103` |  |
+| `/versions-legacy/{version_id}` | `DELETE` | ❌ | — | `server/api/routers/versions.py:86` |  |
+| `/versions-legacy/{version_path:path}` | `PUT` | ❌ | — | `server/api/routers/versions.py:64` |  |
+| `/versions/merge-stacks` | `POST` | ✅ | — | `server/api/routers/versions.py:244` |  |
+| `/versions/photo/{photo_path:path}` | `GET` | ✅ | — | `server/api/routers/versions.py:138` |  |
+| `/versions/stack/{original_path:path}` | `GET` | ✅ | — | `server/api/routers/versions.py:159` |  |
+| `/versions/stacks` | `GET` | ✅ | — | `server/api/routers/versions.py:218` |  |
+| `/versions/stats` | `GET` | ✅ | — | `server/api/routers/versions.py:233` |  |
+| `/versions/{version_id}` | `DELETE` | ✅ | — | `server/api/routers/versions.py:203` |  |
+| `/versions/{version_path:path}` | `PUT` | ✅ | — | `server/api/routers/versions.py:183` |  |
+| `/video` | `GET` | ❌ | — | `server/api/routers/video.py:16` |  |
+| `/video/analysis/{video_path:path}` | `DELETE` | ❌ | — | `server/api/routers/video_analysis.py:336` |  |
+| `/video/analysis/{video_path:path}` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:64` |  |
+| `/video/analyze` | `POST` | ❌ | — | `server/api/routers/video_analysis.py:16` | `ui/src/components/video/VideoAnalysisPanel.tsx:134` |
+| `/video/batch-analyze` | `POST` | ❌ | — | `server/api/routers/video_analysis.py:391` |  |
+| `/video/keyframes/{video_path:path}` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:132` |  |
+| `/video/ocr/{video_path:path}` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:198` |  |
+| `/video/scenes/{video_path:path}` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:169` |  |
+| `/video/search` | `POST` | ❌ | — | `server/api/routers/video_analysis.py:93` | `ui/src/components/video/VideoAnalysisPanel.tsx:176` |
+| `/video/stats` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:237` | `ui/src/components/video/VideoAnalysisPanel.tsx:116` |
+| `/video/thumbnail/{video_path:path}` | `GET` | ❌ | — | `server/api/routers/video_analysis.py:259` |  |

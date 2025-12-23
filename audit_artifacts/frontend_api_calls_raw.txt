@@ -1,0 +1,340 @@
+ui/src/contexts/PhotoSearchContext.tsx:303:        const res = await api.search(
+ui/src/contexts/PhotoSearchContext.tsx:439:      // Only re-search if we've done the initial fetch
+ui/src/test/setup.ts:12:// Mock fetch for tests
+ui/src/test/setup.ts:13:global.fetch = vi.fn();
+ui/src/test/api-caching.test.ts:23:    const url = await api.getSignedImageUrl(testPath, 96);
+ui/src/test/api-caching.test.ts:38:    const url = await api.getSignedImageUrl(testPath, 128);
+ui/src/test/face-detection-api.test.ts:34:      const result = await api.detectFaces('/test/photo.jpg');
+ui/src/test/face-detection-api.test.ts:60:      const result = await api.getFacesInPhoto('/test/photo.jpg');
+ui/src/test/face-detection-api.test.ts:76:      const result = await api.getFaceThumbnail('face_123');
+ui/src/test/face-detection-api.test.ts:108:      const result = await api.detectFacesBatch([
+ui/src/test/face-detection-api.test.ts:153:      const result = await api.clusterFaces(0.6, 2);
+ui/src/test/face-detection-api.test.ts:185:      const result = await api.findSimilarFaces('face_123', 0.7);
+ui/src/test/face-detection-api.test.ts:211:      const result = await api.getClusterQuality('cluster_123');
+ui/src/test/face-detection-api.test.ts:227:      const result = await api.mergeClusters('cluster_123', 'cluster_456');
+ui/src/test/face-detection-api.test.ts:239:      await expect(api.detectFaces('/test/photo.jpg')).rejects.toThrow('Internal server error');
+ui/src/test/face-detection-api.test.ts:246:      await expect(api.getFaceThumbnail('nonexistent')).rejects.toThrow('Network Error');
+ui/src/test/face-detection-api.test.ts:253:      await expect(api.getFacesInPhoto('/nonexistent/photo.jpg')).rejects.toThrow('404 Not Found');
+ui/src/test/face-detection-api.test.ts:268:      const result = await api.detectFaces('/test/empty.jpg');
+ui/src/test/face-detection-api.test.ts:291:      const result = await api.detectFacesBatch(largeBatch);
+ui/src/test/face-detection-api.test.ts:300:      expect(typeof api.detectFaces).toBe('function');
+ui/src/test/face-detection-api.test.ts:301:      expect(typeof api.getFacesInPhoto).toBe('function');
+ui/src/test/face-detection-api.test.ts:302:      expect(typeof api.getFaceThumbnail).toBe('function');
+ui/src/test/face-detection-api.test.ts:303:      expect(typeof api.detectFacesBatch).toBe('function');
+ui/src/test/face-detection-api.test.ts:304:      expect(typeof api.clusterFaces).toBe('function');
+ui/src/test/face-detection-api.test.ts:305:      expect(typeof api.findSimilarFaces).toBe('function');
+ui/src/test/face-detection-api.test.ts:306:      expect(typeof api.getClusterQuality).toBe('function');
+ui/src/test/face-detection-api.test.ts:307:      expect(typeof api.mergeClusters).toBe('function');
+ui/src/api.ts:13:const apiClient = axios.create({
+ui/src/api.ts:392:   * Most UI code expects `api.get/post/...` to resolve to the JSON payload directly
+ui/src/api.ts:662:        const cfg = await api.getServerConfig();
+ui/src/api.ts:673:          const cfg = await api.getServerConfig();
+ui/src/api.ts:1221:    return await api.getAnalysis(path);
+ui/src/api.ts:1732:    return await api.addPersonToPhoto(path, personId, detectionId);
+ui/src/api.ts:1737:    return await api.getFaceClusters();
+ui/src/components/advanced/OCRTextSearchPanel.tsx:130:      const response = await api.get('/api/analytics/library', {
+ui/src/components/advanced/OCRTextSearchPanel.tsx:143:        const response = await api.post('/api/ocr/search', {
+ui/src/components/advanced/OCRTextSearchPanel.tsx:166:        const response = await api.post('/api/ocr/extract-batch', {
+ui/src/components/advanced/OCRTextSearchPanel.tsx:187:            const jobResponse = await api.get(`/api/jobs/${jobId}`);
+ui/src/components/advanced/OCRTextSearchPanel.tsx:220:      const response = await api.get(
+ui/src/components/advanced/FaceRecognitionPanel.tsx:93:      const response = await api.get('/api/face/clusters?min_faces=2');
+ui/src/components/advanced/FaceRecognitionPanel.tsx:104:        const response = await api.post(
+ui/src/components/advanced/FaceRecognitionPanel.tsx:129:            const jobResponse = await api.get(`/api/jobs/${jobId}`);
+ui/src/components/advanced/FaceRecognitionPanel.tsx:165:        await api.post('/api/face/label', {
+ui/src/components/advanced/FaceRecognitionPanel.tsx:194:      const response = await api.get(
+ui/src/components/advanced/AnalyticsDashboard.tsx:127:      const stats = await api.getStats();
+ui/src/components/advanced/AnalyticsDashboard.tsx:132:          api.listTags().catch(() => ({ tags: [] })),
+ui/src/components/advanced/AnalyticsDashboard.tsx:146:          api.listAlbums().catch(() => ({ albums: [] })),
+ui/src/components/advanced/AnalyticsDashboard.tsx:169:          const sampleResponse = await api.search(
+ui/src/components/advanced/DuplicateManagementPanel.tsx:106:      const response = await api.getDuplicateGroups();
+ui/src/components/advanced/DuplicateManagementPanel.tsx:130:        const response = await api.scanDuplicatesWithPath(
+ui/src/components/advanced/DuplicateManagementPanel.tsx:150:            const jobResponse = await api.get(`/api/jobs/${jobId}`);
+ui/src/components/advanced/DuplicateManagementPanel.tsx:183:      const response = await api.get(`/api/duplicates/suggestions/${groupId}`);
+ui/src/components/advanced/DuplicateManagementPanel.tsx:194:        await api.post('/api/duplicates/resolve', {
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:99:      const response = await api.get('/api/albums/templates');
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:108:      const response = await api.get('/api/albums');
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:152:      const response = await api.post('/api/albums/preview', {
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:171:      const response = await api.post('/api/albums/create', {
+ui/src/components/collaboration/CollaborativeSpaces.tsx:112:      const response = await api.get('/collaborative/spaces/user/user-placeholder-id');
+ui/src/components/collaboration/CollaborativeSpaces.tsx:125:      const membersResponse = await api.get(`/collaborative/spaces/${spaceId}/members`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:129:      const photosResponse = await api.get(`/collaborative/spaces/${spaceId}/photos`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:133:      const statsResponse = await api.get(`/collaborative/spaces/${spaceId}/stats`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:153:      const response = await api.post('/collaborative/spaces', {
+ui/src/components/collaboration/CollaborativeSpaces.tsx:179:      await api.post(`/collaborative/spaces/${selectedSpace.id}/members`, {
+ui/src/components/collaboration/CollaborativeSpaces.tsx:198:      await api.post(`/collaborative/spaces/${selectedSpace.id}/photos`, {
+ui/src/components/collaboration/CollaborativeSpaces.tsx:217:      await api.post(`/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`, {
+ui/src/components/collaboration/CollaborativeSpaces.tsx:222:      const commentsResponse = await api.get(`/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:237:      await api.delete(`/collaborative/spaces/${selectedSpace.id}/members/${userId}`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:249:      await api.delete(`/collaborative/spaces/${selectedSpace.id}/photos/${encodeURIComponent(photoPath)}`);
+ui/src/components/collaboration/CollaborativeSpaces.tsx:497:                            src={api.getImageUrl(photo.photo_path, 300)}
+ui/src/components/video/VideoAnalysisPanel.tsx:116:      const response = await api.get('/video/stats');
+ui/src/components/video/VideoAnalysisPanel.tsx:134:      await api.post('/video/analyze', {
+ui/src/components/video/VideoAnalysisPanel.tsx:145:          const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
+ui/src/components/video/VideoAnalysisPanel.tsx:176:      const response = await api.post('/video/search', {
+ui/src/components/video/VideoAnalysisPanel.tsx:189:      const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
+ui/src/components/video/VideoAnalysisPanel.tsx:203:      await api.delete(`/video/analysis/${encodeURIComponent(videoPath)}`);
+ui/src/components/bulk/BulkActions.tsx:63:          operationResult = await api.deletePhotos(selectedPhotos);
+ui/src/components/bulk/BulkActions.tsx:66:          operationResult = await api.bulkFavorite(selectedPhotos, data?.favorite ? 'add' : 'remove');
+ui/src/components/bulk/BulkActions.tsx:69:          operationResult = await api.bulkTag(selectedPhotos, data?.tag);
+ui/src/components/bulk/BulkActions.tsx:72:          operationResult = await api.bulkMove(selectedPhotos, data?.destination);
+ui/src/components/bulk/BulkActions.tsx:75:          operationResult = await api.bulkCopy(selectedPhotos, data?.destination);
+ui/src/components/bulk/BulkActions.tsx:78:          operationResult = await api.bulkArchive(selectedPhotos);
+ui/src/components/bulk/BulkActions.tsx:147:          undoResult = await api.bulkFavorite(
+ui/src/components/bulk/BulkActions.tsx:157:              await api.removePhotosFromTag(tagName, [photoPath]);
+ui/src/components/rating/StarRating.tsx:52:      await api.setPhotoRating(photoPath, newRating);
+ui/src/components/privacy/PrivacyControls.tsx:74:      const privacyData = await api.getPhotoPrivacy(photoPath);
+ui/src/components/privacy/PrivacyControls.tsx:103:      await api.updatePhotoPrivacy(photoPath, {
+ui/src/components/gallery/tabs/InfoTab.tsx:58:    const originalOpenUrl = api.getFileUrl(photo.path);
+ui/src/components/gallery/tabs/InfoTab.tsx:59:    const downloadUrl = api.getFileUrl(photo.path, { download: true });
+ui/src/components/gallery/ResponsiveGallery.tsx:242:                  src={api.getImageUrl(photo.path, 200)}
+ui/src/components/gallery/ResponsiveGallery.tsx:270:                    src={api.getImageUrl(photo.path, 80)}
+ui/src/components/gallery/ResponsiveGallery.tsx:347:                src={api.getImageUrl(selectedPhoto.path, 1200)}
+ui/src/components/gallery/LivePreviewCanvas.tsx:34:        const url = api.getImageUrl(photoPath, 1600);
+ui/src/components/gallery/SecureLazyImage.tsx:25:  const [src, setSrc] = useState<string>(() => api.getImageUrl(path, size));
+ui/src/components/gallery/SecureLazyImage.tsx:42:        const cfg = await api.getServerConfig();
+ui/src/components/gallery/SecureLazyImage.tsx:50:          const signed = await api.getSignedImageUrl(path, size);
+ui/src/components/gallery/SecureLazyImage.tsx:54:          const url = api.getImageUrl(path, size);
+ui/src/components/gallery/SecureLazyImage.tsx:59:        const url = api.getImageUrl(path, size);
+ui/src/components/gallery/PhotoDetail.tsx:202:        const url = await api.getSignedImageUrl(photo.path, 96);
+ui/src/components/gallery/PhotoDetail.tsx:206:          url || api.getImageUrl(photo.path, 96)
+ui/src/components/gallery/PhotoDetail.tsx:210:        setOverrideAccentUrl('photoDetail', api.getImageUrl(photo.path, 96));
+ui/src/components/gallery/PhotoDetail.tsx:267:      .catch(() => setSignedImageUrl(api.getImageUrl(photo.path, 1600)));
+ui/src/components/gallery/PhotoDetail.tsx:274:      const res = await api.getFacesForImage(photo.path);
+ui/src/components/gallery/PhotoDetail.tsx:336:      const res = await api.getPhotoTags(photo.path);
+ui/src/components/gallery/PhotoDetail.tsx:392:  const originalOpenUrl = api.isVideo(photo.path)
+ui/src/components/gallery/PhotoDetail.tsx:393:    ? api.getVideoUrl(photo.path)
+ui/src/components/gallery/PhotoDetail.tsx:394:    : api.getFileUrl(photo.path);
+ui/src/components/gallery/PhotoDetail.tsx:395:  const originalDownloadUrl = api.getFileUrl(photo.path, { download: true });
+ui/src/components/gallery/PhotoDetail.tsx:413:      const res = await api.toggleFavorite(photo.path);
+ui/src/components/gallery/PhotoDetail.tsx:434:      await api.trashMove([photo.path]);
+ui/src/components/gallery/PhotoDetail.tsx:452:      await api.removeFromLibrary([photo.path]);
+ui/src/components/gallery/PhotoDetail.tsx:466:      await api.rotatePhoto(photo.path, 90, true);
+ui/src/components/gallery/PhotoDetail.tsx:481:      await api.flipPhoto(photo.path, direction, true);
+ui/src/components/gallery/PhotoDetail.tsx:637:                disabled={busy || api.isVideo(photo.path)}
+ui/src/components/gallery/PhotoDetail.tsx:697:                            await api.removePhotosFromTag(t, [photo.path]);
+ui/src/components/gallery/PhotoDetail.tsx:825:            {!api.isVideo(photo.path) && (
+ui/src/components/gallery/PhotoDetail.tsx:878:            {api.isVideo(photo.path) && (
+ui/src/components/gallery/PhotoDetail.tsx:1110:                  {api.isVideo(photo.path) ? (
+ui/src/components/gallery/PhotoDetail.tsx:1112:                      src={api.getVideoUrl(photo.path)}
+ui/src/components/gallery/PhotoDetail.tsx:1137:                {!api.isVideo(photo.path) && (
+ui/src/components/gallery/PhotoDetail.tsx:1378:          imageUrl={signedImageUrl || api.getImageUrl(photo.path, 1200)}
+ui/src/components/gallery/AIAnalysis.tsx:48:      const response = await api.getAnalysis(photo.path);
+ui/src/components/gallery/AIAnalysis.tsx:71:      const response = await api.analyzeImage(photo.path);
+ui/src/components/gallery/PhotoGrid.tsx:134:    setBaseAccentUrl(api.getImageUrl(photos[0].path, 96));
+ui/src/components/gallery/PhotoGrid.tsx:162:      const response = await api.bulkExportPhotos(Array.from(selectedPaths));
+ui/src/components/gallery/PhotoGrid.tsx:194:      const res = await api.trashMove(Array.from(selectedPaths));
+ui/src/components/gallery/PhotoGrid.tsx:214:        await api.bulkFavorite(Array.from(selectedPaths), action);
+ui/src/components/gallery/PhotoGrid.tsx:239:      const result = await api.toggleFavorite(photoPath);
+ui/src/components/gallery/PhotoGrid.tsx:288:        const res = await api.getFavorites(Math.max(1000, photos.length));
+ui/src/components/gallery/PhotoGrid.tsx:613:                const url = await api.getSignedImageUrl(photo.path, 96);
+ui/src/components/gallery/PhotoGrid.tsx:616:                  url || api.getImageUrl(photo.path, 96)
+ui/src/components/gallery/PhotoGrid.tsx:621:                const url = await api.getSignedImageUrl(photo.path, 96);
+ui/src/components/gallery/PhotoGrid.tsx:624:                  url || api.getImageUrl(photo.path, 96)
+ui/src/components/features/OCRSearch.tsx:34:      const response = await fetch('/api/ocr/stats');
+ui/src/components/features/OCRSearch.tsx:56:      const response = await fetch(
+ui/src/components/features/OCRSearch.tsx:82:      const response = await fetch('/api/ocr/extract', {
+ui/src/components/features/OCRSearch.tsx:119:        const response = await fetch('/api/ocr/all', {
+ui/src/components/features/CodeSplitting.tsx:50:      const configResponse = await fetch('/api/code-splitting/config');
+ui/src/components/features/CodeSplitting.tsx:57:      const enabledResponse = await fetch('/api/code-splitting/enabled');
+ui/src/components/features/CodeSplitting.tsx:64:      const performanceResponse = await fetch(
+ui/src/components/features/CodeSplitting.tsx:73:      const chunkResponse = await fetch(
+ui/src/components/features/CodeSplitting.tsx:95:      const response = await fetch('/api/code-splitting/enabled', {
+ui/src/components/features/CodeSplitting.tsx:128:      const response = await fetch(
+ui/src/components/features/CodeSplitting.tsx:161:      const response = await fetch('/api/code-splitting/performance', {
+ui/src/components/features/CodeSplitting.tsx:374:fetch('/api/code-splitting/performance', {
+ui/src/components/features/JobMonitor.tsx:52:      const job = await api.getJobStatus(jobId);
+ui/src/components/features/FaceClustering.tsx:46:      const response = await fetch('/api/faces/clusters');
+ui/src/components/features/FaceClustering.tsx:48:        throw new Error('Failed to fetch face clusters');
+ui/src/components/features/FaceClustering.tsx:55:      const statsResponse = await fetch('/api/faces/stats');
+ui/src/components/features/FaceClustering.tsx:80:      const response = await fetch('/api/faces/cluster', {
+ui/src/components/features/FaceClustering.tsx:114:      const response = await fetch(
+ui/src/components/features/FaceClustering.tsx:144:        const response = await fetch(`/api/faces/clusters/${clusterId}`, {
+ui/src/components/features/TauriIntegration.tsx:52:      const commandsResponse = await fetch('/api/tauri/commands');
+ui/src/components/features/TauriIntegration.tsx:59:      const skeletonResponse = await fetch('/api/tauri/rust-skeleton');
+ui/src/components/features/TauriIntegration.tsx:66:      const hooksResponse = await fetch('/api/tauri/frontend-hooks');
+ui/src/components/features/TauriIntegration.tsx:73:      const configResponse = await fetch('/api/tauri/config');
+ui/src/components/features/TauriIntegration.tsx:80:      const securityResponse = await fetch('/api/tauri/security');
+ui/src/components/features/TauriIntegration.tsx:87:      const performanceResponse = await fetch('/api/tauri/performance');
+ui/src/components/features/TauriIntegration.tsx:94:      const checklistResponse = await fetch('/api/tauri/checklist');
+ui/src/components/features/TauriIntegration.tsx:101:      const guideResponse = await fetch('/api/tauri/setup-guide');
+ui/src/components/features/PhotoGlobe.tsx:37:    fetch(url)
+ui/src/components/features/PhotoGlobe.tsx:1328:        const url = await api.getSignedImageUrl(hoveredPhoto.path, 96);
+ui/src/components/features/PhotoGlobe.tsx:1332:          url || api.getImageUrl(hoveredPhoto.path, 96)
+ui/src/components/features/PhotoGlobe.tsx:1338:          api.getImageUrl(hoveredPhoto.path, 96)
+ui/src/components/versions/VersionStackViewer.tsx:75:      const stack = await api.getVersionStack(photoPath);
+ui/src/components/versions/VersionStackViewer.tsx:95:      const newVersion = await api.createPhotoVersion(
+ui/src/components/versions/VersionStackViewer.tsx:121:      await api.deleteVersion(versionId);
+ui/src/components/versions/VersionStackViewer.tsx:217:                src={api.getImageUrl(currentVersion.version_path, 80)}
+ui/src/components/versions/VersionStackViewer.tsx:288:                  src={api.getImageUrl(version.version_path, 100)}
+ui/src/components/versions/VersionStackViewer.tsx:350:                    window.open(api.getFileUrl(version.version_path), '_blank')
+ui/src/components/versions/VersionStackViewer.tsx:374:                        api.getFileUrl(version.version_path),
+ui/src/components/versions/VersionStack.tsx:54:      const stack: PhotoVersion[] = await api.getVersionStack(photoPath);
+ui/src/components/versions/VersionStack.tsx:125:                src={api.getImageUrl(originalVersion.version_path, 80)}
+ui/src/components/versions/VersionStack.tsx:171:                  src={api.getImageUrl(version.version_path, 80)}
+ui/src/components/api.ts:4:// Importing '../api' would therefore resolve to ui/src/components/api, not ui/src/api.
+ui/src/components/tags/MultiTagFilter.tsx:70:      const response = await api.getTagFilters();
+ui/src/components/tags/MultiTagFilter.tsx:108:        const results = await api.searchTags(value);
+ui/src/components/tags/MultiTagFilter.tsx:148:      const response = await api.getPhotosByTags(
+ui/src/components/tags/MultiTagFilter.tsx:171:      const newFilter = await api.createTagFilter(
+ui/src/components/tags/AddToTagDialog.tsx:57:        await api.createTag(normalizedNewTag);
+ui/src/components/tags/AddToTagDialog.tsx:65:        Array.from(selected).map((tag) => api.addPhotosToTag(tag, photoPaths))
+ui/src/components/search/IntentBasedSearch.tsx:76:      const result: SearchIntentResult = await api.get(`/intent/detect`, {
+ui/src/components/search/IntentBasedSearch.tsx:107:      const response = await api.post('/search/intent', params);
+ui/src/components/search/IntentBasedSearch.tsx:125:      const response = await api.post('/search/refine', {
+ui/src/components/search/IntentRecognition.tsx:46:        const intentResponse = await fetch(
+ui/src/components/search/IntentRecognition.tsx:69:          const suggestionsResponse = await fetch(
+ui/src/components/search/IntentRecognition.tsx:78:          console.debug('Intent suggestions fetch error', err);
+ui/src/components/search/IntentRecognition.tsx:83:          const badgesResponse = await fetch(
+ui/src/components/search/IntentRecognition.tsx:92:          console.debug('Intent badges fetch error', err);
+ui/src/components/search/SavedSearchList.tsx:28:      const data = await api.listSavedSearches(filter);
+ui/src/components/search/SavedSearchList.tsx:46:      const result = await api.executeSavedSearch(searchId);
+ui/src/components/search/SavedSearchList.tsx:60:      await api.updateSavedSearch(searchId, { is_favorite: !isFavorite });
+ui/src/components/search/SavedSearchList.tsx:72:        await api.deleteSavedSearch(searchId);
+ui/src/components/search/Spotlight.tsx:84:      const res = await api.addLocalFolderSource(picked);
+ui/src/components/search/Spotlight.tsx:113:          const job = await api.getJobStatus(jobId);
+ui/src/components/common/ModalSystem.tsx:49:      const response = await fetch('/api/dialogs/active');
+ui/src/components/common/ModalSystem.tsx:51:        throw new Error('Failed to fetch dialogs');
+ui/src/components/common/ModalSystem.tsx:58:      const statsResponse = await fetch('/api/dialogs/stats');
+ui/src/components/common/ModalSystem.tsx:84:      const response = await fetch('/api/dialogs/create', {
+ui/src/components/common/ModalSystem.tsx:122:      const response = await fetch(`/api/dialogs/${dialogId}/action`, {
+ui/src/components/common/ModalSystem.tsx:138:      await fetch(`/api/dialogs/${dialogId}/close`, {
+ui/src/components/common/ModalSystem.tsx:158:      const response = await fetch(`/api/dialogs/${dialogId}/dismiss`, {
+ui/src/components/common/ErrorDisplay.tsx:30:      'fetch',
+ui/src/components/common/ErrorDisplay.tsx:35:      'failed to fetch',
+ui/src/components/editing/PhotoEditor.tsx:129:        const res = await api.getPhotoEdit(photoPath);
+ui/src/components/editing/PhotoEditor.tsx:416:      await api.savePhotoEdit(photoPath, settings as PhotoEdit);
+ui/src/components/editing/MobilePhotoEditor.tsx:175:        const res = await api.getPhotoEdit(photoPath);
+ui/src/components/editing/MobilePhotoEditor.tsx:417:      await api.savePhotoEdit(photoPath, settings as PhotoEdit);
+ui/src/components/notes/NotesEditor.tsx:44:        const fetched = await api.getPhotoNote(photoPath);
+ui/src/components/notes/NotesEditor.tsx:50:        console.error('Failed to fetch photo note:', err);
+ui/src/components/notes/NotesEditor.tsx:72:        const res = await api.deletePhotoNote(photoPath);
+ui/src/components/notes/NotesEditor.tsx:75:        const res = await api.setPhotoNote(photoPath, note.trim());
+ui/src/components/notes/NotesEditor.tsx:104:      const res = await api.deletePhotoNote(photoPath);
+ui/src/components/provenance/ProvenanceChips.tsx:70:      // In a real implementation, this would fetch from the API
+ui/src/components/ai/AIInsights.tsx:62:      const response = await api.get(
+ui/src/components/ai/AIInsights.tsx:104:      await api.put(`/ai/insights/${insightId}`, {
+ui/src/components/locations/PlaceClustering.tsx:45:      const clusterData: PlaceCluster[] = await api.getPlaceClusters(minPhotos);
+ui/src/components/locations/LocationCorrection.tsx:88:      const locationData = await api.getPhotoLocation(photoPath);
+ui/src/components/locations/LocationCorrection.tsx:117:      await api.correctPhotoLocation(photoPath, {
+ui/src/components/locations/LocationCorrection.tsx:166:      const clusters = await api.getLocationClusters(1);
+ui/src/components/locations/LocationCorrection.tsx:476:      const clusterData = await api.getLocationClusters(minPhotos);
+ui/src/components/people/PeopleChips.tsx:41:        const peopleInPhoto = await api.getPeopleInPhoto(photoPath);
+ui/src/components/people/PeopleChips.tsx:43:        // For each person, we need to fetch the cluster details
+ui/src/components/people/PeopleChips.tsx:46:            // In a full implementation, we would fetch individual cluster details
+ui/src/components/people/PeopleChips.tsx:75:      const response = await api.get('/api/faces/clusters');
+ui/src/components/people/PeopleChips.tsx:88:      await api.removePersonFromPhoto(photoPath, personId);
+ui/src/components/people/PeopleChips.tsx:102:      await api.addPersonToPhoto(photoPath, personId);
+ui/src/components/people/ClusterManagement.tsx:69:      const result = await api.getAllClusters();
+ui/src/components/people/ClusterManagement.tsx:74:        const hiddenResult = await api.getHiddenClusters();
+ui/src/components/people/ClusterManagement.tsx:92:      const result = await api.getUnassignedFaces(50, 0);
+ui/src/components/people/ClusterManagement.tsx:114:        const result = await api.getClusterQuality(selectedCluster.cluster_id);
+ui/src/components/people/ClusterManagement.tsx:141:        const result: any = await api.searchPeople(searchQuery);
+ui/src/components/people/ClusterManagement.tsx:161:      await api.hideCluster(clusterId);
+ui/src/components/people/ClusterManagement.tsx:178:      await api.unhideCluster(clusterId);
+ui/src/components/people/ClusterManagement.tsx:194:      const result = await api.undoLastOperation();
+ui/src/components/people/ClusterManagement.tsx:217:      const result = await api.mergeClustersWithUndo(
+ui/src/components/people/ClusterManagement.tsx:293:                      const result: ClusteringResult = await api.clusterFaces(0.6, 2);
+ui/src/components/people/InteractiveFaceTagging.tsx:46:        const result: FaceDetectionResult = await api.detectFaces(photoPath);
+ui/src/components/people/InteractiveFaceTagging.tsx:79:        const result: SimilarFacesResult = await api.findSimilarFaces(
+ui/src/components/people/InteractiveFaceTagging.tsx:102:      const result = await api.searchPeople(searchQuery);
+ui/src/components/people/InteractiveFaceTagging.tsx:118:      const result = await api.addPersonToPhoto(photoPath, personId, selectedFace.detection_id);
+ui/src/components/people/InteractiveFaceTagging.tsx:125:      const detectionResult = await api.detectFaces(photoPath);
+ui/src/components/people/InteractiveFaceTagging.tsx:149:      const clusterResult = await api.clusterFaces(0.6, 2);
+ui/src/components/people/InteractiveFaceTagging.tsx:268:                      src={api.getImageUrl(similar.photo_path, 40)}
+ui/src/components/sources/ConnectSourceModal.tsx:113:      const res = await api.addLocalFolderSource(pickedPath, localName, false);
+ui/src/components/sources/ConnectSourceModal.tsx:128:      const res = await api.addS3Source({
+ui/src/components/sources/ConnectSourceModal.tsx:151:      const res = await api.addGoogleDriveSource({
+ui/src/components/sources/SourcesPanel.tsx:38:      const res = await api.listSources();
+ui/src/components/sources/SourcesPanel.tsx:62:      await api.deleteSource(id);
+ui/src/components/sources/SourcesPanel.tsx:75:      const res = await api.rescanSource(id, false);
+ui/src/components/sources/SourcesPanel.tsx:101:      const res = await api.syncSource(id);
+ui/src/components/export/ExportDialog.tsx:65:      const loadedPresets = await api.getExportPresets();
+ui/src/components/export/ExportDialog.tsx:123:      await api.exportPhotos(photoPaths, exportOptions);
+ui/src/components/export/ExportDialog.tsx:144:      const result = await api.createShareLink(
+ui/src/components/performance/PerformanceDashboard.tsx:69:      const statsResponse = await api.get('/cache/stats');
+ui/src/components/performance/PerformanceDashboard.tsx:73:      const healthResponse = await api.get('/cache/health');
+ui/src/components/performance/PerformanceDashboard.tsx:86:      await api.post('/cache/clear', {}, {
+ui/src/components/HeroCarousel.tsx:24:  // Remove the search effect since context handles initial fetch
+ui/src/components/collections/SmartCollections.tsx:66:      const response = await api.get('/collections/smart');
+ui/src/components/collections/SmartCollections.tsx:85:      await api.post('/collections/smart', {
+ui/src/components/collections/SmartCollections.tsx:113:      await api.delete(`/collections/smart/${id}`);
+ui/src/components/timeline/StoryCreator.tsx:88:      const newStory = await api.createStory(title, description, privacyLevel);
+ui/src/components/timeline/StoryCreator.tsx:94:        await api.addPhotoToStory(storyId, {
+ui/src/components/timeline/StoryCreator.tsx:255:                        src={api.getImageUrl(path, 150)}
+ui/src/components/timeline/StoryCreator.tsx:325:      const storyData = await api.getStory(storyId);
+ui/src/components/timeline/StoryCreator.tsx:329:      const timelineData = await api.getStoryTimeline(storyId);
+ui/src/components/timeline/StoryCreator.tsx:341:      await api.updateTimelineEntry(entryId, { caption });
+ui/src/components/timeline/StoryCreator.tsx:360:      await api.removePhotoFromTimeline(entryId);
+ui/src/components/timeline/StoryCreator.tsx:459:                      src={api.getImageUrl(entry.photo_path, 300)}
+ui/src/components/albums/AlbumCard.tsx:13:    ? api.getImageUrl(album.cover_photo_path, 400)
+ui/src/components/albums/AlbumDetail.tsx:47:      const data = await api.getAlbum(albumId, true);
+ui/src/components/albums/AlbumDetail.tsx:62:      await api.refreshSmartAlbum(albumId);
+ui/src/components/albums/AlbumDetail.tsx:83:          await api.deleteAlbum(albumId);
+ui/src/components/albums/CreateAlbumDialog.tsx:52:        const result = await api.updateAlbum(editAlbum.id, {
+ui/src/components/albums/CreateAlbumDialog.tsx:59:        const result = await api.createAlbum(name.trim(), description.trim() || undefined);
+ui/src/components/albums/AddToAlbumDialog.tsx:38:      const data = await api.listAlbums(false); // Exclude smart albums
+ui/src/components/albums/AddToAlbumDialog.tsx:71:          api.addPhotosToAlbum(albumId, photoPaths)
+ui/src/components/albums/AlbumGrid.tsx:26:      const data = await api.listAlbums(true);
+ui/src/components/ServerConfigPanel.tsx:48:    api.setIssuerKey(issuerKey || null);
+ui/src/components/ServerConfigPanel.tsx:54:    api.setAuthToken(authToken || null);
+ui/src/components/ServerConfigPanel.tsx:68:            onClick={() => api.getServerConfig().then(setConfig)}
+ui/src/hooks/usePhotoSearch.ts:60:      const res = await api.search(
+ui/src/hooks/usePhotoSearch.ts:110:  // Initial fetch effect - runs once on mount
+ui/src/hooks/usePhotoSearch.ts:125:    // Skip if this is the initial render (handled by initial fetch effect)
+ui/src/hooks/usePhotoSearch.ts:137:  // Re-fetch when mode/sort/filter changes (but not on initial mount)
+ui/src/hooks/useLiveMatchCount.ts:37:      const response = await fetch('/api/search/count', {
+ui/src/actions/defaultActions.ts:75:      const response = await fetch('/api/actions/open-location', {
+ui/src/actions/defaultActions.ts:116:      const url = api.isVideo(photo.path)
+ui/src/actions/defaultActions.ts:117:        ? api.getVideoUrl(photo.path)
+ui/src/actions/defaultActions.ts:118:        : api.getFileUrl(photo.path);
+ui/src/actions/defaultActions.ts:150:      const downloadUrl = api.getFileUrl(photo.path, { download: true });
+ui/src/actions/defaultActions.ts:202:      const blob = await api.exportPhotos([photo.path], exportOptions);
+ui/src/actions/defaultActions.ts:263:      const response = await fetch('/api/actions/launch-app', {
+ui/src/actions/defaultActions.ts:311:      const response = await fetch('/api/actions/cloud-download', {
+ui/src/actions/defaultActions.ts:357:      const share = await api.createShareLink([photo.path]);
+ui/src/pages/PerformanceDashboard.tsx:60:      const data = await api.getCacheStats();
+ui/src/pages/PerformanceDashboard.tsx:74:      const data = await api.getApiSchema();
+ui/src/pages/PerformanceDashboard.tsx:93:      await api.clearCache();
+ui/src/pages/PerformanceDashboard.tsx:104:      await api.testLogging();
+ui/src/pages/AllFacePhotos.tsx:29:                const response = await fetch(
+ui/src/pages/AllFacePhotos.tsx:35:                console.error('Failed to fetch photos with faces:', err);
+ui/src/pages/UnidentifiedFaces.tsx:43:            const response = await fetch(
+ui/src/pages/UnidentifiedFaces.tsx:63:            console.error('Failed to fetch unidentified faces:', err);
+ui/src/pages/UnidentifiedFaces.tsx:72:            const response = await fetch(
+ui/src/pages/UnidentifiedFaces.tsx:78:            console.error('Failed to fetch clusters:', err);
+ui/src/pages/UnidentifiedFaces.tsx:84:            const response = await fetch(
+ui/src/pages/UnidentifiedFaces.tsx:104:            const response = await fetch(
+ui/src/pages/AdvancedFeaturesPage.tsx:79:      const response = await fetch('/api/advanced/status');
+ui/src/pages/Tags.tsx:32:      const res = await api.listTags(500, 0);
+ui/src/pages/Tags.tsx:54:    await api.createTag(name);
+ui/src/pages/Singletons.tsx:31:            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/singletons`);
+ui/src/pages/Singletons.tsx:36:            console.error('Failed to fetch singletons:', err);
+ui/src/pages/LowConfidence.tsx:30:            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/low-confidence`);
+ui/src/pages/LowConfidence.tsx:35:            console.error('Failed to fetch low confidence faces:', err);
+ui/src/pages/Duplicates.tsx:57:      const response = await api.getDuplicates({ limit: 200 });
+ui/src/pages/Duplicates.tsx:60:      console.error('Failed to fetch duplicate groups:', err);
+ui/src/pages/Duplicates.tsx:69:      const response = await api.getDuplicateStats();
+ui/src/pages/Duplicates.tsx:72:      console.error('Failed to fetch duplicate stats:', err);
+ui/src/pages/Duplicates.tsx:85:      const response = await api.scanDuplicates('exact', 1000);
+ui/src/pages/Duplicates.tsx:106:      await api.resolveDuplicateGroup(groupId, resolution, keepFiles);
+ui/src/pages/Duplicates.tsx:125:      await api.deleteDuplicateGroup(groupId);
+ui/src/pages/Duplicates.tsx:428:                              src={api.getImageUrl(filePath, 120)}
+ui/src/pages/People.tsx:73:      const response = await api.getFaceClusters();
+ui/src/pages/People.tsx:76:      console.error('Failed to fetch face clusters:', err);
+ui/src/pages/People.tsx:85:      const response = await api.getFaceStats();
+ui/src/pages/People.tsx:88:      console.error('Failed to fetch face stats:', err);
+ui/src/pages/People.tsx:100:      const startResponse = await fetch(`${apiUrl}/api/faces/scan-async`, {
+ui/src/pages/People.tsx:115:          const statusResponse = await fetch(`${apiUrl}/api/faces/scan-async/${startData.job_id}`);
+ui/src/pages/People.tsx:150:      await api.setFaceClusterLabel(clusterId, newLabel);
+ui/src/pages/People.tsx:177:      const response = await fetch(
+ui/src/pages/People.tsx:427:                          img.src = api.getImageUrl(cluster.images[index], 150);
+ui/src/pages/PersonDetail.tsx:42:                const response = await fetch(
+ui/src/pages/PersonDetail.tsx:48:                // Also fetch cluster info
+ui/src/pages/PersonDetail.tsx:49:                const clustersRes = await fetch(
+ui/src/pages/PersonDetail.tsx:62:                console.error('Failed to fetch person photos:', err);
+ui/src/pages/Trash.tsx:41:      const res = await api.listTrash();
+ui/src/pages/Trash.tsx:59:      await api.trashRestore(ids);
+ui/src/pages/Trash.tsx:74:      await api.trashEmpty(target ?? undefined);
+ui/src/services/BulkActionsService.ts:115:        fetch('/api/trash/move', {
+ui/src/services/BulkActionsService.ts:162:        fetch(`/api/photos/${encodeURIComponent(path)}/favorite/toggle`, {
+ui/src/services/ActionService.ts:121:      const response = await fetch('/api/actions/detect-apps', {

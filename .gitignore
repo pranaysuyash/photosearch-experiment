@@ -46,6 +46,11 @@ server/models/*
 !server/models/schemas/
 !server/models/schemas/**
 
+# Even though we include `server/models/schemas/**` (to keep schema source tracked),
+# we never want Python bytecode/caches from that subtree.
+server/models/schemas/**/__pycache__/
+server/models/schemas/**/*.py[cod]
+
 # Face thumbnails cache
 cache/
 
