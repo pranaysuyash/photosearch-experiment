@@ -1,0 +1,81 @@
+=== pytest watchdog start === 2025-12-23 15:03:09
+============================= test session starts ==============================
+platform darwin -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/photosearch_experiment
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 11 items
+
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_database_schema_extensions PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_face_clustering PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_duplicate_detection PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_ocr_search PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_api_endpoints_structure PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmphastwiru/test_images/similar_0.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmphastwiru/test_images/similar_1.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmphastwiru/test_images/similar_2.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmphastwiru/test_images/with_text.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+Processing: /var/folders/fc/xwynjqm94t39_jvz88fhcpfc0000gn/T/tmphastwiru/test_images/face.jpg
+  Faces detected: 0
+  Photo processed: True
+  Text regions: 0
+  Full text length: 0
+PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_performance_benchmarks Face clusterer initialization: 0.007s
+Image 1 processing: 0.022s
+Image 2 processing: 0.018s
+PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_error_handling PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations PASSED
+tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_memory_usage Memory usage: 504.1MB -> 507.9MB (+3.8MB)
+PASSED
+
+============================= slowest 25 durations =============================
+0.18s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations
+0.11s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_duplicate_detection
+0.10s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline
+0.09s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_memory_usage
+0.09s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_api_endpoints_structure
+0.07s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_error_handling
+0.05s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_performance_benchmarks
+0.03s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_database_schema_extensions
+0.03s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_face_clustering
+0.02s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_error_handling
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_memory_usage
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_ocr_search
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_duplicate_detection
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_performance_benchmarks
+0.01s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline
+0.01s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_face_clustering
+0.00s call     tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_enhanced_ocr_search
+0.00s teardown tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_concurrent_operations
+0.00s teardown tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_api_endpoints_structure
+0.00s setup    tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_database_schema_extensions
+0.00s teardown tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_feature_integration_pipeline
+0.00s teardown tests/test_advanced_features_integration.py::TestAdvancedFeaturesIntegration::test_data_consistency
+============================== 11 passed in 4.63s ==============================
+=== pytest finished rc=0 ===
+real 6.08
+user 4.14
+sys 0.86

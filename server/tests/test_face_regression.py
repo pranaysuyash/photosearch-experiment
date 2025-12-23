@@ -324,5 +324,95 @@ def run_smoke_test():
         shutil.rmtree(temp_dir)
 
 
+# ============================================================================
+# P0.4: Review Queue Tests
+# ============================================================================
+
+
+class TestReviewQueue:
+    """Test review queue operations."""
+
+    def test_add_to_review_queue(self, face_db):
+        """Test adding items to review queue."""
+        cluster = face_db.add_face_cluster(label="Test Person")
+        det = face_db.add_face_detection(
+            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
+        )
+
+        item_id = face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
+        assert item_id > 0
+
+        queue = face_db.get_review_queue()
+        assert len(queue) == 1
+        assert queue[0]["detection_id"] == det
+        assert queue[0]["similarity"] == 0.52
+        assert queue[0]["reason"] == "gray_zone"
+
+    def test_review_queue_count(self, face_db):
+        """Test review queue count."""
+        cluster = face_db.add_face_cluster(label="Test Person")
+
+        assert face_db.get_review_queue_count() == 0
+
+        for i in range(3):
+            det = face_db.add_face_detection(
+                f"/test{i}.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
+            )
+            face_db.add_to_review_queue(det, cluster, 0.51 + i * 0.01, "gray_zone")
+
+        assert face_db.get_review_queue_count() == 3
+
+    def test_resolve_confirm(self, face_db):
+        """Test confirming a review item."""
+        cluster = face_db.add_face_cluster(label="Test Person")
+        det = face_db.add_face_detection(
+            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
+        )
+        face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
+
+        result = face_db.resolve_review_item(det, "confirm", cluster)
+        assert result is True
+
+        # Queue should be empty now
+        assert face_db.get_review_queue_count() == 0
+
+    def test_resolve_reject(self, face_db):
+        """Test rejecting a review item."""
+        cluster = face_db.add_face_cluster(label="Test Person")
+        det = face_db.add_face_detection(
+            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
+        )
+        face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
+
+        result = face_db.resolve_review_item(det, "reject", cluster)
+        assert result is True
+
+        # Queue should be empty
+        assert face_db.get_review_queue_count() == 0
+
+        # Should be in rejections table
+        import sqlite3
+
+        with sqlite3.connect(str(face_db.db_path)) as conn:
+            rows = conn.execute(
+                "SELECT * FROM face_rejections WHERE detection_id = ?", (det,)
+            ).fetchall()
+            assert len(rows) == 1
+
+    def test_resolve_skip(self, face_db):
+        """Test skipping a review item."""
+        cluster = face_db.add_face_cluster(label="Test Person")
+        det = face_db.add_face_detection(
+            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
+        )
+        face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
+
+        result = face_db.resolve_review_item(det, "skip")
+        assert result is True
+
+        # Queue should be empty (skipped items don't show up)
+        assert face_db.get_review_queue_count() == 0
+
+
 if __name__ == "__main__":
     run_smoke_test()

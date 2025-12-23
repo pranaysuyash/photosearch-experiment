@@ -1,0 +1,5 @@
+=== WATCHDOG RUN start 2025-12-23 15:05:01 ===
+file: server/tests/test_search.py
+watchdog_seconds: 90
+python: /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+

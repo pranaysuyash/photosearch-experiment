@@ -1,0 +1,144 @@
+=== WATCHDOG RUN start 2025-12-23 15:04:58 ===
+file: server/tests/test_automatic_clustering.py
+watchdog_seconds: 90
+python: /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+
+[1m====================================== test session starts =======================================[0m
+platform darwin -- Python 3.11.9, pytest-9.0.2, pluggy-1.6.0 -- /Users/pranay/Projects/photosearch_experiment/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/pranay/Projects/photosearch_experiment
+plugins: anyio-4.12.0, asyncio-1.3.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+[1mcollecting ... [0m[1mcollected 6 items                                                                                [0m
+
+server/tests/test_automatic_clustering.py::test_cosine_similarity 🧪 Testing cosine similarity calculation...
+✅ Identical vectors: similarity = 1.0
+✅ Orthogonal vectors: similarity = 0.0
+✅ Similar vectors: similarity = 0.992
+✅ Different vectors: similarity = 0.577
+✅ Cosine similarity calculation tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_face_embedding_retrieval 
+🧪 Testing face embedding retrieval...
+✅ Retrieved 5 face embeddings
+✅ All embeddings retrieved correctly
+✅ Face embedding retrieval tests passed!
+[32mPASSED[0m
+server/tests/test_automatic_clustering.py::test_similar_face_finding 
+🧪 Testing similar face finding...
+[31mFAILED[0m
+
+============================================ FAILURES ============================================
+[31m[1m___________________________________ test_similar_face_finding ____________________________________[0m
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mtest_similar_face_finding[39;49;00m():[90m[39;49;00m
+    [90m    [39;49;00m[33m"""Test finding similar faces."""[39;49;00m[90m[39;49;00m
+        [96mprint[39;49;00m([33m"[39;49;00m[33m\n[39;49;00m[33m🧪 Testing similar face finding...[39;49;00m[33m"[39;49;00m)[90m[39;49;00m
+    [90m[39;49;00m
+        temp_dir = tempfile.mkdtemp()[90m[39;49;00m
+        db_path = Path(temp_dir) / [33m"[39;49;00m[33mtest_clustering.db[39;49;00m[33m"[39;49;00m[90m[39;49;00m
+    [90m[39;49;00m
+        [94mtry[39;49;00m:[90m[39;49;00m
+            face_db = FaceClusteringDB(db_path)[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Create a reference face[39;49;00m[90m[39;49;00m
+            ref_embedding = [[94m1.0[39;49;00m, [94m0.5[39;49;00m, [94m0.2[39;49;00m, [94m0.1[39;49;00m, [94m0.0[39;49;00m][90m[39;49;00m
+            ref_det_id = face_db.add_face_detection([90m[39;49;00m
+                photo_path=[33m"[39;49;00m[33m/test/reference.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                bounding_box={[33m"[39;49;00m[33mx[39;49;00m[33m"[39;49;00m: [94m0.1[39;49;00m, [33m"[39;49;00m[33my[39;49;00m[33m"[39;49;00m: [94m0.2[39;49;00m, [33m"[39;49;00m[33mwidth[39;49;00m[33m"[39;49;00m: [94m0.3[39;49;00m, [33m"[39;49;00m[33mheight[39;49;00m[33m"[39;49;00m: [94m0.4[39;49;00m},[90m[39;49;00m
+                embedding=ref_embedding,[90m[39;49;00m
+                quality_score=[94m0.9[39;49;00m[90m[39;49;00m
+            )[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Create similar faces[39;49;00m[90m[39;49;00m
+            similar_embeddings = [[90m[39;49;00m
+                [[94m1.0[39;49;00m, [94m0.4[39;49;00m, [94m0.3[39;49;00m, [94m0.2[39;49;00m, [94m0.1[39;49;00m],  [90m# Very similar[39;49;00m[90m[39;49;00m
+                [[94m1.0[39;49;00m, [94m0.6[39;49;00m, [94m0.1[39;49;00m, [94m0.1[39;49;00m, [94m0.0[39;49;00m],  [90m# Similar[39;49;00m[90m[39;49;00m
+                [[94m0.9[39;49;00m, [94m0.5[39;49;00m, [94m0.2[39;49;00m, [94m0.1[39;49;00m, [94m0.0[39;49;00m],  [90m# Similar[39;49;00m[90m[39;49;00m
+                [[94m0.0[39;49;00m, [94m0.0[39;49;00m, [94m1.0[39;49;00m, [94m0.0[39;49;00m, [94m0.0[39;49;00m],  [90m# Different (orthogonal)[39;49;00m[90m[39;49;00m
+                [[94m0.0[39;49;00m, [94m1.0[39;49;00m, [94m0.0[39;49;00m, [94m0.0[39;49;00m, [94m0.0[39;49;00m]   [90m# Very different (orthogonal)[39;49;00m[90m[39;49;00m
+            ][90m[39;49;00m
+    [90m[39;49;00m
+            similar_det_ids = [][90m[39;49;00m
+            [94mfor[39;49;00m i, embedding [95min[39;49;00m [96menumerate[39;49;00m(similar_embeddings):[90m[39;49;00m
+                det_id = face_db.add_face_detection([90m[39;49;00m
+                    photo_path=[33mf[39;49;00m[33m"[39;49;00m[33m/test/similar_[39;49;00m[33m{[39;49;00mi[33m}[39;49;00m[33m.jpg[39;49;00m[33m"[39;49;00m,[90m[39;49;00m
+                    bounding_box={[33m"[39;49;00m[33mx[39;49;00m[33m"[39;49;00m: [94m0.1[39;49;00m, [33m"[39;49;00m[33my[39;49;00m[33m"[39;49;00m: [94m0.2[39;49;00m, [33m"[39;49;00m[33mwidth[39;49;00m[33m"[39;49;00m: [94m0.3[39;49;00m, [33m"[39;49;00m[33mheight[39;49;00m[33m"[39;49;00m: [94m0.4[39;49;00m},[90m[39;49;00m
+                    embedding=embedding,[90m[39;49;00m
+                    quality_score=[94m0.8[39;49;00m[90m[39;49;00m
+                )[90m[39;49;00m
+                similar_det_ids.append(det_id)[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Find similar faces (threshold = 0.7)[39;49;00m[90m[39;49;00m
+>           similar_faces = face_db.find_similar_faces(ref_det_id, threshold=[94m0.7[39;49;00m)[90m[39;49;00m
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+
+[1m[31mserver/tests/test_automatic_clustering.py[0m:159: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <face_clustering_db.FaceClusteringDB object at 0x104140910>
+detection_id = 'face_e829b50af09d1621e831824b033195de', limit = 20, threshold = 0.7
+include_same_cluster = False
+
+    [0m[94mdef[39;49;00m[90m [39;49;00m[92mfind_similar_faces[39;49;00m([90m[39;49;00m
+        [96mself[39;49;00m,[90m[39;49;00m
+        detection_id: [96mstr[39;49;00m,[90m[39;49;00m
+        limit: [96mint[39;49;00m = [94m20[39;49;00m,[90m[39;49;00m
+        threshold: [96mfloat[39;49;00m = [94m0.5[39;49;00m,[90m[39;49;00m
+        include_same_cluster: [96mbool[39;49;00m = [94mFalse[39;49;00m,[90m[39;49;00m
+    ) -> List[Dict[[96mstr[39;49;00m, Any]]:[90m[39;49;00m
+    [90m    [39;49;00m[33m"""[39;49;00m
+    [33m    Find faces similar to a given face detection with extended options.[39;49;00m
+    [33m[39;49;00m
+    [33m    "Find more like this face" - useful for:[39;49;00m
+    [33m    - Discovering unclustered similar faces[39;49;00m
+    [33m    - Finding potential merge candidates[39;49;00m
+    [33m    - Quality control (checking for misclassified faces)[39;49;00m
+    [33m[39;49;00m
+    [33m    Args:[39;49;00m
+    [33m        detection_id: The reference face to find similar ones[39;49;00m
+    [33m        limit: Maximum number of results[39;49;00m
+    [33m        threshold: Minimum similarity threshold (0-1)[39;49;00m
+    [33m        include_same_cluster: If False, exclude faces from same cluster[39;49;00m
+    [33m[39;49;00m
+    [33m    Returns:[39;49;00m
+    [33m        List of similar faces with similarity scores and cluster info[39;49;00m
+    [33m    """[39;49;00m[90m[39;49;00m
+        [94mwith[39;49;00m sqlite3.connect([96mstr[39;49;00m([96mself[39;49;00m.db_path)) [94mas[39;49;00m conn:[90m[39;49;00m
+            conn.row_factory = sqlite3.Row[90m[39;49;00m
+    [90m[39;49;00m
+            [90m# Get the reference face embedding[39;49;00m[90m[39;49;00m
+            ref_row = conn.execute([90m[39;49;00m
+    [90m            [39;49;00m[33m"""[39;49;00m
+    [33m            SELECT fd.embedding, fd.photo_path, ppa.cluster_id[39;49;00m
+    [33m            FROM face_detections fd[39;49;00m
+    [33m            LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id[39;49;00m
+    [33m            WHERE fd.detection_id = ?[39;49;00m
+    [33m        """[39;49;00m,[90m[39;49;00m
+                (detection_id,),[90m[39;49;00m
+            ).fetchone()[90m[39;49;00m
+    [90m[39;49;00m
+            [94mif[39;49;00m [95mnot[39;49;00m ref_row [95mor[39;49;00m [95mnot[39;49;00m ref_row[[33m"[39;49;00m[33membedding[39;49;00m[33m"[39;49;00m]:[90m[39;49;00m
+                [94mreturn[39;49;00m [][90m[39;49;00m
+    [90m[39;49;00m
+>           ref_embedding = np.frombuffer(ref_row[[33m"[39;49;00m[33membedding[39;49;00m[33m"[39;49;00m], dtype=np.float32)[90m[39;49;00m
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
+[1m[31mE           TypeError: a bytes-like object is required, not 'str'[0m
+
+[1m[31mserver/face_clustering_db.py[0m:2218: TypeError
+====================================== slowest 25 durations ======================================
+0.01s call     server/tests/test_automatic_clustering.py::test_similar_face_finding
+0.01s call     server/tests/test_automatic_clustering.py::test_face_embedding_retrieval
+0.01s call     server/tests/test_automatic_clustering.py::test_cosine_similarity
+0.00s setup    server/tests/test_automatic_clustering.py::test_cosine_similarity
+0.00s teardown server/tests/test_automatic_clustering.py::test_similar_face_finding
+0.00s setup    server/tests/test_automatic_clustering.py::test_face_embedding_retrieval
+0.00s teardown server/tests/test_automatic_clustering.py::test_cosine_similarity
+0.00s setup    server/tests/test_automatic_clustering.py::test_similar_face_finding
+0.00s teardown server/tests/test_automatic_clustering.py::test_face_embedding_retrieval
+[36m[1m==================================== short test summary info =====================================[0m
+[31mFAILED[0m server/tests/test_automatic_clustering.py::[1mtest_similar_face_finding[0m - TypeError: a bytes-like object is required, not 'str'
+[31m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!![0m
+[31m================================== [31m[1m1 failed[0m, [32m2 passed[0m[31m in 0.15s[0m[31m ===================================[0m
+
+=== WATCHDOG RUN end status=failed rc=1 elapsed=0.26s ===
