@@ -1727,8 +1727,133 @@ class FaceClusteringDB:
 
             for cluster_id in cluster_ids:
                 self._recompute_prototype(conn, cluster_id)
+                self._compute_representative_face(conn, cluster_id)
 
             logger.info(f"Recomputed prototypes for {len(cluster_ids)} clusters")
+
+    def _compute_representative_face(
+        self, conn: sqlite3.Connection, cluster_id: str
+    ) -> str | None:
+        """
+        Select the best representative face for a cluster using a deterministic algorithm.
+
+        Scoring criteria (Phase 5.3):
+        1. User-confirmed faces get priority (weight: +0.5)
+        2. Quality score (weight: 0.4 * quality_score)
+        3. Small recency bonus (weight: 0.1 * recency_factor)
+        4. Exclude low quality faces (quality < 0.3)
+
+        Returns:
+            detection_id of the selected representative, or None if cluster is empty
+        """
+        rows = conn.execute(
+            """
+            SELECT
+                fd.detection_id,
+                fd.quality_score,
+                ppa.assignment_state,
+                ppa.created_at
+            FROM photo_person_associations ppa
+            JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+            WHERE ppa.cluster_id = ?
+            AND (fd.quality_score IS NULL OR fd.quality_score >= 0.3)
+            ORDER BY ppa.created_at DESC
+        """,
+            (cluster_id,),
+        ).fetchall()
+
+        if not rows:
+            return None
+
+        # Find most recent timestamp for recency normalization
+        from datetime import datetime
+
+        scores = []
+        for row in rows:
+            detection_id = row[0]
+            quality = row[1] if row[1] is not None else 0.5  # Default quality
+            assignment_state = row[2]
+            created_at_str = row[3]
+
+            score = 0.0
+
+            # 1. Confirmed bonus (+0.5)
+            if assignment_state == "user_confirmed":
+                score += 0.5
+
+            # 2. Quality component (40% weight)
+            score += 0.4 * quality
+
+            # 3. Recency bonus (10% weight) - newer is better
+            try:
+                created_at = datetime.fromisoformat(
+                    created_at_str.replace("Z", "+00:00")
+                )
+                # Recency bonus: faces added in last 30 days get up to 0.1 bonus
+                age_days = (datetime.now() - created_at.replace(tzinfo=None)).days
+                recency_factor = max(0.0, 1.0 - (age_days / 30.0))
+                score += 0.1 * recency_factor
+            except Exception:
+                pass  # No recency bonus if date parsing fails
+
+            scores.append((detection_id, score))
+
+        # Sort by score descending, then by detection_id for determinism
+        scores.sort(key=lambda x: (-x[1], x[0]))
+        best_detection_id = scores[0][0]
+
+        # Update the cluster's representative
+        conn.execute(
+            """
+            UPDATE face_clusters
+            SET representative_detection_id = ?,
+                representative_updated_at = CURRENT_TIMESTAMP
+            WHERE cluster_id = ?
+        """,
+            (best_detection_id, cluster_id),
+        )
+
+        return best_detection_id
+
+    def get_representative_face(self, cluster_id: str) -> dict | None:
+        """
+        Get the representative face for a cluster.
+
+        Returns dict with detection_id, photo_path, bounding_box, quality_score
+        or None if no representative is set.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            row = conn.execute(
+                """
+                SELECT
+                    fc.representative_detection_id,
+                    fd.photo_path,
+                    fd.bounding_box,
+                    fd.quality_score
+                FROM face_clusters fc
+                LEFT JOIN face_detections fd
+                    ON fc.representative_detection_id = fd.detection_id
+                WHERE fc.cluster_id = ?
+            """,
+                (cluster_id,),
+            ).fetchone()
+
+            if not row or not row["representative_detection_id"]:
+                return None
+
+            return {
+                "detection_id": row["representative_detection_id"],
+                "photo_path": row["photo_path"],
+                "bounding_box": row["bounding_box"],
+                "quality_score": row["quality_score"],
+            }
+
+    def recompute_representative_face(self, cluster_id: str) -> str | None:
+        """Recompute and return the representative face for a specific cluster."""
+        with sqlite3.connect(str(self.db_path)) as conn:
+            return self._compute_representative_face(conn, cluster_id)
 
     # ===================================================================
     # Phase 0: Unknown Bucket (Unassigned Faces)

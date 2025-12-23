@@ -70,11 +70,11 @@ Unused endpoints include:
 Evidence:
 
 - Unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt`
-- Cluster photos endpoint behavior: `server/api/routers/face_recognition.py:402` (`@router.get("/api/faces/clusters/{cluster_id}/photos")`)
-- Face crop endpoint: `server/api/routers/face_recognition.py:726` (`@router.get("/api/faces/crop/{face_id}")`)
-- Assign face endpoint: `server/api/routers/face_recognition.py:619` (`@router.post("/api/faces/{face_id}/assign")`)
-- Create person endpoint: `server/api/routers/face_recognition.py:652` (`@router.post("/api/faces/{face_id}/create-person")`)
-- Person analytics endpoint: `server/api/routers/face_recognition.py:905` (`@router.get("/api/people/{person_id}/analytics")`)
+- Cluster photos endpoint behavior: `server/api/routers/face_recognition.py:456` (`@router.get("/api/faces/clusters/{cluster_id}/photos")`)
+- Face crop endpoint: `server/api/routers/face_recognition.py:807` (`@router.get("/api/faces/crop/{face_id}")`)
+- Assign face endpoint: `server/api/routers/face_recognition.py:687` (`@router.post("/api/faces/{face_id}/assign")`)
+- Create person endpoint: `server/api/routers/face_recognition.py:724` (`@router.post("/api/faces/{face_id}/create-person")`)
+- Person analytics endpoint: `server/api/routers/face_recognition.py:991` (`@router.get("/api/people/{person_id}/analytics")`)
 
 Impact:
 
@@ -390,7 +390,7 @@ Evidence artifacts:
 
 - TypeScript check: `audit_artifacts/typescript-exitcode.txt` = `0` (and `audit_artifacts/typescript-errors.txt` empty)
 - UI production build: `audit_artifacts/ui-build-exitcode.txt` = `0` (see `audit_artifacts/ui-build.txt`)
-- Backend tests (pytest): **partial verification completed** (see notes below)
+- Backend tests (pytest): **full verification completed** — `133 passed` (see evidence below)
 
 Notes:
 
@@ -400,7 +400,9 @@ Notes:
 Verified in this session:
 
 - UI tests: `pnpm test:run` exit code `0` (per terminal history)
-- Backend feature/integration subset: `tests/test_features_unit.py` + `tests/test_integration.py` → **37 passed**
+- Backend full suite: `pytest` → **133 passed**
+  - Evidence: `audit_artifacts/pytest_full_green_20251223_154836.txt`
+- (Previously captured subset) Backend feature/integration subset: `tests/test_features_unit.py` + `tests/test_integration.py` → **37 passed**
 
 Additional verification (watchdog runs, 2025-12-23):
 
@@ -412,11 +414,20 @@ Additional verification (watchdog runs, 2025-12-23):
 These were previously identified as failing/stalling under watchdog runs; fixes were applied to:
 
 - `server/face_clustering_db.py` (robust embedding decoding + NULL-cluster filter)
+  - Embedding decoding + cluster filtering: `server/face_clustering_db.py:2312–2415` (`find_similar_faces`)
 - `server/main.py` (skip auto-scan/watcher in test mode; use runtime base dir for media)
 
-Not yet re-verified in this session:
+Additional fixes required to reach full-green backend tests:
 
-- Full backend pytest suite (`python -m pytest`) — the most recent full run attempt was canceled before completion, so the audit does **not** claim full-green backend tests at this time.
+- Legacy compatibility endpoints (route shims) added to support older client/test paths (e.g. `/notes/{path}`, `/tags/add`, `/people/{path}`, `/locations/{path}`): `server/api/routers/legacy_compat.py`
+- TestClient lifecycle robustness: `server/api/deps.py:get_state` now lazily builds AppState when lifespan was bypassed
+- Search discoverability: `/search` now merges matches from notes/tags/locations/people-tags DBs so feature annotations are searchable without a full media scan: `server/api/routers/search.py`
+- Versions semantics compatibility: `VersionStack` supports both `.versions` access and list-like behavior for legacy tests/clients: `server/photo_versions_db.py`
+- Thumbnail rate limiting correctness: fixed undefined-state usage so 429s trigger as expected: `server/api/routers/images.py`
+
+Notes on configuration:
+
+- The full-suite run was executed with `PHOTOSEARCH_TEST_MODE=1` to keep tests deterministic and avoid heavyweight startup behaviors.
 
 ---
 

@@ -32,6 +32,11 @@ interface FaceCluster {
   images: string[];
   created_at?: string;
   is_mixed?: boolean;
+  representative_face?: {
+    detection_id: string;
+    photo_path: string;
+    quality_score?: number;
+  };
 }
 
 interface FaceStats {

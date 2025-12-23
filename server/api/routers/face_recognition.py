@@ -46,21 +46,36 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
             cluster_details = face_clusterer.get_cluster_details(cluster["id"])
             if cluster_details.get("status") != "error":
                 faces = cluster_details.get("faces", [])
+                cluster_id_str = str(cluster["id"])
+
+                # Get face clustering DB for coherence and representative face
+                face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+
                 # Check if cluster is potentially mixed (face_count >= 3)
                 is_mixed = False
                 if cluster.get("face_count", 0) >= 3:
                     try:
-                        face_db = get_face_clustering_db(
-                            Path(settings.FACE_CLUSTERS_DB_PATH)
-                        )
-                        coherence = face_db.get_cluster_coherence(str(cluster["id"]))
+                        coherence = face_db.get_cluster_coherence(cluster_id_str)
                         is_mixed = coherence.get("is_mixed_suspected", False)
                     except Exception:
                         pass
 
+                # Get representative face (Phase 5.3)
+                representative_face = None
+                try:
+                    rep = face_db.get_representative_face(cluster_id_str)
+                    if rep:
+                        representative_face = {
+                            "detection_id": rep["detection_id"],
+                            "photo_path": rep["photo_path"],
+                            "quality_score": rep.get("quality_score"),
+                        }
+                except Exception:
+                    pass
+
                 formatted_clusters.append(
                     {
-                        "id": str(cluster["id"]),
+                        "id": cluster_id_str,
                         "label": cluster.get("label") or f"Person {cluster['id']}",
                         "face_count": cluster_details.get("face_count", 0),
                         "image_count": len(set(f.get("image_path") for f in faces)),
@@ -70,6 +85,7 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                         "images": [f.get("image_path") for f in faces[:6]],
                         "created_at": cluster.get("created_at"),
                         "is_mixed": is_mixed,
+                        "representative_face": representative_face,
                     }
                 )
 

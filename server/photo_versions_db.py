@@ -189,6 +189,19 @@ class PhotoVersionsDB:
 
         try:
             with sqlite3.connect(self.db_path) as conn:
+                # Ensure the original photo exists as a first-class row so that
+                # stacks remain resolvable even when all derived versions are deleted.
+                # (Some unit tests expect an implicit original in stacks.)
+                if version_path != original_path:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO photo_versions
+                        (id, original_path, version_path, version_type, version_name, version_description, edit_instructions, parent_version_id)
+                        VALUES (?, ?, ?, 'original', 'Original', NULL, NULL, NULL)
+                        """,
+                        (str(uuid.uuid4()), original_path, original_path),
+                    )
+
                 # Create the version record
                 conn.execute(
                     """
@@ -245,6 +258,7 @@ class PhotoVersionsDB:
                     """
                     SELECT * FROM photo_versions
                     WHERE original_path = ?
+                      AND (version_type IS NULL OR version_type != 'original')
                     ORDER BY created_at ASC
                     """,
                     (original_path,),
