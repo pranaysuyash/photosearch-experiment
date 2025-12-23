@@ -1,0 +1,12 @@
+# MergeSuggestions wiring evidence
+DATE: 20251223_161343
+
+## rg -n MergeSuggestions ui/src
+ui/src/api.ts:1981:  getMergeSuggestions: async (threshold: number = 0.62, maxSuggestions: number = 10) => {
+ui/src/components/people/MergeSuggestions.tsx:2: * MergeSuggestions Component - Phase 5.4
+ui/src/components/people/MergeSuggestions.tsx:24:interface MergeSuggestionsProps {
+ui/src/components/people/MergeSuggestions.tsx:28:export default function MergeSuggestions({ onMerge }: MergeSuggestionsProps) {
+ui/src/components/people/MergeSuggestions.tsx:38:            const data = await api.getMergeSuggestions(0.62, 10);
+
+## count of occurrences
+rg match lines: 5

@@ -1,0 +1,523 @@
+# Follow-up evidence capture (fix): 20251223_161039
+
+## Gamification / achievements / unlock / streak / toast strings
+server/validation.py:4:Comprehensive validation for all API endpoints to prevent injection attacks,
+docs/FLOW_VALIDATION_MATRIX.md:21:- Implemented: code + endpoints exist and are wired
+docs/FLOW_VALIDATION_MATRIX.md:71:  `/duplicates/*` endpoints, `ui/src/pages/DuplicatesPage.tsx`
+docs/FLOW_VALIDATION_MATRIX.md:87:- Evidence: `src/enhanced_ocr_search.py`, `/ocr/*` endpoints
+docs/FLOW_VALIDATION_MATRIX.md:132:- Status: Implemented (DB + endpoints)
+docs/FLOW_VALIDATION_MATRIX.md:146:- Status: Partial (DB + endpoints exist; generation not wired)
+docs/FLOW_VALIDATION_MATRIX.md:218:- AI insights have storage + endpoints but no generation pipeline.
+docs/IMPLEMENTATION_HANDOFF_2025-12-17.md:323:- Backend: SQLite database, 8 API endpoints
+ui/src/test/face-detection-api.test.ts:3: * Tests all new face detection and clustering endpoints
+ui/src/test/face-detection-api.test.ts:15:  describe('Face Detection Endpoints', () => {
+ui/src/test/face-detection-api.test.ts:120:  describe('Automatic Clustering Endpoints', () => {
+server/schema_extensions.py:217:                stroke_data TEXT NULL,  -- JSON: stroke points for recognition
+docs/SECURITY.md:25:- **Rate limiting**: Enable `RATE_LIMIT_ENABLED` to prevent abuse of image serving endpoints; tune `RATE_LIMIT_REQS_PER_MIN` based on expected traffic.
+server/advanced_features_api.py:2:Advanced Features API Endpoints
+server/advanced_features_api.py:4:This module provides REST API endpoints for all advanced features:
+server/advanced_features_api.py:11:Endpoints:
+server/advanced_features_api.py:177:# Face Recognition Endpoints
+server/advanced_features_api.py:299:# Duplicate Detection Endpoints
+server/advanced_features_api.py:372:# OCR Text Search Endpoints
+server/advanced_features_api.py:460:# Smart Albums Endpoints
+server/advanced_features_api.py:513:# Analytics Endpoints
+server/api/routers/face_recognition.py:6:allow-big-file: This router consolidates all face recognition endpoints
+server/api/routers/face_recognition.py:1073:# Phase 0: Reversibility and Trust Endpoints
+server/api/routers/face_recognition.py:1378:# Phase 2: Trust Signals Endpoints
+server/api/routers/face_recognition.py:1425:# Phase 3: Speed & Scale Endpoints
+server/api/routers/face_recognition.py:1543:# Phase 4: Search & Retrieval Endpoints
+server/api/routers/face_recognition.py:1690:# Phase 5.4: Merge Suggestions Endpoints
+server/api/routers/face_recognition.py:1752:# Phase 5: Review Queue Endpoints
+docs/STORYTELLING_ROADMAP.md:23:> - Phase 0/Phase 1 backend pieces are currently proposed and not yet implemented: `StoryBuilder` server code and `/api/story/*` endpoints remain TODO.
+docs/STORYTELLING_ROADMAP.md:38:- “Generate story” entry points from selection, trips/timeline, and recents.
+docs/STORYTELLING_ROADMAP.md:88:      - Example: “Morning in Lisbon; 12 photos near Alfama showing streets and viewpoints.”
+docs/STORYTELLING_ROADMAP.md:99:  - Entry points:
+server/main.py:345:# Register API version manager endpoints
+server/api/routers/sources.py:147:    Minimal AWS SigV4 signer for S3-compatible endpoints.
+server/api/routers/search.py:918:                    "badges": intent_result["badges"],
+server/api/routers/code_splitting.py:180:@router.get("/code-splitting/api-endpoints")
+server/api/routers/code_splitting.py:181:async def get_api_endpoints():
+server/api/routers/code_splitting.py:183:    Get available API endpoints for code splitting
+server/api/routers/code_splitting.py:186:        Dictionary with API endpoints
+server/api/routers/code_splitting.py:189:        from src.code_splitting import get_api_endpoints
+server/api/routers/code_splitting.py:191:        endpoints = get_api_endpoints()
+server/api/routers/code_splitting.py:192:        return {"status": "success", "endpoints": endpoints}
+server/signed_urls.py:27:    Issue a signed token for accessing a file path via endpoints like `/image/thumbnail?token=...`.
+server/signed_urls.py:42:        "exp": now + int(ttl),
+server/signed_urls.py:84:    exp = payload.get("exp")
+server/signed_urls.py:85:    if not isinstance(exp, int):
+server/signed_urls.py:86:        raise TokenError("missing exp")
+server/signed_urls.py:87:    if int(time.time()) > exp:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:7:4. [API Endpoints Reference](#api-endpoints-reference)
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:24:2. **Editor Wiring** - Complete integration of photo editor UI with backend endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:47:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:71:Complete integration of photo editing capabilities with backend endpoints to support non-destructive editing.
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:76:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:103:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:129:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:155:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:184:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:206:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:230:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:256:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:286:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:316:- API endpoints:
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:333:## API Endpoints Reference
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:335:### Duplicates Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:341:### Editor Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:347:### People Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:353:### Notes Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:359:### Export/Share Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:365:### Provenance Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:369:### Bulk Actions Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:374:### Multi-tag Filtering Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:379:### Version Stacks Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:385:### Location Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:391:### AI Insights Endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:480:- Input validation and sanitization on all endpoints
+docs/IMPLEMENTED_FEATURES_COMPLETE_DOCS.md:481:- Rate limiting for API endpoints
+docs/COMPLETION_SUMMARY_2025-12-17.md:27:- **Backend API**: 5 endpoints fully implemented
+docs/COMPLETION_SUMMARY_2025-12-17.md:241:- ✅ Rate limiting on API endpoints
+docs/COMPLETION_SUMMARY_2025-12-17.md:328:- Backend CRUD API (8 endpoints)
+server/core/paths.py:11:    subprocess (see `test_people_endpoints.py`).
+server/tests/test_people_integration.py:2:Integration tests for the people API endpoints.
+server/tests/test_people_integration.py:20:    """Test the people API endpoints integration."""
+server/api/routers/system.py:2:System Router - API schema, cache, and logging endpoints.
+ui/src/pages/PersonDetail.tsx:6: * - Assignment state badges (auto/confirmed/rejected)
+ui/src/pages/PersonDetail.tsx:230:    // Get assignment state badge
+ui/src/pages/PersonDetail.tsx:497:                                        {/* Assignment state badge */}
+ui/src/pages/PersonDetail.tsx:510:                                        {/* Confidence badge */}
+ui/src/pages/AllFacePhotos.tsx:118:                                    {/* Face count badge */}
+server/api/routers/legacy_compat.py:1:"""Legacy compatibility endpoints.
+server/api/routers/legacy_compat.py:3:A small set of endpoints that earlier tests and scripts expect. These map onto
+docs/FINAL_AUDIT_REPORT.md:369:- Consistent validation patterns across all endpoints
+docs/FINAL_AUDIT_REPORT.md:409:5. **`FINAL_AUDIT_REPORT.md`** - Complete audit summary and achievements
+ui/src/pages/PerformanceDashboard.tsx:45:  endpoints: ApiEndpoint[];
+ui/src/pages/PerformanceDashboard.tsx:205:                <p>Endpoints: {apiSchema.endpoints.length}</p>
+ui/src/pages/PerformanceDashboard.tsx:209:                {apiSchema.endpoints.map((endpoint, index) => (
+ui/src/enhanced-animations.css:190:.gallery-video-badge-enhanced {
+ui/src/enhanced-animations.css:213:.media-preview-container:hover .gallery-video-badge-enhanced {
+ui/src/enhanced-animations.css:218:/* Pulsing animation for video badge */
+ui/src/enhanced-animations.css:219:.gallery-video-badge-enhanced::before {
+ui/src/enhanced-animations.css:370:  .gallery-video-badge-enhanced {
+docs/NEXT_5_FEATURES_ANALYSIS.md:28:- 8 REST API endpoints
+docs/NEXT_5_FEATURES_ANALYSIS.md:210:**API Endpoints**:
+server/api/routers/intent.py:20:                "badges": [],
+server/api/routers/intent.py:32:            "badges": [],
+server/api/routers/intent.py:47:        confidence scores, suggestions, and badges
+server/api/routers/intent.py:55:                "badges": [],
+server/api/routers/intent.py:64:            "badges": result["badges"],
+server/api/routers/intent.py:91:@router.get("/intent/badges")
+server/api/routers/intent.py:92:async def get_search_badges(query: str, state: AppState = Depends(get_state)):
+server/api/routers/intent.py:94:    Get intent badges for UI display.
+server/api/routers/intent.py:100:        List of intent badges with labels and icons
+server/api/routers/intent.py:104:        badges = state.intent_detector.get_search_badges(query)
+server/api/routers/intent.py:105:        return {"badges": badges}
+server/main_advanced_features.py:146:# Enhanced endpoints with advanced features integration
+server/api/routers/people_photo_association.py:101:# Face Detection Endpoints
+server/api/routers/people_photo_association.py:244:# Automatic Clustering Endpoints
+docs/IMPLEMENTATION_COMPLETE.md:55:│   ├── advanced_features_api.py            # 🔌 REST API endpoints
+docs/IMPLEMENTATION_COMPLETE.md:161:### **API Endpoints (20+ new endpoints)**
+docs/IMPLEMENTATION_COMPLETE.md:162:- **Face Recognition:** `/api/face/*` (8 endpoints)
+docs/IMPLEMENTATION_COMPLETE.md:163:- **Duplicate Detection:** `/api/duplicates/*` (4 endpoints)
+docs/IMPLEMENTATION_COMPLETE.md:164:- **OCR Search:** `/api/ocr/*` (4 endpoints)
+docs/IMPLEMENTATION_COMPLETE.md:165:- **Smart Albums:** `/api/albums/*` (3 endpoints)
+docs/IMPLEMENTATION_COMPLETE.md:166:- **Analytics:** `/api/analytics/*` (3 endpoints)
+server/location_clusters_db.py:703:        Calculate distance between two points in meters using Haversine formula.
+docs/FACE_MODELS_BACKENDS.md:19:- **Server routes:** `server/main.py` imports `FaceClusterer()` and exposes face endpoints (clusters, scan, etc.)
+server/auth.py:52:    exp = payload.get("exp")
+server/auth.py:53:    if exp and int(exp) < int(__import__("time").time()):
+server/pricing.py:8:- API endpoints for pricing information
+docs/PROJECT_OVERVIEW.md:6:i will have a task, we will do that task in one python file only and each such file will be moularised so that it can be called and used in subsequent features. after each successful file run and goal achievement you will maintain a readme file about what we did with that file, what the gaol was, what we did, what could be done and so on. if you understand reply here so we can start with the tasks. we will not have any frontend unless extremely necessay and try to use open models, apis etc. from places like openrouter, openai, claude, cerebras, groq, fal, replicate, roboflow, huggingface etc., i would start with a detailed document from this req, where you will first copy this exactly then your own interpreatation of the goal. then as i start giving each task, we will do the same- copy exactly what i said, what you understood, what you would have done extra or differently etc."
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:62:- **Backend**: No API endpoints exist
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:171:2. Add favorite badge/star overlay to PhotoGrid items
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:179:- Show subtle star badge on grid thumbnails (top-right corner)
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:278:**Backend API Endpoints Needed:**
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:303:2. Implement CRUD API endpoints
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:304:3. Add album photos management endpoints
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:329:- Photo count badge (top-right): `glass-panel` with `text-xs`
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:335:- 8 new API endpoints
+docs/CLAUDE_FEATURE_ANALYSIS_2025-12-17.md:471:7. **Documentation**: Update API_SPEC.md with new endpoints
+docs/FACE_DETECTION_IMPLEMENTATION.md:33:### 3. **New API Endpoints** (`server/main.py`)
+docs/FACE_DETECTION_IMPLEMENTATION.md:35:Added 5 new endpoints for face detection:
+docs/FACE_DETECTION_IMPLEMENTATION.md:260:- `server/main.py` - Added new API endpoints
+docs/IMPLEMENTATION_SUMMARY.md:5:I have successfully implemented the **People ↔ Viewer Integration** feature for the Living Museum photo search application. This was the only major feature that was incomplete - the UI existed but the server endpoints returned placeholder data.
+docs/IMPLEMENTATION_SUMMARY.md:19:2. **`server/main.py`** (MODIFIED) - Updated API endpoints
+docs/IMPLEMENTATION_SUMMARY.md:34:5. **`test_people_endpoints.py`** (NEW) - End-to-end test script
+docs/IMPLEMENTATION_SUMMARY.md:35:   - Tests actual API endpoints with running server
+docs/IMPLEMENTATION_SUMMARY.md:112:### API Endpoints
+docs/IMPLEMENTATION_SUMMARY.md:161:- ✅ Actual API endpoints with running server
+docs/IMPLEMENTATION_SUMMARY.md:238:test_people_endpoints.py                      # E2E test script
+docs/IMPLEMENTATION_SUMMARY.md:243:server/main.py                               # Updated API endpoints
+docs/IMPLEMENTATION_SUMMARY.md:261:python test_people_endpoints.py
+ui/src/api.ts:80:  badge: string;
+ui/src/api.ts:836:  // Pricing endpoints
+ui/src/api.ts:1400:    const res = await apiClient.get('/intent/badges', { params: { query } });
+ui/src/api.ts:1401:    return res.data.badges;
+docs/MEDIA_ANALYSIS_CAPABILITIES.md:30:- [ ] **Perspective Analysis** - Vanishing points, geometry
+docs/MEDIA_ANALYSIS_CAPABILITIES.md:55:- [ ] **Pose Estimation** - Body keypoints (OpenPose, MediaPipe)
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:53:- Suggestion type badges (AI/Fix/Syn/Trend in different colors)
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:118:- Face count badges
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:397:- App icon badge with progress
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:604:- Responsive breakpoints
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:910:### API Endpoints Available (From Old Project)
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:942:- Consistent across all badge uses
+docs/IDEAS_EXTRACTED_FROM_OLD_PROJECT.md:984:- 29 backend API endpoints exist but lack frontend integration
+docs/AUDIT_FINDINGS.md:24:**File:** `/server/main.py:2845-2875` (File serving endpoints)
+docs/AUDIT_FINDINGS.md:40:**File:** Multiple API endpoints
+docs/AUDIT_FINDINGS.md:80:**Files:** Frontend components and API endpoints
+docs/AUDIT_FINDINGS.md:129:5. **Medium Priority**: Implement rate limiting on all endpoints
+docs/AUDIT_FINDINGS.md:193:- Rate limiting on all public endpoints
+docs/SESSION_SUMMARY_2025-12-17.md:27:  - 9 endpoints (CRUD + photo management + refresh)
+docs/SESSION_SUMMARY_2025-12-17.md:79:  - Dynamic column breakpoints
+docs/SESSION_SUMMARY_2025-12-17.md:229:### Grid Zoom Breakpoints
+docs/SESSION_SUMMARY_2025-12-17.md:274:2. **Dynamic Breakpoints** - Needed to calculate columns based on zoom level
+docs/SESSION_SUMMARY_2025-12-17.md:373:- **Most Complex Feature Yet** - 10 new files, 9 API endpoints
+docs/CLAUDE_REVIEW_POST_IMPLEMENTATION.md:169:5. **Unit tests** for new endpoints
+docs/CLAUDE_REVIEW_POST_IMPLEMENTATION.md:189:| Independence from Copilot | 8/10 | Made our own decisions on key points |
+docs/NEXT_PHASE_FEATURE_PLAN.md:48:# API endpoints
+docs/NEXT_PHASE_FEATURE_PLAN.md:100:# API endpoints
+docs/NEXT_PHASE_FEATURE_PLAN.md:208:# API endpoints
+docs/NEXT_PHASE_FEATURE_PLAN.md:264:# API endpoints
+docs/UI_CONCEPT_EXPLORATION.md:44:Imagine your photos as **stars in a night sky**. Instead of a grid, you see a dark canvas with glowing points of light. Each point is a photo. Related photos cluster together like constellations.
+docs/UI_CONCEPT_EXPLORATION.md:68:- Performance with 10k+ points
+docs/UI_CONCEPT_EXPLORATION.md:824:├── Photo endpoints
+docs/WARP.md:93:- `server/main.py` - REST API with endpoints for scan, search, export
+docs/WARP.md:106:5. **Serve**: FastAPI exposes REST endpoints consumed by React UI
+docs/WARP.md:261:- **No pagination** in some endpoints (timeline, stats)
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:38:- `provider` (OpenAI/Google/AWS/OpenRouter/Replicate/fal/HF Endpoints/…)
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:75:    - True multimodal embedding endpoints (when available)
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:99:    - Hosted embedding models via HF Endpoints / Fireworks / Together
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:117:    - Open OCR VLMs via Replicate/HF Endpoints (batch): Chandra / GOT-OCR families
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:129:    - Hosted open models: HF Endpoints / Fireworks / Together (if you pick an open stack)
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:188:    - Replicate / fal endpoints for segmentation/cutout models
+docs/AI_MEDIA_USE_CASES_EXECUTION_PROVIDER_MATRIX.md:225:    - Open models hosted via Replicate/HF Endpoints/fal (YOLO/DETR/etc.)
+docs/TECHNICAL_IMPLEMENTATION.md:601:## API Endpoints
+docs/TECHNICAL_IMPLEMENTATION.md:671:# Access points:
+docs/COMPREHENSIVE_ANALYSIS_SUMMARY.md:16:- ✅ Complete API endpoints and frontend integration
+docs/COMPREHENSIVE_ANALYSIS_SUMMARY.md:21:- **API**: 6 new endpoints in `server/main.py`
+docs/COMPREHENSIVE_ANALYSIS_SUMMARY.md:36:- `server/main.py` (MODIFIED) - Added pricing endpoints
+docs/COMPREHENSIVE_ANALYSIS_SUMMARY.md:291:📄 server/main.py - Added pricing API endpoints
+docs/README_ADVANCED_FEATURES.md:108:│   └── advanced_features_api.py            # REST API endpoints
+docs/README_ADVANCED_FEATURES.md:243:## 📊 **API Endpoints**
+docs/README_ADVANCED_FEATURES.md:344:3. **Add API Endpoints:** Update `advanced_features_api.py`
+docs/NEXT_5_FEATURES_AFTER_PLAN.md:60:# API endpoints for smart collections
+docs/VLM_STRATEGY_DEC_2025_COMPLETE.md:603:   - Calculate break-even points
+docs/MUST_HAVE_AUDIT_2025-12-18.md:13:2. Non-blocking scan & indexing (background queue + job endpoints)
+docs/MUST_HAVE_AUDIT_2025-12-18.md:29:  - Consistent cache headers: currently thumbnail generation sets `Cache-Control: public, max-age=31536000` when generated in-memory; fallback `FileResponse` does not add explicit cache headers — add consistent cache headers to all code paths and endpoints (`/image/thumbnail`, `/file`, `/video`).
+docs/MUST_HAVE_AUDIT_2025-12-18.md:32:  - Harden headers: add `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and optionally `Content-Security-Policy` on image endpoints.
+docs/MUST_HAVE_AUDIT_2025-12-18.md:49:  - Job API endpoints: `GET /jobs/{job_id}`, `/jobs` list (server), and UI `JobMonitor` (`ui/src/pages/Jobs` / `ui/src/components/JobMonitor`) are present
+docs/MUST_HAVE_AUDIT_2025-12-18.md:163:2. Face detection & grouping: Backend module exists (`src/face_clustering.py`) but UI/endpoints wiring is incomplete. Plan: expose endpoints, add UI grouping view, add accuracy/quality tests and fallback handling when models unavailable.
+docs/FEATURES_PRIORITIZED.md:15:> - Face clustering and many media analysis modules exist in `src/` but corresponding user-facing endpoints are not all wired in `server/main.py` yet.
+docs/FEATURES_PRIORITIZED.md:21:- Non-blocking scan & indexing (background queue + job endpoints).
+docs/FEATURES_PRIORITIZED.md:38:- Integration points for cloud storage (Google Drive/Dropbox).
+docs/PRICING_IMPLEMENTATION.md:26:#### API Endpoints Added to `server/main.py`
+docs/PRICING_IMPLEMENTATION.md:38:- Added API client methods for all pricing endpoints:
+docs/PRICING_IMPLEMENTATION.md:114:- **Backend API**: All endpoints are operational
+docs/PRICING_IMPLEMENTATION.md:170:- `server/main.py` - Added pricing API endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:7:4. [API Endpoints Reference](#api-endpoints-reference)
+docs/IMPLEMENTED_FEATURES_DOCS.md:24:2. **Editor Wiring** - Complete integration of photo editor UI with backend endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:47:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:71:Complete integration of photo editing capabilities with backend endpoints to support non-destructive editing.
+docs/IMPLEMENTED_FEATURES_DOCS.md:76:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:103:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:129:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:155:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:184:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:206:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:230:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:256:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:286:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:316:- API endpoints:
+docs/IMPLEMENTED_FEATURES_DOCS.md:333:## API Endpoints Reference
+docs/IMPLEMENTED_FEATURES_DOCS.md:335:### Duplicates Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:341:### Editor Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:347:### People Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:353:### Notes Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:359:### Export/Share Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:365:### Provenance Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:369:### Bulk Actions Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:374:### Multi-tag Filtering Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:379:### Version Stacks Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:385:### Location Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:391:### AI Insights Endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:480:- Input validation and sanitization on all endpoints
+docs/IMPLEMENTED_FEATURES_DOCS.md:481:- Rate limiting for API endpoints
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:11:- ✅ Server API endpoints (updated in `main.py`)
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:43:### API Endpoints
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:45:**File**: `server/main.py` (updated endpoints)
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:122:**File**: `test_people_endpoints.py`
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:124:- Tests actual API endpoints with a running server
+docs/PEOPLE_FEATURE_IMPLEMENTATION.md:252:- ✅ **Full API Support**: All required endpoints implemented
+docs/CLAUDE_HANDOFF_TO_GEMINI.md:52:- `server/main.py` - Metadata enrichment in search endpoints
+docs/SEARCH_UX_DECISIONS.md:41:- Color-coded score badges: `File: 80% | Content: 25%`
+docs/ASSESSMENT.md:37:- CLI tools and API endpoints are already available — supportive for different workflows.
+docs/ASSESSMENT.md:47:- Security: Path validation / thumbnail serving endpoints are permissive; the code comments highlight potential path access issues. Enforce strict path resolution and sandboxing for file access.
+docs/ASSESSMENT.md:64:- Add access control / authentication for server APIs for local vs public deployment (Tauri local bundling must ensure no leakage to public endpoints by default).
+docs/ASSESSMENT.md:116:- Async background tasks for scanning & indexing (Celery/Redis or Python worker). Add task status endpoints.
+docs/ASSESSMENT.md:119:- Add simple authentication (Local token) for API endpoints (High)
+docs/ASSESSMENT.md:216:This API covers the primary endpoints for the web UI & Tauri sidecar. Consider these as canonical examples for frontend/backends.
+docs/ASSESSMENT.md:230:Notes on API: - Add authentication for non-demo use (token-based or OS auth for local desktop builds). - Add job ID for scanning endpoints and stateful job polling to support large datasets.
+docs/ASSESSMENT.md:274:High Impact (1–2 weeks): - Add background task runner (Redis + RQ/Celery) for scanning & embedding with status endpoints (5–7d) - Progress UI hook: job status + progress bar (2d) - Thumbnail caching with invalidation & CDN-friendly caching headers (2d) - Add API auth & local-only default (1d)
+docs/ASSESSMENT.md:288:Integration tests: - HTTP endpoints using `TestClient` for `server/main.py`. - End-to-end CLI scan -> extract -> index -> search path.
+docs/END_USER_ANALYSIS.md:451:✅ API endpoints for pricing management
+docs/END_USER_ANALYSIS.md:466:**API Endpoints (`server/main.py`)**
+docs/END_USER_ANALYSIS.md:476:- API client methods for all endpoints
+docs/tasks/TASK6_PLAN.md:27:   - RESTful API endpoints
+docs/tasks/TASK6_PLAN.md:107:2. Implement core endpoints
+ui/src/components/navigation/MobileNavigation.tsx:34:  badge?: number;
+ui/src/components/navigation/MobileNavigation.tsx:51:    { id: 'favorites', label: 'Favorites', icon: <Heart size={20} />, path: '/favorites', badge: 12 },
+ui/src/components/navigation/MobileNavigation.tsx:141:                    {item.badge !== undefined && item.badge > 0 && (
+ui/src/components/navigation/MobileNavigation.tsx:143:                        {item.badge}
+docs/TASK_COMPLETION_SUMMARY.md:5:After analyzing the comprehensive documentation and current implementation, I identified that **most advanced features were already implemented**. The codebase is incredibly mature with 50+ API endpoints, advanced UI components, and sophisticated features like face recognition, OCR search, smart albums, and collaborative spaces.
+docs/TASK_COMPLETION_SUMMARY.md:25:**API Endpoints (`server/main.py`):**
+docs/TASK_COMPLETION_SUMMARY.md:60:🌐 Testing API Endpoints... ✅ PASSED
+docs/TASK_COMPLETION_SUMMARY.md:174:- **API-First**: RESTful endpoints with comprehensive documentation
+docs/TASK_COMPLETION_SUMMARY.md:199:**API Endpoints Added**: 10 new video analysis endpoints
+docs/ROADMAP.md:67:- ✅ 9 REST API endpoints (CRUD + photo management)
+docs/ROADMAP.md:81:- ✅ Dynamic column breakpoints in PhotoGrid
+docs/NEXT_5_FEATURES_IMPLEMENTATION_PLAN.md:15:- **Photo ratings (1–5 stars)**: API + UI are present (see `server/main.py` rating endpoints and `ui/src/components/gallery/PhotoDetail.tsx` rating section).
+docs/NEXT_5_FEATURES_IMPLEMENTATION_PLAN.md:176:**Why**: Switching costs block adoption; import/export integrations unlock teams.
+docs/NEXT_5_FEATURES_IMPLEMENTATION_PLAN.md:385:### **API Endpoints**
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:13:- **Backend**: SQLite database + Smart Albums engine + 9 REST API endpoints
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:131:**Purpose**: REST API endpoints for albums
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:133:**Endpoints** (9 total):
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:200:- Smart album badge (⚡ yellow)
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:201:- Photo count badge
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:237:- Album name, description, smart badge
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:285:- Photo count badge per album
+docs/ALBUMS_IMPLEMENTATION_2025-12-17.md:573:- [ ] Shows smart badge if smart album
+docs/refactor-main-split.md:12:- Extracted endpoints into routers under `server/api/routers/`.
+docs/refactor-main-split.md:20:- Sources endpoints and helpers -> `server/api/routers/sources.py`.
+docs/refactor-main-split.md:22:- Semantic search endpoints -> `server/api/routers/semantic_search.py`.
+docs/refactor-main-split.md:23:- Trash and library removal endpoints -> `server/api/routers/trash.py`.
+docs/QUICK_START_GUIDE.md:214:All API endpoints follow a consistent error response format:
+docs/QUICK_START_GUIDE.md:253:# Verify API endpoints are accessible
+docs/FEATURES_DOCUMENTATION.md:33:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:72:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:109:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:139:- API endpoints for managing notes
+docs/FEATURES_DOCUMENTATION.md:142:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:177:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:244:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:245:- Operations use existing endpoints but with new undo mechanisms
+docs/FEATURES_DOCUMENTATION.md:272:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:303:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:341:### API Endpoints
+docs/FEATURES_DOCUMENTATION.md:376:2. Add API endpoints with proper error handling
+docs/tasks/TASK11_README.md:20:- **New Endpoints**:
+docs/UI_ARCHITECTURE_DECISION.md:88:- **New:** Wrap in **FastAPI** for HTTP endpoints
+docs/UI_ARCHITECTURE_DECISION.md:89:- **Endpoints:**
+docs/UI_ARCHITECTURE_DECISION.md:139:   - RESTful endpoints
+docs/INNOVATION_AI_STORYTELLING.md:6:> NOTE (2025-12-13): Story Mode UI exists in the frontend (`ui/src/components/StoryMode.tsx`, `ui/src/pages/StoryModePage.tsx`) and can display outlines and a narrative surface. However, the backend server endpoints and story-building pipeline referenced in this doc (e.g., `server/story_context.py`, `server/story_generator.py`, and `/api/story/*` endpoints) are proposed and not yet implemented in the current repository. The code samples below should be treated as implementation proposals rather than already-available services.
+docs/INNOVATION_AI_STORYTELLING.md:184:# New API Endpoints
+docs/INNOVATION_AI_STORYTELLING.md:565:- [ ] Add basic API endpoints
+docs/INNOVATION_AI_STORYTELLING.md:584:- [ ] Implement monetization endpoints
+docs/IMPLEMENTATION_GUIDE.md:32:> - Core backend (FastAPI) and core features (semantic search, hybrid metadata search, job queue, saved searches, API endpoints for search and jobs) are implemented and active in `server/main.py`.
+docs/IMPLEMENTATION_GUIDE.md:33:> - Several feature modules exist as server-side implementation code (e.g., `src/face_clustering.py`), but not all have API endpoints wired in `server/main.py` (face clustering endpoints are not present at this time).
+docs/IMPLEMENTATION_GUIDE.md:34:> - Storytelling endpoints (`/api/story/*`) and StoryBuilder/StoryNarrator on the backend are currently design proposals and not yet implemented.
+docs/IMPLEMENTATION_GUIDE.md:80:- Intent badges for UI
+docs/IMPLEMENTATION_GUIDE.md:92:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:96:- `GET /intent/badges?query={query}` - Get intent badges
+docs/IMPLEMENTATION_GUIDE.md:117:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:148:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:195:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:229:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:266:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:297:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:341:- API endpoints for lazy load tracking
+docs/IMPLEMENTATION_GUIDE.md:352:**API Endpoints**:
+docs/IMPLEMENTATION_GUIDE.md:398:All endpoints return JSON responses:
+docs/IMPLEMENTATION_GUIDE.md:415:- `GET /intent/badges` - Get intent badges
+docs/IMPLEMENTATION_GUIDE.md:776:This implementation guide provides comprehensive documentation for all the features added to PhotoSearch. Each feature is fully implemented with proper error handling, testing, and integration points. The system is designed to be modular, allowing for easy extension and maintenance.
+docs/SOURCES_AND_INGEST.md:26:This is “full ingest” because it results in local files that can be served by the existing `/image/thumbnail`, `/file`, and `/video` endpoints and discovered by `/search`.
+docs/SOURCES_AND_INGEST.md:34:## API endpoints
+docs/IDEAS_FROM_OLD_PROJECT.md:476:- **AI Suggestions** - Intent-based (blue badge)
+docs/IDEAS_FROM_OLD_PROJECT.md:477:- **Spelling Corrections** - "Did you mean?" (amber badge)
+docs/IDEAS_FROM_OLD_PROJECT.md:478:- **Synonyms** - "Try also" (green badge)
+docs/IDEAS_FROM_OLD_PROJECT.md:479:- **Popular Searches** - Trending (purple badge)
+docs/IDEAS_FROM_OLD_PROJECT.md:651:## API Endpoints Available (47 Total)
+docs/DUAL_LOCAL_CLOUD_PRODUCT_PLAN.md:41:- **Viewer basics**: zoom/pan, fullscreen, rotate, slideshow, video poster + duration badges, quick actions in detail (favorite/share/export/open).
+docs/COMPREHENSIVE_INNOVATION_PLAN.md:63:- ✅ FastAPI endpoints for story generation
+docs/COMPREHENSIVE_INNOVATION_PLAN.md:485:- [ ] Design story API endpoints
+docs/copilot-raptor-review/README.md:12:- `API_AND_UI_SUGGESTIONS.md` — Suggested API enhancements for toggles & job status endpoints.
+docs/INNOVATION_SUMMARY.md:166:5. **API** - FastAPI enhancements for new endpoints
+docs/INNOVATION_SUMMARY.md:207:The PhotoSearch application has **tremendous untapped potential** that can be unlocked through strategic innovation. The **AI-powered storytelling feature** represents a **game-changing opportunity** to differentiate in the crowded photo management market.
+ui/src/components/features/PhotoGlobe.tsx:250:  points: Array<{ lat: number; lng: number }>,
+ui/src/components/features/PhotoGlobe.tsx:256:  for (const p of points) {
+ui/src/components/features/PhotoGlobe.tsx:808:  points,
+ui/src/components/features/PhotoGlobe.tsx:814:  points: Array<{ lat: number; lng: number }>;
+ui/src/components/features/PhotoGlobe.tsx:834:    return computeRegionCounts(index, points, totalLocated);
+ui/src/components/features/PhotoGlobe.tsx:835:  }, [index, points, totalLocated]);
+ui/src/components/features/PhotoGlobe.tsx:839:    if (points.length === 0) return null;
+ui/src/components/features/PhotoGlobe.tsx:852:  }, [counts, index, level, maxCount, points.length, total]);
+ui/src/components/features/PhotoGlobe.tsx:1241:          points={pointsForRegions}
+docs/UI_ASSESSMENT.md:28:- API wrapper abstracts the backend for the UI, making it easier to support alternate endpoints.
+docs/TESTING_GUIDE_2025-12-17.md:48:3. Each should show photo count badge
+docs/TESTING_GUIDE_2025-12-17.md:49:4. Each should have yellow ⚡ "Smart" badge
+docs/TESTING_GUIDE_2025-12-17.md:169:- [ ] Smart album badge is yellow (`text-yellow-400`)
+docs/TESTING_GUIDE_2025-12-17.md:256:5. Smart album with ⚡ badge
+docs/copilot-raptor-review/TESTS.md:8:- Integration Tests: Test API endpoints using `FastAPI TestClient` or similar. Includes `scan` endpoint behavior, search endpoints, thumbnail serving, and job endpoints.
+docs/copilot-raptor-review/TESTS.md:80:- All critical endpoints must be unit tested.
+docs/copilot-raptor-review/TESTS.md:82:- 95% unit test coverage for core modules (`file_discovery`, `metadata_extractor`, `metadata_search`, `server` endpoints).
+docs/copilot-raptor-review/SECURITY_RELEASE_CHECKLIST.md:11:   - [ ] All file-serving endpoints validate requests against `settings.MEDIA_DIR` using `Path.resolve()` and `abs_path.startswith(settings.MEDIA_DIR.resolve())`.
+docs/copilot-raptor-review/SECURITY_RELEASE_CHECKLIST.md:30:   - [ ] Reject overly large requests and rate-limit endpoints that can be expensive (search & embedding generation).
+docs/copilot-raptor-review/SECURITY_RELEASE_CHECKLIST.md:64:  - [ ] Path traversal tests for all endpoints accepting paths
+docs/refactor_analysis_dec_2024.md:13:- 310 endpoints preserved (unchanged)
+docs/refactor_analysis_dec_2024.md:53:## Verified Endpoints
+docs/HANDOFF_FOR_REVIEW.md:32:    - `curl` tests passed for all endpoints.
+docs/copilot-raptor-review/AI_COLLABORATORS_REVIEW.md:36:   - Consolidation: Add `searchSemantic` call in `api.ts`, wire up the toggle in UI and `PhotoGrid` to use `mode` param in `GET /search` or use `/search/semantic`. Add a `mode` param to the API to reduce duplicate endpoints, and return consistent results schema.
+docs/copilot-raptor-review/AI_COLLABORATORS_REVIEW.md:67:1. Path sandbox security for `GET /image/thumbnail` and any file-serving endpoints.
+docs/copilot-raptor-review/TODO_ISSUES.md:5:1. Path sandboxing & security for image endpoints
+docs/copilot-raptor-review/TODO_ISSUES.md:61:9. Testing & CI: Add integration tests for API endpoints and UI flows
+docs/copilot-raptor-review/TODO_ISSUES.md:63:   - Description: Add `pytest` tests for endpoints and Playwright for core UI flows (toggle, scan, search). Add GitHub Actions skeleton.
+docs/IDEAS_BACKLOG_EXPANDED.md:43:   - Next step: Implement `apiGetSaved`, `apiAddSaved` endpoints or UI to persist saved searches; add small UI and tests.
+docs/IDEAS_BACKLOG_EXPANDED.md:46:3. Intent Recognition (12 intents, AI suggestions and badges)
+docs/IDEAS_BACKLOG_EXPANDED.md:50:   - Next step: Implement a lightweight IntentRecognizer pipeline based on rules and optional ML tier; show badges in suggestions; add analytics to track accuracy.
+docs/IDEAS_BACKLOG_EXPANDED.md:63:   - Next step: Stabilize the Index Manager, expose API endpoints (build/status/search) and integrate `fast_backend` selection logic; add test coverage.
+docs/IDEAS_BACKLOG_EXPANDED.md:140:- Status: PARTIAL — API interface exists for OCR snippet endpoints in old docs; implementation partly stubbed.
+docs/GEMINI_REVIEW_PROMPT.md:95:3. `server/main.py` - API endpoints (especially `/search`)
+server/utils/search_explanations.py:28:            "badge": "📝",
+server/utils/search_explanations.py:47:                "badge": "📷",
+server/utils/search_explanations.py:62:                    "badge": "🔍",
+server/utils/search_explanations.py:77:                    "badge": "📅",
+server/utils/search_explanations.py:93:                    "badge": "📍",
+server/utils/search_explanations.py:107:            "badge": "🔍",
+server/utils/search_explanations.py:156:            "badge": "📊",
+server/utils/search_explanations.py:164:            "badge": "🎯",
+server/utils/search_explanations.py:177:            "badge": "📊",
+server/utils/search_explanations.py:190:            "badge": "🎯",
+server/utils/search_explanations.py:223:            "badge": "🌅",
+server/utils/search_explanations.py:234:            "badge": "�",
+server/utils/search_explanations.py:245:            "badge": "🚗",
+server/utils/search_explanations.py:256:            "badge": "🌲",
+server/utils/search_explanations.py:267:            "badge": "🍽️",
+server/utils/search_explanations.py:278:            "badge": "🤖",
+docs/COMPREHENSIVE_IMPLEMENTATION_SUMMARY.md:27:**✅ API Endpoints** (`server/main.py`)
+docs/COMPREHENSIVE_IMPLEMENTATION_SUMMARY.md:76:- **14 test cases** covering all endpoints
+docs/COMPREHENSIVE_IMPLEMENTATION_SUMMARY.md:223:server/main.py                           # Added new API endpoints
+docs/photosearch_vlm_comprehensive_analysis_dec_2024.md:794:   - Calculate break-even points for each tier
+docs/photosearch_vlm_comprehensive_analysis_dec_2024.md:1669:   - Calculate break-even points for each tier
+docs/AUDIT_RESOLUTIONS.md:192:- ❌ No input validation on API endpoints
+docs/AUDIT_RESOLUTIONS.md:307:- ✅ **Rate limiting on public endpoints** - Enabled by default
+docs/API_SPEC.md:3:This is an API contract for the frontend and potential external clients. It captures endpoints, examples, responses, and security considerations.
+docs/API_SPEC.md:108:- Pagination: Add `limit` & `offset` for all list endpoints.
+docs/CODE_AUDIT_PLAN.md:29:- **Backend Audit**: Server architecture, API endpoints, database schema
+docs/copilot-raptor-review/EXECUTIVE_SUMMARY.md:24:- Backend: Fully functional FastAPI backend with key endpoints for scan, search, and thumbnails.
+docs/copilot-raptor-review/EXECUTIVE_SUMMARY.md:43:- Secure file-serving endpoints (enforce `MEDIA_DIR` path validation).
+docs/copilot-raptor-review/EXECUTIVE_SUMMARY.md:78:- Approve immediate security fix for file-serving endpoints (high priority).
+docs/copilot-raptor-review/PR_CHECKLIST.md:18:- [ ] All file-serving endpoints have path checks and do not leak system paths or secrets.
+docs/copilot-raptor-review/PR_CHECKLIST.md:25:- [ ] Integration tests included or updated for API behavior (especially new endpoints for job/scan/search modes).
+docs/copilot-raptor-review/PR_CHECKLIST.md:26:- [ ] Update relevant docs in `docs/` for new endpoints, new configs, or UX changes (TOGGLE explanations, first-run modal).
+docs/copilot-raptor-review/DEV_HANDOFF_CHECKLIST.md:52:- [ ] Security review of `GET /image/thumbnail` and scanning endpoints.
+ui/src/components/sources/SourcesPanel.tsx:7:function badgeClass(status: Source['status']) {
+ui/src/components/sources/SourcesPanel.tsx:165:                    <span className={`text-[11px] px-2 py-0.5 rounded-full border ${badgeClass(s.status)}`}>
+docs/ADVANCED_FEATURES_INTEGRATION.md:54:│   └── advanced_features_api.py            # REST API endpoints for all features
+docs/ADVANCED_FEATURES_INTEGRATION.md:90:### 3. **Register API Endpoints**
+docs/ADVANCED_FEATURES_INTEGRATION.md:209:## 📈 **API Endpoints**
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:12:- **Lowest ops / fastest iteration**: hosted model APIs (OpenAI, Google, AWS, Azure) or “model hosting platforms” (Replicate, HF Inference/Endpoints).
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:15:- **Best privacy/data control**: local models or dedicated single-tenant endpoints.
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:64:### fal (serverless GPU inference / model endpoints)
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:69:  - A serverless GPU inference platform (often used for image/video model endpoints).
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:99:- Hugging Face Inference Endpoints: https://huggingface.co/inference-endpoints
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:129:- Hugging Face Inference Endpoints (dedicated): https://huggingface.co/inference-endpoints
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:267:- Hugging Face Inference API / Endpoints: https://huggingface.co/docs/api-inference/
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:285:- **Hugging Face Inference Endpoints** (dedicated): https://huggingface.co/inference-endpoints
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:295:This repo currently stores insights (DB + endpoints) but doesn’t strongly commit to a specific VLM model for generation. If you want API-first “insights” later, this is where you get the biggest quality jump.
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:313:- Hugging Face Inference API/Endpoints: https://huggingface.co/docs
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:447:  - Also good for open-model experimentation: Replicate or HF Endpoints (then later “graduate” to Fireworks/Together/HF dedicated).
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:456:  - If you want open OCR VLMs: Replicate/HF Endpoints for Chandra / GOT‑OCR, but run them as batch jobs and cache aggressively.
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:461:  - If you still want open embeddings without GPUs: host them on HF Endpoints / Fireworks / Together.
+docs/API_FIRST_MODEL_PROVIDER_CATALOG.md:482:- **Together / Fireworks / HF Endpoints** shine when you’ve picked a model family and want more predictable latency/throughput than “catalog-style” platforms.
+docs/copilot-raptor-review/DISCUSSION_SUMMARY.md:42:- Convert `POST /scan` to `async` and add job endpoints and a job UI.
+ui/src/components/gallery/PhotoGrid.tsx:325:  // Dynamic column breakpoints based on zoom level
+ui/src/components/gallery/PhotoGrid.tsx:672:                <div className='gallery-video-badge'>
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:64:- AI insights storage + patterns/analytics endpoints
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:75:- Signed image tokens / thumbnail endpoints
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:76:- Background jobs + scan/index endpoints
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:100:| Notes/captions + search | `server/notes_db.py`, endpoints in `server/main.py` | SQLite `sqlite3` (+ FTS if enabled) | Postgres FTS, Meilisearch, Tantivy via service | Algolia (search), Elastic Cloud |
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:146:- OpenAI embeddings/vision pipelines (often: caption first, then embed text; or vendor-specific multimodal embedding endpoints)
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:251:  - API endpoints in `server/main.py` under `/ocr/*`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:338:  - `server/notes_db.py` + endpoints in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:355:  - `server/saved_searches.db` + endpoints under `/searches/*`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:369:  - Ratings endpoints in `server/main.py` (and `server/ratings_db.py`)
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:370:  - Favorites in `src/metadata_search.py` (favorites table) + `/favorites/*` endpoints
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:385:  - Endpoints under `/versions/*` and `/api/photos/{path}/edits`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:402:  - Export endpoints under `/export/*` and `/share`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:423:  - Endpoints under `/sources/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:470:  - Endpoints under `/bulk/*` and `/trash/*`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:486:  - Endpoints under `/ai/insights*` and `/ai/analytics/patterns`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:487:  - “Analytics dashboard” endpoints exist under `/analytics/*` via `server/advanced_features_api.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:489:  - Mostly stdlib `sqlite3`; some endpoints compute aggregates
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:548:  - Scan/index entrypoints: `/scan`, `/index`, `/jobs/{job_id}` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:568:  - Endpoints: `/cache/*` and `/api/cache/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:584:  - Thumbnail and image token endpoints: `/image/thumbnail`, `/image/token`, `/file`, `/video` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:603:  - Endpoints: `/dialogs/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:619:  - Endpoints: `/code-splitting/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:636:  - Endpoints: `/tauri/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:675:  - Endpoints: `/stories/*` and `/timeline/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:693:  - Endpoints: `/collaborative/spaces/*` in `server/main.py`
+docs/FEATURE_PACKAGE_MODEL_OPTIONS.md:710:  - Endpoints: `/pricing/*` and `/usage/*` in `server/main.py`
+ui/src/components/gallery/SecureLazyImage.tsx:26:  const [badge, setBadge] = useState<'local' | 'cloud' | 'hybrid'>('local');
+ui/src/components/gallery/SecureLazyImage.tsx:81:          aria-label={`File source: ${badge}`}
+ui/src/components/gallery/SecureLazyImage.tsx:82:          title={`Source: ${badge}`}
+ui/src/components/gallery/SecureLazyImage.tsx:85:          {badge === 'local' ? 'Local' : badge === 'cloud' ? 'Cloud' : 'Hybrid'}
+ui/src/components/search/IntentBasedSearch.tsx:42:  badges: IntentBadge[];
+ui/src/components/search/IntentBasedSearch.tsx:214:          {intent && intent.badges.length > 0 && (
+ui/src/components/search/IntentBasedSearch.tsx:216:              {intent.badges.map((badge, index) => {
+ui/src/components/search/IntentBasedSearch.tsx:217:                const Icon = getIntentIcon(badge.intent);
+ui/src/components/search/IntentBasedSearch.tsx:224:                    <span>{badge.label}</span>
+ui/src/components/search/MatchExplanation.tsx:21:  badge: string;
+ui/src/components/search/IntentRecognition.css:105:.intent-badges {
+ui/src/components/search/IntentRecognition.css:109:.intent-badges h4 {
+ui/src/components/search/IntentRecognition.css:113:.badge-list {
+ui/src/components/search/IntentRecognition.css:117:.badge-item {
+ui/src/components/search/IntentRecognition.css:148:  .badge-list {
+ui/src/components/search/IntentRecognition.css:153:  .badge-item {
+ui/src/components/actions/ActionButton.tsx:42:        <polyline points="7,10 12,15 17,10"/>
+ui/src/components/actions/ActionButton.tsx:49:        <polyline points="16,6 12,2 8,6"/>
+ui/src/components/gallery/modern-gallery.css:408:.gallery-video-badge {
+ui/src/components/gallery/modern-gallery.css:431:.gallery-item:hover .gallery-video-badge {
+ui/src/components/search/IntentRecognition.tsx:35:  const [badges, setBadges] = useState<string[]>([]);
+ui/src/components/search/IntentRecognition.tsx:81:        // Get badges (non-critical)
+ui/src/components/search/IntentRecognition.tsx:83:          const badgesResponse = await fetch(
+ui/src/components/search/IntentRecognition.tsx:84:            `/api/intent/badges?query=${encodeURIComponent(searchQuery)}`
+ui/src/components/search/IntentRecognition.tsx:86:          if (badgesResponse.ok) {
+ui/src/components/search/IntentRecognition.tsx:87:            const badgesData = await badgesResponse.json();
+ui/src/components/search/IntentRecognition.tsx:88:            setBadges(badgesData.badges || []);
+ui/src/components/search/IntentRecognition.tsx:91:          // ignore badge errors
+ui/src/components/search/IntentRecognition.tsx:92:          console.debug('Intent badges fetch error', err);
+ui/src/components/search/IntentRecognition.tsx:208:      {badges.length > 0 && (
+ui/src/components/search/IntentRecognition.tsx:209:        <div className='intent-badges'>
+ui/src/components/search/IntentRecognition.tsx:211:          <div className='badge-list'>
+ui/src/components/search/IntentRecognition.tsx:212:            {badges.map((badge, index) => (
+ui/src/components/search/IntentRecognition.tsx:213:              <span key={index} className='badge-item'>
+ui/src/components/search/IntentRecognition.tsx:214:                {badge}
+ui/src/components/people/ClusterManagement.tsx:72:      // Get hidden clusters count for badge
+
+## Constellation / graph / force layout / network
+ui/src/components/gallery/LazyImage.tsx:36:    const node = wrapperRef.current;
+ui/src/components/gallery/LazyImage.tsx:37:    if (!node) return;
+ui/src/components/gallery/LazyImage.tsx:52:    observerRef.current.observe(node);
+ui/src/components/gallery/modern-gallery.css:531:  image-rendering: -moz-crisp-edges;
+ui/src/components/gallery/modern-gallery.css:532:  image-rendering: crisp-edges;
+
+## Breadcrumb evidence
+
+## Frontend tests
+TEST_FILE: ui/node_modules/tunnel-rat/test/tunnelrat.test.tsx
+TEST_FILE: ui/node_modules/entities/src/decode.spec.ts
+TEST_FILE: ui/node_modules/entities/src/index.spec.ts
+TEST_FILE: ui/node_modules/entities/src/escape.spec.ts
+TEST_FILE: ui/node_modules/entities/src/encode.spec.ts
+TEST_FILE: ui/src/test/ActionRegistry.test.ts
+TEST_FILE: ui/src/test/sources-ui.test.tsx
+TEST_FILE: ui/src/test/api-caching.test.ts
+TEST_FILE: ui/src/test/photogrid.test.tsx
+TEST_FILE: ui/src/test/face-detection-api.test.ts
+
+## Docstring / typing quick signals (python)
+server python def count (rg): 468
+server triple-quote occurrences (rg): 1881
+server return type hint occurrences (rg): 427

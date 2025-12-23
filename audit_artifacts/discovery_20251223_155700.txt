@@ -1,0 +1,153 @@
+# PhotoSearch v2 discovery
+DATE: 2025-12-23T15:57:00+05:30
+
+## pwd
+/Users/pranay/Projects/photosearch_experiment
+
+## ls -la
+total 9308
+drwxr-xr-x    6 pranay     192 Dec 23 09:54 __pycache__
+drwxr-xr-x  103 pranay    3296 Dec 23 15:49 .
+drwxr-xr-x   52 pranay    1664 Dec 12 11:02 ..
+drwxr-xr-x    3 pranay      96 Dec 23 09:30 .agent
+drwxr-xr-x    3 pranay      96 Dec 19 08:48 .claude
+-rw-r--r--    1 pranay     100 Dec 15 11:44 .dockerignore
+-rw-r--r--    1 pranay    6148 Dec 13 13:26 .DS_Store
+-rw-r--r--    1 pranay     326 Dec 20 16:05 .env
+-rw-r--r--    1 pranay     517 Dec 18 10:07 .env.example
+drwxr-xr-x   15 pranay     480 Dec 23 15:53 .git
+drwxr-xr-x    3 pranay      96 Dec 23 00:57 .github
+-rw-r--r--    1 pranay    1170 Dec 23 10:17 .gitignore
+drwxr-xr-x    5 pranay     160 Dec 18 13:33 .kiro
+drwxr-xr-x    5 pranay     160 Dec 21 23:14 .mypy_cache
+drwxr-xr-x    3 pranay      96 Dec 12 22:53 .playwright-mcp
+-rw-r--r--    1 pranay    1071 Dec 22 23:16 .pre-commit-config.yaml
+drwxr-xr-x    6 pranay     192 Dec  8 21:06 .pytest_cache
+drwxr-xr-x    5 pranay     160 Dec 23 10:10 .ruff_cache
+drwxr-xr-x    4 pranay     128 Dec 14 14:10 .run
+drwxr-xr-x   12 pranay     384 Dec 19 00:56 .venv
+drwxr-xr-x    3 pranay      96 Dec 12 14:07 .vscode
+-rw-r--r--    1 pranay   32768 Dec 20 13:28 albums.db
+drwxr-xr-x   41 pranay    1312 Dec 23 15:57 audit_artifacts
+drwxr-xr-x    3 pranay      96 Dec 20 16:29 cache
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 cache.db
+drwxr-xr-x   15 pranay     480 Dec  9 16:56 codex-review
+-rw-r--r--    1 pranay   69632 Dec 23 15:48 collaborative_spaces.db
+-rw-r--r--    1 pranay   28672 Dec 23 15:48 collections.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 concurrent_duplicate.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 concurrent_ocr.db
+-rw-r--r--    1 pranay     248 Dec 17 23:13 config.py
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 consistency_test.db
+drwxr-xr-x    8 pranay     256 Dec  8 21:06 copilot_raptor_review
+drwxr-xr-x   12 pranay     384 Dec 11 09:42 data
+-rw-r--r--    1 pranay   45056 Dec 12 23:03 dialogs.db
+-rw-r--r--    1 pranay    1212 Dec 15 11:51 Dockerfile.full
+drwxr-xr-x  106 pranay    3392 Dec 23 10:10 docs
+-rw-r--r--    1 pranay  372736 Dec 20 13:28 duplicates.db
+-rw-r--r--    1 pranay   12288 Dec 20 13:28 edits.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 error_test.db
+drwxr-xr-x   12 pranay     384 Dec 12 16:21 experiments
+-rw-r--r--    1 pranay  483328 Dec 23 15:48 face_clusters.db
+-rw-r--r--    1 pranay   32768 Dec 23 15:48 face_clusters.db-shm
+-rw-r--r--    1 pranay   16512 Dec 23 15:48 face_clusters.db-wal
+-rw-r--r--    1 pranay    5622 Dec 23 10:09 FACE_INTELLIGENCE.md
+-rw-r--r--    1 pranay   10015 Dec 23 10:17 FACE_PEOPLE_IMPLEMENTATION_AUDIT_2025-12-23.md
+-rw-r--r--    1 pranay   11484 Dec 23 10:17 FACE_PEOPLE_IMPLEMENTATION_AUDIT_CORRECTED_2025-12-23.md
+-rw-r--r--    1 pranay    1521 Dec 20 17:11 frontend.log
+-rw-r--r--    1 pranay   49152 Dec 12 22:30 jobs.db
+-rw-r--r--    1 pranay   81920 Dec 23 15:48 locations.db
+drwxr-xr-x    4 pranay     128 Dec 20 15:30 logs
+-rw-r--r--    1 pranay    5670 Dec 18 13:44 mcp-shell.log
+drwxr-xr-x 1071 pranay   34272 Dec 22 10:06 media
+-rw-r--r--    1 pranay  344064 Dec 19 01:00 memory_test.db
+drwxr-xr-x    4 pranay     128 Dec 19 00:53 models
+-rw-r--r--    1 pranay     237 Dec 20 18:29 mypy.ini
+-rw-r--r--    1 pranay     318 Dec 15 11:49 nginx.conf
+-rw-r--r--    1 pranay   24576 Dec 23 15:48 notes.db
+drwxr-xr-x    2 pranay      64 Dec 19 00:58 ocr_models
+-rw-r--r--    1 pranay   53248 Dec 12 23:01 ocr_search.db
+drwxr-xr-x   93 pranay    2976 Dec  9 14:52 old_project_docs
+-rw-r--r--    1 pranay   20480 Dec 23 15:37 people_tags.db
+-rw-r--r--    1 pranay  344064 Dec 23 15:48 perf_face.db
+-rw-r--r--    1 pranay  147623 Dec 23 15:11 photo_catalog.json
+-rw-r--r--    1 pranay    6243 Dec 21 11:03 PHOTO_EDITOR_IMPROVEMENTS_SUMMARY.md
+-rw-r--r--    1 pranay   12288 Dec 20 21:20 photo_edits.db
+-rw-r--r--    1 pranay 2592768 Dec 23 15:37 photo_metadata.db
+-rw-r--r--    1 pranay   16582 Dec 23 15:53 PHOTOSEARCH_V2_CODEBASE_AUDIT_2025-12-23.md
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 pipeline_duplicates.db
+-rw-r--r--    1 pranay  344064 Dec 23 15:48 pipeline_face.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 pipeline_ocr.db
+-rw-r--r--    1 pranay   32768 Dec 23 15:48 privacy.db
+-rw-r--r--    1 pranay   20480 Dec 21 15:13 ratings.db
+-rw-r--r--    1 pranay   27264 Dec 18 10:14 README.md
+-rw-r--r--    1 pranay    1369 Dec 20 16:19 requirements.txt
+-rw-r--r--    1 pranay    9566 Dec 19 01:05 ROADMAP.md
+-rw-r--r--    1 pranay   20480 Dec 22 14:15 saved_searches.db
+drwxr-xr-x   12 pranay     384 Dec 23 00:39 scripts
+drwxr-xr-x   66 pranay    2112 Dec 23 15:24 server
+-rw-r--r--    1 pranay   37259 Dec 20 19:37 server.log
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 sources_items.db
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 sources.db
+drwxr-xr-x   35 pranay    1120 Dec 23 10:06 src
+drwxr-xr-x   12 pranay     384 Dec 17 22:08 src-tauri
+-rwxr-xr-x    1 pranay     263 Dec 13 11:21 start.sh
+-rwxr-xr-x    1 pranay     151 Dec 13 10:33 stop.sh
+-rw-r--r--    1 pranay     416 Dec 15 11:49 supervisord.conf
+-rw-r--r--    1 pranay   28672 Dec 23 15:48 tags.db
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 test_duplicates.db
+-rw-r--r--    1 pranay    8389 Dec 19 08:49 test_face_detection_demo.py
+-rw-r--r--    1 pranay  344064 Dec 23 15:48 test_face.db
+-rw-r--r--    1 pranay   28865 Dec 15 21:58 test_globe1.html
+-rw-r--r--    1 pranay  344064 Dec 19 00:58 test_ocr.db
+-rw-r--r--    1 pranay    7152 Dec 19 22:46 test_people_endpoints.py
+-rw-r--r--    1 pranay    5408 Dec 11 09:51 test_pricing.py
+drwxr-xr-x    2 pranay      64 Dec  8 20:55 test_scan_dir
+-rw-r--r--    1 pranay    6048 Dec 20 16:24 test_video_analysis.py
+drwxr-xr-x    3 pranay      96 Dec 20 15:53 test-results
+drwxr-xr-x   24 pranay     768 Dec 23 10:17 tests
+-rw-r--r--    1 pranay   20480 Dec 17 23:09 trash.db
+drwxr-xr-x   24 pranay     768 Dec 19 22:16 ui
+-rw-r--r--    1 pranay   53248 Dec 23 15:37 versions.db
+-rw-r--r--    1 pranay   49152 Dec 20 16:29 video_analysis.db
+
+## package.json (top-level, if present)
+(no top-level package.json)
+
+## find package.json
+./ui/package.json
+
+## backend markers
+./requirements.txt
+./server/requirements.txt
+./server/main.py
+
+## backend dirs
+./server
+./server/api
+./.mypy_cache/3.11/server
+
+## fastapi/flask/django hints
+./tests/test_features_integration.py:from fastapi.testclient import TestClient
+./tests/test_image_token_jwt_auth.py:from fastapi.testclient import TestClient
+./tests/test_thumbnail_cache_headers.py:from fastapi.testclient import TestClient
+./tests/test_server_config.py:from fastapi.testclient import TestClient
+./tests/test_image_token_endpoint.py:from fastapi.testclient import TestClient
+
+## three hints
+package.json:    "@react-three/drei": "^10.7.7",
+package.json:    "@react-three/fiber": "^9.4.2",
+package.json:    "@types/three": "^0.181.0",
+package.json:    "three": "^0.181.2"
+
+## tauri config
+src-tauri/tauri.conf.json
+
+## endpoint decorator count
+353
+
+## component counts
+101
+23
+
+## git
+GIT_HASH: cbd4306ba2b8ab4adcd295e521d118de5846cbd5

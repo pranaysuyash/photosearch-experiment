@@ -1856,6 +1856,184 @@ class FaceClusteringDB:
             return self._compute_representative_face(conn, cluster_id)
 
     # ===================================================================
+    # Phase 5.4: Merge Suggestions
+    # ===================================================================
+
+    def get_merge_suggestions(
+        self, similarity_threshold: float = 0.62, max_suggestions: int = 10
+    ) -> List[Dict[str, Any]]:
+        """
+        Find cluster pairs that might be the same person based on prototype similarity.
+
+        Conservative criteria:
+        1. Prototype similarity >= threshold (default 0.62)
+        2. NO co-occurrence conflict (both clusters appearing in same photo = HARD BLOCK)
+
+        Returns:
+            List of merge suggestion dicts with:
+            - cluster_a_id, cluster_a_label, cluster_a_face_count
+            - cluster_b_id, cluster_b_label, cluster_b_face_count
+            - similarity: prototype similarity score
+            - representative_a: {photo_path, detection_id}
+            - representative_b: {photo_path, detection_id}
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Get all clusters with their prototype embeddings
+            clusters = conn.execute(
+                """
+                SELECT
+                    cluster_id,
+                    label,
+                    prototype_embedding,
+                    representative_detection_id
+                FROM face_clusters
+                WHERE prototype_embedding IS NOT NULL
+            """
+            ).fetchall()
+
+            if len(clusters) < 2:
+                return []
+
+            # Get face counts for each cluster
+            face_counts = {}
+            for row in conn.execute(
+                """
+                SELECT cluster_id, COUNT(*) as cnt
+                FROM photo_person_associations
+                GROUP BY cluster_id
+            """
+            ).fetchall():
+                face_counts[row["cluster_id"]] = row["cnt"]
+
+            # Build co-occurrence map: clusters that share any photo
+            # This is a HARD BLOCK for merge suggestions
+            co_occurring = set()
+            photo_clusters = conn.execute(
+                """
+                SELECT photo_path, GROUP_CONCAT(DISTINCT cluster_id) as clusters
+                FROM photo_person_associations
+                GROUP BY photo_path
+                HAVING COUNT(DISTINCT cluster_id) > 1
+            """
+            ).fetchall()
+
+            for row in photo_clusters:
+                cluster_ids = row["clusters"].split(",")
+                # Add all pairs that co-occur
+                for i in range(len(cluster_ids)):
+                    for j in range(i + 1, len(cluster_ids)):
+                        pair = tuple(sorted([cluster_ids[i], cluster_ids[j]]))
+                        co_occurring.add(pair)
+
+            # Get representative face info
+            rep_info = {}
+            for row in conn.execute(
+                """
+                SELECT fc.cluster_id, fd.photo_path, fd.detection_id
+                FROM face_clusters fc
+                JOIN face_detections fd ON fc.representative_detection_id = fd.detection_id
+                WHERE fc.representative_detection_id IS NOT NULL
+            """
+            ).fetchall():
+                rep_info[row["cluster_id"]] = {
+                    "photo_path": row["photo_path"],
+                    "detection_id": row["detection_id"],
+                }
+
+            # Compare prototype embeddings pairwise
+            suggestions = []
+            cluster_list = list(clusters)
+
+            for i in range(len(cluster_list)):
+                for j in range(i + 1, len(cluster_list)):
+                    c1 = cluster_list[i]
+                    c2 = cluster_list[j]
+                    cluster_a_id = c1["cluster_id"]
+                    cluster_b_id = c2["cluster_id"]
+
+                    # Check co-occurrence (HARD BLOCK)
+                    pair = tuple(sorted([cluster_a_id, cluster_b_id]))
+                    if pair in co_occurring:
+                        continue  # Skip - they appear in the same photo
+
+                    # Compare prototype embeddings
+                    try:
+                        emb1 = np.frombuffer(
+                            c1["prototype_embedding"], dtype=np.float32
+                        )
+                        emb2 = np.frombuffer(
+                            c2["prototype_embedding"], dtype=np.float32
+                        )
+
+                        # Cosine similarity (embeddings should be L2-normalized)
+                        similarity = float(np.dot(emb1, emb2))
+
+                        if similarity >= similarity_threshold:
+                            suggestions.append(
+                                {
+                                    "cluster_a_id": cluster_a_id,
+                                    "cluster_a_label": c1["label"]
+                                    or f"Person {cluster_a_id}",
+                                    "cluster_a_face_count": face_counts.get(
+                                        cluster_a_id, 0
+                                    ),
+                                    "cluster_b_id": cluster_b_id,
+                                    "cluster_b_label": c2["label"]
+                                    or f"Person {cluster_b_id}",
+                                    "cluster_b_face_count": face_counts.get(
+                                        cluster_b_id, 0
+                                    ),
+                                    "similarity": round(similarity, 3),
+                                    "representative_a": rep_info.get(cluster_a_id),
+                                    "representative_b": rep_info.get(cluster_b_id),
+                                }
+                            )
+                    except Exception as e:
+                        logger.warning(
+                            f"Error comparing clusters {cluster_a_id} and {cluster_b_id}: {e}"
+                        )
+
+            # Sort by similarity (highest first) and limit
+            suggestions.sort(key=lambda x: x["similarity"], reverse=True)
+            return suggestions[:max_suggestions]
+
+    def dismiss_merge_suggestion(self, cluster_a_id: str, cluster_b_id: str) -> bool:
+        """
+        Dismiss a merge suggestion so it won't appear again.
+        Stores in a dismissals table.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            # Create table if not exists
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS merge_dismissals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    cluster_a_id TEXT NOT NULL,
+                    cluster_b_id TEXT NOT NULL,
+                    dismissed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UNIQUE(cluster_a_id, cluster_b_id)
+                )
+            """
+            )
+
+            # Normalize order
+            pair = tuple(sorted([cluster_a_id, cluster_b_id]))
+            try:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO merge_dismissals (cluster_a_id, cluster_b_id)
+                    VALUES (?, ?)
+                """,
+                    pair,
+                )
+                return True
+            except Exception as e:
+                logger.error(f"Error dismissing merge suggestion: {e}")
+                return False
+
+    # ===================================================================
     # Phase 0: Unknown Bucket (Unassigned Faces)
     # ===================================================================
 

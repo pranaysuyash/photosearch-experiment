@@ -1,0 +1,19 @@
+# Mega audit evidence greps (fixups)
+DATE: 2025-12-23T16:01:16+05:30
+
+## Hard-coded colors not using CSS vars (sample)
+
+## DynamicNotchSearch / mode detection references
+ui/src/contexts/PhotoSearchContext.tsx:165:  const detectSearchMode = useCallback((query: string): SearchMode => {
+ui/src/contexts/PhotoSearchContext.tsx:220:    const detectedMode = detectSearchMode(query);
+ui/src/contexts/PhotoSearchContext.tsx:223:      setSearchMode(detectedMode);
+ui/src/contexts/PhotoSearchContext.tsx:225:  }, [detectSearchMode, searchMode]);
+ui/src/components/layout/DynamicNotchSearch.tsx:19: * DynamicNotchSearch Component
+ui/src/components/layout/DynamicNotchSearch.tsx:25:export function DynamicNotchSearch({
+ui/src/components/layout/DynamicNotchSearch.tsx:417:                            setSearchMode(item.id as any);
+ui/src/components/layout/Layout.tsx:23:import { DynamicNotchSearch } from './DynamicNotchSearch';
+ui/src/components/layout/Layout.tsx:208:              <DynamicNotchSearch onExpandedChange={setSearchExpanded} />
+ui/src/components/search/EnhancedSearchUI.tsx:171:      setSearchMode('metadata');
+ui/src/components/search/EnhancedSearchUI.tsx:177:      setSearchMode('semantic');
+ui/src/components/search/SavedSearchList.tsx:49:      setSearchMode(result.search.mode as SearchMode);
+ui/src/pages/Videos.tsx:3:// Removed PageSearchWrapper - global DynamicNotchSearch in Layout.tsx handles search

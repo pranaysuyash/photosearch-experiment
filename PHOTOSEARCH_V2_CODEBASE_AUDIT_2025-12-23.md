@@ -219,9 +219,13 @@ Effort sizing:
 
 Evidence:
 
-- Metadata explanation generation: `server/api/routers/search.py:347` (`generate_metadata_match_explanation`)
-- Hybrid explanation generation: `server/api/routers/search.py:586` (`generate_hybrid_match_explanation`)
-- Semantic explanation generation: `server/api/routers/semantic_search.py:179` (`generate_semantic_match_explanation`)
+- Explanation generation implementations:
+  - Metadata: `server/utils/search_explanations.py:1` (`generate_metadata_match_explanation`)
+  - Hybrid: `server/utils/search_explanations.py:123` (`generate_hybrid_match_explanation`)
+  - Semantic: `server/utils/search_explanations.py:202` (`generate_semantic_match_explanation`)
+  - Routed usage examples:
+    - Metadata/Hybrid in main search: `server/api/routers/search.py:525`, `server/api/routers/search.py:877`
+    - Semantic in semantic search: `server/api/routers/semantic_search.py:179`
 - Frontend typing: `ui/src/api.ts:84–95` (`MatchExplanation`, `matchExplanation?: MatchExplanation`)
 
 Impact:

@@ -1,0 +1,2 @@
+# Hard-coded colors (non-token) sample
+DATE: 2025-12-23T16:01:24+05:30

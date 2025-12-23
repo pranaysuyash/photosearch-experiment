@@ -1,0 +1,534 @@
+# Mega audit evidence greps
+DATE: 2025-12-23T16:01:07+05:30
+
+## Design tokens / theme files
+ui/src/design
+ui/src/contexts/AmbientThemeContext.tsx
+ui/src/components/design
+ui/src/hooks/useAmbientTheme.ts
+
+## Glass/backdrop usage (top hits)
+ui/src/enhanced-animations.css:198:  -webkit-backdrop-filter: blur(16px) saturate(180%);
+ui/src/enhanced-animations.css:199:  backdrop-filter: blur(16px) saturate(180%);
+ui/src/index.css:106:  .glass-surface {
+ui/src/index.css:110:    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+ui/src/index.css:111:    backdrop-filter: blur(20px) saturate(1.3);
+ui/src/index.css:118:  .glass-surface--strong {
+ui/src/index.css:127:  .btn-glass,
+ui/src/index.css:142:    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+ui/src/index.css:143:    backdrop-filter: blur(20px) saturate(1.3);
+ui/src/index.css:152:  .btn-glass:hover,
+ui/src/index.css:164:  .btn-glass:focus-visible,
+ui/src/index.css:177:  .btn-glass--primary {
+ui/src/index.css:186:  .btn-glass--danger,
+ui/src/index.css:193:  .btn-glass--success {
+ui/src/index.css:199:  .btn-glass--warning {
+ui/src/index.css:205:  .btn-glass--muted {
+ui/src/components/ui/Toast.tsx:51:      className={`fixed top-4 right-4 z-[9999] flex items-center gap-3 px-4 py-3 rounded-lg border backdrop-blur-sm transition-all duration-300 ${
+ui/src/components/advanced/OCRTextSearchPanel.tsx:42:import { glass } from '../../design/glass';
+ui/src/components/advanced/OCRTextSearchPanel.tsx:350:        <div className={`${glass.card} p-4 space-y-2`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:416:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:503:              <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:583:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:709:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:744:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/OCRTextSearchPanel.tsx:863:            className={`${glass.card} p-6 space-y-6`}
+ui/src/components/advanced/FaceRecognitionPanel.tsx:27:import { glass } from '../../design/glass';
+ui/src/components/advanced/FaceRecognitionPanel.tsx:286:        <div className={`${glass.card} p-4 space-y-2`}>
+ui/src/components/advanced/FaceRecognitionPanel.tsx:373:                      glass.card
+ui/src/components/advanced/FaceRecognitionPanel.tsx:419:            <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/FaceRecognitionPanel.tsx:517:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/FaceRecognitionPanel.tsx:574:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/FaceRecognitionPanel.tsx:611:            className={`${glass.card} p-6 space-y-6`}
+ui/src/components/advanced/FaceRecognitionPanel.tsx:672:            className={`${glass.card} p-6 space-y-6`}
+ui/src/components/advanced/AnalyticsDashboard.tsx:38:import { glass } from '../../design/glass';
+ui/src/components/advanced/AnalyticsDashboard.tsx:451:          className={`${glass.card} p-4 flex items-center justify-center gap-2`}
+ui/src/components/advanced/AnalyticsDashboard.tsx:489:              <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:500:              <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:511:              <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:522:              <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:536:              <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:576:              <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:621:            className={`${glass.card} p-6`}
+ui/src/components/advanced/AnalyticsDashboard.tsx:743:            className={`${glass.card} p-6`}
+ui/src/components/advanced/AnalyticsDashboard.tsx:833:            className={`${glass.card} p-6`}
+ui/src/components/advanced/AnalyticsDashboard.tsx:914:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/AnalyticsDashboard.tsx:1014:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:33:import { glass } from '../../design/glass';
+ui/src/components/advanced/DuplicateManagementPanel.tsx:296:        <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:367:                      glass.card
+ui/src/components/advanced/DuplicateManagementPanel.tsx:437:                  <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:483:                    <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:527:                  <div className={`${glass.card} p-4`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:572:                <div className={`${glass.card} p-6 text-center`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:592:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:647:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/DuplicateManagementPanel.tsx:706:            className={`${glass.card} p-6`}
+ui/src/components/advanced/DuplicateManagementPanel.tsx:756:            className={`${glass.card} p-6`}
+ui/src/components/advanced/DuplicateManagementPanel.tsx:899:            className='fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4'
+ui/src/components/advanced/DuplicateManagementPanel.tsx:906:              className={`${glass.card} max-w-6xl w-full max-h-[90vh] overflow-hidden`}
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:46:import { glass } from '../../design/glass';
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:359:            <div className={`${glass.card} p-6 space-y-4`}>
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:428:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:519:              <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:575:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:638:            <div className={`${glass.card} p-6`}>
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:709:            className={`${glass.card} p-6`}
+ui/src/components/collaboration/CollaborativeSpaces.tsx:26:import { glass } from '../../design/glass';
+ui/src/components/collaboration/CollaborativeSpaces.tsx:268:      <div className={`${glass.surface} rounded-xl border border-white/10 p-6`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:291:          className="btn-glass btn-glass--primary px-4 py-2 flex items-center gap-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:301:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateForm(false)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:303:          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:309:                  className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:369:                  className="btn-glass btn-glass--muted px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:375:                  className="btn-glass btn-glass--primary px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:388:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSpace(null)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:390:          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:403:                    className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:413:              <div className={`${glass.surfaceStrong} w-64 border-r border-white/10 overflow-y-auto`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:439:                              className="btn-glass btn-glass--muted w-7 h-7 p-0 flex items-center justify-center"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:453:                      className="btn-glass btn-glass--primary text-sm py-2 flex items-center gap-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:461:                      className="btn-glass btn-glass--primary text-sm py-2 flex items-center gap-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:467:                    <button className="btn-glass btn-glass--muted text-sm py-2 flex items-center gap-2">
+ui/src/components/collaboration/CollaborativeSpaces.tsx:484:                  <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-8 text-center`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:494:                      <div key={photo.photo_path} className={`${glass.surfaceStrong} rounded-xl border border-white/10 overflow-hidden`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:504:                              className="btn-glass btn-glass--muted p-1.5"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:555:                                  className="btn-glass btn-glass--muted p-1"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:577:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInviteForm(false)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:579:          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:585:                  className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:620:                  className="btn-glass btn-glass--muted px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:626:                  className="btn-glass btn-glass--primary px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:639:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddPhotoForm(false)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:641:          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:647:                  className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:680:                  className="btn-glass btn-glass--muted px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:686:                  className="btn-glass btn-glass--primary px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:698:        <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-8 text-center`}>
+ui/src/components/collaboration/CollaborativeSpaces.tsx:706:            className="btn-glass btn-glass--primary px-4 py-2"
+ui/src/components/collaboration/CollaborativeSpaces.tsx:716:              className={`${glass.surfaceStrong} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors cursor-pointer`}
+ui/src/components/collaboration/CollaborativeSpaces.tsx:752:                    className="btn-glass btn-glass--primary px-3 py-1.5 text-xs"
+ui/src/components/video/VideoAnalysisPanel.tsx:34:import { glass } from '../design/glass';
+ui/src/components/video/VideoAnalysisPanel.tsx:240:      <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:263:              className={`${glass.buttonPrimary} flex items-center gap-2 px-4 py-2 rounded-md`}
+ui/src/components/video/VideoAnalysisPanel.tsx:281:              className={`${glass.button} flex items-center gap-2 px-4 py-2 rounded-md`}
+ui/src/components/video/VideoAnalysisPanel.tsx:294:          <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:302:                className={`${glass.buttonDanger} text-sm flex items-center gap-2 px-3 py-1 rounded-md`}
+ui/src/components/video/VideoAnalysisPanel.tsx:310:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:317:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:324:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:331:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:341:          <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:348:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:358:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:368:              <div className={`${glass.card} p-4 rounded-md`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:382:            <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:392:                    className={`${glass.card} p-4 rounded-md cursor-pointer transition-all ${
+ui/src/components/video/VideoAnalysisPanel.tsx:419:            <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:436:                      className={`${glass.card} p-2 rounded-md cursor-pointer transition-all ${
+ui/src/components/video/VideoAnalysisPanel.tsx:459:            <div className={`${glass.surface} p-6 rounded-lg`}>
+ui/src/components/video/VideoAnalysisPanel.tsx:481:                    className={`${glass.button} flex items-center gap-2 px-3 py-1 rounded-md`}
+
+## Hard-coded colors not using CSS vars (sample)
+
+## DynamicNotchSearch / mode detection references
+
+## Globe / three.js components
+ui/src/components/features/PhotoGlobe.tsx
+ui/src/pages/GlobePage.tsx
+
+## three / r3f usage
+ui/src/components/gallery/LivePreviewCanvas.tsx:15:interface LivePreviewCanvasProps {
+ui/src/components/gallery/LivePreviewCanvas.tsx:21:export function LivePreviewCanvas({ photoPath, settings, className }: LivePreviewCanvasProps) {
+ui/src/components/gallery/LivePreviewCanvas.tsx:22:    const canvasRef = useRef<HTMLCanvasElement>(null);
+ui/src/components/features/PhotoGlobe.tsx:2:import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
+ui/src/components/features/PhotoGlobe.tsx:371:  const texture = new THREE.CanvasTexture(canvas);
+ui/src/components/features/PhotoGlobe.tsx:686:  const camera = useThree((s) => s.camera);
+ui/src/components/features/PhotoGlobe.tsx:692:  useFrame(() => {
+ui/src/components/features/PhotoGlobe.tsx:750:  const camera = useThree((s) => s.camera);
+ui/src/components/features/PhotoGlobe.tsx:755:  useFrame(() => {
+ui/src/components/features/PhotoGlobe.tsx:904:  useFrame((state) => {
+ui/src/components/features/PhotoGlobe.tsx:1039:  const camera = useThree((state) => state.camera);
+ui/src/components/features/PhotoGlobe.tsx:1092:  useFrame(() => {
+ui/src/components/features/PhotoGlobe.tsx:1456:      {/* 3D Canvas */}
+ui/src/components/features/PhotoGlobe.tsx:1457:      <Canvas
+ui/src/components/features/PhotoGlobe.tsx:1499:      </Canvas>
+ui/src/components/editing/PhotoEditor.tsx:66:  const canvasRef = useRef<HTMLCanvasElement>(null);
+ui/src/components/editing/PhotoEditor.tsx:356:  const startCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {
+ui/src/components/editing/PhotoEditor.tsx:368:  const updateCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {
+ui/src/components/editing/MobilePhotoEditor.tsx:104:  const canvasRef = useRef<HTMLCanvasElement>(null);
+ui/src/components/editing/MobilePhotoEditor.tsx:833:          {/* Canvas Area */}
+
+## Gamification strings
+ui/src/components/gallery/PhotoDetail.tsx:1389:      {/* Toast notifications */}
+ui/src/components/gallery/PhotoGrid.tsx:276:      // You could show a toast notification here
+ui/src/components/toast/ToastProvider.tsx:4: * Manages global toast notifications with undo functionality.
+ui/src/components/toast/Toast.tsx:4: * Provides notifications with optional undo actions for bulk operations.
+ui/src/components/toast/Toast.tsx:113:            aria-label="Close notification"
+ui/src/components/editing/PhotoEditor.tsx:887:      {/* Toast notifications */}
+ui/src/services/BulkActionsService.ts:104:// Hook to use bulk actions with notification
+ui/src/services/BulkActionsService.ts:131:      // Show notification with undo option
+ui/src/services/BulkActionsService.ts:176:      // Show notification with undo option
+
+## Constellation / graph groundwork
+
+## Navigation / routing
+ui/src/components/ModeRail.tsx:2:import { useLocation } from 'react-router-dom';
+ui/src/components/layout/ModeRail.tsx:2:import { useLocation } from 'react-router-dom';
+ui/src/components/layout/ModeSwitcher.tsx:2:import { Link, useLocation } from 'react-router-dom';
+ui/src/components/layout/Layout.tsx:8:import { Link, useLocation } from 'react-router-dom';
+ui/src/components/layout/ActionsPod.tsx:2:import { Link, useLocation } from 'react-router-dom';
+ui/src/components/navigation/SidebarNavigation.tsx:8:import { Link, useLocation } from 'react-router-dom';
+ui/src/components/navigation/TopNavigation.tsx:8:import { Link, useLocation } from 'react-router-dom';
+ui/src/components/search/EnhancedSearchUI.tsx:4:import { Link } from 'react-router-dom';
+ui/src/components/search/SavedSearchList.tsx:8:import { useNavigate } from 'react-router-dom';
+ui/src/components/search/Spotlight.tsx:13:import { useNavigate } from 'react-router-dom';
+ui/src/pages/Import.tsx:7:import { Link } from 'react-router-dom';
+ui/src/pages/AllFacePhotos.tsx:5:import { useNavigate } from 'react-router-dom';
+ui/src/pages/UnidentifiedFaces.tsx:8:import { useNavigate } from 'react-router-dom';
+ui/src/pages/Home.tsx:14:import { useNavigate } from 'react-router-dom';
+ui/src/pages/Singletons.tsx:5:import { useNavigate } from 'react-router-dom';
+ui/src/pages/LowConfidence.tsx:5:import { useNavigate } from 'react-router-dom';
+ui/src/pages/People.tsx:8:import { Link, useNavigate } from 'react-router-dom';
+ui/src/pages/PersonDetail.tsx:11:import { useParams, useNavigate } from 'react-router-dom';
+ui/src/pages/NotFound.tsx:7:import { Link } from 'react-router-dom';
+ui/src/router/MainRouter.tsx:12:} from 'react-router-dom';
+ui/src/router/MainRouter.tsx:72:              <Route path='/' element={<Home />} />
+ui/src/router/MainRouter.tsx:73:              <Route path='/search' element={<Search />} />
+ui/src/router/MainRouter.tsx:74:              <Route path='/globe' element={<GlobePage />} />
+ui/src/router/MainRouter.tsx:75:              <Route path='/story-mode' element={<StoryModePage />} />
+ui/src/router/MainRouter.tsx:76:              <Route path='/albums' element={<Albums />} />
+ui/src/router/MainRouter.tsx:77:              <Route path='/people' element={<People />} />
+ui/src/router/MainRouter.tsx:78:              <Route path='/people/unidentified' element={<UnidentifiedFaces />} />
+ui/src/router/MainRouter.tsx:79:              <Route path='/people/all-photos' element={<AllFacePhotos />} />
+ui/src/router/MainRouter.tsx:80:              <Route path='/people/singletons' element={<Singletons />} />
+ui/src/router/MainRouter.tsx:81:              <Route path='/people/low-confidence' element={<LowConfidence />} />
+ui/src/router/MainRouter.tsx:82:              <Route path='/people/:clusterId' element={<PersonDetail />} />
+ui/src/router/MainRouter.tsx:83:              <Route path='/favorites' element={<Favorites />} />
+ui/src/router/MainRouter.tsx:84:              <Route path='/videos' element={<Videos />} />
+ui/src/router/MainRouter.tsx:85:              <Route path='/trash' element={<Trash />} />
+ui/src/router/MainRouter.tsx:86:              <Route path='/tags' element={<Tags />} />
+ui/src/router/MainRouter.tsx:87:              <Route path='/saved-searches' element={<SavedSearches />} />
+ui/src/router/MainRouter.tsx:88:              <Route path='/jobs' element={<JobMonitor />} />
+ui/src/router/MainRouter.tsx:89:              <Route path='/performance' element={<PerformanceDashboard />} />
+ui/src/router/MainRouter.tsx:90:              <Route path='/tasks' element={<Navigate to='/jobs' replace />} />
+ui/src/router/MainRouter.tsx:91:              <Route path='/import' element={<Import />} />
+ui/src/router/MainRouter.tsx:94:              <Route
+ui/src/router/MainRouter.tsx:100:              <Route
+ui/src/router/MainRouter.tsx:104:              <Route path='/studio/ocr-search' element={<OCRSearch />} />
+ui/src/router/MainRouter.tsx:105:              <Route path='/studio/modal-system' element={<ModalSystem />} />
+ui/src/router/MainRouter.tsx:106:              <Route
+ui/src/router/MainRouter.tsx:110:              <Route
+ui/src/router/MainRouter.tsx:116:              <Route path='/analytics/dashboard' element={<AnalyticsDashboard />} />
+ui/src/router/MainRouter.tsx:117:              <Route path='/analytics/albums' element={<SmartAlbumsBuilder />} />
+ui/src/router/MainRouter.tsx:118:              <Route path='/analytics/faces' element={<FaceRecognitionPanel />} />
+ui/src/router/MainRouter.tsx:119:              <Route path='/analytics/duplicates' element={<DuplicateManagementPanel />} />
+ui/src/router/MainRouter.tsx:120:              <Route path='/analytics/ocr' element={<OCRTextSearchPanel />} />
+ui/src/router/MainRouter.tsx:123:              <Route path='/settings' element={<Settings />} />
+ui/src/router/MainRouter.tsx:124:              <Route path='/about' element={<About />} />
+ui/src/router/MainRouter.tsx:127:              <Route path='/home' element={<Navigate to='/' replace />} />
+ui/src/router/MainRouter.tsx:131:              <Route path='*' element={<NotFound />} />
+
+## Breadcrumb
+
+## Accessibility: clickable divs
+ui/src/components/collaboration/CollaborativeSpaces.tsx:301:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateForm(false)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:388:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSpace(null)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:577:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInviteForm(false)} />
+ui/src/components/collaboration/CollaborativeSpaces.tsx:639:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddPhotoForm(false)} />
+ui/src/components/sources/ConnectSourceModal.tsx:173:      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+ui/src/components/export/ExportDialog.tsx:171:      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+ui/src/components/import/ImportWizard.tsx:413:      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+ui/src/components/collections/SmartCollections.tsx:265:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+ui/src/components/collections/SmartCollections.tsx:351:          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCollection(null)} />
+ui/src/pages/UnidentifiedFaces.tsx:200:                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowAssignModal(false)}>
+ui/src/pages/UnidentifiedFaces.tsx:201:                    <div className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`} onClick={e => e.stopPropagation()}>
+ui/src/pages/People.tsx:572:        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setRenameModal({ open: false, clusterId: '', currentLabel: '' })}>
+ui/src/pages/People.tsx:573:          <div className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`} onClick={e => e.stopPropagation()}>
+ui/src/pages/People.tsx:607:        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setDeleteModal({ open: false, clusterId: '', label: '' })}>
+ui/src/pages/People.tsx:608:          <div className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`} onClick={e => e.stopPropagation()}>
+
+## Accessibility: aria usage counts
+aria-label count:
+90
+role= count:
+0
+
+## Images missing alt (sample)
+ui/src/components/advanced/OCRTextSearchPanel.tsx:757:                        <img
+ui/src/components/advanced/FaceRecognitionPanel.tsx:557:                        <img
+ui/src/components/advanced/DuplicateManagementPanel.tsx:404:                          <img
+ui/src/components/advanced/DuplicateManagementPanel.tsx:967:                        <img
+ui/src/components/advanced/DuplicateManagementPanel.tsx:983:                      <img
+ui/src/components/advanced/SmartAlbumsBuilder.tsx:546:                        <img
+ui/src/components/collaboration/CollaborativeSpaces.tsx:496:                          <img
+ui/src/components/gallery/LazyImage.tsx:81:            <img
+ui/src/components/gallery/ResponsiveGallery.tsx:241:                <img
+ui/src/components/gallery/ResponsiveGallery.tsx:269:                  <img
+ui/src/components/gallery/ResponsiveGallery.tsx:345:              <img
+ui/src/components/features/OCRSearch.tsx:216:                  <img
+ui/src/components/features/FaceClustering.tsx:358:                        <img
+ui/src/components/versions/VersionStackViewer.tsx:216:              <img
+ui/src/components/versions/VersionStackViewer.tsx:287:                <img
+ui/src/components/versions/VersionStack.tsx:124:              <img
+ui/src/components/versions/VersionStack.tsx:170:                <img
+ui/src/components/navigation/MobileNavigation.tsx:98:                  <img
+ui/src/components/editing/PhotoEditor.tsx:467:              <img
+ui/src/components/people/ReviewQueue.tsx:266:                            <img
+ui/src/components/people/MergeSuggestions.tsx:200:                                            <img
+ui/src/components/people/MergeSuggestions.tsx:247:                                            <img
+ui/src/components/people/InteractiveFaceTagging.tsx:175:        <img
+ui/src/components/people/InteractiveFaceTagging.tsx:267:                    <img
+ui/src/components/people/InteractiveFaceTagging.tsx:317:                      <img
+ui/src/components/timeline/StoryCreator.tsx:254:                      <img
+ui/src/components/timeline/StoryCreator.tsx:458:                    <img
+ui/src/pages/UnidentifiedFaces.tsx:183:                                    <img
+ui/src/pages/Singletons.tsx:89:                                        <img
+ui/src/pages/LowConfidence.tsx:86:                                    <img
+ui/src/pages/Duplicates.tsx:427:                            <img
+ui/src/pages/People.tsx:480:                        <img
+
+## Complexity: largest TS/TSX files
+  44911 total
+   2619 ui/src/api.ts
+   1504 ui/src/components/features/PhotoGlobe.tsx
+   1469 ui/src/components/gallery/PhotoDetail.tsx
+   1061 ui/src/components/advanced/AnalyticsDashboard.tsx
+   1002 ui/src/components/search/EnhancedSearchUI.tsx
+   1002 ui/src/components/advanced/DuplicateManagementPanel.tsx
+    979 ui/src/components/advanced/OCRTextSearchPanel.tsx
+    891 ui/src/components/editing/PhotoEditor.tsx
+    882 ui/src/components/editing/MobilePhotoEditor.tsx
+    828 ui/src/components/advanced/SmartAlbumsBuilder.tsx
+    817 ui/src/components/gallery/PhotoGrid.tsx
+    775 ui/src/components/collaboration/CollaborativeSpaces.tsx
+    749 ui/src/components/advanced/FaceRecognitionPanel.tsx
+    746 ui/src/components/video/VideoAnalysisPanel.tsx
+    660 ui/src/components/people/ClusterManagement.tsx
+    638 ui/src/pages/People.tsx
+    608 ui/src/pages/PersonDetail.tsx
+    588 ui/src/components/locations/LocationCorrection.tsx
+    561 ui/src/components/privacy/PrivacyControls.tsx
+    560 ui/src/components/timeline/StoryCreator.tsx
+    529 ui/src/pages/Duplicates.tsx
+    511 ui/src/components/import/ImportWizard.tsx
+    498 ui/src/components/bulk/BulkActions.tsx
+    494 ui/src/contexts/PhotoSearchContext.tsx
+    492 ui/src/components/ai/AIInsights.tsx
+    452 ui/src/components/gallery/ModernGalleryDemo.tsx
+    447 ui/src/components/export/ExportDialog.tsx
+    445 ui/src/components/tags/MultiTagFilter.tsx
+    440 ui/src/components/layout/DynamicNotchSearch.tsx
+    438 ui/src/components/collections/SmartCollections.tsx
+    418 ui/src/components/versions/VersionStackViewer.tsx
+    410 ui/src/components/common/ModalSystem.tsx
+    404 ui/src/components/features/TauriIntegration.tsx
+    400 ui/src/components/sources/ConnectSourceModal.tsx
+    393 ui/src/actions/defaultActions.ts
+    390 ui/src/components/features/CodeSplitting.tsx
+    385 ui/src/components/features/FaceClustering.tsx
+    383 ui/src/components/gallery/ResponsiveGallery.tsx
+    380 ui/src/components/search/Spotlight.tsx
+
+## any usage
+as any / : any count:
+135
+
+## State management hints
+ui/src/contexts/AmbientThemeContext.tsx:3:  createContext,
+ui/src/contexts/AmbientThemeContext.tsx:5:  useContext,
+ui/src/contexts/AmbientThemeContext.tsx:21:const AmbientThemeContext = createContext<AmbientThemeContextValue | null>(
+ui/src/contexts/AmbientThemeContext.tsx:127:  const ctx = useContext(AmbientThemeContext);
+ui/src/contexts/PhotoSearchContext.tsx:3:  createContext,
+ui/src/contexts/PhotoSearchContext.tsx:4:  useContext,
+ui/src/contexts/PhotoSearchContext.tsx:51:const PhotoSearchContext = createContext<PhotoSearchContextType | null>(null);
+ui/src/contexts/PhotoSearchContext.tsx:487:  const context = useContext(PhotoSearchContext);
+ui/src/contexts/PhotoViewerContext.tsx:2:  createContext,
+ui/src/contexts/PhotoViewerContext.tsx:4:  useContext,
+ui/src/contexts/PhotoViewerContext.tsx:19:const PhotoViewerContext = createContext<PhotoViewerContextValue | null>(null);
+ui/src/contexts/PhotoViewerContext.tsx:72:  const ctx = useContext(PhotoViewerContext);
+ui/src/components/toast/ToastProvider.tsx:6:import React, { createContext, useContext, useState, type ReactNode } from 'react';
+ui/src/components/toast/ToastProvider.tsx:24:const ToastContext = createContext<ToastContextType | undefined>(undefined);
+ui/src/components/toast/ToastProvider.tsx:73:  const context = useContext(ToastContext);
+
+## ML/AI backend search hints (clip/embedding/confidence)
+server/main_advanced_features.py:35:    embedding_generator,
+server/main_advanced_features.py:44:from .embedding_generator import EmbeddingGenerator
+server/main_advanced_features.py:77:        embedding_generator = EmbeddingGenerator()
+server/main_advanced_features.py:103:                        # Note: This uses the globally initialized embedding_generator
+server/main_advanced_features.py:107:                            if embedding_generator and vector_store:
+server/main_advanced_features.py:108:                                process_semantic_indexing([filepath], embedding_generator, vector_store)
+server/config.py:26:    EMBEDDING_MODEL: str = "clip-ViT-B-32"
+server/config.py:29:    # Comma-separated preference list. Only InsightFace currently supports embeddings (clustering).
+server/core/bootstrap.py:79:    Called once in lifespan. Some fields (photo_search_engine, embedding_generator)
+server/core/bootstrap.py:137:        embedding_generator=None,
+server/core/state.py:55:    embedding_generator: Optional[Any] = None  # EmbeddingGenerator
+server/core/state.py:97:        if not self.embedding_generator or not self.vector_store:
+server/core/state.py:103:            embedding_generator=self.embedding_generator,
+server/advanced_features_api.py:70:    min_confidence: Optional[float] = 0.5
+server/advanced_features_api.py:426:            request.min_confidence,
+server/lancedb_store.py:10:    Persists embeddings to disk with columnar storage.
+server/lancedb_store.py:36:    def add(self, id: str, embedding: List[float], metadata: Dict[str, Any] = None):
+server/lancedb_store.py:38:        self.add_batch([id], [embedding], [metadata] if metadata else [{}])
+server/lancedb_store.py:40:    def add_batch(self, ids: List[str], embeddings: List[List[float]], metadata_list: List[Dict] = None):
+server/lancedb_store.py:56:                "vector": embeddings[i],
+server/lancedb_store.py:76:    def search(self, query_embedding: List[float], limit: int = 20, offset: int = 0) -> List[Dict[str, Any]]:
+server/lancedb_store.py:88:            results = self.table.search(query_embedding, vector_column_name="vector").metric("cosine").limit(fetch_limit).to_list()
+server/lancedb_store.py:106:                    'score': max(0, cosine_similarity),  # Clamp to non-negative
+server/lancedb_store.py:194:    Vector store for face embeddings using ArcFace (512-dim).
+server/lancedb_store.py:196:    Stores face embeddings alongside metadata for efficient
+server/lancedb_store.py:201:        """Initialize face embedding store with dedicated table."""
+server/lancedb_store.py:207:        embedding: List[float],
+server/lancedb_store.py:210:        confidence: float,
+server/lancedb_store.py:212:        embedding_version: str = "arcface_r50_v1",
+server/lancedb_store.py:217:        Add a single face embedding with metadata.
+server/lancedb_store.py:221:            embedding: 512-dim ArcFace embedding
+server/lancedb_store.py:224:            confidence: Detection confidence score
+server/lancedb_store.py:226:            embedding_version: Model version for migration tracking
+server/lancedb_store.py:233:            'confidence': confidence,
+server/lancedb_store.py:234:            'embedding_version': embedding_version,
+server/lancedb_store.py:243:        self.add(face_id, embedding, metadata)
+server/lancedb_store.py:252:                - embedding: List[float]
+server/lancedb_store.py:255:                - confidence: float
+server/lancedb_store.py:257:                - embedding_version: str
+server/lancedb_store.py:263:        embeddings = []
+server/lancedb_store.py:268:            embeddings.append(face['embedding'])
+server/lancedb_store.py:272:                'confidence': face['confidence'],
+server/lancedb_store.py:273:                'embedding_version': face.get('embedding_version', 'arcface_r50_v1'),
+server/lancedb_store.py:279:        self.add_batch(ids, embeddings, metadata_list)
+server/lancedb_store.py:283:        query_embedding: List[float],
+server/lancedb_store.py:285:        min_confidence: float = 0.0
+server/lancedb_store.py:288:        Find faces similar to the query embedding.
+server/lancedb_store.py:291:            query_embedding: 512-dim face embedding to search for
+server/lancedb_store.py:293:            min_confidence: Minimum detection confidence threshold
+server/lancedb_store.py:296:            List of similar faces with similarity scores
+server/lancedb_store.py:298:        results = self.search(query_embedding, limit=limit)
+server/lancedb_store.py:300:        # Filter by confidence if specified
+server/lancedb_store.py:301:        if min_confidence > 0:
+server/lancedb_store.py:304:                if r.get('metadata', {}).get('confidence', 0) >= min_confidence
+server/lancedb_store.py:331:                    'confidence': r.get('confidence'),
+server/lancedb_store.py:353:    def get_all_embeddings_for_clustering(self) -> Tuple[List[str], Any]:
+server/lancedb_store.py:355:        Get all face embeddings for clustering.
+server/lancedb_store.py:358:            Tuple of (face_ids, embeddings_array)
+server/lancedb_store.py:372:            embeddings = np.array(vectors)
+server/lancedb_store.py:374:            return face_ids, embeddings
+server/lancedb_store.py:376:            print(f"Error fetching embeddings for clustering: {e}")
+server/lancedb_store.py:389:    """Get singleton photo embedding store."""
+server/lancedb_store.py:396:    """Get singleton face embedding store."""
+server/vector_store.py:19:        self.embeddings: Optional[np.ndarray] = None
+server/vector_store.py:22:    def add(self, id: str, embedding: List[float], metadata: Dict[str, Any] = None):
+server/vector_store.py:28:            embedding: Vector embedding (list of floats)
+server/vector_store.py:39:        vector = np.array(embedding, dtype=np.float32)
+server/vector_store.py:44:        if self.embeddings is None:
+server/vector_store.py:45:            self.embeddings = np.array([vector], dtype=np.float32)
+server/vector_store.py:47:            self.embeddings = np.vstack([self.embeddings, vector])
+server/vector_store.py:49:    def search(self, query_embedding: List[float], limit: int = 10) -> List[Dict[str, Any]]:
+server/vector_store.py:54:            query_embedding: Query vector
+server/vector_store.py:58:            List of results with keys: id, score, metadata
+server/vector_store.py:60:        if self.embeddings is None or len(self.embeddings) == 0:
+server/vector_store.py:64:        query = np.array(query_embedding, dtype=np.float32)
+server/vector_store.py:70:        scores = np.dot(self.embeddings, query)
+server/vector_store.py:74:        top_k_indices = np.argsort(scores)[-limit:][::-1]
+server/vector_store.py:80:                'score': float(scores[idx]),
+server/vector_store.py:90:            'embeddings': self.embeddings,
+server/vector_store.py:113:            self.embeddings = data['embeddings']
+server/tests/test_people_integration.py:45:            confidence=0.98
+server/tests/test_people_integration.py:54:        face_db.add_person_to_photo(test_photo_path, cluster_id, detection_id, confidence=0.99)
+server/tests/test_people_integration.py:56:        assert associations[0].confidence == 0.99
+server/tests/test_search.py:33:        """Test adding embeddings and searching."""
+server/tests/test_search.py:35:        test_embedding = [0.1] * 512  # CLIP embeddings are 512-dim
+server/tests/test_search.py:36:        store.add("test_image.jpg", test_embedding, {"filename": "test_image.jpg"})
+server/tests/test_search.py:42:        results = store.search(test_embedding, limit=10)
+server/tests/test_search.py:45:        assert results[0]['score'] > 0.99  # Should be nearly 1.0 for same vector
+server/tests/test_search.py:50:        embeddings = [[0.1 * i] * 512 for i in range(10)]
+server/tests/test_search.py:53:        store.add_batch(ids, embeddings, metadata)
+server/tests/test_search.py:61:        embeddings = [[0.01 * i] * 512 for i in range(25)]
+server/tests/test_search.py:63:        store.add_batch(ids, embeddings, metadata)
+server/tests/test_search.py:93:        embeddings = [[0.1] * 512 for _ in ids]
+server/tests/test_search.py:94:        store.add_batch(ids, embeddings)
+server/tests/test_face_clustering_db.py:37:            embedding=[0.1, 0.2, 0.3],
+server/tests/test_face_clustering_db.py:38:            quality_score=0.95
+server/tests/test_face_clustering_db.py:47:            confidence=0.98
+server/tests/test_face_clustering_db.py:55:        assert associations[0].confidence == 0.98
+server/tests/test_face_clustering_db.py:58:        face_db.add_person_to_photo("/test/photo.jpg", cluster_id, detection_id, confidence=0.99)
+server/tests/test_face_clustering_db.py:60:        assert associations[0].confidence == 0.99
+server/tests/test_automatic_clustering.py:69:def test_face_embedding_retrieval():
+server/tests/test_automatic_clustering.py:70:    """Test face embedding retrieval from database."""
+server/tests/test_automatic_clustering.py:71:    print("\n🧪 Testing face embedding retrieval...")
+server/tests/test_automatic_clustering.py:79:        # Add some test faces with embeddings
+server/tests/test_automatic_clustering.py:80:        test_embeddings = [
+server/tests/test_automatic_clustering.py:89:        for i, embedding in enumerate(test_embeddings):
+server/tests/test_automatic_clustering.py:93:                embedding=embedding,
+server/tests/test_automatic_clustering.py:94:                quality_score=0.8 + i * 0.05
+server/tests/test_automatic_clustering.py:98:        # Retrieve embeddings
+server/tests/test_automatic_clustering.py:99:        retrieved_ids, retrieved_embeddings = face_db._get_face_embeddings()
+server/tests/test_automatic_clustering.py:101:        assert len(retrieved_ids) == len(test_embeddings)
+server/tests/test_automatic_clustering.py:102:        assert len(retrieved_embeddings) == len(test_embeddings)
+server/tests/test_automatic_clustering.py:104:        print(f"✅ Retrieved {len(retrieved_embeddings)} face embeddings")
+server/tests/test_automatic_clustering.py:106:        # Verify embeddings match
+server/tests/test_automatic_clustering.py:107:        for i, (det_id, embedding) in enumerate(zip(retrieved_ids, retrieved_embeddings)):
+server/tests/test_automatic_clustering.py:109:            assert len(embedding) == 5
+server/tests/test_automatic_clustering.py:110:            assert np.allclose(embedding, test_embeddings[i])
+server/tests/test_automatic_clustering.py:112:        print("✅ All embeddings retrieved correctly")
+server/tests/test_automatic_clustering.py:114:        print("✅ Face embedding retrieval tests passed!")
+server/tests/test_automatic_clustering.py:131:        ref_embedding = [1.0, 0.5, 0.2, 0.1, 0.0]
+server/tests/test_automatic_clustering.py:135:            embedding=ref_embedding,
+server/tests/test_automatic_clustering.py:136:            quality_score=0.9
+server/tests/test_automatic_clustering.py:140:        similar_embeddings = [
+server/tests/test_automatic_clustering.py:149:        for i, embedding in enumerate(similar_embeddings):
+server/tests/test_automatic_clustering.py:153:                embedding=embedding,
+server/tests/test_automatic_clustering.py:154:                quality_score=0.8
+server/tests/test_automatic_clustering.py:210:        base_embedding = [1.0, 0.5, 0.2, 0.1, 0.0]
+server/tests/test_automatic_clustering.py:214:            # Create variations of the base embedding
+server/tests/test_automatic_clustering.py:215:            variation = np.array(base_embedding) + np.random.normal(0, 0.05, 5)
+server/tests/test_automatic_clustering.py:216:            embedding = variation.tolist()
+server/tests/test_automatic_clustering.py:221:                embedding=embedding,
+server/tests/test_automatic_clustering.py:222:                quality_score=0.8 + i * 0.02
+server/tests/test_automatic_clustering.py:230:                confidence=0.85 + i * 0.02
+server/tests/test_automatic_clustering.py:242:        assert quality['avg_confidence'] > 0.8
+server/tests/test_automatic_clustering.py:243:        assert quality['avg_quality_score'] > 0.8
+server/tests/test_automatic_clustering.py:244:        assert quality['coherence_score'] > 0.8  # Faces are similar
+server/tests/test_automatic_clustering.py:249:        print(f"   - Avg confidence: {quality['avg_confidence']:.3f}")
+server/tests/test_automatic_clustering.py:250:        print(f"   - Avg quality: {quality['avg_quality_score']:.3f}")
+server/tests/test_automatic_clustering.py:251:        print(f"   - Coherence: {quality['coherence_score']:.3f}")
+server/tests/test_automatic_clustering.py:279:                embedding=[1.0, 0.5, 0.2, 0.1, 0.0],
+server/tests/test_automatic_clustering.py:280:                quality_score=0.8
+server/tests/test_automatic_clustering.py:287:                confidence=0.9
+server/tests/test_automatic_clustering.py:295:                embedding=[1.0, 0.4, 0.3, 0.2, 0.1],
+server/tests/test_automatic_clustering.py:296:                quality_score=0.85
+server/tests/test_automatic_clustering.py:303:                confidence=0.9
+server/tests/test_automatic_clustering.py:424:    test_face_embedding_retrieval()
+server/tests/test_face_regression.py:39:    # Create embeddings
+server/tests/test_face_regression.py:48:        embedding=emb_a1.tolist(),
+server/tests/test_face_regression.py:49:        quality_score=0.95,
+server/tests/test_face_regression.py:54:        embedding=emb_a2.tolist(),
+server/tests/test_face_regression.py:55:        quality_score=0.85,
+server/tests/test_face_regression.py:60:        embedding=emb_b1.tolist(),
+server/tests/test_face_regression.py:61:        quality_score=0.90,
+server/tests/test_face_regression.py:66:        "/photo1.jpg", cluster_a, det_a1, confidence=0.98
+server/tests/test_face_regression.py:69:        "/photo2.jpg", cluster_a, det_a2, confidence=0.92
+server/tests/test_face_regression.py:72:        "/photo3.jpg", cluster_b, det_b1, confidence=0.95
+server/tests/test_face_regression.py:169:                "SELECT prototype_embedding, prototype_count FROM face_clusters WHERE cluster_id = ?",
+server/tests/test_face_regression.py:172:            original_prototype = row["prototype_embedding"]
+server/tests/test_face_regression.py:185:                "SELECT prototype_embedding, prototype_count FROM face_clusters WHERE cluster_id = ?",
+server/tests/test_face_regression.py:188:            restored_prototype = row["prototype_embedding"]
+server/tests/test_face_regression.py:313:                "SELECT prototype_embedding FROM face_clusters WHERE cluster_id = ?",
+server/tests/test_face_detection_integration.py:76:            embedding=[0.1, 0.2, 0.3, 0.4, 0.5],
+server/tests/test_face_detection_integration.py:77:            quality_score=0.95
+server/tests/test_face_detection_integration.py:130:            embedding=[0.5, 0.4, 0.3, 0.2, 0.1],
+server/tests/test_face_detection_integration.py:131:            quality_score=0.85
+server/tests/test_face_detection_integration.py:142:            confidence=0.95
+server/tests/test_face_detection_integration.py:187:                embedding=[0.1 * i, 0.2 * i, 0.3 * i, 0.4 * i, 0.5 * i],
+server/tests/test_face_detection_integration.py:188:                quality_score=0.7 + 0.1 * i
+server/face_detection_service.py:25:    embedding: Optional[List[float]] = None
+server/face_detection_service.py:26:    quality_score: Optional[float] = None
+server/face_detection_service.py:27:    confidence: Optional[float] = None
+server/face_detection_service.py:93:                include_embeddings=True,
+server/face_detection_service.py:112:                    embedding=detection.embedding.tolist() if detection.embedding is not None else None,
+server/face_detection_service.py:113:                    quality_score=detection.quality,
+server/face_detection_service.py:114:                    confidence=detection.confidence,
+server/face_detection_service.py:185:        if not self.is_available() or face.embedding is None:
+server/face_detection_service.py:187:                'quality_score': face.quality_score or 0.5,
+server/face_detection_service.py:194:                face.embedding,
+server/face_detection_service.py:200:                'quality_score': quality_analysis.score,
+server/face_detection_service.py:208:                'quality_score': face.quality_score or 0.5,

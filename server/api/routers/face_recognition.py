@@ -1687,6 +1687,68 @@ async def get_people_in_photo(photo_path: str, state: AppState = Depends(get_sta
 
 
 # ===================================================================
+# Phase 5.4: Merge Suggestions Endpoints
+# ===================================================================
+
+
+@router.get("/api/faces/clusters/merge-suggestions")
+async def get_merge_suggestions(
+    state: AppState = Depends(get_state),
+    threshold: float = 0.62,
+    max_suggestions: int = 10,
+):
+    """
+    Get conservative merge suggestions for face clusters.
+
+    Suggests merging clusters only when:
+    1. Prototype similarity >= threshold (default 0.62)
+    2. NO co-occurrence conflict (clusters never appear in same photo)
+
+    Co-occurrence conflict is a HARD BLOCK - never suggests merging
+    clusters that appear in the same photo (likely different people).
+    """
+    try:
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        suggestions = face_db.get_merge_suggestions(
+            similarity_threshold=threshold, max_suggestions=max_suggestions
+        )
+        return {
+            "suggestions": suggestions,
+            "count": len(suggestions),
+            "threshold": threshold,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/clusters/merge-suggestions/dismiss")
+async def dismiss_merge_suggestion(
+    data: dict,
+    state: AppState = Depends(get_state),
+):
+    """
+    Dismiss a merge suggestion so it won't appear again.
+    """
+    try:
+        cluster_a_id = data.get("cluster_a_id")
+        cluster_b_id = data.get("cluster_b_id")
+
+        if not cluster_a_id or not cluster_b_id:
+            raise HTTPException(
+                status_code=400, detail="cluster_a_id and cluster_b_id are required"
+            )
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        success = face_db.dismiss_merge_suggestion(cluster_a_id, cluster_b_id)
+
+        return {"success": success}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
 # Phase 5: Review Queue Endpoints
 # ===================================================================
 

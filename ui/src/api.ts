@@ -1975,6 +1975,25 @@ export const api = {
     return res.data;
   },
 
+  // Phase 5.4: Merge Suggestions
+
+  // Get conservative merge suggestions based on prototype similarity
+  getMergeSuggestions: async (threshold: number = 0.62, maxSuggestions: number = 10) => {
+    const res = await apiClient.get('/api/faces/clusters/merge-suggestions', {
+      params: { threshold, max_suggestions: maxSuggestions },
+    });
+    return res.data;
+  },
+
+  // Dismiss a merge suggestion so it won't appear again
+  dismissMergeSuggestion: async (clusterAId: string, clusterBId: string) => {
+    const res = await apiClient.post('/api/faces/clusters/merge-suggestions/dismiss', {
+      cluster_a_id: clusterAId,
+      cluster_b_id: clusterBId,
+    });
+    return res.data;
+  },
+
   // Phase 3: Speed & Scale APIs
 
 
