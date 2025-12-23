@@ -52,6 +52,7 @@ class PhotoPersonAssociation:
     cluster_id: str
     detection_id: str
     confidence: float  # Confidence that this face belongs to the cluster
+    assignment_state: Optional[str] = None  # 'auto', 'user_confirmed', 'user_rejected'
     created_at: Optional[str] = None
 
 
@@ -83,7 +84,15 @@ class FaceClusteringDB:
         """Initialize the face clustering database with versioned migrations."""
         # Run versioned migrations first
         try:
-            from server.face_schema_migrations import run_migrations, get_schema_version
+            # Try relative import first (when running from server directory or tests)
+            try:
+                from face_schema_migrations import run_migrations, get_schema_version
+            except ImportError:
+                # Try absolute import (when running from project root)
+                from server.face_schema_migrations import (
+                    run_migrations,
+                    get_schema_version,
+                )
 
             run_migrations(self.db_path)
 
@@ -335,7 +344,8 @@ class FaceClusteringDB:
 
             rows = conn.execute(
                 """
-                SELECT ppa.photo_path, ppa.cluster_id, ppa.detection_id, ppa.confidence, ppa.created_at,
+                SELECT ppa.photo_path, ppa.cluster_id, ppa.detection_id, ppa.confidence,
+                       ppa.assignment_state, ppa.created_at,
                        fc.label as cluster_label
                 FROM photo_person_associations ppa
                 JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
@@ -351,6 +361,7 @@ class FaceClusteringDB:
                     cluster_id=row["cluster_id"],
                     detection_id=row["detection_id"],
                     confidence=row["confidence"],
+                    assignment_state=row["assignment_state"] or "auto",
                     created_at=row["created_at"],
                 )
                 for row in rows

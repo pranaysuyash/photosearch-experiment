@@ -1,23 +1,25 @@
 """
 Collaborative Photo Spaces & Sharing
 
-Provides functionality for creating collaborative photo spaces with shared albums, 
+Provides functionality for creating collaborative photo spaces with shared albums,
 permissions, and real-time synchronization.
 """
 
 import sqlite3
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime
+from typing import List, Dict, Any, Optional
 import json
 import uuid
+from dataclasses import dataclass
 
 
+@dataclass
 class CollaborativeSpace:
     """Represents a collaborative photo space"""
+
     id: str
     name: str
-    description: str
+    description: Optional[str]
     owner_id: str
     created_at: str
     updated_at: str
@@ -26,8 +28,10 @@ class CollaborativeSpace:
     current_members: int
 
 
+@dataclass
 class SpaceMember:
     """Represents a member of a collaborative space"""
+
     space_id: str
     user_id: str
     role: str  # owner, admin, contributor, viewer
@@ -42,7 +46,7 @@ class CollaborativeSpacesDB:
     def __init__(self, db_path: Path):
         """
         Initialize the collaborative spaces database.
-        
+
         Args:
             db_path: Path to the SQLite database file
         """
@@ -61,13 +65,10 @@ class CollaborativeSpacesDB:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     privacy_level TEXT DEFAULT 'private',  -- public, shared, private
                     max_members INTEGER DEFAULT 10,
-                    current_members INTEGER DEFAULT 1,
-                    INDEX idx_owner_id (owner_id),
-                    INDEX idx_privacy_level (privacy_level),
-                    INDEX idx_created_at (created_at)
+                    current_members INTEGER DEFAULT 1
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS space_members (
                     space_id TEXT NOT NULL,
@@ -77,12 +78,10 @@ class CollaborativeSpacesDB:
                     permissions TEXT,  -- JSON string with specific permissions
                     is_active BOOLEAN DEFAULT TRUE,
                     PRIMARY KEY (space_id, user_id),
-                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id),
-                    INDEX idx_space_id (space_id),
-                    INDEX idx_user_id (user_id)
+                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id)
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS space_photos (
                     space_id TEXT NOT NULL,
@@ -92,11 +91,10 @@ class CollaborativeSpacesDB:
                     caption TEXT,
                     permissions TEXT,  -- JSON string with access permissions
                     PRIMARY KEY (space_id, photo_path),
-                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id),
-                    INDEX idx_space_photos (space_id)
+                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id)
                 )
             """)
-            
+
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS space_comments (
                     id TEXT PRIMARY KEY,
@@ -107,64 +105,90 @@ class CollaborativeSpacesDB:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     is_edited BOOLEAN DEFAULT FALSE,
                     edited_at TIMESTAMP,
-                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id),
-                    INDEX idx_space_photo (space_id, photo_path),
-                    INDEX idx_created_at (created_at)
+                    FOREIGN KEY (space_id) REFERENCES collaborative_spaces(id)
                 )
             """)
 
-    def create_collaborative_space(self, 
-                                 name: str, 
-                                 description: str, 
-                                 owner_id: str, 
-                                 privacy_level: str = 'private',
-                                 max_members: int = 10) -> str:
+            # Indexes must be created separately in SQLite.
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_collaborative_spaces_owner_id ON collaborative_spaces(owner_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_collaborative_spaces_privacy_level ON collaborative_spaces(privacy_level)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_collaborative_spaces_created_at ON collaborative_spaces(created_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_space_members_space_id ON space_members(space_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_space_members_user_id ON space_members(user_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_space_photos_space_id ON space_photos(space_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_space_comments_space_photo ON space_comments(space_id, photo_path)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_space_comments_created_at ON space_comments(created_at)"
+            )
+
+    def create_collaborative_space(
+        self,
+        name: str,
+        description: str,
+        owner_id: str,
+        privacy_level: str = "private",
+        max_members: int = 10,
+    ) -> str:
         """
         Create a new collaborative space.
-        
+
         Args:
             name: Name of the space
             description: Description of the space
             owner_id: ID of the user creating the space
             privacy_level: Privacy level (public, shared, private)
             max_members: Maximum number of members allowed
-            
+
         Returns:
             ID of the created space
         """
         space_id = str(uuid.uuid4())
-        
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Create the space
                 conn.execute(
                     """
-                    INSERT INTO collaborative_spaces 
+                    INSERT INTO collaborative_spaces
                     (id, name, description, owner_id, privacy_level, max_members, current_members)
                     VALUES (?, ?, ?, ?, ?, ?, 1)
                     """,
-                    (space_id, name, description, owner_id, privacy_level, max_members)
+                    (space_id, name, description, owner_id, privacy_level, max_members),
                 )
-                
+
                 # Add the owner as a member with admin privileges
                 default_permissions = {
-                    'add_photos': True,
-                    'remove_photos': True,
-                    'add_comments': True,
-                    'remove_comments': True,
-                    'manage_members': True,
-                    'change_settings': True
+                    "add_photos": True,
+                    "remove_photos": True,
+                    "add_comments": True,
+                    "remove_comments": True,
+                    "manage_members": True,
+                    "change_settings": True,
                 }
-                
+
                 conn.execute(
                     """
-                    INSERT INTO space_members 
+                    INSERT INTO space_members
                     (space_id, user_id, role, permissions)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (space_id, owner_id, 'owner', json.dumps(default_permissions))
+                    (space_id, owner_id, "owner", json.dumps(default_permissions)),
                 )
-                
+
                 return space_id
         except sqlite3.IntegrityError:
             return ""
@@ -172,10 +196,10 @@ class CollaborativeSpacesDB:
     def get_collaborative_space(self, space_id: str) -> Optional[CollaborativeSpace]:
         """
         Get a collaborative space by ID.
-        
+
         Args:
             space_id: ID of the space
-            
+
         Returns:
             CollaborativeSpace if found, None otherwise
         """
@@ -183,22 +207,23 @@ class CollaborativeSpacesDB:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 result = conn.execute(
-                    "SELECT * FROM collaborative_spaces WHERE id = ?",
-                    (space_id,)
+                    "SELECT * FROM collaborative_spaces WHERE id = ?", (space_id,)
                 ).fetchone()
                 return CollaborativeSpace(**dict(result)) if result else None
         except Exception:
             return None
 
-    def get_user_spaces(self, user_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_user_spaces(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> List[Dict[str, Any]]:
         """
         Get all collaborative spaces a user belongs to.
-        
+
         Args:
             user_id: ID of the user
             limit: Maximum number of results to return
             offset: Number of results to skip
-            
+
         Returns:
             List of collaborative spaces the user belongs to
         """
@@ -215,59 +240,61 @@ class CollaborativeSpacesDB:
                     ORDER BY cs.updated_at DESC
                     LIMIT ? OFFSET ?
                     """,
-                    (user_id, limit, offset)
+                    (user_id, limit, offset),
                 )
                 rows = cursor.fetchall()
                 return [dict(row) for row in rows]
         except Exception:
             return []
 
-    def add_member_to_space(self, space_id: str, user_id: str, role: str = 'contributor') -> bool:
+    def add_member_to_space(
+        self, space_id: str, user_id: str, role: str = "contributor"
+    ) -> bool:
         """
         Add a member to a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             user_id: ID of the user to add
             role: Role for the new member (admin, contributor, viewer)
-            
+
         Returns:
             True if successful, False otherwise
         """
         try:
             # Determine permissions based on role
             permissions = self._get_role_permissions(role)
-            
+
             with sqlite3.connect(self.db_path) as conn:
                 # Check if space exists and has room for more members
                 space = conn.execute(
                     "SELECT current_members, max_members FROM collaborative_spaces WHERE id = ?",
-                    (space_id,)
+                    (space_id,),
                 ).fetchone()
-                
+
                 if not space or space[0] >= space[1]:
                     return False  # No more room
-                
+
                 # Add the member
                 conn.execute(
                     """
-                    INSERT INTO space_members 
+                    INSERT INTO space_members
                     (space_id, user_id, role, permissions)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (space_id, user_id, role, json.dumps(permissions))
+                    (space_id, user_id, role, json.dumps(permissions)),
                 )
-                
+
                 # Update member count
                 conn.execute(
                     """
-                    UPDATE collaborative_spaces 
+                    UPDATE collaborative_spaces
                     SET current_members = current_members + 1, updated_at = CURRENT_TIMESTAMP
                     WHERE id = ?
                     """,
-                    (space_id,)
+                    (space_id,),
                 )
-                
+
                 return True
         except sqlite3.IntegrityError:
             # Member already exists
@@ -278,11 +305,11 @@ class CollaborativeSpacesDB:
     def remove_member_from_space(self, space_id: str, user_id: str) -> bool:
         """
         Remove a member from a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             user_id: ID of the user to remove
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -291,43 +318,45 @@ class CollaborativeSpacesDB:
                 # Don't allow removing the owner
                 owner_check = conn.execute(
                     "SELECT owner_id FROM collaborative_spaces WHERE id = ?",
-                    (space_id,)
+                    (space_id,),
                 ).fetchone()
-                
+
                 if owner_check and owner_check[0] == user_id:
                     return False  # Cannot remove owner
-                
+
                 cursor = conn.execute(
                     "DELETE FROM space_members WHERE space_id = ? AND user_id = ?",
-                    (space_id, user_id)
+                    (space_id, user_id),
                 )
-                
+
                 if cursor.rowcount > 0:
                     # Update member count
                     conn.execute(
                         """
-                        UPDATE collaborative_spaces 
+                        UPDATE collaborative_spaces
                         SET current_members = current_members - 1, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                         """,
-                        (space_id,)
+                        (space_id,),
                     )
                     return True
-                
+
                 return False
         except Exception:
             return False
 
-    def add_photo_to_space(self, space_id: str, photo_path: str, added_by_user_id: str, caption: str = "") -> bool:
+    def add_photo_to_space(
+        self, space_id: str, photo_path: str, added_by_user_id: str, caption: str = ""
+    ) -> bool:
         """
         Add a photo to a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             photo_path: Path to the photo
             added_by_user_id: ID of the user adding the photo
             caption: Optional caption for the photo
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -335,11 +364,11 @@ class CollaborativeSpacesDB:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
-                    INSERT INTO space_photos 
+                    INSERT INTO space_photos
                     (space_id, photo_path, added_by, caption)
                     VALUES (?, ?, ?, ?)
                     """,
-                    (space_id, photo_path, added_by_user_id, caption)
+                    (space_id, photo_path, added_by_user_id, caption),
                 )
                 return True
         except sqlite3.IntegrityError:
@@ -351,11 +380,11 @@ class CollaborativeSpacesDB:
     def remove_photo_from_space(self, space_id: str, photo_path: str) -> bool:
         """
         Remove a photo from a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             photo_path: Path to the photo
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -363,50 +392,54 @@ class CollaborativeSpacesDB:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
                     "DELETE FROM space_photos WHERE space_id = ? AND photo_path = ?",
-                    (space_id, photo_path)
+                    (space_id, photo_path),
                 )
                 return cursor.rowcount > 0
         except Exception:
             return False
 
-    def add_comment_to_space_photo(self, space_id: str, photo_path: str, user_id: str, comment: str) -> str:
+    def add_comment_to_space_photo(
+        self, space_id: str, photo_path: str, user_id: str, comment: str
+    ) -> str:
         """
         Add a comment to a photo in a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             photo_path: Path to the photo
             user_id: ID of the user making the comment
             comment: Comment text
-            
+
         Returns:
             ID of the created comment
         """
         comment_id = str(uuid.uuid4())
-        
+
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     """
-                    INSERT INTO space_comments 
+                    INSERT INTO space_comments
                     (id, space_id, photo_path, user_id, comment)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (comment_id, space_id, photo_path, user_id, comment)
+                    (comment_id, space_id, photo_path, user_id, comment),
                 )
                 return comment_id
         except Exception:
             return ""
 
-    def get_space_photos(self, space_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_space_photos(
+        self, space_id: str, limit: int = 50, offset: int = 0
+    ) -> List[Dict[str, Any]]:
         """
         Get all photos in a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             limit: Maximum number of results to return
             offset: Number of results to skip
-            
+
         Returns:
             List of photos in the space
         """
@@ -415,30 +448,31 @@ class CollaborativeSpacesDB:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.execute(
                     """
-                    SELECT sp.*, u.username as added_by_username
-                    FROM space_photos sp
-                    LEFT JOIN users u ON sp.added_by = u.id
-                    WHERE sp.space_id = ?
-                    ORDER BY sp.added_at DESC
+                    SELECT *
+                    FROM space_photos
+                    WHERE space_id = ?
+                    ORDER BY added_at DESC
                     LIMIT ? OFFSET ?
                     """,
-                    (space_id, limit, offset)
+                    (space_id, limit, offset),
                 )
                 rows = cursor.fetchall()
                 return [dict(row) for row in rows]
         except Exception:
             return []
 
-    def get_photo_comments(self, space_id: str, photo_path: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
+    def get_photo_comments(
+        self, space_id: str, photo_path: str, limit: int = 50, offset: int = 0
+    ) -> List[Dict[str, Any]]:
         """
         Get all comments for a photo in a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             photo_path: Path to the photo
             limit: Maximum number of results to return
             offset: Number of results to skip
-            
+
         Returns:
             List of comments for the photo
         """
@@ -454,22 +488,24 @@ class CollaborativeSpacesDB:
                     ORDER BY sc.created_at ASC
                     LIMIT ? OFFSET ?
                     """,
-                    (space_id, photo_path, limit, offset)
+                    (space_id, photo_path, limit, offset),
                 )
                 rows = cursor.fetchall()
                 return [dict(row) for row in rows]
         except Exception:
             return []
 
-    def update_space_permissions(self, space_id: str, user_id: str, permissions: Dict[str, bool]) -> bool:
+    def update_space_permissions(
+        self, space_id: str, user_id: str, permissions: Dict[str, bool]
+    ) -> bool:
         """
         Update permissions for a user in a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             user_id: ID of the user
             permissions: Dictionary of permissions to update
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -477,54 +513,74 @@ class CollaborativeSpacesDB:
             with sqlite3.connect(self.db_path) as conn:
                 cursor = conn.execute(
                     """
-                    UPDATE space_members 
-                    SET permissions = ?, updated_at = CURRENT_TIMESTAMP
+                    UPDATE space_members
+                    SET permissions = ?
                     WHERE space_id = ? AND user_id = ?
                     """,
-                    (json.dumps(permissions), space_id, user_id)
+                    (json.dumps(permissions), space_id, user_id),
                 )
                 return cursor.rowcount > 0
         except Exception:
             return False
 
-    def get_space_members(self, space_id: str, include_inactive: bool = False) -> List[Dict[str, Any]]:
+    def get_space_members(
+        self, space_id: str, include_inactive: bool = False
+    ) -> List[SpaceMember]:
         """
         Get all members of a collaborative space.
-        
+
         Args:
             space_id: ID of the space
             include_inactive: Whether to include inactive members
-            
+
         Returns:
             List of members in the space
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                where_clause = "WHERE space_id = ?" if not include_inactive else "WHERE space_id = ? AND is_active = 1"
-                
+                where_clause = (
+                    "WHERE space_id = ?"
+                    if include_inactive
+                    else "WHERE space_id = ? AND is_active = 1"
+                )
+
                 cursor = conn.execute(
                     f"""
-                    SELECT sm.*, u.username as user_username
-                    FROM space_members sm
-                    LEFT JOIN users u ON sm.user_id = u.id
+                    SELECT *
+                    FROM space_members
                     {where_clause}
-                    ORDER BY sm.joined_at
+                    ORDER BY joined_at
                     """,
-                    (space_id,)
+                    (space_id,),
                 )
                 rows = cursor.fetchall()
-                return [dict(row) for row in rows]
+                members: List[SpaceMember] = []
+                for row in rows:
+                    permissions = (
+                        json.loads(row["permissions"]) if row["permissions"] else {}
+                    )
+                    members.append(
+                        SpaceMember(
+                            space_id=row["space_id"],
+                            user_id=row["user_id"],
+                            role=row["role"],
+                            joined_at=row["joined_at"],
+                            permissions=permissions,
+                            is_active=bool(row["is_active"]),
+                        )
+                    )
+                return members
         except Exception:
             return []
 
     def get_space_stats(self, space_id: str) -> Dict[str, int]:
         """
         Get statistics about a collaborative space.
-        
+
         Args:
             space_id: ID of the space
-            
+
         Returns:
             Dictionary with space statistics
         """
@@ -533,77 +589,78 @@ class CollaborativeSpacesDB:
                 # Get space details
                 space_info = conn.execute(
                     """
-                    SELECT current_members, max_members FROM collaborative_spaces 
+                    SELECT current_members, max_members FROM collaborative_spaces
                     WHERE id = ?
                     """,
-                    (space_id,)
+                    (space_id,),
                 ).fetchone()
-                
+
                 # Count photos in space
                 total_photos = conn.execute(
-                    "SELECT COUNT(*) FROM space_photos WHERE space_id = ?",
-                    (space_id,)
+                    "SELECT COUNT(*) FROM space_photos WHERE space_id = ?", (space_id,)
                 ).fetchone()[0]
-                
+
                 # Count comments in space
                 total_comments = conn.execute(
                     "SELECT COUNT(*) FROM space_comments WHERE space_id = ?",
-                    (space_id,)
+                    (space_id,),
                 ).fetchone()[0]
-                
+
                 return {
-                    'total_members': space_info[0] if space_info else 0,
-                    'max_members': space_info[1] if space_info else 0,
-                    'total_photos': total_photos,
-                    'total_comments': total_comments,
-                    'member_utilization': space_info[0] / space_info[1] if space_info and space_info[1] > 0 else 0
+                    "total_members": space_info[0] if space_info else 0,
+                    "max_members": space_info[1] if space_info else 0,
+                    "total_photos": total_photos,
+                    "total_comments": total_comments,
+                    "member_utilization": space_info[0] / space_info[1]
+                    if space_info and space_info[1] > 0
+                    else 0,
                 }
         except Exception:
             return {
-                'total_members': 0,
-                'max_members': 0,
-                'total_photos': 0,
-                'total_comments': 0,
-                'member_utilization': 0
+                "total_members": 0,
+                "max_members": 0,
+                "total_photos": 0,
+                "total_comments": 0,
+                "member_utilization": 0,
             }
 
     def _get_role_permissions(self, role: str) -> Dict[str, bool]:
         """Get default permissions for a role."""
         permissions_map = {
-            'owner': {
-                'add_photos': True,
-                'remove_photos': True,
-                'add_comments': True,
-                'remove_comments': True,
-                'manage_members': True,
-                'change_settings': True
+            "owner": {
+                "add_photos": True,
+                "remove_photos": True,
+                "add_comments": True,
+                "remove_comments": True,
+                "manage_members": True,
+                "change_settings": True,
             },
-            'admin': {
-                'add_photos': True,
-                'remove_photos': True,
-                'add_comments': True,
-                'remove_comments': True,
-                'manage_members': True,
-                'change_settings': True
+            "admin": {
+                "add_photos": True,
+                "remove_photos": True,
+                "add_comments": True,
+                "remove_comments": True,
+                "manage_members": True,
+                "change_settings": True,
             },
-            'contributor': {
-                'add_photos': True,
-                'remove_photos': False,
-                'add_comments': True,
-                'remove_comments': False,  # Can only remove their own
-                'manage_members': False,
-                'change_settings': False
+            "contributor": {
+                "add_photos": True,
+                "remove_photos": False,
+                "add_comments": True,
+                "remove_comments": False,  # Can only remove their own
+                "manage_members": False,
+                "change_settings": False,
             },
-            'viewer': {
-                'add_photos': False,
-                'remove_photos': False,
-                'add_comments': True,
-                'remove_comments': False,
-                'manage_members': False,
-                'change_settings': False
-            }
+            "viewer": {
+                "add_photos": False,
+                "remove_photos": False,
+                "add_comments": True,
+                "remove_comments": False,
+                "manage_members": False,
+                "change_settings": False,
+            },
         }
-        return permissions_map.get(role, permissions_map['viewer'])
+        return permissions_map.get(role, permissions_map["viewer"])
 
 
 def get_collaborative_spaces_db(db_path: Path) -> CollaborativeSpacesDB:

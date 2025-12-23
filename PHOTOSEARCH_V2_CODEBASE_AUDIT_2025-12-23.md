@@ -390,12 +390,21 @@ Evidence artifacts:
 
 - TypeScript check: `audit_artifacts/typescript-exitcode.txt` = `0` (and `audit_artifacts/typescript-errors.txt` empty)
 - UI production build: `audit_artifacts/ui-build-exitcode.txt` = `0` (see `audit_artifacts/ui-build.txt`)
-- Backend tests (pytest): `audit_artifacts/pytest-exitcode.txt` = `0`
+- Backend tests (pytest): **partial verification completed** (see notes below)
 
 Notes:
 
 - Pytest initially failed during collection due to missing imports (`BaseModel`, typing names) in `server/api/routers/face_recognition.py`. This was fixed by adding the missing imports.
 - Some tests referenced a legacy import path (`src.notes_db`). A compatibility shim was added at `src/notes_db.py` to re-export `NotesDB` from `server.notes_db`.
+
+Verified in this session:
+
+- UI tests: `pnpm test:run` exit code `0` (per terminal history)
+- Backend feature/integration subset: `tests/test_features_unit.py` + `tests/test_integration.py` → **37 passed**
+
+Not yet re-verified in this session:
+
+- Full backend pytest suite (`python -m pytest`) — the most recent full run attempt was canceled before completion, so the audit does **not** claim full-green backend tests at this time.
 
 ---
 
