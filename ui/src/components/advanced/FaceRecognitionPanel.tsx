@@ -90,8 +90,8 @@ export function FaceRecognitionPanel() {
 
   const loadFaceClusters = useCallback(async () => {
     try {
-      const response = await api.get('/api/face/clusters?min_faces=2');
-      setClusters(response.data.clusters);
+      const response: any = await api.get('/api/face/clusters?min_faces=2');
+      setClusters(response?.clusters || []);
     } catch (error) {
       console.error('Failed to load face clusters:', error);
     }
@@ -111,13 +111,13 @@ export function FaceRecognitionPanel() {
           }
         );
 
-        const jobId = response.data.job_id;
+        const jobId = (response as any)?.job_id;
         setProcessingJobs((prev) => ({
           ...prev,
           [jobId]: {
             job_id: jobId,
             status: 'queued',
-            message: response.data.message,
+            message: (response as any)?.message,
             progress: 0,
             created_at: new Date().toISOString(),
           },
@@ -126,8 +126,8 @@ export function FaceRecognitionPanel() {
         // Start polling for job status
         const pollInterval = setInterval(async () => {
           try {
-            const jobResponse = await api.get(`/api/jobs/${jobId}`);
-            const jobStatus = jobResponse.data.job_status;
+            const jobResponse: any = await api.get(`/api/jobs/${jobId}`);
+            const jobStatus = jobResponse?.job_status ?? jobResponse;
 
             setProcessingJobs((prev) => ({
               ...prev,
@@ -194,7 +194,7 @@ export function FaceRecognitionPanel() {
       const response = await api.get(
         `/api/face/search/${encodeURIComponent(personName)}`
       );
-      setSearchResults(response.data.matches);
+      setSearchResults((response as any)?.matches || []);
     } catch (error) {
       console.error('Failed to search by person:', error);
       setSearchResults([]);

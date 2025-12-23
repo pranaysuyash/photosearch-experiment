@@ -76,7 +76,7 @@ export function PhotoGrid({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { setBaseAccentUrl, setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
-  const { gridZoom, refresh } = usePhotoSearchContext();
+  const { gridZoom, refresh, searchQuery } = usePhotoSearchContext();
   const [useUniformSpan, setUseUniformSpan] = useState(false);
 
   useEffect(() => {
@@ -707,6 +707,8 @@ export function PhotoGrid({
                   <MatchExplanation
                     explanation={photo.matchExplanation}
                     isCompact={true}
+                    photoPath={photo.path}
+                    searchQuery={searchQuery}
                   />
                 </div>
               )}

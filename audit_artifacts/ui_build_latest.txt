@@ -1,0 +1,12 @@
+> ui@0.0.0 build /Users/pranay/Projects/photosearch_experiment/ui
+> tsc -b && vite build
+
+vite v7.2.7 building client environment for production...
+✓ 2832 modules transformed.
+
+[plugin vite:reporter]
+(!) ui/src/components/search/IntentRecognition.tsx is dynamically imported by ui/src/router/MainRouter.tsx but also statically imported by ui/src/components/search/EnhancedSearchUI.tsx, ui/src/pages/Search.tsx, dynamic import will not move module into another chunk.
+
+✓ built in 5.27s
+
+(dist bundle size output omitted for brevity; see terminal log for full list)

@@ -48,13 +48,13 @@ GET,/api/faces/crop/{face_id},yes,server/api/routers/face_recognition.py:855
 GET,/api/faces/low-confidence,yes,server/api/routers/face_recognition.py:571
 POST,/api/faces/merge,no,server/api/routers/face_recognition.py:1158
 POST,/api/faces/move,no,server/api/routers/face_recognition.py:1137
-GET,/api/faces/person/{person_name},no,server/api/routers/face_recognition.py:356
+GET,/api/faces/person/{person_name},yes,server/api/routers/face_recognition.py:356
 GET,/api/faces/photos-with-faces,no,server/api/routers/face_recognition.py:689
 POST,/api/faces/prototypes/recompute,no,server/api/routers/face_recognition.py:1243
 POST,/api/faces/scan,no,server/api/routers/face_recognition.py:62
 POST,/api/faces/scan-async,yes,server/api/routers/face_recognition.py:186
-POST,/api/faces/scan-single,no,server/api/routers/face_recognition.py:310
-GET,/api/faces/scan-status/{job_id},no,server/api/routers/face_recognition.py:299
+POST,/api/faces/scan-single,yes,server/api/routers/face_recognition.py:310
+GET,/api/faces/scan-status/{job_id},yes,server/api/routers/face_recognition.py:299
 GET,/api/faces/singletons,yes,server/api/routers/face_recognition.py:521
 POST,/api/faces/split,no,server/api/routers/face_recognition.py:1111
 GET,/api/faces/stats,yes,server/api/routers/face_recognition.py:779

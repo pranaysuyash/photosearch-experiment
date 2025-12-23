@@ -78,7 +78,9 @@ export function People() {
   const [showFaceTools, setShowFaceTools] = useState(false);
   const [personNameLookup, setPersonNameLookup] = useState('');
   const [personLookupLoading, setPersonLookupLoading] = useState(false);
-  const [personLookupError, setPersonLookupError] = useState<string | null>(null);
+  const [personLookupError, setPersonLookupError] = useState<string | null>(
+    null
+  );
   const [personLookupResult, setPersonLookupResult] = useState<any>(null);
 
   const [scanSingleFilesText, setScanSingleFilesText] = useState('');
@@ -731,7 +733,9 @@ export function People() {
                       <button
                         onClick={handleLookupPersonByName}
                         className='btn-glass btn-glass--muted px-3 py-2 text-sm'
-                        disabled={personLookupLoading || !personNameLookup.trim()}
+                        disabled={
+                          personLookupLoading || !personNameLookup.trim()
+                        }
                       >
                         {personLookupLoading ? (
                           <RefreshCw size={16} className='animate-spin' />
@@ -753,7 +757,9 @@ export function People() {
                         <div className='flex items-center gap-2'>
                           {(() => {
                             const match = clusters.find(
-                              (c) => (c.label || '').trim() === personNameLookup.trim()
+                              (c) =>
+                                (c.label || '').trim() ===
+                                personNameLookup.trim()
                             );
                             if (!match) return null;
                             return (
@@ -771,7 +777,7 @@ export function People() {
                             Raw response
                           </summary>
                           <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
-{JSON.stringify(personLookupResult, null, 2)}
+                            {JSON.stringify(personLookupResult, null, 2)}
                           </pre>
                         </details>
                       </div>
@@ -789,14 +795,18 @@ export function People() {
                     <textarea
                       value={scanSingleFilesText}
                       onChange={(e) => setScanSingleFilesText(e.target.value)}
-                      placeholder={'Enter absolute file paths, one per line\n(e.g. /Users/you/Pictures/img.jpg)'}
+                      placeholder={
+                        'Enter absolute file paths, one per line\n(e.g. /Users/you/Pictures/img.jpg)'
+                      }
                       className='w-full min-h-[84px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                     />
                     <div className='mt-2 flex gap-2'>
                       <button
                         onClick={handleScanSingle}
                         className='btn-glass btn-glass--muted px-3 py-2 text-sm'
-                        disabled={scanSingleLoading || !scanSingleFilesText.trim()}
+                        disabled={
+                          scanSingleLoading || !scanSingleFilesText.trim()
+                        }
                       >
                         {scanSingleLoading ? (
                           <div className='flex items-center gap-2'>
@@ -819,7 +829,7 @@ export function People() {
                           Raw result
                         </summary>
                         <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
-{JSON.stringify(scanSingleResult, null, 2)}
+                          {JSON.stringify(scanSingleResult, null, 2)}
                         </pre>
                       </details>
                     )}
@@ -864,7 +874,7 @@ export function People() {
                           Raw status
                         </summary>
                         <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
-{JSON.stringify(scanStatusResult, null, 2)}
+                          {JSON.stringify(scanStatusResult, null, 2)}
                         </pre>
                       </details>
                     )}
@@ -911,10 +921,21 @@ export function People() {
                 <button
                   onClick={handleScan}
                   disabled={scanning}
-                  className='btn-glass btn-glass--primary'
-                            }/api/faces/crop/${faceId}?size=150`}
-                  <Camera size={16} className='mr-2' />
-                  Scan for Faces
+                  className={`btn-glass ${
+                    scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                  }`}
+                >
+                  {scanning ? (
+                    <div className='flex items-center gap-2'>
+                      <RefreshCw size={16} className='animate-spin' />
+                      Scanning...
+                    </div>
+                  ) : (
+                    <div className='flex items-center gap-2'>
+                      <Camera size={16} />
+                      Scan for Faces
+                    </div>
+                  )}
                 </button>
               </div>
             )}
@@ -940,7 +961,7 @@ export function People() {
                             src={`${
                               import.meta.env.VITE_API_URL ||
                               'http://localhost:8000'
-                            }/api/faces/${faceId}/crop?size=150`}
+                            }/api/faces/crop/${faceId}?size=150`}
                             alt={`Face ${index + 1}`}
                             className='w-full h-20 object-cover rounded'
                             loading='lazy'

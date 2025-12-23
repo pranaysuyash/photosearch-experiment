@@ -35,6 +35,8 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/ui-build_20251223_175128.txt` — fresh UI build output after exposing scan-directory (exit code in `audit_artifacts/ui-build_20251223_175128.exitcode.txt`).
 - `audit_artifacts/ui-build_20251223_201045.txt` — fresh UI build output after exposing comprehensive stats (exit code in `audit_artifacts/ui-build_20251223_201045.exitcode.txt`).
 - `audit_artifacts/ui-build_20251223_202544.txt` — fresh UI build output after wiring face correction loop + analytics (exit code in `audit_artifacts/ui-build_20251223_202544.exitcode.txt`).
+- `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt` — evidence that People UI now calls person-name lookup + scan-single + scan-status endpoints.
+- `audit_artifacts/ui_build_latest.txt` — latest production UI build output after surfacing the remaining face endpoints (exit code in `audit_artifacts/ui_build_latest.exitcode.txt`).
 
 ---
 
@@ -43,26 +45,29 @@ These files were generated during discovery and are intended to be treated as ap
 ### Backend capability utilization (P0 metric)
 
 - **Total backend endpoints:** 325
-- **Matched as used by frontend:** 213
-- **Unused by frontend:** 112
-- **Frontend unique endpoint references captured:** 260
+- **Matched as used by frontend:** 216
+- **Unused by frontend:** 109
+- **Frontend unique endpoint references captured:** 266
 
 Evidence:
 
 - `audit_artifacts/backend_endpoint_inventory_stats.txt` (generated):
   - `Total endpoints: 325`
-  - `Used by frontend: 213`
-  - `Unused by frontend: 112`
+  - `Used by frontend: 216`
+  - `Unused by frontend: 109`
   - `Unique frontend evidence paths captured: 116`
-- `audit_artifacts/frontend_endpoints_called_count.txt`: `260`
+- `audit_artifacts/frontend_endpoints_called_count.txt`: `266`
 
 ### The “Hidden Genius” list (highest ROI)
 
-There are **3 unused `/api*` endpoints** that represent **user-facing power features** that exist server-side but are not surfaced in the UI.
+There are **0 unused `/api*` endpoints** remaining on the high-ROI “Hidden Genius” list — the last three face scan/name endpoints have now been surfaced.
 
 Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
-Evidence: `audit_artifacts/backend_endpoints_unused_api_only.txt`
+Evidence:
+
+- `audit_artifacts/backend_endpoints_unused_api_only.txt` (now empty)
+- Wiring proof: `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`
 
 ---
 
@@ -114,11 +119,11 @@ Status:
 - ✅ Unidentified faces can be assigned to an existing person or promoted to a new person.
 - ✅ Person detail now exposes per-person analytics.
 
-What’s still on the “unused `/api*` endpoints” list (remaining 3):
+Update:
 
-- `GET /api/faces/person/{person_name}`
-- `POST /api/faces/scan-single`
-- `GET /api/faces/scan-status/{job_id}`
+- ✅ The remaining face scan/status/name endpoints are now exposed via a People → “Face scan & lookup tools” panel.
+- Evidence: `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`
+- Build verification: `audit_artifacts/ui_build_latest.txt` (exit code in `audit_artifacts/ui_build_latest.exitcode.txt`)
 
 ---
 

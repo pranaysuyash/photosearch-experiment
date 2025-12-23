@@ -49,6 +49,7 @@ import { NotesEditor } from '../notes/NotesEditor';
 import { useToast } from '../ui/Toast';
 import ImageAnalysis from './AIAnalysis';
 import { PhotoDetailTabs, type TabName } from './tabs/PhotoDetailTabs';
+import { VideoFacesPanel } from '../video/VideoFacesPanel';
 
 interface PhotoDetailProps {
   photos: Photo[]; // Full list for navigation
@@ -748,6 +749,20 @@ export function PhotoDetail({
 
             {/* AI Analysis */}
             <ImageAnalysis photo={photo} isOpen={currentIndex !== null} />
+
+            {/* Video Faces Panel - Show for videos */}
+            {api.isVideo(photo.path) && (
+              <VideoFacesPanel
+                videoPath={photo.path}
+                onSeek={(ms) => {
+                  // Find video element and seek to timestamp
+                  const videoEl = document.querySelector('video');
+                  if (videoEl) {
+                    videoEl.currentTime = ms / 1000;
+                  }
+                }}
+              />
+            )}
 
             {/* Download Button */}
             <a

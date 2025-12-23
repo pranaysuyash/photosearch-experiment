@@ -1,0 +1,20 @@
+Evidence: Tauri CSP enabled (production + dev)
+
+Context:
+- Previously: src-tauri/tauri.conf.json had app.security.csp = null (CSP disabled)
+- Now: CSP is set for production, and a separate devCsp is set for development.
+
+Config snippet:
+- src-tauri/tauri.conf.json:24-27
+  "security": {
+    "csp": "default-src 'self' tauri: asset:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' asset: tauri: data: blob: http://localhost:* http://127.0.0.1:*; media-src 'self' asset: tauri: data: blob: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:;",
+    "devCsp": "default-src 'self' tauri: asset:; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' asset: tauri: data: blob: http://localhost:* http://127.0.0.1:*; media-src 'self' asset: tauri: data: blob: http://localhost:* http://127.0.0.1:*; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*; worker-src 'self' blob:;"
+  }
+
+Validation:
+- JSON parse succeeded (python -m json.tool src-tauri/tauri.conf.json)
+
+Notes:
+- Production CSP does NOT allow 'unsafe-eval'.
+- Dev CSP allows 'unsafe-eval' and websocket origins (ws://localhost:*) to avoid breaking Vite dev/HMR.
+- style-src includes 'unsafe-inline' because the UI uses React inline styles in places.

@@ -1,0 +1,14 @@
+Evidence: remaining face endpoints now surfaced in UI
+
+Frontend call sites (UI wiring):
+- ui/src/pages/People.tsx:251 — GET /api/faces/person/{person_name}
+- ui/src/pages/People.tsx:275 — POST /api/faces/scan-single
+- ui/src/pages/People.tsx:299 — GET /api/faces/scan-status/{job_id}
+
+Backend routes:
+- server/api/routers/face_recognition.py:356 — @router.get("/api/faces/person/{person_name}")
+- server/api/routers/face_recognition.py:310 — @router.post("/api/faces/scan-single")
+- server/api/routers/face_recognition.py:299 — @router.get("/api/faces/scan-status/{job_id}")
+
+Build verification:
+- audit_artifacts/ui_build_latest.txt (exit code: audit_artifacts/ui_build_latest.exitcode.txt)

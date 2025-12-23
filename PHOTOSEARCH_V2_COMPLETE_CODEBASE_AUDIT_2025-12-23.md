@@ -14,7 +14,7 @@
 
 PhotoSearch v2 is a surprisingly feature-rich system already: a FastAPI backend with hundreds of routes and a React/Vite UI that calls a meaningful portion of them. Discovery confirms a split monorepo-ish structure with Python backend in `server/` and React frontend in `ui/`, plus an optional Tauri desktop wrapper in `src-tauri/` (`audit_artifacts/discovery_20251223_155700.txt`).
 
-The headline risk is still the **Hidden Genius Problem**—not because nothing is wired, but because several _high leverage_ capabilities are present server-side but not consistently reachable from the UI. Utilization is decent in raw percentage terms (**213/325 endpoints used ≈ 66%**) yet the remaining ~34% still includes endpoints that would directly improve “2 perfect results in 2 seconds” via better workflows and transparency (see `audit_artifacts/backend_endpoint_inventory_stats.txt`, `audit_artifacts/backend_endpoints_unused_api_only.txt`).
+The headline risk is still the **Hidden Genius Problem**—not because nothing is wired, but because several _high leverage_ capabilities are present server-side but not consistently reachable from the UI. Utilization is decent in raw percentage terms (**216/325 endpoints used ≈ 66%**) and the previously remaining face scan/status/name endpoints are now exposed (see `audit_artifacts/backend_endpoint_inventory_stats.txt`, `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`).
 
 Search and intelligence tooling exists (intent detection endpoints, match explanations, semantic search scaffolding). The current UX, however, contains contradictory patterns: the UI both **auto-detects search mode** and offers **manual mode selection**, which can create user confusion and mode “flapping” (evidence in the prior audit: `ui/src/contexts/PhotoSearchContext.tsx:165–225` and `ui/src/components/layout/DynamicNotchSearch.tsx:417`). The smallest viable fix here is to formalize “Auto vs Manual override” and prevent auto-switching while manual override is active.
 
@@ -28,17 +28,17 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 1. **Tauri CSP disabled (desktop security regression risk)** — `src-tauri/tauri.conf.json:27–29` (`"csp": null`).
 2. **Smart Search UX contradiction (auto-routing vs manual mode selection) causes mode flapping** — `ui/src/contexts/PhotoSearchContext.tsx:165–225` + `ui/src/components/layout/DynamicNotchSearch.tsx:417`.
-3. **Remaining high-value endpoints not exposed in UI (face scan/status + name lookup)** — unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt` (remaining: `GET /api/faces/person/{person_name}`, `POST /api/faces/scan-single`, `GET /api/faces/scan-status/{job_id}`).
-4. **Scan UX lacks status polling + single-image debugging path** — endpoints exist but no first-class UI workflow (`/api/faces/scan-single`, `/api/faces/scan-status/{job_id}`).
-5. **Audit-grade truth maintenance risk: generated inventories can drift from current line anchors** — example: `audit_artifacts/backend_endpoint_inventory.md` can list older anchors; current anchors should be re-verified against decorators.
+3. **Code splitting blocked: oversized main bundle + dynamic+static import conflict** — evidence: `audit_artifacts/ui-build.txt` and `audit_artifacts/bundle-report.html`.
+4. **Audit-grade truth maintenance risk: generated inventories can drift from current line anchors** — example: `audit_artifacts/backend_endpoint_inventory.md` can list older anchors; current anchors should be re-verified against decorators.
+5. **Match explanations generated but not consistently surfaced in UI** — implementations: `server/utils/search_explanations.py:1`, `:123`, `:202`; routed usage: `server/api/routers/search.py:525`, `:877`, `server/api/routers/semantic_search.py:179`; frontend type exists: `ui/src/api.ts:84–95`.
 
 **Top 5 High Priority (P1):**
 
-1. **Match explanations generated but not consistently surfaced in UI** — implementations: `server/utils/search_explanations.py:1`, `:123`, `:202`; routed usage: `server/api/routers/search.py:525`, `:877`, `server/api/routers/semantic_search.py:179`; frontend type exists: `ui/src/api.ts:84–95`.
-2. **Code splitting blocked: oversized main bundle + dynamic+static import conflict** — evidence: `audit_artifacts/ui-build.txt` and `audit_artifacts/bundle-report.html`.
-3. **Advanced OCR endpoints are present and used, but UX integration appears fragmented** — calls present in `audit_artifacts/frontend_endpoints_called.txt` (`/api/ocr/*`); requires consistent entry point + results surface.
-4. **Discovery experience (globe) needs performance proof + pin clustering/instancing verification** — UI uses three.js deps (`ui/package.json` shows `three`, `@react-three/fiber`, `@react-three/drei`; `audit_artifacts/discovery_20251223_155700.txt`).
-5. **Frontend test coverage and quality gates are unclear; TS errors artifact exists** — `audit_artifacts/typescript-errors.txt`.
+1. **Advanced OCR endpoints are present and used, but UX integration appears fragmented** — calls present in `audit_artifacts/frontend_endpoints_called.txt` (`/api/ocr/*`); requires consistent entry point + results surface.
+2. **Discovery experience (globe) needs performance proof + pin clustering/instancing verification** — UI uses three.js deps (`ui/package.json` shows `three`, `@react-three/fiber`, `@react-three/drei`; `audit_artifacts/discovery_20251223_155700.txt`).
+3. **Frontend test coverage and quality gates are unclear; TS errors artifact exists** — `audit_artifacts/typescript-errors.txt`.
+4. **Accessibility gaps (discernible text + labels)** — examples: `ui/src/components/advanced/FaceRecognitionPanel.tsx:535`, `:625`, `:639`, `:653`, `:705`.
+5. **Style/lint hygiene: inline styles used in React** — examples: `ui/src/components/advanced/FaceRecognitionPanel.tsx:313`, `ui/src/pages/People.tsx:681`.
 
 ### Quick Wins (Top 10)
 
@@ -59,19 +59,19 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 (0 = missing/broken, 4 = excellent)
 
-| Category             | Score (0-4) | Justification                                                                                                                              |
-| -------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Backend Utilization  | 2.8         | 213/325 endpoints used (~66%); but some high-leverage endpoints remain unexposed (`audit_artifacts/backend_endpoint_inventory_stats.txt`). |
-| Search Experience    | 2.6         | Intent + multiple modes exist, but UX contradictions and explanation surfacing gaps remain.                                                |
-| Glass Design System  | 2.7         | Glass surfaces present, but needs token governance and contrast verification across components.                                            |
-| Adaptive UI          | 2.5         | Multiple modes exist (notch/bubble/mobile), but needs parity and stable mode selection.                                                    |
-| Discovery Experience | 2.2         | Three.js stack present; performance/UX metrics not yet proven in artifacts.                                                                |
-| Accessibility        | 2.0         | No demonstrated WCAG audit outputs; likely gaps in focus management and clickable divs (needs evidence pass).                              |
-| Performance          | 2.3         | Bundle size evidence indicates major chunk; needs code splitting + RUM/latency metrics.                                                    |
-| Code Quality         | 2.8         | Tests green backend; architecture has many modules; still some drift and duplication risk.                                                 |
-| Testing              | 2.9         | Backend tests green (`audit_artifacts/pytest_full_green_20251223_154836.txt`); frontend coverage unclear.                                  |
-| Documentation        | 3.0         | Extensive docs folder; audit artifacts provide reproducible evidence.                                                                      |
-| **Overall Average**  | **2.58**    | Solid base with real functionality; needs “Hidden Genius surfacing” and security hardening to become a product.                            |
+| Category             | Score (0-4) | Justification                                                                                                                                                                                         |
+| -------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend Utilization  | 2.8         | 216/325 endpoints used (~66%); high-ROI API-only “Hidden Genius” list is now empty (`audit_artifacts/backend_endpoint_inventory_stats.txt`, `audit_artifacts/backend_endpoints_unused_api_only.txt`). |
+| Search Experience    | 2.6         | Intent + multiple modes exist, but UX contradictions and explanation surfacing gaps remain.                                                                                                           |
+| Glass Design System  | 2.7         | Glass surfaces present, but needs token governance and contrast verification across components.                                                                                                       |
+| Adaptive UI          | 2.5         | Multiple modes exist (notch/bubble/mobile), but needs parity and stable mode selection.                                                                                                               |
+| Discovery Experience | 2.2         | Three.js stack present; performance/UX metrics not yet proven in artifacts.                                                                                                                           |
+| Accessibility        | 2.0         | No demonstrated WCAG audit outputs; likely gaps in focus management and clickable divs (needs evidence pass).                                                                                         |
+| Performance          | 2.3         | Bundle size evidence indicates major chunk; needs code splitting + RUM/latency metrics.                                                                                                               |
+| Code Quality         | 2.8         | Tests green backend; architecture has many modules; still some drift and duplication risk.                                                                                                            |
+| Testing              | 2.9         | Backend tests green (`audit_artifacts/pytest_full_green_20251223_154836.txt`); frontend coverage unclear.                                                                                             |
+| Documentation        | 3.0         | Extensive docs folder; audit artifacts provide reproducible evidence.                                                                                                                                 |
+| **Overall Average**  | **2.58**    | Solid base with real functionality; needs “Hidden Genius surfacing” and security hardening to become a product.                                                                                       |
 
 ---
 
@@ -89,11 +89,11 @@ Verification credibility: backend tests are green under test-mode controls (evid
 #### Gap summary
 
 - Total endpoints: **325**
-- Used by frontend: **213** (~66%)
-- Unused by frontend: **112**
+- Used by frontend: **216** (~66%)
+- Unused by frontend: **109**
 
 **High-value endpoints (API-prefixed, audit-minimal list)**
-(These are immediately product-relevant and are currently flagged as not called by the UI per `audit_artifacts/backend_endpoints_unused_api_only.txt`.)
+(These are immediately product-relevant; the API-only unused list is now empty — see `audit_artifacts/backend_endpoints_unused_api_only.txt`.)
 
 | Endpoint                                  | Method | Purpose                             | Called by Frontend? | Evidence                                                                                                                                                                                  | Priority to Expose |
 | ----------------------------------------- | ------ | ----------------------------------- | :-----------------: | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------: |
@@ -102,9 +102,9 @@ Verification credibility: backend tests are green under test-mode controls (evid
 | `/api/cache/clear`                        | POST   | Clear caches deterministically      |         ✅          | Backend: `server/api/routers/system.py:37`; UI: `ui/src/api.ts:1477`                                                                                                                      |         P0         |
 | `/api/faces/clusters/{cluster_id}/photos` | GET    | Browse photos in a face cluster     |         ✅          | Backend: `server/api/routers/face_recognition.py:460`; UI: `ui/src/pages/PersonDetail.tsx:81`                                                                                             |         P0         |
 | `/api/faces/crop/{face_id}`               | GET    | Face crop preview / inline UI       |         ✅          | Backend: `server/api/routers/face_recognition.py:855`; UI: `ui/src/pages/UnidentifiedFaces.tsx:102`; artifact: `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt` |        DONE        |
-| `/api/faces/person/{person_name}`         | GET    | Direct person-name face lookup      |         ❌          | `server/api/routers/face_recognition.py:356`                                                                                                                                              |         P2         |
-| `/api/faces/scan-single`                  | POST   | Single-image face scan (debug/UX)   |         ❌          | `server/api/routers/face_recognition.py:310`                                                                                                                                              |         P2         |
-| `/api/faces/scan-status/{job_id}`         | GET    | Scan job progress polling           |         ❌          | `server/api/routers/face_recognition.py:299`                                                                                                                                              |         P1         |
+| `/api/faces/person/{person_name}`         | GET    | Direct person-name face lookup      |         ✅          | Backend: `server/api/routers/face_recognition.py:356`; UI: `ui/src/pages/People.tsx:251`; artifact: `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`            |        DONE        |
+| `/api/faces/scan-single`                  | POST   | Single-image face scan (debug/UX)   |         ✅          | Backend: `server/api/routers/face_recognition.py:310`; UI: `ui/src/pages/People.tsx:275`; artifact: `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`            |        DONE        |
+| `/api/faces/scan-status/{job_id}`         | GET    | Scan job progress polling           |         ✅          | Backend: `server/api/routers/face_recognition.py:299`; UI: `ui/src/pages/People.tsx:299`; artifact: `audit_artifacts/face_scan_single_status_person_wired_20251223_221900.txt`            |        DONE        |
 | `/api/faces/{face_id}/assign`             | POST   | Assign face to person               |         ✅          | Backend: `server/api/routers/face_recognition.py:735`; UI: `ui/src/pages/UnidentifiedFaces.tsx:79`; artifact: `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt`  |        DONE        |
 | `/api/faces/{face_id}/create-person`      | POST   | Convert face to new person entity   |         ✅          | Backend: `server/api/routers/face_recognition.py:772`; UI: `ui/src/pages/UnidentifiedFaces.tsx:90`; artifact: `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt`  |        DONE        |
 | `/api/people/{person_id}/analytics`       | GET    | Person-level analytics              |         ✅          | Backend: `server/api/routers/face_recognition.py:1039`; UI: `ui/src/pages/PersonDetail.tsx:128`; artifact: `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt`     |        DONE        |
@@ -625,20 +625,20 @@ Smallest viable fix:
 
 ### P0 Blockers
 
-|   # | Issue                                     | User Impact                        | Evidence                                                                                                | Fix (smallest viable)         | Effort |
-| --: | ----------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------- | :----: |
-|   1 | Tauri CSP disabled                        | Desktop app attack surface widened | `src-tauri/tauri.conf.json:27–29`                                                                       | Set CSP (self-only baseline)  |   S    |
-|   2 | Smart Search UX contradiction             | Confusing search behavior          | `ui/src/contexts/PhotoSearchContext.tsx:165–225`, `ui/src/components/layout/DynamicNotchSearch.tsx:417` | Auto vs Manual override       |   S    |
-|   3 | Face scan status + single scan missing UI | Hard to debug scans; poor feedback | Remaining unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt`                          | Add progress UI + job polling |   S    |
-|   4 | Person-name face lookup not exposed       | Entity search feels weaker         | `server/api/routers/face_recognition.py:356` + `audit_artifacts/backend_endpoints_unused_api_only.txt`  | Add search entry point / docs |  XS–S  |
+|   # | Issue                                 | User Impact                        | Evidence                                                                                                | Fix (smallest viable)         | Effort |
+| --: | ------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------- | :----: |
+|   1 | Tauri CSP disabled                    | Desktop app attack surface widened | `src-tauri/tauri.conf.json:27–29`                                                                       | Set CSP (self-only baseline)  |   S    |
+|   2 | Smart Search UX contradiction         | Confusing search behavior          | `ui/src/contexts/PhotoSearchContext.tsx:165–225`, `ui/src/components/layout/DynamicNotchSearch.tsx:417` | Auto vs Manual override       |   S    |
+|   3 | Bundle too large / splitting blocked  | Slower UI, poorer interactivity    | `audit_artifacts/ui-build.txt`, `audit_artifacts/bundle-report.html`                                    | Fix imports + enforce budgets |   M    |
+|   4 | Match explanations inconsistent in UI | Low trust in AI                    | `server/utils/search_explanations.py:*`, `ui/src/api.ts:84–95`                                          | Reusable “Why matched” UI     |   M    |
 
 ### P1 Critical
 
-|   # | Issue                                 | User Impact                     | Evidence                                                             | Fix                                 | Effort |
-| --: | ------------------------------------- | ------------------------------- | -------------------------------------------------------------------- | ----------------------------------- | :----: |
-|   1 | Scan progress UX missing              | Poor transparency + debugging   | `server/api/routers/face_recognition.py:299`, `:310` + unused list   | Add status panel + polling          |   S    |
-|   2 | Match explanations inconsistent in UI | Low trust in AI                 | `server/utils/search_explanations.py:*`, `ui/src/api.ts:84–95`       | Reusable “Why matched” component    |   M    |
-|   3 | Bundle too large / splitting blocked  | Slower UI, poorer interactivity | `audit_artifacts/ui-build.txt`, `audit_artifacts/bundle-report.html` | Fix imports + enforce chunk budgets |   M    |
+|   # | Issue                                  | User Impact                 | Evidence                                                            | Fix                                 | Effort |
+| --: | -------------------------------------- | --------------------------- | ------------------------------------------------------------------- | ----------------------------------- | :----: |
+|   1 | Advanced OCR UX integration fragmented | OCR feels “bolted on”       | `audit_artifacts/frontend_endpoints_called.txt` (`/api/ocr/*`)      | Unify entry point + results surface |   M    |
+|   2 | Discovery (globe) performance unproven | Discovery may feel sluggish | `ui/package.json` + `audit_artifacts/discovery_20251223_155700.txt` | Add perf artifacts + tuning         |   M    |
+|   3 | Frontend test coverage unclear         | Regressions slip into UI    | `audit_artifacts/typescript-errors.txt`                             | Add CI gate + smoke tests           |   M    |
 
 ### P2-P4
 

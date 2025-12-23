@@ -1,3 +1,0 @@
-GET /api/faces/person/{person_name} (server/api/routers/face_recognition.py:356)
-POST /api/faces/scan-single (server/api/routers/face_recognition.py:310)
-GET /api/faces/scan-status/{job_id} (server/api/routers/face_recognition.py:299)

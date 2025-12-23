@@ -1393,6 +1393,21 @@ export const api = {
     return res.data;
   },
 
+  submitSearchFeedback: async (
+    query: string,
+    photoPath: string,
+    score: number,
+    reason?: string
+  ) => {
+    const res = await apiClient.post('/search/feedback', {
+      query,
+      photo_path: photoPath,
+      score,
+      reason: reason || '',
+    });
+    return res.data;
+  },
+
   getSearchSuggestions: async (query: string) => {
     const res = await apiClient.get('/intent/suggestions', {
       params: { query },
@@ -2685,6 +2700,38 @@ export const api = {
         cluster_id: clusterId,
       }
     );
+    return res.data;
+  },
+
+  // ===================================================================
+  // Phase 7: Video Faces API
+  // ===================================================================
+
+  processVideoFaces: async (filePath: string, sampleFps: number = 1.0) => {
+    const res = await apiClient.post('/api/video-faces/process', {
+      file_path: filePath,
+      sample_fps: sampleFps,
+    });
+    return res.data;
+  },
+
+  getVideoFaceStatus: async (videoId: string) => {
+    const res = await apiClient.get(`/api/video-faces/status/${encodeURIComponent(videoId)}`);
+    return res.data;
+  },
+
+  getVideoTracks: async (videoId: string) => {
+    const res = await apiClient.get(`/api/video-faces/tracks/${encodeURIComponent(videoId)}`);
+    return res.data;
+  },
+
+  getVideoPeople: async (videoId: string) => {
+    const res = await apiClient.get(`/api/video-faces/people/${encodeURIComponent(videoId)}`);
+    return res.data;
+  },
+
+  deleteVideoFaces: async (videoId: string) => {
+    const res = await apiClient.delete(`/api/video-faces/${encodeURIComponent(videoId)}`);
     return res.data;
   },
 };

@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  HelpCircle, 
-  Camera, 
-  MapPin, 
-  Calendar, 
-  Brain, 
-  Zap, 
+import {
+  HelpCircle,
+  Camera,
+  MapPin,
+  Calendar,
+  Brain,
+  Zap,
   Target,
   FileText,
   Eye,
   Database,
-  X
+  X,
+  ThumbsDown,
+  Check
 } from 'lucide-react';
+import { api } from '../../api';
 
 interface MatchReason {
   category: string;
@@ -39,11 +42,14 @@ interface MatchExplanation {
 interface MatchExplanationProps {
   explanation: MatchExplanation;
   isCompact?: boolean;
+  photoPath?: string;
+  searchQuery?: string;
+  onFeedbackSubmitted?: () => void;
 }
 
 const getCategoryIcon = (category: string) => {
   const categoryLower = category.toLowerCase();
-  
+
   if (categoryLower.includes('camera') || categoryLower.includes('lens')) {
     return Camera;
   }
@@ -59,7 +65,7 @@ const getCategoryIcon = (category: string) => {
   if (categoryLower.includes('technical') || categoryLower.includes('exif')) {
     return Zap;
   }
-  
+
   return Target;
 };
 
@@ -84,11 +90,35 @@ const getTypeColor = (type: string) => {
   }
 };
 
-export const MatchExplanation = ({ 
-  explanation, 
-  isCompact = false 
+export const MatchExplanation = ({
+  explanation,
+  isCompact = false,
+  photoPath,
+  searchQuery,
+  onFeedbackSubmitted
 }: MatchExplanationProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+
+  const handleNotThis = async () => {
+    if (!photoPath || !searchQuery || feedbackSent) return;
+
+    setSendingFeedback(true);
+    try {
+      await api.submitSearchFeedback(
+        searchQuery,
+        photoPath,
+        explanation.overallConfidence
+      );
+      setFeedbackSent(true);
+      onFeedbackSubmitted?.();
+    } catch (err) {
+      console.error('Failed to submit feedback:', err);
+    } finally {
+      setSendingFeedback(false);
+    }
+  };
 
   // Close modal on escape key and manage body scroll (optimized)
   useEffect(() => {
@@ -133,7 +163,7 @@ export const MatchExplanation = ({
 
     return (
       <div className="absolute bottom-0 left-0 right-0 p-3">
-        <button 
+        <button
           className="w-full glass-surface glass-surface--strong rounded-xl p-2.5 shadow-2xl hover:bg-white/5 transition-colors cursor-pointer text-left"
           onClick={(e) => {
             e.preventDefault();
@@ -150,7 +180,7 @@ export const MatchExplanation = ({
                 {overallScore}%
               </span>
             </div>
-            
+
             {/* Top Contributing Factors */}
             <div className="flex items-center gap-2 flex-1">
               {topScores.map((item, idx) => {
@@ -163,14 +193,14 @@ export const MatchExplanation = ({
                 );
               })}
             </div>
-            
+
             {/* Why Icon */}
             <div className="flex items-center gap-1 text-white/80">
               <HelpCircle size={12} />
             </div>
           </div>
         </button>
-        
+
         {isExpanded && createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" style={{ pointerEvents: 'auto' }}>
             {/* Backdrop */}
@@ -195,7 +225,7 @@ export const MatchExplanation = ({
                   <X size={14} className="text-white/80" />
                 </button>
               </div>
-              
+
               {explanation.breakdown && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-2">
@@ -221,7 +251,7 @@ export const MatchExplanation = ({
                   </div>
                 </div>
               )}
-              
+
               <div className="space-y-2">
                 {explanation.reasons && explanation.reasons.length > 0 ? (
                   explanation.reasons.map((reason, idx) => {
@@ -258,6 +288,31 @@ export const MatchExplanation = ({
                   </div>
                 )}
               </div>
+
+              {/* Not this feedback button - show for semantic search */}
+              {(explanation.type === 'semantic' || explanation.type === 'hybrid') &&
+                photoPath && searchQuery && (
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    {feedbackSent ? (
+                      <div className="flex items-center gap-2 text-green-400 text-sm">
+                        <Check size={16} />
+                        <span>Thanks! Feedback recorded.</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleNotThis}
+                        disabled={sendingFeedback}
+                        className="w-full btn-glass text-sm px-4 py-2.5 flex items-center justify-center gap-2 text-amber-400 hover:bg-amber-500/10 border-amber-500/30"
+                      >
+                        <ThumbsDown size={16} />
+                        {sendingFeedback ? 'Sending...' : "Not this – wrong match"}
+                      </button>
+                    )}
+                    <p className="text-xs text-white/40 mt-2 text-center">
+                      Help improve search by reporting mismatches
+                    </p>
+                  </div>
+                )}
             </div>
           </div>,
           document.body

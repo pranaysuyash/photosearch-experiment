@@ -1,4 +1,4 @@
 Total endpoints: 325
-Used by frontend: 213
-Unused by frontend: 112
+Used by frontend: 216
+Unused by frontend: 109
 Unique frontend evidence paths captured: 116
