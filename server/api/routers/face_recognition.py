@@ -40,6 +40,9 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
         # Get all clusters from the pre-initialized clusterer
         result = face_clusterer.get_all_clusters(limit=100)
 
+        # Get face clustering DB for coherence, representative face, and indexing status
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+
         # Format for frontend
         formatted_clusters = []
         for cluster in result.get("clusters", []):
@@ -47,9 +50,6 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
             if cluster_details.get("status") != "error":
                 faces = cluster_details.get("faces", [])
                 cluster_id_str = str(cluster["id"])
-
-                # Get face clustering DB for coherence and representative face
-                face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
 
                 # Check if cluster is potentially mixed (face_count >= 3)
                 is_mixed = False
@@ -73,6 +73,14 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                 except Exception:
                     pass
 
+                # Get indexing status (Phase 6.1)
+                indexing_disabled = False
+                try:
+                    status = face_db.get_person_indexing_status(cluster_id_str)
+                    indexing_disabled = not status.get("enabled", True)
+                except Exception:
+                    pass
+
                 formatted_clusters.append(
                     {
                         "id": cluster_id_str,
@@ -86,6 +94,7 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                         "created_at": cluster.get("created_at"),
                         "is_mixed": is_mixed,
                         "representative_face": representative_face,
+                        "indexing_disabled": indexing_disabled,
                     }
                 )
 

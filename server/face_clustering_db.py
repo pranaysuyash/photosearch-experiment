@@ -42,6 +42,7 @@ class FaceCluster:
     photo_count: int = 0
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    indexing_disabled: bool = False
 
 
 @dataclass
@@ -473,7 +474,7 @@ class FaceClusteringDB:
 
             rows = conn.execute(
                 """
-                SELECT cluster_id, label, face_count, photo_count, created_at, updated_at
+                SELECT cluster_id, label, face_count, photo_count, created_at, updated_at, indexing_disabled
                 FROM face_clusters
                 ORDER BY label COLLATE NOCASE, created_at DESC
                 """
@@ -487,6 +488,7 @@ class FaceClusteringDB:
                     photo_count=row["photo_count"],
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
+                    indexing_disabled=row["indexing_disabled"] == 1,
                 )
                 for row in rows
             ]

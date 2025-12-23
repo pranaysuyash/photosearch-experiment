@@ -19,7 +19,8 @@ import {
   AlertCircle,
   CheckCircle,
   Pause,
-  Play
+  Play,
+  ToggleLeft
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -40,6 +41,7 @@ interface FaceCluster {
     photo_path: string;
     quality_score?: number;
   };
+  indexing_disabled?: boolean;
 }
 
 interface FaceStats {
@@ -288,8 +290,8 @@ export function People() {
                 onClick={handleTogglePause}
                 disabled={pauseLoading}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
-                    ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}
                 title={isIndexingPaused ? 'Resume Face Indexing' : 'Pause Face Indexing'}
               >
@@ -580,6 +582,15 @@ export function People() {
                           <h3 className="font-medium text-foreground truncate">
                             {cluster.label || `Person ${cluster.id}`}
                           </h3>
+                          {cluster.indexing_disabled && (
+                            <span
+                              className="px-1.5 py-0.5 text-[10px] font-semibold bg-red-500/20 text-red-400 rounded flex items-center gap-1"
+                              title="Auto-assignment is disabled for this person"
+                            >
+                              <ToggleLeft size={10} />
+                              Manual
+                            </span>
+                          )}
                           {cluster.is_mixed && (
                             <span
                               className="px-1.5 py-0.5 text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 rounded"

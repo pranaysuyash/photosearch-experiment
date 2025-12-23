@@ -1,0 +1,3 @@
+ui/src/router/MainRouter.tsx:77:              <Route path='/people' element={<People />} />
+ui/src/router/MainRouter.tsx:82:              <Route path='/people/:clusterId' element={<PersonDetail />} />
+server/api/routers/face_recognition.py:465:@router.get("/api/faces/clusters/{cluster_id}/photos")

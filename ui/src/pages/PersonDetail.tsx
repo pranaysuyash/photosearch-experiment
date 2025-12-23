@@ -78,7 +78,7 @@ export default function PersonDetail() {
         setError(null);
         try {
             const response = await fetch(
-                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/cluster/${clusterId}/photos`
+                `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}/photos`
             );
             const data = await response.json();
             setPhotos(data.results || []);

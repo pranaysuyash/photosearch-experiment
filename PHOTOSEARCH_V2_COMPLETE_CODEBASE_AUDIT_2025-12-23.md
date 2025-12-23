@@ -118,10 +118,15 @@ Verification credibility: backend tests are green under test-mode controls (evid
 | Cache clear (ops reset)     | `POST /api/cache/clear` (`server/api/routers/system.py:37`)                                     | Not exposed                    | Users stuck with stale/bad caches; hard to debug perf |         S         |    P0    |
 | Advanced scan directory     | `POST /api/advanced/scan-directory` (`server/main_advanced_features.py:197`)                    | Not exposed                    | Power users can’t batch ingest/repair                 |         M         |    P0    |
 | Deep stats                  | `GET /api/advanced/comprehensive-stats` (`server/main_advanced_features.py:313`)                | Not exposed                    | No “health dashboard” / no trust in pipeline          |        S–M        |    P1    |
+| Face cluster merge suggestions | `GET /api/faces/clusters/merge-suggestions` (`server/api/routers/face_recognition.py:1694`) + dismiss (`:1724`) | **Exposed in People UI** | Improves People quality by merging duplicates |       XS–S       |    P0    |
 | Face: browse cluster photos | `GET /api/faces/clusters/{cluster_id}/photos` (`server/api/routers/face_recognition.py:456`)    | Not exposed                    | Face clusters feel abstract; no drill-down            |         S         |    P0    |
 | Face: assign/create person  | `POST /api/faces/{face_id}/assign` (`:687`), `POST /api/faces/{face_id}/create-person` (`:724`) | Not exposed                    | Core people workflow becomes fragile/opaque           |         S         |    P0    |
 | Person analytics            | `GET /api/people/{person_id}/analytics` (`:991`)                                                | Not exposed                    | Lost differentiation (“memory intelligence”)          |         M         |    P1    |
 | Match explanations          | `server/utils/search_explanations.py:*`                                                         | Typed but inconsistently shown | AI feels arbitrary; weak trust                        |         M         |    P0    |
+
+Merge Suggestions UI evidence:
+- People page wiring: `ui/src/pages/People.tsx:27` (import) and `ui/src/pages/People.tsx:384` (render)
+- Artifact: `audit_artifacts/merge_suggestions_wired_20251223_163850.txt`
 
 ### A3. Smart Search API Integration
 
