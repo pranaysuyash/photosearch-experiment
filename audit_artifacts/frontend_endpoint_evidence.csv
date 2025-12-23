@@ -111,3 +111,7 @@ path,file,line,snippet
 /video/analyze,ui/src/components/video/VideoAnalysisPanel.tsx,134,"await api.post('/video/analyze', {"
 /video/search,ui/src/components/video/VideoAnalysisPanel.tsx,176,"const response = await api.post('/video/search', {"
 /video/stats,ui/src/components/video/VideoAnalysisPanel.tsx,116,const response = await api.get('/video/stats');
+/api/faces/${faceId}/assign,ui/src/pages/UnidentifiedFaces.tsx,79,"await api.post(`/api/faces/${faceId}/assign`, { cluster_id: clusterId });"
+/api/faces/${faceId}/create-person,ui/src/pages/UnidentifiedFaces.tsx,90,"await api.post(`/api/faces/${faceId}/create-person`, { label: name });"
+/api/faces/crop/${faceId},ui/src/pages/UnidentifiedFaces.tsx,102,"return `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${faceId}?size=200`;"
+/api/people/${encodeURIComponent(clusterId)}/analytics,ui/src/pages/PersonDetail.tsx,128,"const data = await api.get(`/api/people/${encodeURIComponent(clusterId)}/analytics`);"

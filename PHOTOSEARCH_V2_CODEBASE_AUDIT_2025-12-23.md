@@ -30,9 +30,11 @@ These files were generated during discovery and are intended to be treated as ap
 - `audit_artifacts/cache_clear_wired_20251223_171259.txt` — evidence that Performance UI calls the correct backend cache clear endpoint (`/api/cache/clear`).
 - `audit_artifacts/scan_directory_wired_20251223_185027.txt` — evidence that Advanced Features UI calls `POST /api/advanced/scan-directory`.
 - `audit_artifacts/comprehensive_stats_wired_20251223_200847.txt` — evidence that Advanced Features UI calls `GET /api/advanced/comprehensive-stats`.
+- `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt` — evidence that Unidentified Faces + Person Detail now call assign/create-person/crop/analytics endpoints.
 - `audit_artifacts/ui-build_20251223_164126.txt` — fresh UI build output after wiring Merge Suggestions (exit code in `audit_artifacts/ui-build_20251223_164126_exitcode.txt`).
 - `audit_artifacts/ui-build_20251223_175128.txt` — fresh UI build output after exposing scan-directory (exit code in `audit_artifacts/ui-build_20251223_175128.exitcode.txt`).
 - `audit_artifacts/ui-build_20251223_201045.txt` — fresh UI build output after exposing comprehensive stats (exit code in `audit_artifacts/ui-build_20251223_201045.exitcode.txt`).
+- `audit_artifacts/ui-build_20251223_202544.txt` — fresh UI build output after wiring face correction loop + analytics (exit code in `audit_artifacts/ui-build_20251223_202544.exitcode.txt`).
 
 ---
 
@@ -41,22 +43,22 @@ These files were generated during discovery and are intended to be treated as ap
 ### Backend capability utilization (P0 metric)
 
 - **Total backend endpoints:** 325
-- **Matched as used by frontend:** 209
-- **Unused by frontend:** 116
-- **Frontend unique endpoint references captured:** 242
+- **Matched as used by frontend:** 213
+- **Unused by frontend:** 112
+- **Frontend unique endpoint references captured:** 260
 
 Evidence:
 
 - `audit_artifacts/backend_endpoint_inventory_stats.txt` (generated):
   - `Total endpoints: 325`
-  - `Used by frontend: 209`
-  - `Unused by frontend: 116`
-  - `Unique frontend evidence paths captured: 112`
-- `audit_artifacts/frontend_endpoints_called_count.txt`: `242`
+  - `Used by frontend: 213`
+  - `Unused by frontend: 112`
+  - `Unique frontend evidence paths captured: 116`
+- `audit_artifacts/frontend_endpoints_called_count.txt`: `260`
 
 ### The “Hidden Genius” list (highest ROI)
 
-There are **7 unused `/api*` endpoints** that represent **user-facing power features** (primarily face workflows) that exist server-side but are not surfaced in the UI.
+There are **3 unused `/api*` endpoints** that represent **user-facing power features** that exist server-side but are not surfaced in the UI.
 
 Note: the utilization metric is primarily based on **frontend references** (e.g., `ui/src/api.ts`) and may count features as “used” even when they are **not reachable from any UI entry point**. Merge Suggestions is one concrete example (see Finding P0.1b).
 
@@ -68,22 +70,29 @@ Evidence: `audit_artifacts/backend_endpoints_unused_api_only.txt`
 
 ### P0 — Hidden Genius: surface unused high-value endpoints
 
-#### Finding P0.1 — Face workflows exist server-side but are not fully surfaced
+#### Finding P0.1 — Face correction loop + analytics are now surfaced (closed)
 
-Unused endpoints include:
+The high-value face correction loop endpoints are now wired through the UI:
 
-- `GET /api/faces/crop/{face_id}` (face thumbnails / crops)
-- `POST /api/faces/{face_id}/assign` (manual correction)
-- `POST /api/faces/{face_id}/create-person` (promote unidentified face into a person)
-- `GET /api/people/{person_id}/analytics` (per-person insights)
+- `POST /api/faces/{face_id}/assign`
+- `POST /api/faces/{face_id}/create-person`
+- `GET /api/faces/crop/{face_id}`
+- `GET /api/people/{person_id}/analytics`
 
 Evidence:
 
-- Unused list: `audit_artifacts/backend_endpoints_unused_api_only.txt`
-- Face crop endpoint: `server/api/routers/face_recognition.py:807` (`@router.get("/api/faces/crop/{face_id}")`)
-- Assign face endpoint: `server/api/routers/face_recognition.py:687` (`@router.post("/api/faces/{face_id}/assign")`)
-- Create person endpoint: `server/api/routers/face_recognition.py:724` (`@router.post("/api/faces/{face_id}/create-person")`)
-- Person analytics endpoint: `server/api/routers/face_recognition.py:991` (`@router.get("/api/people/{person_id}/analytics")`)
+- Wiring: `audit_artifacts/face_loop_and_person_analytics_wired_20251223_202105.txt`
+  - Frontend call sites:
+    - `ui/src/pages/UnidentifiedFaces.tsx:79` (`/api/faces/${faceId}/assign`)
+    - `ui/src/pages/UnidentifiedFaces.tsx:90` (`/api/faces/${faceId}/create-person`)
+    - `ui/src/pages/UnidentifiedFaces.tsx:102` (`/api/faces/crop/${faceId}`)
+    - `ui/src/pages/PersonDetail.tsx:128` (`/api/people/${encodeURIComponent(clusterId)}/analytics`)
+  - Backend routes:
+    - `server/api/routers/face_recognition.py:735` (`@router.post("/api/faces/{face_id}/assign")`)
+    - `server/api/routers/face_recognition.py:772` (`@router.post("/api/faces/{face_id}/create-person")`)
+    - `server/api/routers/face_recognition.py:855` (`@router.get("/api/faces/crop/{face_id}")`)
+    - `server/api/routers/face_recognition.py:1039` (`@router.get("/api/people/{person_id}/analytics")`)
+- Build verification: `audit_artifacts/ui-build_20251223_202544.txt` (exit code in `audit_artifacts/ui-build_20251223_202544.exitcode.txt`)
 
 Update:
 
@@ -99,23 +108,17 @@ Impact:
 
 Smallest viable fix (UI surfacing plan):
 
-1. Use `GET /api/faces/crop/{face_id}` to show face thumbnails in review lists.
-2. Add “Assign to person…” and “Create person…” actions in the Unidentified/Low-confidence face review panel.
-3. Add a lightweight “Insights” section in Person detail that calls `GET /api/people/{person_id}/analytics`.
+Status:
 
-Acceptance criteria:
+- ✅ Face thumbnails/crops are now pulled from the canonical crop endpoint.
+- ✅ Unidentified faces can be assigned to an existing person or promoted to a new person.
+- ✅ Person detail now exposes per-person analytics.
 
-- A user can open a person and see **photos for that person** sourced from `GET /api/faces/clusters/{cluster_id}/photos`.
-- Unidentified faces can be assigned or promoted, and the UI reflects the updated person membership.
-- Person detail page shows analytics payload without errors when face recognition is enabled.
+What’s still on the “unused `/api*` endpoints” list (remaining 3):
 
-Rollback plan:
-
-- Feature flag the new UI actions (or hide behind an “Advanced” toggle). Roll back by disabling the flag and leaving endpoints intact.
-
-Effort sizing:
-
-- **M (2–4 days)** for UI integration + basic UX + error handling; **S** if minimal UI only.
+- `GET /api/faces/person/{person_name}`
+- `POST /api/faces/scan-single`
+- `GET /api/faces/scan-status/{job_id}`
 
 ---
 

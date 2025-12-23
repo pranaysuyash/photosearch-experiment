@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -282,6 +282,103 @@ def migration_v4_privacy_controls(conn: sqlite3.Connection):
     logger.info("Created app_settings table")
 
 
+def migration_v5_video_support(conn: sqlite3.Connection):
+    """
+    Version 5: Add video face tracking support.
+    Tables for video assets, face tracks, and track detections.
+    """
+    # Video assets table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS video_assets (
+            video_id TEXT PRIMARY KEY,
+            file_path TEXT NOT NULL UNIQUE,
+            duration_ms INTEGER,
+            fps REAL,
+            frame_count INTEGER,
+            width INTEGER,
+            height INTEGER,
+            processed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_video_assets_path ON video_assets(file_path)"
+    )
+    logger.info("Created video_assets table")
+
+    # Face tracks table (tracklets within a video)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS face_tracks (
+            track_id TEXT PRIMARY KEY,
+            video_id TEXT NOT NULL,
+            start_frame INTEGER NOT NULL,
+            end_frame INTEGER NOT NULL,
+            start_timestamp_ms INTEGER,
+            end_timestamp_ms INTEGER,
+            best_detection_id TEXT,
+            cluster_id TEXT,
+            detection_count INTEGER DEFAULT 0,
+            avg_quality_score REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (video_id) REFERENCES video_assets(video_id),
+            FOREIGN KEY (best_detection_id) REFERENCES face_detections(detection_id),
+            FOREIGN KEY (cluster_id) REFERENCES face_clusters(cluster_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_face_tracks_video ON face_tracks(video_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_face_tracks_cluster ON face_tracks(cluster_id)"
+    )
+    logger.info("Created face_tracks table")
+
+    # Track detections (link detections to tracks)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS track_detections (
+            detection_id TEXT NOT NULL,
+            track_id TEXT NOT NULL,
+            frame_number INTEGER NOT NULL,
+            timestamp_ms INTEGER,
+            PRIMARY KEY (detection_id, track_id),
+            FOREIGN KEY (detection_id) REFERENCES face_detections(detection_id),
+            FOREIGN KEY (track_id) REFERENCES face_tracks(track_id)
+        )
+    """)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_track_detections_track ON track_detections(track_id)"
+    )
+    logger.info("Created track_detections table")
+
+    # Extend face_detections with video-specific columns
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if "source_type" not in columns:
+        conn.execute(
+            "ALTER TABLE face_detections ADD COLUMN source_type TEXT DEFAULT 'photo'"
+        )
+        logger.info("Added source_type column to face_detections")
+
+    if "video_id" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN video_id TEXT")
+        logger.info("Added video_id column to face_detections")
+
+    if "frame_number" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN frame_number INTEGER")
+        logger.info("Added frame_number column to face_detections")
+
+    if "timestamp_ms" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN timestamp_ms INTEGER")
+        logger.info("Added timestamp_ms column to face_detections")
+
+    if "is_best_frame" not in columns:
+        conn.execute(
+            "ALTER TABLE face_detections ADD COLUMN is_best_frame INTEGER DEFAULT 0"
+        )
+        logger.info("Added is_best_frame column to face_detections")
+
+
 # Migration registry: version -> (migration_function, description)
 MIGRATIONS = {
     1: (migration_v1_base_schema, "Base schema for face clustering"),
@@ -296,6 +393,10 @@ MIGRATIONS = {
     4: (
         migration_v4_privacy_controls,
         "Add privacy controls: indexing toggle, global pause",
+    ),
+    5: (
+        migration_v5_video_support,
+        "Add video face tracking tables",
     ),
 }
 

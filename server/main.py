@@ -80,6 +80,7 @@ from server.api.routers.sources import router as sources_router
 from server.api.routers.search import router as search_router
 from server.api.routers.trash import router as trash_router
 from server.api.routers.legacy_compat import router as legacy_compat_router
+from server.api.routers.video_faces import router as video_faces_router
 
 
 if TYPE_CHECKING:
@@ -315,6 +316,7 @@ app.include_router(duplicates_router)
 app.include_router(video_analysis_router)
 app.include_router(image_analysis_router)
 app.include_router(video_router)
+app.include_router(video_faces_router)
 app.include_router(intent_router)
 app.include_router(advanced_intent_search_router)
 app.include_router(file_router)

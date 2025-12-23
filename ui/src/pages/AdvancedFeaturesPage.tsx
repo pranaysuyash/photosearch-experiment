@@ -526,7 +526,9 @@ export function AdvancedFeaturesPage() {
                   <div className='text-lg text-white font-semibold'>
                     {typeof comprehensiveStats?.library_stats?.total_size_gb ===
                     'number'
-                      ? comprehensiveStats.library_stats.total_size_gb.toFixed(2)
+                      ? comprehensiveStats.library_stats.total_size_gb.toFixed(
+                          2
+                        )
                       : '—'}
                   </div>
                 </div>

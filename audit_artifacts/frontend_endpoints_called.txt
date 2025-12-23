@@ -57,6 +57,9 @@
 /api/faces/${encodeURIComponent(detectionId)}/thumbnail
 /api/faces/${encodeURIComponent(faceId)}/confirm
 /api/faces/${encodeURIComponent(faceId)}/reject
+/api/faces/${faceId}/assign
+/api/faces/${faceId}/create-person
+/api/faces/crop/${faceId}
 /api/faces/cluster
 /api/faces/cluster/
 /api/faces/clusters
@@ -99,6 +102,7 @@
 /api/ocr/search
 /api/ocr/stats
 /api/people/search
+/api/people/${encodeURIComponent(clusterId)}/analytics
 /api/photos/
 /api/photos/${encodeURIComponent(path)}/edits
 /api/photos/${encodeURIComponent(path)}/faces

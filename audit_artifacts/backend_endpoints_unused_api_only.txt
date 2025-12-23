@@ -1,7 +1,3 @@
-GET /api/faces/crop/{face_id} (server/api/routers/face_recognition.py:811)
 GET /api/faces/person/{person_name} (server/api/routers/face_recognition.py:356)
 POST /api/faces/scan-single (server/api/routers/face_recognition.py:310)
 GET /api/faces/scan-status/{job_id} (server/api/routers/face_recognition.py:299)
-POST /api/faces/{face_id}/assign (server/api/routers/face_recognition.py:691)
-POST /api/faces/{face_id}/create-person (server/api/routers/face_recognition.py:728)
-GET /api/people/{person_id}/analytics (server/api/routers/face_recognition.py:995)

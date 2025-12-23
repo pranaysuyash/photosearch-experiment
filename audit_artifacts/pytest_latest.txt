@@ -1,0 +1,49 @@
+........................................................................ [ 54%]
+.............................................................            [100%]
+=============================== warnings summary ===============================
+server/validation.py:373
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:373: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('query')
+
+server/validation.py:380
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:380: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('limit')
+
+server/validation.py:387
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:387: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('offset')
+
+server/validation.py:399
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:399: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('path')
+
+server/validation.py:412
+  /Users/pranay/Projects/photosearch_experiment/server/validation.py:412: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.12/migration/
+    @validator('date_from', 'date_to')
+
+test_video_analysis.py::test_video_analyzer_database
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_video_analyzer_database returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_video_analysis_imports
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_video_analysis_imports returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_api_endpoints
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_api_endpoints returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+test_video_analysis.py::test_ui_component
+  /Users/pranay/Projects/photosearch_experiment/.venv/lib/python3.11/site-packages/_pytest/python.py:170: PytestReturnNotNoneWarning: Test functions should return None, but test_video_analysis.py::test_ui_component returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+133 passed, 9 warnings in 28.44s

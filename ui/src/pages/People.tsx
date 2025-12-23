@@ -74,6 +74,23 @@ export function People() {
   );
   const [reviewCount, setReviewCount] = useState(0);
 
+  // Hidden Genius: surface remaining face scan/name endpoints
+  const [showFaceTools, setShowFaceTools] = useState(false);
+  const [personNameLookup, setPersonNameLookup] = useState('');
+  const [personLookupLoading, setPersonLookupLoading] = useState(false);
+  const [personLookupError, setPersonLookupError] = useState<string | null>(null);
+  const [personLookupResult, setPersonLookupResult] = useState<any>(null);
+
+  const [scanSingleFilesText, setScanSingleFilesText] = useState('');
+  const [scanSingleLoading, setScanSingleLoading] = useState(false);
+  const [scanSingleError, setScanSingleError] = useState<string | null>(null);
+  const [scanSingleResult, setScanSingleResult] = useState<any>(null);
+
+  const [scanStatusJobId, setScanStatusJobId] = useState('');
+  const [scanStatusLoading, setScanStatusLoading] = useState(false);
+  const [scanStatusError, setScanStatusError] = useState<string | null>(null);
+  const [scanStatusResult, setScanStatusResult] = useState<any>(null);
+
   // Modal states
   const [renameModal, setRenameModal] = useState<{
     open: boolean;
@@ -218,6 +235,79 @@ export function People() {
       setError('Failed to scan for faces');
       setScanProgress(null);
       setScanning(false);
+    }
+  };
+
+  const handleLookupPersonByName = async () => {
+    const name = personNameLookup.trim();
+    if (!name) return;
+
+    try {
+      setPersonLookupLoading(true);
+      setPersonLookupError(null);
+      setPersonLookupResult(null);
+
+      const data = await api.get(
+        `/api/faces/person/${encodeURIComponent(name)}`
+      );
+      setPersonLookupResult(data);
+    } catch (err: any) {
+      console.error('Failed to lookup person by name:', err);
+      setPersonLookupError(err?.message || 'Failed to lookup person by name');
+    } finally {
+      setPersonLookupLoading(false);
+    }
+  };
+
+  const handleScanSingle = async () => {
+    const files = scanSingleFilesText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (files.length === 0) return;
+
+    try {
+      setScanSingleLoading(true);
+      setScanSingleError(null);
+      setScanSingleResult(null);
+
+      const data = await api.post('/api/faces/scan-single', { files });
+      setScanSingleResult(data);
+    } catch (err: any) {
+      console.error('Failed to scan single file(s) for faces:', err);
+      setScanSingleError(
+        err?.response?.data?.detail ||
+          err?.message ||
+          'Failed to scan file(s) for faces'
+      );
+    } finally {
+      setScanSingleLoading(false);
+    }
+  };
+
+  const handleCheckScanStatus = async () => {
+    const jobId = scanStatusJobId.trim();
+    if (!jobId) return;
+
+    try {
+      setScanStatusLoading(true);
+      setScanStatusError(null);
+      setScanStatusResult(null);
+
+      const data = await api.get(
+        `/api/faces/scan-status/${encodeURIComponent(jobId)}`
+      );
+      setScanStatusResult(data);
+    } catch (err: any) {
+      console.error('Failed to fetch scan job status:', err);
+      setScanStatusError(
+        err?.response?.data?.detail ||
+          err?.message ||
+          'Failed to fetch scan job status'
+      );
+    } finally {
+      setScanStatusLoading(false);
     }
   };
 
@@ -599,6 +689,190 @@ export function People() {
               </div>
             )}
 
+            {/* Hidden Genius: scan/status/name tools */}
+            <div
+              className={`${glass.surface} rounded-xl p-4 border border-white/10 mb-6`}
+            >
+              <button
+                onClick={() => setShowFaceTools((v) => !v)}
+                className='w-full flex items-center justify-between gap-3'
+              >
+                <div className='flex items-center gap-2'>
+                  <Camera size={16} className='text-muted-foreground' />
+                  <span className='text-sm font-medium text-foreground'>
+                    Face scan & lookup tools
+                  </span>
+                </div>
+                <span className='text-xs text-muted-foreground'>
+                  {showFaceTools ? 'Hide' : 'Show'}
+                </span>
+              </button>
+
+              {showFaceTools && (
+                <div className='mt-4 space-y-6'>
+                  {/* Person name lookup */}
+                  <div>
+                    <div className='flex items-center justify-between gap-3 mb-2'>
+                      <div className='flex items-center gap-2'>
+                        <Search size={14} className='text-muted-foreground' />
+                        <span className='text-sm text-foreground'>
+                          Lookup person by name
+                        </span>
+                      </div>
+                    </div>
+                    <div className='flex gap-2'>
+                      <input
+                        type='text'
+                        value={personNameLookup}
+                        onChange={(e) => setPersonNameLookup(e.target.value)}
+                        placeholder='Exact label (e.g. “John”)'
+                        className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+                      />
+                      <button
+                        onClick={handleLookupPersonByName}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={personLookupLoading || !personNameLookup.trim()}
+                      >
+                        {personLookupLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Lookup'
+                        )}
+                      </button>
+                    </div>
+                    {personLookupError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {personLookupError}
+                      </div>
+                    )}
+                    {personLookupResult && (
+                      <div className='mt-3 space-y-2'>
+                        <div className='text-xs text-muted-foreground'>
+                          Found {personLookupResult?.total ?? 0} photo(s)
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          {(() => {
+                            const match = clusters.find(
+                              (c) => (c.label || '').trim() === personNameLookup.trim()
+                            );
+                            if (!match) return null;
+                            return (
+                              <button
+                                onClick={() => navigate(`/people/${match.id}`)}
+                                className='btn-glass btn-glass--primary px-3 py-2 text-sm'
+                              >
+                                Open person
+                              </button>
+                            );
+                          })()}
+                        </div>
+                        <details className='mt-2'>
+                          <summary className='text-xs text-muted-foreground cursor-pointer'>
+                            Raw response
+                          </summary>
+                          <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
+{JSON.stringify(personLookupResult, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Scan single */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Camera size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Scan single file(s)
+                      </span>
+                    </div>
+                    <textarea
+                      value={scanSingleFilesText}
+                      onChange={(e) => setScanSingleFilesText(e.target.value)}
+                      placeholder={'Enter absolute file paths, one per line\n(e.g. /Users/you/Pictures/img.jpg)'}
+                      className='w-full min-h-[84px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+                    />
+                    <div className='mt-2 flex gap-2'>
+                      <button
+                        onClick={handleScanSingle}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={scanSingleLoading || !scanSingleFilesText.trim()}
+                      >
+                        {scanSingleLoading ? (
+                          <div className='flex items-center gap-2'>
+                            <RefreshCw size={16} className='animate-spin' />
+                            Scanning…
+                          </div>
+                        ) : (
+                          'Run scan-single'
+                        )}
+                      </button>
+                    </div>
+                    {scanSingleError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {scanSingleError}
+                      </div>
+                    )}
+                    {scanSingleResult && (
+                      <details className='mt-2'>
+                        <summary className='text-xs text-muted-foreground cursor-pointer'>
+                          Raw result
+                        </summary>
+                        <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
+{JSON.stringify(scanSingleResult, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+
+                  {/* Scan status */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Clock size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Check scan job status
+                      </span>
+                    </div>
+                    <div className='flex gap-2'>
+                      <input
+                        type='text'
+                        value={scanStatusJobId}
+                        onChange={(e) => setScanStatusJobId(e.target.value)}
+                        placeholder='Job ID (UUID)'
+                        className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+                      />
+                      <button
+                        onClick={handleCheckScanStatus}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={scanStatusLoading || !scanStatusJobId.trim()}
+                      >
+                        {scanStatusLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Check'
+                        )}
+                      </button>
+                    </div>
+                    {scanStatusError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {scanStatusError}
+                      </div>
+                    )}
+                    {scanStatusResult && (
+                      <details className='mt-2'>
+                        <summary className='text-xs text-muted-foreground cursor-pointer'>
+                          Raw status
+                        </summary>
+                        <pre className='mt-2 text-xs overflow-auto bg-black/30 rounded-lg p-3 border border-white/10 text-foreground/90'>
+{JSON.stringify(scanStatusResult, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Error State */}
             {error && (
               <div className='mb-6 text-sm text-destructive glass-surface rounded-xl p-4 border border-white/10'>
@@ -638,7 +912,7 @@ export function People() {
                   onClick={handleScan}
                   disabled={scanning}
                   className='btn-glass btn-glass--primary'
-                >
+                            }/api/faces/crop/${faceId}?size=150`}
                   <Camera size={16} className='mr-2' />
                   Scan for Faces
                 </button>
