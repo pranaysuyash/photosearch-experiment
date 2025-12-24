@@ -1,0 +1,11 @@
+OCR UX Unification — 2025-12-24
+
+Change:
+- Route /studio/ocr-search now redirects to /analytics/ocr (advanced OCRTextSearchPanel).
+- Removed the legacy OCRSearch lazy import to avoid duplicate OCR experiences.
+
+Reason:
+- Audit noted fragmented OCR UX across studio and analytics surfaces. Redirect consolidates entry to the advanced OCR panel with highlighting, batch, and regions.
+
+Files:
+- ui/src/router/MainRouter.tsx

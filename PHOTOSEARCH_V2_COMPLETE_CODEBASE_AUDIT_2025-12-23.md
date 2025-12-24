@@ -34,7 +34,7 @@ Verification credibility: backend tests are green under test-mode controls (evid
 
 **Top 5 High Priority (P1):**
 
-1. **Advanced OCR endpoints are present and used, but UX integration appears fragmented** — calls present in `audit_artifacts/frontend_endpoints_called.txt` (`/api/ocr/*`); requires consistent entry point + results surface.
+1. **Advanced OCR endpoints are present and used, but UX integration appears fragmented** — calls present in `audit_artifacts/frontend_endpoints_called.txt` (`/api/ocr/*`); requires consistent entry point + results surface. Update 2025-12-24: `/studio/ocr-search` now redirects to the advanced OCR panel (`/analytics/ocr`) to consolidate the experience (`audit_artifacts/ocr_ux_unified_20251224.txt`).
 2. **Discovery experience (globe) needs performance proof + pin clustering/instancing verification** — UI uses three.js deps (`ui/package.json` shows `three`, `@react-three/fiber`, `@react-three/drei`; `audit_artifacts/discovery_20251223_155700.txt`).
 3. **Frontend test coverage and quality gates are unclear; TS errors artifact exists** — `audit_artifacts/typescript-errors.txt`.
 4. **Accessibility gaps (discernible text + labels)** — examples: `ui/src/components/advanced/FaceRecognitionPanel.tsx:535`, `:625`, `:639`, `:653`, `:705`.

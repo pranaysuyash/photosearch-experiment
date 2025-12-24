@@ -40,7 +40,6 @@ const SavedSearches = lazy(() => import('../pages/SavedSearches'));
 const JobMonitor = lazy(() => import('../components/features/JobMonitor'));
 const IntentRecognition = lazy(() => import('../components/search/IntentRecognition'));
 const FaceClustering = lazy(() => import('../components/features/FaceClustering'));
-const OCRSearch = lazy(() => import('../components/features/OCRSearch'));
 const ModalSystem = lazy(() => import('../components/common/ModalSystem'));
 const CodeSplitting = lazy(() => import('../components/features/CodeSplitting'));
 const TauriIntegration = lazy(() => import('../components/features/TauriIntegration'));
@@ -101,7 +100,10 @@ const MainRouter = () => {
                 path='/studio/face-clustering'
                 element={<FaceClustering />}
               />
-              <Route path='/studio/ocr-search' element={<OCRSearch />} />
+              <Route
+                path='/studio/ocr-search'
+                element={<Navigate to='/analytics/ocr' replace />}
+              />
               <Route path='/studio/modal-system' element={<ModalSystem />} />
               <Route
                 path='/studio/code-splitting'
