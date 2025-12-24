@@ -30,6 +30,33 @@ def _aux_search_paths(query: str) -> set[str]:
     main metadata DB yet.
     """
 
+
+def _aux_match_explanation(query: str) -> dict:
+    """Provide a lightweight, structured match explanation for auxiliary DB hits.
+
+    This keeps the response shape consistent with other search results so the UI
+    can render match explanations without special-casing strings.
+    """
+    return {
+        "type": "metadata",
+        "overallConfidence": 0.6,
+        "reasons": [
+            {
+                "category": "Notes / Tags / Locations",
+                "matched": f"Matched via notes, tags, locations, or people tags for '{query}'",
+                "confidence": 0.6,
+                "badge": "🔖",
+                "type": "metadata",
+            }
+        ],
+        "breakdown": {
+            "metadata_score": 60,
+            "filename_score": 0,
+            "content_score": 0,
+            "semantic_score": 0,
+        },
+    }
+
     q = (query or "").strip()
     if not q:
         return set()
@@ -634,7 +661,7 @@ async def search_photos(
                                 "filename": os.path.basename(p),
                                 "score": 1.0,
                                 "metadata": {},
-                                "matchExplanation": "Matched via notes/tags/locations/people",
+                                "matchExplanation": _aux_match_explanation(query),
                             }
                         )
                         seen.add(p)

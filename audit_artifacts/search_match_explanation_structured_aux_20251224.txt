@@ -1,0 +1,29 @@
+Purpose: Document structured match explanation shape for auxiliary note/tag/location/people matches after standardization.
+Date: 2025-12-24
+
+Helper: server/api/routers/search.py :: _aux_match_explanation(query)
+
+Example output for query "sunset beach":
+{
+  "type": "metadata",
+  "overallConfidence": 0.6,
+  "reasons": [
+    {
+      "category": "Notes / Tags / Locations",
+      "matched": "Matched via notes, tags, locations, or people tags for 'sunset beach'",
+      "confidence": 0.6,
+      "badge": "🔖",
+      "type": "metadata"
+    }
+  ],
+  "breakdown": {
+    "metadata_score": 60,
+    "filename_score": 0,
+    "content_score": 0,
+    "semantic_score": 0
+  }
+}
+
+Notes:
+- This replaces the previous plain-string explanation for auxiliary hits in `/search` responses.
+- UI components (MatchExplanation) can now render auxiliary matches consistently without special casing.

@@ -1,0 +1,16 @@
+Tauri desktop build status — 2025-12-24
+Commands:
+1) cargo tauri build --debug
+   - UI build succeeded (Vite reported main chunk ~1.55 MB, >500 kB warning).
+   - Rust build succeeded; PhotoSearch.app bundled at target/debug/bundle/macos/PhotoSearch.app.
+   - DMG packaging failed in create-dmg bundle_dmg.sh during Finder AppleScript prettifying (headless session). Error: failed to run .../bundle/dmg/bundle_dmg.sh (AppleScript step requires GUI).
+
+2) cargo tauri build --debug --bundles app
+   - UI build succeeded (same chunk warning).
+   - Rust build succeeded; PhotoSearch.app bundled at target/debug/bundle/macos/PhotoSearch.app.
+   - Skipped DMG; build completed successfully.
+
+Takeaways:
+- Desktop runtime with CSP builds and bundles .app successfully.
+- DMG packaging requires GUI/osascript or skipping Finder styling (e.g., use --bundles app in CI, or run create-dmg with --skip-jenkins / GUI session).
+- Chunk-size warning persists; code-splitting still recommended.

@@ -33,6 +33,8 @@ export function DynamicNotchSearch({
     search,
     searchMode,
     setSearchMode,
+    manualSearchMode,
+    clearManualSearchMode,
     typeFilter,
     setTypeFilter,
   } = usePhotoSearchContext();
@@ -401,6 +403,20 @@ export function DynamicNotchSearch({
                       transition={{ duration: 0.15 }}
                       className={`absolute top-full right-0 mt-2 w-36 rounded-xl p-1.5 z-[10000] ${glass.surfaceStrong}`}
                     >
+                      {manualSearchMode && (
+                        <button
+                          type='button'
+                          onClick={() => {
+                            clearManualSearchMode();
+                            setSearchMode(searchMode, { source: 'reset' });
+                            setActiveGroup(null);
+                          }}
+                          className='w-full flex items-center justify-between px-2 py-1.5 mb-1 rounded-lg text-[11px] font-medium text-primary bg-primary/10 hover:bg-primary/15 transition-colors'
+                        >
+                          Auto routing enabled
+                          <Sparkles className='w-3 h-3' />
+                        </button>
+                      )}
                       {[
                         { id: 'semantic', label: 'Semantic', icon: Sparkles },
                         { id: 'metadata', label: 'Metadata', icon: FileText },
@@ -414,7 +430,7 @@ export function DynamicNotchSearch({
                           key={item.id}
                           type='button'
                           onClick={() => {
-                            setSearchMode(item.id as any);
+                            setSearchMode(item.id as any, { source: 'manual' });
                             setActiveGroup(null);
                           }}
                           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { SearchToggle, type SearchMode } from './SearchToggle';
 import { SearchModeHelp } from './SearchModeHelp';
-import { IntentRecognition } from './IntentRecognition';
+const IntentRecognitionLazy = lazy(() => import('./IntentRecognition'));
 import { MetadataFieldAutocomplete } from './MetadataFieldAutocomplete';
 import { useLiveMatchCount } from '../../hooks/useLiveMatchCount';
 import { api, type TagSummary } from '../../api';
@@ -26,7 +26,10 @@ interface EnhancedSearchUIProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   searchMode: SearchMode;
-  setSearchMode: (mode: SearchMode) => void;
+  setSearchMode: (
+    mode: SearchMode,
+    options?: { source?: 'manual' | 'auto' | 'reset' }
+  ) => void;
   sortBy: string;
   setSortBy: (sort: string) => void;
   typeFilter: string;
@@ -168,13 +171,13 @@ export function EnhancedSearchUI({
       intent.startsWith('find_date') ||
       intent.startsWith('camera')
     ) {
-      setSearchMode('metadata');
+      setSearchMode('metadata', { source: 'auto' });
     } else if (
       intent.startsWith('find_person') ||
       intent.startsWith('find_emotion') ||
       intent.startsWith('find_object')
     ) {
-      setSearchMode('semantic');
+      setSearchMode('semantic', { source: 'auto' });
     }
   };
 
@@ -322,10 +325,18 @@ export function EnhancedSearchUI({
         </div>
 
         {/* Intent Recognition */}
-        <IntentRecognition
-          query={searchQuery}
-          onIntentDetected={handleIntentRecognized}
-        />
+        <Suspense
+          fallback={
+            <div className='text-xs text-muted-foreground px-2 py-1'>
+              Loading intent signals…
+            </div>
+          }
+        >
+          <IntentRecognitionLazy
+            query={searchQuery}
+            onIntentDetected={handleIntentRecognized}
+          />
+        </Suspense>
 
         {/* Field Autocomplete */}
         <div className='relative'>
@@ -766,10 +777,18 @@ export function EnhancedSearchUI({
           </div>
 
           {/* Intent Recognition */}
-          <IntentRecognition
-            query={searchQuery}
-            onIntentDetected={handleIntentRecognized}
-          />
+          <Suspense
+            fallback={
+              <div className='text-xs text-muted-foreground px-2 py-1'>
+                Loading intent signals…
+              </div>
+            }
+          >
+            <IntentRecognitionLazy
+              query={searchQuery}
+              onIntentDetected={handleIntentRecognized}
+            />
+          </Suspense>
 
           {/* Field Autocomplete */}
           <div className='relative'>

@@ -4,12 +4,13 @@
  * Advanced search interface with all search features
  */
 
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import PhotoGrid from '../components/gallery/PhotoGrid';
-import IntentRecognition from '../components/search/IntentRecognition';
 import { usePhotoSearchContext } from '../contexts/PhotoSearchContext';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
 import { PageSearchWrapper } from '../components/layout/PageSearchWrapper';
+
+const IntentRecognition = lazy(() => import('../components/search/IntentRecognition'));
 
 const Search = () => {
   const { photos, loading, error, hasMore, loadMore, searchQuery } =
@@ -30,10 +31,18 @@ const Search = () => {
         )}
 
         {searchQuery && (
-          <IntentRecognition
-            query={searchQuery}
-            onIntentDetected={(nextIntent: string) => setIntent(nextIntent)}
-          />
+          <Suspense
+            fallback={
+              <div className='text-xs text-muted-foreground px-2 py-1'>
+                Loading intent signals…
+              </div>
+            }
+          >
+            <IntentRecognition
+              query={searchQuery}
+              onIntentDetected={(nextIntent: string) => setIntent(nextIntent)}
+            />
+          </Suspense>
         )}
 
         <PhotoGrid

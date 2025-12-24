@@ -21,6 +21,7 @@ interface PhotoSearchContextType {
   resultCount: number | null;
   searchQuery: string;
   searchMode: SearchMode;
+  manualSearchMode: SearchMode | null;
   sortBy: string;
   typeFilter: string;
   sourceFilter: 'all' | 'local' | 'cloud' | 'hybrid';
@@ -33,7 +34,11 @@ interface PhotoSearchContextType {
   timelineLoading: boolean;
   gridZoom: GridZoomLevel;
   setSearchQuery: (query: string) => void;
-  setSearchMode: (mode: SearchMode) => void;
+  setSearchMode: (
+    mode: SearchMode,
+    options?: { source?: 'manual' | 'auto' | 'reset' }
+  ) => void;
+  clearManualSearchMode: () => void;
   setSortBy: (sort: string) => void;
   setTypeFilter: (filter: string) => void;
   setFavoritesFilter: (filter: string) => void;
@@ -62,7 +67,10 @@ export function PhotoSearchProvider({
   const [resultCount, setResultCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<SearchMode>('semantic');
+  const [searchMode, setSearchModeState] = useState<SearchMode>('semantic');
+  const [manualSearchMode, setManualSearchMode] = useState<SearchMode | null>(
+    null
+  );
   const [sortBy, setSortBy] = useState('date_desc');
   const [typeFilter, setTypeFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState<
@@ -215,14 +223,41 @@ export function PhotoSearchProvider({
     return 'semantic';
   }, []);
 
-  // Auto-switch search mode based on query
-  const autoSwitchSearchMode = useCallback((query: string) => {
-    const detectedMode = detectSearchMode(query);
-    if (detectedMode !== searchMode) {
-      console.log(`[PhotoSearchContext] Auto-switching from ${searchMode} to ${detectedMode} for query: "${query}"`);
-      setSearchMode(detectedMode);
-    }
-  }, [detectSearchMode, searchMode]);
+  // Unified setter with manual override awareness
+  const setSearchMode = useCallback(
+    (
+      mode: SearchMode,
+      options?: { source?: 'manual' | 'auto' | 'reset' }
+    ) => {
+      const source = options?.source ?? 'manual';
+      if (source === 'manual') {
+        setManualSearchMode(mode);
+      } else if (source === 'reset') {
+        setManualSearchMode(null);
+      }
+      setSearchModeState(mode);
+    },
+    []
+  );
+
+  const clearManualSearchMode = useCallback(() => {
+    setManualSearchMode(null);
+  }, []);
+
+  // Auto-switch search mode based on query (only when no manual override)
+  const autoSwitchSearchMode = useCallback(
+    (query: string) => {
+      if (manualSearchMode) return;
+      const detectedMode = detectSearchMode(query);
+      if (detectedMode !== searchMode) {
+        console.log(
+          `[PhotoSearchContext] Auto-switching from ${searchMode} to ${detectedMode} for query: "${query}"`
+        );
+        setSearchMode(detectedMode, { source: 'auto' });
+      }
+    },
+    [detectSearchMode, manualSearchMode, searchMode, setSearchMode]
+  );
 
   // Update search mode when query changes (with debounce)
   useEffect(() => {
@@ -461,6 +496,8 @@ export function PhotoSearchProvider({
     gridZoom,
     setSearchQuery,
     setSearchMode,
+    manualSearchMode,
+    clearManualSearchMode,
     setSortBy,
     setTypeFilter,
     setSourceFilter,

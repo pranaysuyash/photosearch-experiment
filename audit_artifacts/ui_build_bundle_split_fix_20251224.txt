@@ -1,0 +1,8 @@
+Command: cd ui && pnpm build
+Date: 2025-12-24
+Purpose: verify mixed static+dynamic import warning resolved for IntentRecognition by lazy-loading in Search/EnhancedSearchUI.
+
+Result: SUCCESS (vite build)
+- Mixed import warning: **gone** (IntentRecognition is now fully lazy)
+- Remaining warning: chunk size >500 kB (main bundle ~1,553.62 kB, gzip ~444.34 kB)
+- Notable assets: IntentRecognition split into its own JS/CSS chunks.
