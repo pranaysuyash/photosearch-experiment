@@ -1,0 +1,12 @@
+Discovery/Globe performance instrumentation — 2025-12-24
+
+Change:
+- Added dev-only performance logging to PhotoGlobe region overlays (index build, region count computation, alpha texture generation) to surface timing and region counts during development.
+- Flagged by import.meta.env.DEV; no production logging.
+
+How to use:
+- Open Globe view in dev; console shows [PhotoGlobe] entries with durations (ms), feature/bucket counts, regions with photos, total located photos.
+- Use these logs to spot expensive operations (geojson load, region indexing, overlay texture creation) and guide further optimizations (e.g., reduce resolution, throttle updates, or precompute indices).
+
+Files touched:
+- ui/src/components/features/PhotoGlobe.tsx

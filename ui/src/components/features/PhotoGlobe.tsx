@@ -7,6 +7,8 @@ import { type Photo, api } from '../../api';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 
+const PERF_LOG = import.meta.env.DEV;
+
 interface PhotoGlobeProps {
   photos: Photo[];
   onPhotoSelect: (photo: Photo) => void;
@@ -825,22 +827,44 @@ function RegionFillOverlay({
 
   const index = useMemo(() => {
     if (!geoJson) return null;
-    return buildRegionIndex(geoJson, level);
+    const t0 = performance.now();
+    const built = buildRegionIndex(geoJson, level);
+    if (PERF_LOG && built) {
+      console.debug('[PhotoGlobe] region index', {
+        level,
+        features: built.features.length,
+        buckets: built.buckets.size,
+        ms: Math.round(performance.now() - t0),
+      });
+    }
+    return built;
   }, [geoJson, level]);
 
   const { counts, total, maxCount } = useMemo(() => {
+    const t0 = performance.now();
     if (!index)
       return { counts: new Map<string, number>(), total: 0, maxCount: 0 };
-    return computeRegionCounts(index, points, totalLocated);
+    const result = computeRegionCounts(index, points, totalLocated);
+    if (PERF_LOG) {
+      console.debug('[PhotoGlobe] region counts', {
+        level,
+        regionsWithPhotos: result.counts.size,
+        totalLocated: result.total,
+        maxCount: result.maxCount,
+        ms: Math.round(performance.now() - t0),
+      });
+    }
+    return result;
   }, [index, points, totalLocated]);
 
   const texture = useMemo(() => {
     if (!index) return null;
     if (points.length === 0) return null;
+    const t0 = performance.now();
     // Texture resolution: 2k is crisp enough without being too heavy.
     const width = 2048;
     const height = 1024;
-    return drawRegionOverlayAlphaTexture({
+    const tex = drawRegionOverlayAlphaTexture({
       index,
       counts,
       total,
@@ -849,6 +873,15 @@ function RegionFillOverlay({
       width,
       height,
     });
+    if (PERF_LOG && tex) {
+      console.debug('[PhotoGlobe] region texture', {
+        level,
+        regionsWithPhotos: counts.size,
+        totalLocated: total,
+        ms: Math.round(performance.now() - t0),
+      });
+    }
+    return tex;
   }, [counts, index, level, maxCount, points.length, total]);
 
   useEffect(() => {
