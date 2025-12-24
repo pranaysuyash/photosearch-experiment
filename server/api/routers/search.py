@@ -29,34 +29,6 @@ def _aux_search_paths(query: str) -> set[str]:
     tags) discoverable via /search even when a file hasn't been scanned into the
     main metadata DB yet.
     """
-
-
-def _aux_match_explanation(query: str) -> dict:
-    """Provide a lightweight, structured match explanation for auxiliary DB hits.
-
-    This keeps the response shape consistent with other search results so the UI
-    can render match explanations without special-casing strings.
-    """
-    return {
-        "type": "metadata",
-        "overallConfidence": 0.6,
-        "reasons": [
-            {
-                "category": "Notes / Tags / Locations",
-                "matched": f"Matched via notes, tags, locations, or people tags for '{query}'",
-                "confidence": 0.6,
-                "badge": "🔖",
-                "type": "metadata",
-            }
-        ],
-        "breakdown": {
-            "metadata_score": 60,
-            "filename_score": 0,
-            "content_score": 0,
-            "semantic_score": 0,
-        },
-    }
-
     q = (query or "").strip()
     if not q:
         return set()
@@ -113,7 +85,7 @@ def _aux_match_explanation(query: str) -> dict:
 
         notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
         for r in notes_db.search_notes(q, limit=200):
-            p = r.get("path")
+            p = r.get("photo_path") or r.get("path")
             if isinstance(p, str) and p:
                 paths.add(p)
 
@@ -134,6 +106,33 @@ def _aux_match_explanation(query: str) -> dict:
         return paths
 
     return paths
+
+
+def _aux_match_explanation(query: str) -> dict:
+    """Provide a lightweight, structured match explanation for auxiliary DB hits.
+
+    This keeps the response shape consistent with other search results so the UI
+    can render match explanations without special-casing strings.
+    """
+    return {
+        "type": "metadata",
+        "overallConfidence": 0.6,
+        "reasons": [
+            {
+                "category": "Notes / Tags / Locations",
+                "matched": f"Matched via notes, tags, locations, or people tags for '{query}'",
+                "confidence": 0.6,
+                "badge": "🔖",
+                "type": "metadata",
+            }
+        ],
+        "breakdown": {
+            "metadata_score": 60,
+            "filename_score": 0,
+            "content_score": 0,
+            "semantic_score": 0,
+        },
+    }
 
 
 @router.get("/search")
@@ -553,6 +552,30 @@ async def search_photos(
                     )
 
                 formatted_results.append(result_item)
+
+            # Auxiliary DB matches: notes/tags/locations/people tags
+            aux_paths = _aux_search_paths(query)
+            if aux_paths:
+                seen_paths = {r.get("path") for r in formatted_results}
+                for p in aux_paths:
+                    if not p or p in seen_paths:
+                        continue
+                    try:
+                        meta = photo_search_engine.db.get_metadata(p) or {}
+                    except Exception:
+                        meta = {}
+                    formatted_results.append(
+                        {
+                            "path": p,
+                            "filename": os.path.basename(p),
+                            "score": 0.55,
+                            "metadata": meta,
+                            "matchExplanation": _aux_match_explanation(query)
+                            if query.strip()
+                            else None,
+                        }
+                    )
+                    seen_paths.add(p)
 
             # Apply type filter
             if type_filter == "photos":
