@@ -8,11 +8,11 @@ import { api } from '../api';
 import { glass } from '../design/glass';
 
 interface SingletonCluster {
-    id: string;
+    cluster_id: string;
     label: string;
-    face_count: number;
-    face_ids: number[];
-    images: string[];
+    face_id: number;
+    image_path: string;
+    confidence: number;
 }
 
 export function Singletons() {
@@ -30,7 +30,7 @@ export function Singletons() {
             setLoading(true);
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/singletons`);
             const data = await response.json();
-            setClusters(data.clusters || []);
+            setClusters(data.singletons || []);
             setCount(data.count || 0);
         } catch (err) {
             console.error('Failed to fetch singletons:', err);
@@ -80,14 +80,14 @@ export function Singletons() {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {clusters.map((cluster) => (
                             <div
-                                key={cluster.id}
+                                key={cluster.cluster_id}
                                 className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-yellow-500/50 cursor-pointer transition-colors`}
-                                onClick={() => navigate(`/people/${cluster.id}`)}
+                                onClick={() => navigate(`/people/${cluster.cluster_id}`)}
                             >
                                 <div className="p-3 bg-black/20">
-                                    {cluster.face_ids?.[0] && (
+                                    {cluster.face_id && (
                                         <img
-                                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${cluster.face_ids[0]}/crop?size=150`}
+                                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${cluster.face_id}/crop?size=150`}
                                             alt={cluster.label}
                                             className="w-full h-24 object-cover rounded"
                                         />

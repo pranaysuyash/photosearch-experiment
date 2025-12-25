@@ -36,7 +36,8 @@ class Settings(BaseSettings):
 
     # Path to face clustering database (SQLite)
     FACE_CLUSTERS_DB_PATH: str = str(
-        Path(__file__).resolve().parent / "face_clusters.db"
+        # Store face DB at repo root so all components share the same file.
+        Path(__file__).resolve().parent.parent / "face_clusters.db"
     )
 
     @computed_field

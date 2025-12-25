@@ -10,9 +10,19 @@ during the router migration. Once all routers use Depends(get_state), these can 
 
 import logging
 import os
+import sys
+from pathlib import Path
 from contextlib import asynccontextmanager
 from threading import Lock
 from typing import TYPE_CHECKING, Any
+
+# Ensure repository and src/ are importable when running as a script
+ROOT_DIR = Path(__file__).resolve().parent.parent
+SRC_DIR = ROOT_DIR / "src"
+for p in (ROOT_DIR, SRC_DIR):
+    sp = str(p)
+    if sp not in sys.path:
+        sys.path.append(sp)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

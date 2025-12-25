@@ -7,6 +7,7 @@ allow-big-file: This router consolidates all face recognition endpoints
 """
 
 import os
+import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -371,7 +372,7 @@ async def get_photos_by_person(
             )
 
         # Find cluster by label
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
         cursor.execute(
             "SELECT id FROM clusters WHERE label = ? LIMIT 1", (person_name,)
@@ -388,7 +389,7 @@ async def get_photos_by_person(
             """
             SELECT DISTINCT f.image_path
             FROM faces f
-            JOIN cluster_memberships cm ON f.id = cm.face_id
+            JOIN cluster_membership cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
             LIMIT ? OFFSET ?
             """,
@@ -419,7 +420,7 @@ async def get_photos_by_person(
             """
             SELECT COUNT(DISTINCT f.image_path)
             FROM faces f
-            JOIN cluster_memberships cm ON f.id = cm.face_id
+            JOIN cluster_membership cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
             """,
             (cluster_id,),
@@ -444,7 +445,7 @@ async def delete_cluster(cluster_id: str, state: AppState = Depends(get_state)):
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         success = db.delete_face_cluster(cluster_id)
 
         if not success:
@@ -467,7 +468,7 @@ async def export_cluster(cluster_id: str):
     Does NOT include vector embeddings by default.
     """
     try:
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         data = db.get_face_cluster_export_data(cluster_id)
 
         if not data:
@@ -494,7 +495,7 @@ async def delete_all_faces(body: DeleteAllConfirmation):
         raise HTTPException(status_code=400, detail="Confirmation 'DELETE' required")
 
     try:
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         stats = db.delete_all_face_data()
         return {"status": "success", "deleted": stats}
     except Exception as e:
@@ -518,17 +519,21 @@ async def get_cluster_photos(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
-        # Get photos for this cluster
+        # Get UNIQUE photos for this cluster (deduplicated)
         cursor.execute(
             """
-            SELECT DISTINCT f.image_path, f.id as face_id, f.confidence
+            SELECT f.image_path,
+                   GROUP_CONCAT(f.id) as face_ids,
+                   COUNT(*) as face_count,
+                   MAX(f.confidence) as best_confidence
             FROM faces f
-            JOIN cluster_memberships cm ON f.id = cm.face_id
+            JOIN cluster_membership cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
-            ORDER BY f.confidence DESC
+            GROUP BY f.image_path
+            ORDER BY best_confidence DESC
             LIMIT ? OFFSET ?
             """,
             (int(cluster_id), limit, offset),
@@ -536,14 +541,17 @@ async def get_cluster_photos(
         rows = cursor.fetchall()
 
         photos = []
-        for path, face_id, confidence in rows:
+        for path, face_ids_str, face_count, confidence in rows:
             try:
                 meta = photo_search_engine.db.get_metadata(path)
                 photos.append(
                     {
                         "path": path,
                         "filename": os.path.basename(path),
-                        "face_id": face_id,
+                        "face_ids": [int(fid) for fid in face_ids_str.split(",")]
+                        if face_ids_str
+                        else [],
+                        "face_count": face_count,
                         "confidence": confidence,
                         "metadata": meta or {},
                     }
@@ -553,7 +561,10 @@ async def get_cluster_photos(
                     {
                         "path": path,
                         "filename": os.path.basename(path),
-                        "face_id": face_id,
+                        "face_ids": [int(fid) for fid in face_ids_str.split(",")]
+                        if face_ids_str
+                        else [],
+                        "face_count": face_count,
                         "confidence": confidence,
                         "metadata": {},
                     }
@@ -579,7 +590,7 @@ async def get_unidentified_clusters(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         # Get clusters without labels
@@ -587,7 +598,7 @@ async def get_unidentified_clusters(
             """
             SELECT c.id, c.label, COUNT(cm.face_id) as face_count
             FROM clusters c
-            LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+            LEFT JOIN cluster_membership cm ON c.id = cm.cluster_id
             WHERE c.label IS NULL OR c.label = '' OR c.label LIKE 'Person %'
             GROUP BY c.id
             ORDER BY face_count DESC
@@ -604,7 +615,7 @@ async def get_unidentified_clusters(
                 """
                 SELECT f.id, f.image_path
                 FROM faces f
-                JOIN cluster_memberships cm ON f.id = cm.face_id
+                JOIN cluster_membership cm ON f.id = cm.face_id
                 WHERE cm.cluster_id = ?
                 LIMIT 4
                 """,
@@ -641,17 +652,17 @@ async def get_singleton_clusters(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         cursor.execute(
             """
             SELECT c.id, c.label, f.id as face_id, f.image_path, f.confidence
             FROM clusters c
-            JOIN cluster_memberships cm ON c.id = cm.cluster_id
+            JOIN cluster_membership cm ON c.id = cm.cluster_id
             JOIN faces f ON cm.face_id = f.id
             WHERE c.id IN (
-                SELECT cluster_id FROM cluster_memberships
+                SELECT cluster_id FROM cluster_membership
                 GROUP BY cluster_id HAVING COUNT(*) = 1
             )
             ORDER BY f.confidence DESC
@@ -696,14 +707,14 @@ async def get_low_confidence_faces(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         cursor.execute(
             """
             SELECT f.id, f.image_path, f.confidence, cm.cluster_id, c.label
             FROM faces f
-            LEFT JOIN cluster_memberships cm ON f.id = cm.face_id
+            LEFT JOIN cluster_membership cm ON f.id = cm.face_id
             LEFT JOIN clusters c ON cm.cluster_id = c.id
             WHERE f.confidence < ?
             ORDER BY f.confidence ASC
@@ -749,15 +760,15 @@ async def assign_face_to_cluster(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         # Remove existing cluster membership if any
-        cursor.execute("DELETE FROM cluster_memberships WHERE face_id = ?", (face_id,))
+        cursor.execute("DELETE FROM cluster_membership WHERE face_id = ?", (face_id,))
 
         # Add to new cluster
         cursor.execute(
-            "INSERT INTO cluster_memberships (face_id, cluster_id) VALUES (?, ?)",
+            "INSERT INTO cluster_membership (face_id, cluster_id) VALUES (?, ?)",
             (face_id, int(cluster_id)),
         )
         db.conn.commit()
@@ -783,7 +794,7 @@ async def create_person_from_face(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         # Create new cluster
@@ -794,11 +805,11 @@ async def create_person_from_face(
         cluster_id = cursor.lastrowid
 
         # Remove existing membership if any
-        cursor.execute("DELETE FROM cluster_memberships WHERE face_id = ?", (face_id,))
+        cursor.execute("DELETE FROM cluster_membership WHERE face_id = ?", (face_id,))
 
         # Assign face to new cluster
         cursor.execute(
-            "INSERT INTO cluster_memberships (face_id, cluster_id) VALUES (?, ?)",
+            "INSERT INTO cluster_membership (face_id, cluster_id) VALUES (?, ?)",
             (face_id, cluster_id),
         )
         db.conn.commit()
@@ -828,7 +839,7 @@ async def get_photos_with_faces(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         cursor.execute(
@@ -865,11 +876,10 @@ async def get_face_crop(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
-
         cursor.execute(
-            "SELECT image_path, bbox_x, bbox_y, bbox_w, bbox_h FROM faces WHERE id = ?",
+            "SELECT image_path, bounding_box FROM faces WHERE id = ?",
             (face_id,),
         )
         row = cursor.fetchone()
@@ -877,7 +887,16 @@ async def get_face_crop(
         if not row:
             raise HTTPException(status_code=404, detail="Face not found")
 
-        image_path, x, y, w, h = row
+        image_path = row[0]
+        bbox_raw = row[1]
+
+        try:
+            bbox = json.loads(bbox_raw) if isinstance(bbox_raw, str) else bbox_raw
+            x, y, w, h = bbox
+        except Exception:
+            raise HTTPException(
+                status_code=500, detail="Invalid face bounding box data"
+            )
 
         if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="Image file not found")
@@ -921,7 +940,7 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
                 "message": "Face recognition not available",
             }
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         # Total faces
@@ -952,7 +971,7 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
         cursor.execute(
             """
             SELECT COUNT(*) FROM (
-                SELECT cluster_id FROM cluster_memberships
+                SELECT cluster_id FROM cluster_membership
                 GROUP BY cluster_id HAVING COUNT(*) = 1
             )
             """
@@ -962,13 +981,13 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
         return {
             "status": "available",
             "models_loaded": face_clusterer.models_loaded,
-            "total_faces": total_faces,
-            "total_clusters": total_clusters,
-            "labeled_clusters": labeled_clusters,
-            "unlabeled_clusters": unlabeled_clusters,
-            "photos_with_faces": photos_with_faces,
-            "avg_faces_per_photo": round(avg_faces, 2),
+            # Field names matching frontend FaceStats interface
+            "total_photos": photos_with_faces,
+            "faces_detected": total_faces,
+            "clusters_found": total_clusters,
+            "unidentified_faces": unlabeled_clusters,
             "singletons": singletons,
+            "low_confidence": 0,  # TODO: Implement low confidence count
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -993,7 +1012,7 @@ async def search_people(
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         if query:
@@ -1001,7 +1020,7 @@ async def search_people(
                 """
                 SELECT c.id, c.label, COUNT(cm.face_id) as face_count
                 FROM clusters c
-                LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+                LEFT JOIN cluster_membership cm ON c.id = cm.cluster_id
                 WHERE c.label LIKE ?
                 GROUP BY c.id
                 ORDER BY face_count DESC
@@ -1014,7 +1033,7 @@ async def search_people(
                 """
                 SELECT c.id, c.label, COUNT(cm.face_id) as face_count
                 FROM clusters c
-                LEFT JOIN cluster_memberships cm ON c.id = cm.cluster_id
+                LEFT JOIN cluster_membership cm ON c.id = cm.cluster_id
                 WHERE c.label IS NOT NULL AND c.label != '' AND c.label NOT LIKE 'Person %'
                 GROUP BY c.id
                 ORDER BY face_count DESC
@@ -1048,7 +1067,7 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
                 status_code=503, detail="Face recognition not available"
             )
 
-        db = get_face_clustering_db()
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
         # Get cluster info
@@ -1061,7 +1080,7 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
 
         # Get face count
         cursor.execute(
-            "SELECT COUNT(*) FROM cluster_memberships WHERE cluster_id = ?",
+            "SELECT COUNT(*) FROM cluster_membership WHERE cluster_id = ?",
             (int(person_id),),
         )
         face_count = cursor.fetchone()[0]
@@ -1071,7 +1090,7 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
             """
             SELECT COUNT(DISTINCT f.image_path)
             FROM faces f
-            JOIN cluster_memberships cm ON f.id = cm.face_id
+            JOIN cluster_membership cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
             """,
             (int(person_id),),
@@ -1083,7 +1102,7 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
             """
             SELECT f.image_path
             FROM faces f
-            JOIN cluster_memberships cm ON f.id = cm.face_id
+            JOIN cluster_membership cm ON f.id = cm.face_id
             WHERE cm.cluster_id = ?
             """,
             (int(person_id),),
@@ -1104,11 +1123,42 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
             dates.sort()
             date_range = {"earliest": dates[0], "latest": dates[-1]}
 
+        first_seen = None
+        last_seen = None
+        if date_range:
+            first_seen = date_range["earliest"]
+            last_seen = date_range["latest"]
+        elif paths:
+            # Fallback to file creation dates (birthtime on macOS)
+            import os
+            from datetime import datetime
+
+            file_dates = []
+            for path in paths:
+                try:
+                    stat_info = os.stat(path)
+                    # Use birthtime (creation) if available, else ctime
+                    if hasattr(stat_info, "st_birthtime"):
+                        ctime = stat_info.st_birthtime
+                    else:
+                        ctime = stat_info.st_ctime
+                    file_dates.append(
+                        datetime.fromtimestamp(ctime).strftime("%Y-%m-%d")
+                    )
+                except Exception:
+                    pass
+            if file_dates:
+                file_dates.sort()
+                first_seen = file_dates[0]
+                last_seen = file_dates[-1]
+
         return {
             "person_id": person_id,
             "name": label,
             "face_count": face_count,
             "photo_count": photo_count,
+            "first_seen": first_seen,
+            "last_seen": last_seen,
             "date_range": date_range,
         }
     except HTTPException:
@@ -1801,7 +1851,7 @@ async def dismiss_merge_suggestion(
 # ===================================================================
 
 
-@router.get("/review-queue")
+@router.get("/api/faces/review-queue")
 async def get_review_queue(
     state: AppState = Depends(get_state),
     limit: int = 20,
@@ -1823,7 +1873,7 @@ async def get_review_queue(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/review-queue/count")
+@router.get("/api/faces/review-queue/count")
 async def get_review_queue_count(state: AppState = Depends(get_state)):
     """Get count of pending items in review queue."""
     try:
@@ -1839,7 +1889,7 @@ class ResolveRequest(BaseModel):
     cluster_id: Optional[str] = None
 
 
-@router.post("/review-queue/{detection_id}/resolve")
+@router.post("/api/faces/review-queue/{detection_id}/resolve")
 async def resolve_review_item(
     detection_id: str,
     request: ResolveRequest,

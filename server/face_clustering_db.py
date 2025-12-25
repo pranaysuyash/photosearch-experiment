@@ -64,6 +64,12 @@ class FaceClusteringDB:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._init_db()
+        # Provide a convenience connection for legacy callers (routers) that
+        # expect a `.conn` attribute similar to the older FaceClusterer API.
+        # Callers doing ad-hoc queries should still prefer context-managed
+        # connections, but exposing this keeps existing endpoints working.
+        self.conn = sqlite3.connect(str(self.db_path))
+        self.conn.row_factory = sqlite3.Row
 
     @staticmethod
     def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -349,7 +355,7 @@ class FaceClusteringDB:
                        ppa.assignment_state, ppa.created_at,
                        fc.label as cluster_label
                 FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                JOIN face_clusters fc ON ppa.cluster_id = fc.id
                 WHERE ppa.photo_path = ?
                 ORDER BY ppa.confidence DESC
                 """,
@@ -817,7 +823,7 @@ class FaceClusteringDB:
                     SELECT ppa.detection_id, ppa.confidence,
                            fd.quality_score, fd.embedding
                     FROM photo_person_associations ppa
-                    JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+                    JOIN face_detections fd ON ppa.detection_id = fd.id
                     WHERE ppa.cluster_id = ?
                 """,
                     (cluster_id,),
@@ -1740,7 +1746,7 @@ class FaceClusteringDB:
             """
             SELECT fd.embedding
             FROM photo_person_associations ppa
-            JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+            JOIN face_detections fd ON ppa.detection_id = fd.id
             WHERE ppa.cluster_id = ?
             AND (ppa.assignment_state = 'user_confirmed' OR ppa.assignment_state IS NULL)
             AND fd.embedding IS NOT NULL
@@ -1755,7 +1761,7 @@ class FaceClusteringDB:
                 """
                 SELECT fd.embedding
                 FROM photo_person_associations ppa
-                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+                JOIN face_detections fd ON ppa.detection_id = fd.id
                 WHERE ppa.cluster_id = ?
                 AND fd.embedding IS NOT NULL
             """,
@@ -1832,12 +1838,12 @@ class FaceClusteringDB:
         rows = conn.execute(
             """
             SELECT
-                fd.detection_id,
+                fd.id,
                 fd.quality_score,
                 ppa.assignment_state,
                 ppa.created_at
             FROM photo_person_associations ppa
-            JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+            JOIN face_detections fd ON ppa.detection_id = fd.id
             WHERE ppa.cluster_id = ?
             AND (fd.quality_score IS NULL OR fd.quality_score >= 0.3)
             ORDER BY ppa.created_at DESC
@@ -1917,8 +1923,8 @@ class FaceClusteringDB:
                     fd.quality_score
                 FROM face_clusters fc
                 LEFT JOIN face_detections fd
-                    ON fc.representative_detection_id = fd.detection_id
-                WHERE fc.cluster_id = ?
+                    ON fc.representative_detection_id = fd.id
+                WHERE fc.id = ?
             """,
                 (cluster_id,),
             ).fetchone()
@@ -1967,7 +1973,7 @@ class FaceClusteringDB:
             clusters = conn.execute(
                 """
                 SELECT
-                    cluster_id,
+                    id AS cluster_id,
                     label,
                     prototype_embedding,
                     representative_detection_id
@@ -2014,9 +2020,9 @@ class FaceClusteringDB:
             rep_info = {}
             for row in conn.execute(
                 """
-                SELECT fc.cluster_id, fd.photo_path, fd.detection_id
+                SELECT fc.id AS cluster_id, fd.photo_path, fd.id AS detection_id
                 FROM face_clusters fc
-                JOIN face_detections fd ON fc.representative_detection_id = fd.detection_id
+                JOIN face_detections fd ON fc.representative_detection_id = fd.id
                 WHERE fc.representative_detection_id IS NOT NULL
             """
             ).fetchall():
@@ -2154,7 +2160,7 @@ class FaceClusteringDB:
                 """
                 SELECT indexing_disabled, indexing_disabled_at, indexing_disabled_reason
                 FROM face_clusters
-                WHERE cluster_id = ?
+                WHERE id = ?
             """,
                 (cluster_id,),
             ).fetchone()
@@ -2227,9 +2233,9 @@ class FaceClusteringDB:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
-                SELECT fd.detection_id, fd.photo_path, fd.bounding_box, fd.quality_score, fd.created_at
+                SELECT fd.id, fd.photo_path, fd.bounding_box, fd.quality_score, fd.created_at
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
                 WHERE ppa.detection_id IS NULL
                 ORDER BY fd.created_at DESC
                 LIMIT ? OFFSET ?
@@ -2245,7 +2251,7 @@ class FaceClusteringDB:
             return conn.execute("""
                 SELECT COUNT(*)
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
                 WHERE ppa.detection_id IS NULL
             """).fetchone()[0]
 
@@ -2315,7 +2321,7 @@ class FaceClusteringDB:
                     ppa.confidence,
                     ppa.assignment_state
                 FROM photo_person_associations ppa
-                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+                JOIN face_detections fd ON ppa.detection_id = fd.id
                 WHERE ppa.cluster_id = ?
             """,
                 (cluster_id,),
@@ -2414,8 +2420,8 @@ class FaceClusteringDB:
                     fc.label as cluster_label,
                     fd.quality_score
                 FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
-                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+                JOIN face_clusters fc ON ppa.cluster_id = fc.id
+                JOIN face_detections fd ON ppa.detection_id = fd.id
                 WHERE ppa.confidence >= ? AND ppa.confidence <= ?
                 AND ppa.assignment_state = 'auto'
                 ORDER BY ppa.confidence ASC
@@ -2734,8 +2740,8 @@ class FaceClusteringDB:
                 """
                 SELECT fd.embedding, fd.photo_path, ppa.cluster_id
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
-                WHERE fd.detection_id = ?
+                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
+                WHERE fd.id = ?
             """,
                 (detection_id,),
             ).fetchone()
@@ -2752,16 +2758,16 @@ class FaceClusteringDB:
             rows = conn.execute(
                 """
                 SELECT
-                    fd.detection_id,
+                    fd.id,
                     fd.photo_path,
                     fd.embedding,
                     fd.quality_score,
                     ppa.cluster_id,
                     fc.label as cluster_label
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
-                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
-                WHERE fd.detection_id != ? AND fd.embedding IS NOT NULL
+                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.id
+                WHERE fd.id != ? AND fd.embedding IS NOT NULL
             """,
                 (detection_id,),
             ).fetchall()
@@ -2903,7 +2909,7 @@ class FaceClusteringDB:
                     """
                     SELECT ppa.cluster_id, fc.label
                     FROM photo_person_associations ppa
-                    JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                    JOIN face_clusters fc ON ppa.cluster_id = fc.id
                     WHERE ppa.photo_path = ?
                 """,
                     (path,),
@@ -2949,8 +2955,8 @@ class FaceClusteringDB:
                     fd.bounding_box,
                     fd.quality_score
                 FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
-                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
+                JOIN face_clusters fc ON ppa.cluster_id = fc.id
+                JOIN face_detections fd ON ppa.detection_id = fd.id
                 WHERE ppa.photo_path = ?
             """,
                 (photo_path,),
@@ -3081,13 +3087,16 @@ class FaceClusteringDB:
                     rq.status,
                     rq.created_at,
                     fd.photo_path,
-                    fd.bounding_box,
+                    fd.bbox_x,
+                    fd.bbox_y,
+                    fd.bbox_width,
+                    fd.bbox_height,
                     fd.quality_score,
                     fc.label as candidate_label,
                     fc.face_count as candidate_face_count
                 FROM face_review_queue rq
-                JOIN face_detections fd ON rq.detection_id = fd.detection_id
-                LEFT JOIN face_clusters fc ON rq.candidate_cluster_id = fc.cluster_id
+                JOIN face_detections fd ON rq.detection_id = fd.id
+                LEFT JOIN face_clusters fc ON rq.candidate_cluster_id = fc.id
                 WHERE rq.status = 'pending'
                 ORDER BY {order_by}
                 LIMIT ? OFFSET ?
@@ -3105,9 +3114,14 @@ class FaceClusteringDB:
                     "status": row["status"],
                     "created_at": row["created_at"],
                     "photo_path": row["photo_path"],
-                    "bounding_box": json.loads(row["bounding_box"])
-                    if row["bounding_box"]
-                    else {},
+                    "bounding_box": [
+                        row["bbox_x"],
+                        row["bbox_y"],
+                        row["bbox_width"],
+                        row["bbox_height"],
+                    ]
+                    if row["bbox_x"] is not None
+                    else [],
                     "quality_score": row["quality_score"],
                     "candidate_label": row["candidate_label"],
                     "candidate_face_count": row["candidate_face_count"],
@@ -3407,6 +3421,11 @@ class FaceClusteringDB:
             )
 
             # 2. Delete everything
+            # Delete from cluster_membership first (foreign key constraint)
+            conn.execute(
+                "DELETE FROM cluster_membership WHERE cluster_id = ?",
+                (int(cluster_id),),
+            )
             conn.execute(
                 "DELETE FROM photo_person_associations WHERE cluster_id = ?",
                 (cluster_id,),
@@ -3421,6 +3440,8 @@ class FaceClusteringDB:
             conn.execute(
                 "DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
             )
+            # Also delete from main clusters table
+            conn.execute("DELETE FROM clusters WHERE id = ?", (int(cluster_id),))
 
             logger.info(f"Deleted person {cluster_id}")
             return True

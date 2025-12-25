@@ -112,17 +112,15 @@ export default function PersonDetail() {
     setError(null);
     try {
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}/photos`
       );
       const data = await response.json();
-      setPhotos(data.results || []);
+      setPhotos(data.photos || []);
 
       // Also fetch cluster info
       const clustersRes = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters`
       );
       const clustersData = await clustersRes.json();
@@ -437,11 +435,10 @@ export default function PersonDetail() {
               <button
                 onClick={handleToggleIndexing}
                 disabled={indexingLoading}
-                className={`btn-glass px-3 py-2 flex items-center gap-1 ${
-                  indexingEnabled
-                    ? 'btn-glass--muted'
-                    : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
-                }`}
+                className={`btn-glass px-3 py-2 flex items-center gap-1 ${indexingEnabled
+                  ? 'btn-glass--muted'
+                  : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                  }`}
                 title={
                   indexingEnabled
                     ? 'Auto-assignment enabled'
@@ -512,9 +509,8 @@ export default function PersonDetail() {
                     setSelectedFaces(new Set());
                   }
                 }}
-                className={`btn-glass px-3 py-2 flex items-center gap-1 ${
-                  selectionMode ? 'btn-glass--primary' : 'btn-glass--muted'
-                }`}
+                className={`btn-glass px-3 py-2 flex items-center gap-1 ${selectionMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                  }`}
               >
                 <Move size={16} />
                 <span>
@@ -712,16 +708,6 @@ export default function PersonDetail() {
             </div>
           )}
 
-          {!analyticsError && analytics && (
-            <details className='mt-4'>
-              <summary className='text-sm text-muted-foreground cursor-pointer select-none'>
-                Raw analytics JSON
-              </summary>
-              <pre className='mt-2 text-xs overflow-auto bg-black/20 rounded-lg p-3'>
-                {JSON.stringify(analytics, null, 2)}
-              </pre>
-            </details>
-          )}
         </div>
 
         {/* Loading */}
@@ -761,13 +747,11 @@ export default function PersonDetail() {
               return (
                 <div
                   key={`${photo.path}-${index}`}
-                  className={`${
-                    glass.surface
-                  } rounded-xl overflow-hidden border transition-all relative group ${
-                    isSelected
+                  className={`${glass.surface
+                    } rounded-xl overflow-hidden border transition-all relative group ${isSelected
                       ? 'border-blue-400 ring-2 ring-blue-400/50'
                       : 'border-white/10 hover:border-white/20'
-                  } ${selectionMode ? 'cursor-pointer' : ''}`}
+                    } ${selectionMode ? 'cursor-pointer' : ''}`}
                   onClick={() => {
                     if (selectionMode) {
                       toggleFaceSelection(photo);
@@ -804,11 +788,10 @@ export default function PersonDetail() {
                     {/* Selection checkbox */}
                     {selectionMode && (
                       <div
-                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                          isSelected
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'bg-black/40 border-white/50'
-                        }`}
+                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'bg-black/40 border-white/50'
+                          }`}
                       >
                         {isSelected && (
                           <Check size={14} className='text-white' />

@@ -403,7 +403,7 @@ async def search_photos(
         # 1. Semantic Search
         if mode == "semantic":
             results_response = await search_semantic(
-                query, limit * 2, 0
+                state=state, query=query, limit=limit * 2, offset=0
             )  # Get more for filtering
             results = results_response.get("results", [])
 
@@ -719,7 +719,9 @@ async def search_photos(
             # B. Get Semantic Results (Top N = limit + offset)
             # We need deep fetch to ensure correct global ranking after merge
             semantic_limit = limit + offset
-            semantic_response = await search_semantic(query, semantic_limit, offset=0)
+            semantic_response = await search_semantic(
+                state=state, query=query, limit=semantic_limit, offset=0
+            )
             semantic_results = semantic_response["results"]
 
             # C. Normalize semantic scores

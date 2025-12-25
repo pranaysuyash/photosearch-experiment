@@ -8,8 +8,11 @@ from src.tauri_integration import TauriIntegration
 from src.video_analysis import VideoAnalyzer
 
 
-# Initialize Face Clustering
-face_clusterer = FaceClusterer()
+# Initialize Face Clustering with explicit paths
+face_clusterer = FaceClusterer(
+    db_path=str(settings.FACE_CLUSTERS_DB_PATH),
+    models_dir=str(settings.BASE_DIR / "models"),
+)
 
 # Initialize OCR Search
 ocr_search = OCRSearch()
