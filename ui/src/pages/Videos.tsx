@@ -18,8 +18,9 @@ export default function VideosPage() {
   const previousTypeFilterRef = useRef(typeFilter);
 
   useEffect(() => {
+    const previous = previousTypeFilterRef.current;
     setTypeFilter('videos');
-    return () => setTypeFilter(previousTypeFilterRef.current);
+    return () => setTypeFilter(previous);
   }, [setTypeFilter]);
 
   return (

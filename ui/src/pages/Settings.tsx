@@ -20,11 +20,25 @@ const Settings = () => {
     return localGetItem('lm:minimalMode') === '1';
   });
 
+  const [developerMode, setDeveloperMode] = useState(() => {
+    if (!isLocalStorageAvailable()) return false;
+    return localGetItem('lm:developerMode') === '1';
+  });
+
   const toggleFocusMode = () => {
     const next = !focusMode;
     setFocusMode(next);
     if (isLocalStorageAvailable()) {
       localSetItem('lm:minimalMode', next ? '1' : '0');
+      window.dispatchEvent(new Event('lm:prefChange'));
+    }
+  };
+
+  const toggleDeveloperMode = () => {
+    const next = !developerMode;
+    setDeveloperMode(next);
+    if (isLocalStorageAvailable()) {
+      localSetItem('lm:developerMode', next ? '1' : '0');
       window.dispatchEvent(new Event('lm:prefChange'));
     }
   };
@@ -61,6 +75,25 @@ const Settings = () => {
                 } text-xs px-3 py-2`}
             >
               {focusMode ? 'On' : 'Off'}
+            </button>
+          </div>
+
+          <div className='flex items-center justify-between gap-4 glass-surface rounded-xl px-4 py-3'>
+            <div className='min-w-0'>
+              <div className='text-sm font-semibold text-foreground'>
+                Developer Mode
+              </div>
+              <div className='text-xs text-muted-foreground'>
+                Show technical output like raw JSON data, debug info, and API responses.
+              </div>
+            </div>
+
+            <button
+              onClick={toggleDeveloperMode}
+              className={`btn-glass ${developerMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                } text-xs px-3 py-2`}
+            >
+              {developerMode ? 'On' : 'Off'}
             </button>
           </div>
         </section>

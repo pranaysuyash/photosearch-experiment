@@ -147,6 +147,7 @@ class FaceClusteringDB:
                     cluster_id TEXT NOT NULL,
                     detection_id TEXT NOT NULL,
                     confidence REAL NOT NULL,
+                    assignment_state TEXT DEFAULT 'auto',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (photo_path, cluster_id, detection_id),
                     FOREIGN KEY (detection_id) REFERENCES face_detections(detection_id),
@@ -163,6 +164,21 @@ class FaceClusteringDB:
             )
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_photo_person_cluster ON photo_person_associations(cluster_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_photo_person_photo_cluster ON photo_person_associations(photo_path, cluster_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_photo_person_assignment_state ON photo_person_associations(assignment_state)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)"
             )
 
             # Lightweight migrations for older DBs
@@ -351,11 +367,11 @@ class FaceClusteringDB:
 
             rows = conn.execute(
                 """
-                SELECT ppa.photo_path, ppa.cluster_id, ppa.detection_id, ppa.confidence,
-                       ppa.assignment_state, ppa.created_at,
-                       fc.label as cluster_label
-                FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.id
+                  SELECT ppa.photo_path, ppa.cluster_id, ppa.detection_id, ppa.confidence,
+                      ppa.assignment_state, ppa.created_at,
+                      fc.label as cluster_label
+                  FROM photo_person_associations ppa
+                  JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
                 WHERE ppa.photo_path = ?
                 ORDER BY ppa.confidence DESC
                 """,
@@ -820,10 +836,10 @@ class FaceClusteringDB:
             with sqlite3.connect(str(self.db_path)) as conn:
                 rows = conn.execute(
                     """
-                    SELECT ppa.detection_id, ppa.confidence,
-                           fd.quality_score, fd.embedding
-                    FROM photo_person_associations ppa
-                    JOIN face_detections fd ON ppa.detection_id = fd.id
+                          SELECT ppa.detection_id, ppa.confidence,
+                              fd.quality_score, fd.embedding
+                          FROM photo_person_associations ppa
+                          JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                     WHERE ppa.cluster_id = ?
                 """,
                     (cluster_id,),
@@ -1189,6 +1205,32 @@ class FaceClusteringDB:
             except Exception as e:
                 logger.error(f"Failed to undo {op_type}: {e}")
                 return {"operation_type": op_type, "undone": False, "error": str(e)}
+
+    def get_undo_status(self) -> dict:
+        """Return whether there is an outstanding operation that can be undone.
+
+        Provides lightweight metadata for UI polling without mutating state.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                """
+                SELECT id, operation_type, performed_at
+                FROM person_operations_log
+                WHERE undone = 0
+                ORDER BY performed_at DESC
+                LIMIT 1
+                """
+            ).fetchone()
+
+            if not row:
+                return {"can_undo": False}
+
+            return {
+                "can_undo": True,
+                "operation_type": row["operation_type"],
+                "performed_at": row["performed_at"],
+            }
 
     def _undo_review_confirm(self, conn: sqlite3.Connection, op_data: dict):
         """Undo a review confirm - reset association and queue status."""
@@ -1746,7 +1788,7 @@ class FaceClusteringDB:
             """
             SELECT fd.embedding
             FROM photo_person_associations ppa
-            JOIN face_detections fd ON ppa.detection_id = fd.id
+            JOIN face_detections fd ON ppa.detection_id = fd.detection_id
             WHERE ppa.cluster_id = ?
             AND (ppa.assignment_state = 'user_confirmed' OR ppa.assignment_state IS NULL)
             AND fd.embedding IS NOT NULL
@@ -1761,7 +1803,7 @@ class FaceClusteringDB:
                 """
                 SELECT fd.embedding
                 FROM photo_person_associations ppa
-                JOIN face_detections fd ON ppa.detection_id = fd.id
+                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                 WHERE ppa.cluster_id = ?
                 AND fd.embedding IS NOT NULL
             """,
@@ -1838,12 +1880,12 @@ class FaceClusteringDB:
         rows = conn.execute(
             """
             SELECT
-                fd.id,
+                fd.detection_id,
                 fd.quality_score,
                 ppa.assignment_state,
                 ppa.created_at
             FROM photo_person_associations ppa
-            JOIN face_detections fd ON ppa.detection_id = fd.id
+            JOIN face_detections fd ON ppa.detection_id = fd.detection_id
             WHERE ppa.cluster_id = ?
             AND (fd.quality_score IS NULL OR fd.quality_score >= 0.3)
             ORDER BY ppa.created_at DESC
@@ -1923,8 +1965,8 @@ class FaceClusteringDB:
                     fd.quality_score
                 FROM face_clusters fc
                 LEFT JOIN face_detections fd
-                    ON fc.representative_detection_id = fd.id
-                WHERE fc.id = ?
+                    ON fc.representative_detection_id = fd.detection_id
+                WHERE fc.cluster_id = ?
             """,
                 (cluster_id,),
             ).fetchone()
@@ -1973,7 +2015,7 @@ class FaceClusteringDB:
             clusters = conn.execute(
                 """
                 SELECT
-                    id AS cluster_id,
+                    cluster_id,
                     label,
                     prototype_embedding,
                     representative_detection_id
@@ -2020,9 +2062,9 @@ class FaceClusteringDB:
             rep_info = {}
             for row in conn.execute(
                 """
-                SELECT fc.id AS cluster_id, fd.photo_path, fd.id AS detection_id
+                SELECT fc.cluster_id, fd.photo_path, fd.detection_id
                 FROM face_clusters fc
-                JOIN face_detections fd ON fc.representative_detection_id = fd.id
+                JOIN face_detections fd ON fc.representative_detection_id = fd.detection_id
                 WHERE fc.representative_detection_id IS NOT NULL
             """
             ).fetchall():
@@ -2233,9 +2275,9 @@ class FaceClusteringDB:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
-                SELECT fd.id, fd.photo_path, fd.bounding_box, fd.quality_score, fd.created_at
+                SELECT fd.detection_id, fd.photo_path, fd.bounding_box, fd.quality_score, fd.created_at
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 WHERE ppa.detection_id IS NULL
                 ORDER BY fd.created_at DESC
                 LIMIT ? OFFSET ?
@@ -2251,7 +2293,7 @@ class FaceClusteringDB:
             return conn.execute("""
                 SELECT COUNT(*)
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 WHERE ppa.detection_id IS NULL
             """).fetchone()[0]
 
@@ -2321,7 +2363,7 @@ class FaceClusteringDB:
                     ppa.confidence,
                     ppa.assignment_state
                 FROM photo_person_associations ppa
-                JOIN face_detections fd ON ppa.detection_id = fd.id
+                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                 WHERE ppa.cluster_id = ?
             """,
                 (cluster_id,),
@@ -2420,8 +2462,8 @@ class FaceClusteringDB:
                     fc.label as cluster_label,
                     fd.quality_score
                 FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.id
-                JOIN face_detections fd ON ppa.detection_id = fd.id
+                JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                 WHERE ppa.confidence >= ? AND ppa.confidence <= ?
                 AND ppa.assignment_state = 'auto'
                 ORDER BY ppa.confidence ASC
@@ -2492,20 +2534,34 @@ class FaceClusteringDB:
     # Phase 3: Speed & Scale - Prototype-based Assignment
     # ===================================================================
 
-    def build_embedding_index(self, backend: str = "linear"):
+    def build_embedding_index(self, backend: str = "auto"):
         """
         Build an embedding index from all cluster prototypes.
 
         Args:
-            backend: 'linear' (default) or 'faiss' (future)
+            backend: 'auto' (default), 'linear', or 'faiss'
+                    'auto' chooses based on cluster count (FAISS for 1000+)
 
         Returns:
             EmbeddingIndex populated with all cluster prototypes
         """
         from server.face_embedding_index import create_embedding_index
 
-        index = create_embedding_index(backend)
+        # Count clusters to determine optimal backend
+        with sqlite3.connect(str(self.db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM face_clusters
+                WHERE hidden = 0
+                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                AND prototype_embedding IS NOT NULL
+            """)
+            cluster_count = cursor.fetchone()[0]
 
+        # Create index with appropriate backend
+        index = create_embedding_index(backend, num_prototypes_hint=cluster_count)
+
+        # Load all prototypes efficiently
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
@@ -2517,18 +2573,28 @@ class FaceClusteringDB:
                 AND prototype_embedding IS NOT NULL
             """).fetchall()
 
+            # Prepare for bulk loading if supported
+            prototypes = {}
             for row in rows:
                 try:
                     embedding = np.frombuffer(
                         row["prototype_embedding"], dtype=np.float32
                     )
-                    index.add_prototype(row["cluster_id"], embedding, row["label"])
+                    prototypes[row["cluster_id"]] = (embedding, row["label"])
                 except Exception as e:
                     logger.warning(
                         f"Failed to load prototype for {row['cluster_id']}: {e}"
                     )
 
-            logger.info(f"Built embedding index with {index.count()} prototypes")
+            # Use bulk loading if available (FAISS), otherwise add individually
+            if hasattr(index, 'bulk_load'):
+                index.bulk_load(prototypes)
+            else:
+                for cluster_id, (embedding, label) in prototypes.items():
+                    index.add_prototype(cluster_id, embedding, label)
+
+            backend_type = getattr(index, 'get_stats', lambda: {}).get('index_type', 'unknown')
+            logger.info(f"Built {backend_type} embedding index with {index.count()} prototypes")
 
         return index
 
@@ -2740,8 +2806,8 @@ class FaceClusteringDB:
                 """
                 SELECT fd.embedding, fd.photo_path, ppa.cluster_id
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
-                WHERE fd.id = ?
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                WHERE fd.detection_id = ?
             """,
                 (detection_id,),
             ).fetchone()
@@ -2758,16 +2824,16 @@ class FaceClusteringDB:
             rows = conn.execute(
                 """
                 SELECT
-                    fd.id,
+                    fd.detection_id,
                     fd.photo_path,
                     fd.embedding,
                     fd.quality_score,
                     ppa.cluster_id,
                     fc.label as cluster_label
                 FROM face_detections fd
-                LEFT JOIN photo_person_associations ppa ON fd.id = ppa.detection_id
-                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.id
-                WHERE fd.id != ? AND fd.embedding IS NOT NULL
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE fd.detection_id != ? AND fd.embedding IS NOT NULL
             """,
                 (detection_id,),
             ).fetchall()
@@ -2909,7 +2975,7 @@ class FaceClusteringDB:
                     """
                     SELECT ppa.cluster_id, fc.label
                     FROM photo_person_associations ppa
-                    JOIN face_clusters fc ON ppa.cluster_id = fc.id
+                    JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
                     WHERE ppa.photo_path = ?
                 """,
                     (path,),
@@ -2955,8 +3021,8 @@ class FaceClusteringDB:
                     fd.bounding_box,
                     fd.quality_score
                 FROM photo_person_associations ppa
-                JOIN face_clusters fc ON ppa.cluster_id = fc.id
-                JOIN face_detections fd ON ppa.detection_id = fd.id
+                JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                 WHERE ppa.photo_path = ?
             """,
                 (photo_path,),
@@ -3087,16 +3153,13 @@ class FaceClusteringDB:
                     rq.status,
                     rq.created_at,
                     fd.photo_path,
-                    fd.bbox_x,
-                    fd.bbox_y,
-                    fd.bbox_width,
-                    fd.bbox_height,
+                    fd.bounding_box,
                     fd.quality_score,
                     fc.label as candidate_label,
                     fc.face_count as candidate_face_count
                 FROM face_review_queue rq
-                JOIN face_detections fd ON rq.detection_id = fd.id
-                LEFT JOIN face_clusters fc ON rq.candidate_cluster_id = fc.id
+                JOIN face_detections fd ON rq.detection_id = fd.detection_id
+                LEFT JOIN face_clusters fc ON rq.candidate_cluster_id = fc.cluster_id
                 WHERE rq.status = 'pending'
                 ORDER BY {order_by}
                 LIMIT ? OFFSET ?
@@ -3114,14 +3177,9 @@ class FaceClusteringDB:
                     "status": row["status"],
                     "created_at": row["created_at"],
                     "photo_path": row["photo_path"],
-                    "bounding_box": [
-                        row["bbox_x"],
-                        row["bbox_y"],
-                        row["bbox_width"],
-                        row["bbox_height"],
-                    ]
-                    if row["bbox_x"] is not None
-                    else [],
+                    "bounding_box": json.loads(row["bounding_box"])
+                    if row["bounding_box"]
+                    else None,
                     "quality_score": row["quality_score"],
                     "candidate_label": row["candidate_label"],
                     "candidate_face_count": row["candidate_face_count"],
@@ -3421,11 +3479,6 @@ class FaceClusteringDB:
             )
 
             # 2. Delete everything
-            # Delete from cluster_membership first (foreign key constraint)
-            conn.execute(
-                "DELETE FROM cluster_membership WHERE cluster_id = ?",
-                (int(cluster_id),),
-            )
             conn.execute(
                 "DELETE FROM photo_person_associations WHERE cluster_id = ?",
                 (cluster_id,),
@@ -3440,8 +3493,6 @@ class FaceClusteringDB:
             conn.execute(
                 "DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
             )
-            # Also delete from main clusters table
-            conn.execute("DELETE FROM clusters WHERE id = ?", (int(cluster_id),))
 
             logger.info(f"Deleted person {cluster_id}")
             return True

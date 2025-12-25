@@ -168,5 +168,6 @@ FACE_CLUSTERS_DB_PATH = "./data/face_clusters.db"
 ## Performance Notes
 
 - LinearIndex: Suitable for up to ~10K faces
-- FaissIndex: Placeholder for 10K+ faces (not yet implemented)
+- FaissIndex: Implemented for 10K+ faces (auto-selected when available)
 - Prototype-based assignment: O(n) per face where n = number of clusters
+- Database: Composite and state indexes added for common face queries

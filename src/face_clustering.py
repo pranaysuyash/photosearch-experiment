@@ -58,6 +58,7 @@ from src.face_backends import (
     env_preferred_backends,
     load_face_backend,
 )
+from src.insightface_compat import patch_insightface_deprecations
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -67,6 +68,7 @@ try:
     from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
     import cv2
     FACE_LIBRARIES_AVAILABLE = True
+    patch_insightface_deprecations()
 
     # Hardware detection for optimal providers
     try:

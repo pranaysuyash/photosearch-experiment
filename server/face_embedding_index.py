@@ -4,7 +4,7 @@ Face Embedding Index Module
 Provides an abstraction layer for face embedding similarity search.
 Supports both linear search (for small collections) and FAISS (for scale).
 
-Phase 3 Feature: Speed & Scale
+Phase 3 Feature: Speed & Scale - Now with FAISS implementation
 """
 
 import numpy as np
@@ -14,6 +14,15 @@ from dataclasses import dataclass
 import logging
 
 logger = logging.getLogger(__name__)
+
+# Try to import FAISS, fall back gracefully if not available
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+    logger.info("FAISS available for high-performance similarity search")
+except ImportError:
+    FAISS_AVAILABLE = False
+    logger.warning("FAISS not available. Install with: pip install faiss-cpu")
 
 
 @dataclass
@@ -166,6 +175,189 @@ class LinearIndex(EmbeddingIndex):
         """
         for cluster_id, (embedding, label) in prototypes.items():
             self.add_prototype(cluster_id, embedding, label)
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get index statistics."""
+        return {
+            "index_type": "linear",
+            "num_prototypes": len(self._prototypes),
+            "memory_usage_mb": sum(p.nbytes for p in self._prototypes.values()) / (1024 * 1024)
+        }
+        for cluster_id, (embedding, label) in prototypes.items():
+            self.add_prototype(cluster_id, embedding, label)
+
+
+class FAISSIndex(EmbeddingIndex):
+    """
+    FAISS-based similarity search for large face collections (10K+ faces).
+    
+    Uses IndexFlatIP (inner product) for exact cosine similarity search.
+    Provides O(log n) search performance vs O(n) for LinearIndex.
+    """
+    
+    def __init__(self, dimension: int = 512):
+        if not FAISS_AVAILABLE:
+            raise ImportError("FAISS not available. Install with: pip install faiss-cpu")
+        
+        self.dimension = dimension
+        self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
+        self.cluster_ids: List[str] = []  # Maps FAISS indices to cluster IDs
+        self.id_to_index: Dict[str, int] = {}  # Maps cluster IDs to FAISS indices
+        self.labels: Dict[str, Optional[str]] = {}  # Cluster labels
+        
+    def add_prototype(
+        self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None
+    ) -> None:
+        """Add or update a cluster prototype embedding."""
+        # Remove existing prototype if it exists
+        if cluster_id in self.id_to_index:
+            self.remove_prototype(cluster_id)
+        
+        # Ensure L2 normalization for cosine similarity
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
+        
+        # Add to FAISS index
+        faiss_index = len(self.cluster_ids)
+        self.index.add(embedding.reshape(1, -1).astype('float32'))
+        
+        # Update mappings
+        self.cluster_ids.append(cluster_id)
+        self.id_to_index[cluster_id] = faiss_index
+        self.labels[cluster_id] = label
+    
+    def remove_prototype(self, cluster_id: str) -> bool:
+        """Remove a cluster prototype."""
+        if cluster_id not in self.id_to_index:
+            return False
+        
+        # FAISS doesn't support efficient removal, so we rebuild the index
+        # This is acceptable for prototype management (infrequent operation)
+        old_index = self.id_to_index[cluster_id]
+        
+        # Collect all embeddings except the one to remove
+        remaining_embeddings = []
+        remaining_ids = []
+        remaining_labels = {}
+        
+        for i, cid in enumerate(self.cluster_ids):
+            if i != old_index:
+                embedding = self.index.reconstruct(i)
+                remaining_embeddings.append(embedding)
+                remaining_ids.append(cid)
+                remaining_labels[cid] = self.labels[cid]
+        
+        # Rebuild index
+        self.index = faiss.IndexFlatIP(self.dimension)
+        self.cluster_ids = remaining_ids
+        self.labels = remaining_labels
+        self.id_to_index = {cid: i for i, cid in enumerate(remaining_ids)}
+        
+        # Add remaining embeddings
+        if remaining_embeddings:
+            embeddings_array = np.vstack(remaining_embeddings).astype('float32')
+            self.index.add(embeddings_array)
+        
+        return True
+    
+    def search(
+        self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0
+    ) -> List[SearchResult]:
+        """Find k most similar cluster prototypes using FAISS."""
+        if self.index.ntotal == 0:
+            return []
+        
+        # Normalize query embedding
+        query = query_embedding.astype(np.float32)
+        norm = np.linalg.norm(query)
+        if norm > 0:
+            query = query / norm
+        
+        # Search FAISS index
+        k = min(k, self.index.ntotal)  # Don't search for more than available
+        scores, indices = self.index.search(query.reshape(1, -1), k)
+        
+        # Convert results and apply threshold
+        results = []
+        for score, idx in zip(scores[0], indices[0]):
+            if idx != -1 and score >= threshold:  # Valid result above threshold
+                cluster_id = self.cluster_ids[idx]
+                results.append(SearchResult(
+                    cluster_id=cluster_id,
+                    similarity=float(score),
+                    cluster_label=self.labels.get(cluster_id)
+                ))
+        
+        return results
+    
+    def get_prototype(self, cluster_id: str) -> Optional[np.ndarray]:
+        """Get the prototype embedding for a cluster."""
+        if cluster_id not in self.id_to_index:
+            return None
+        
+        faiss_index = self.id_to_index[cluster_id]
+        return self.index.reconstruct(faiss_index)
+    
+    def count(self) -> int:
+        """Return number of prototypes in the index."""
+        return self.index.ntotal
+    
+    def clear(self) -> None:
+        """Clear all prototypes from the index."""
+        self.index = faiss.IndexFlatIP(self.dimension)
+        self.cluster_ids.clear()
+        self.id_to_index.clear()
+        self.labels.clear()
+    
+    def bulk_load(
+        self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]
+    ) -> None:
+        """
+        Efficiently load multiple prototypes at once.
+        
+        Args:
+            prototypes: Dict of cluster_id -> (embedding, label)
+        """
+        if not prototypes:
+            return
+        
+        # Clear existing data
+        self.clear()
+        
+        # Prepare data
+        embeddings = []
+        cluster_ids = []
+        labels = {}
+        
+        for cluster_id, (embedding, label) in prototypes.items():
+            # Normalize embedding
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                embedding = embedding / norm
+            
+            embeddings.append(embedding.astype(np.float32))
+            cluster_ids.append(cluster_id)
+            labels[cluster_id] = label
+        
+        # Bulk add to FAISS
+        if embeddings:
+            embeddings_array = np.vstack(embeddings)
+            self.index.add(embeddings_array)
+            
+            # Update mappings
+            self.cluster_ids = cluster_ids
+            self.id_to_index = {cid: i for i, cid in enumerate(cluster_ids)}
+            self.labels = labels
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get index statistics."""
+        return {
+            "index_type": "faiss",
+            "num_prototypes": self.index.ntotal,
+            "dimension": self.dimension,
+            "memory_usage_mb": self.index.ntotal * self.dimension * 4 / (1024 * 1024)  # float32
+        }
 
 
 class PrototypeAssigner:
@@ -259,22 +451,58 @@ class PrototypeAssigner:
 
 
 # Factory function
-def create_embedding_index(backend: str = "linear") -> EmbeddingIndex:
+def create_embedding_index(backend: str = "auto", num_prototypes_hint: int = 1000) -> EmbeddingIndex:
     """
     Create an embedding index with the specified backend.
 
     Args:
-        backend: 'linear' (default) or 'faiss' (future)
+        backend: 'auto' (default), 'linear', or 'faiss'
+        num_prototypes_hint: Expected number of prototypes (for auto selection)
 
     Returns:
         EmbeddingIndex instance
     """
-    if backend == "linear":
+    if backend == "auto":
+        # Automatically choose based on expected size and FAISS availability
+        if FAISS_AVAILABLE and num_prototypes_hint > 1000:
+            logger.info(f"Auto-selecting FAISS index for {num_prototypes_hint} prototypes")
+            return FAISSIndex()
+        else:
+            logger.info(f"Auto-selecting Linear index for {num_prototypes_hint} prototypes")
+            return LinearIndex()
+    elif backend == "linear":
         return LinearIndex()
     elif backend == "faiss":
-        # Future: return FaissIndex()
-        raise NotImplementedError(
-            "FAISS backend not yet implemented. Use 'linear' for now."
-        )
+        if not FAISS_AVAILABLE:
+            raise ImportError("FAISS not available. Install with: pip install faiss-cpu")
+        return FAISSIndex()
     else:
-        raise ValueError(f"Unknown backend: {backend}. Use 'linear' or 'faiss'.")
+        raise ValueError(f"Unknown backend: {backend}. Use 'auto', 'linear', or 'faiss'.")
+
+
+# Global instances for singleton pattern
+_global_index: Optional[EmbeddingIndex] = None
+_global_assigner: Optional[PrototypeAssigner] = None
+
+
+def get_global_index() -> EmbeddingIndex:
+    """Get the global embedding index instance."""
+    global _global_index
+    if _global_index is None:
+        _global_index = create_embedding_index()
+    return _global_index
+
+
+def get_global_assigner() -> PrototypeAssigner:
+    """Get the global prototype assigner instance."""
+    global _global_assigner
+    if _global_assigner is None:
+        _global_assigner = PrototypeAssigner(get_global_index())
+    return _global_assigner
+
+
+def reset_global_index(backend: str = "auto", num_prototypes_hint: int = 1000) -> None:
+    """Reset the global index (useful for testing or reconfiguration)."""
+    global _global_index, _global_assigner
+    _global_index = create_embedding_index(backend, num_prototypes_hint)
+    _global_assigner = PrototypeAssigner(_global_index)

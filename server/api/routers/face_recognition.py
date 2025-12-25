@@ -8,6 +8,8 @@ allow-big-file: This router consolidates all face recognition endpoints
 
 import os
 import json
+import time
+import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -43,6 +45,13 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
 
         # Get face clustering DB for coherence, representative face, and indexing status
         face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        hidden_cluster_ids = set()
+        try:
+            hidden_cluster_ids = {
+                str(c.cluster_id) for c in face_db.get_hidden_clusters()
+            }
+        except Exception:
+            hidden_cluster_ids = set()
 
         # Format for frontend
         formatted_clusters = []
@@ -52,12 +61,14 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                 faces = cluster_details.get("faces", [])
                 cluster_id_str = str(cluster["id"])
 
-                # Check if cluster is potentially mixed (face_count >= 3)
+                # Check cluster coherence / mixed status
                 is_mixed = False
-                if cluster.get("face_count", 0) >= 3:
+                coherence_score = None
+                if cluster.get("face_count", 0) >= 2:
                     try:
                         coherence = face_db.get_cluster_coherence(cluster_id_str)
                         is_mixed = coherence.get("is_mixed_suspected", False)
+                        coherence_score = coherence.get("coherence_score")
                     except Exception:
                         pass
 
@@ -94,8 +105,10 @@ async def get_face_clusters(state: AppState = Depends(get_state)):
                         "images": [f.get("image_path") for f in faces[:6]],
                         "created_at": cluster.get("created_at"),
                         "is_mixed": is_mixed,
+                        "coherence_score": coherence_score,
                         "representative_face": representative_face,
                         "indexing_disabled": indexing_disabled,
+                        "hidden": cluster_id_str in hidden_cluster_ids,
                     }
                 )
 
@@ -525,7 +538,7 @@ async def get_cluster_photos(
         # Get UNIQUE photos for this cluster (deduplicated)
         cursor.execute(
             """
-            SELECT f.image_path,
+            SELECT f.image_path, 
                    GROUP_CONCAT(f.id) as face_ids,
                    COUNT(*) as face_count,
                    MAX(f.confidence) as best_confidence
@@ -548,9 +561,7 @@ async def get_cluster_photos(
                     {
                         "path": path,
                         "filename": os.path.basename(path),
-                        "face_ids": [int(fid) for fid in face_ids_str.split(",")]
-                        if face_ids_str
-                        else [],
+                        "face_ids": [int(fid) for fid in face_ids_str.split(",")] if face_ids_str else [],
                         "face_count": face_count,
                         "confidence": confidence,
                         "metadata": meta or {},
@@ -561,9 +572,7 @@ async def get_cluster_photos(
                     {
                         "path": path,
                         "filename": os.path.basename(path),
-                        "face_ids": [int(fid) for fid in face_ids_str.split(",")]
-                        if face_ids_str
-                        else [],
+                        "face_ids": [int(fid) for fid in face_ids_str.split(",")] if face_ids_str else [],
                         "face_count": face_count,
                         "confidence": confidence,
                         "metadata": {},
@@ -867,15 +876,31 @@ async def get_photos_with_faces(
 async def get_face_crop(
     face_id: int, state: AppState = Depends(get_state), size: int = 150
 ):
-    """Get a cropped face image by face ID."""
+    """Get a cropped face image by face ID with intelligent caching."""
     try:
+        from server.face_crop_cache import get_global_cache
+        from server.face_performance_monitor import get_global_monitor
+        
         face_clusterer = state.face_clusterer
+        cache = get_global_cache()
+        monitor = get_global_monitor()
 
         if not face_clusterer:
             raise HTTPException(
                 status_code=503, detail="Face recognition not available"
             )
 
+        # Check cache first
+        face_id_str = str(face_id)
+        cached_crop = cache.get_cached_crop(face_id_str, size)
+        if cached_crop:
+            monitor.record_cache_hit("face_crop")
+            return Response(content=cached_crop, media_type="image/jpeg")
+
+        # Cache miss - generate crop
+        monitor.record_cache_miss("face_crop")
+        
+        start_time = time.time()
         db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
         cursor.execute(
@@ -883,6 +908,10 @@ async def get_face_crop(
             (face_id,),
         )
         row = cursor.fetchone()
+        
+        # Record database query performance
+        db_duration = (time.time() - start_time) * 1000
+        monitor.record_metric("database_query", db_duration, success=row is not None)
 
         if not row:
             raise HTTPException(status_code=404, detail="Face not found")
@@ -894,9 +923,7 @@ async def get_face_crop(
             bbox = json.loads(bbox_raw) if isinstance(bbox_raw, str) else bbox_raw
             x, y, w, h = bbox
         except Exception:
-            raise HTTPException(
-                status_code=500, detail="Invalid face bounding box data"
-            )
+            raise HTTPException(status_code=500, detail="Invalid face bounding box data")
 
         if not os.path.exists(image_path):
             raise HTTPException(status_code=404, detail="Image file not found")
@@ -904,7 +931,9 @@ async def get_face_crop(
         # Crop the face
         from PIL import Image
         import io
+        import time
 
+        crop_start = time.time()
         img = Image.open(image_path)
         # Add margin
         margin = int(max(w, h) * 0.2)
@@ -916,12 +945,25 @@ async def get_face_crop(
         face_crop = img.crop((x1, y1, x2, y2))
         face_crop.thumbnail((size, size), Image.Resampling.LANCZOS)
 
-        # Return as JPEG
+        # Generate JPEG data
         buffer = io.BytesIO()
         face_crop.save(buffer, format="JPEG", quality=85)
-        buffer.seek(0)
+        crop_data = buffer.getvalue()
+        
+        # Record crop generation performance
+        crop_duration = (time.time() - crop_start) * 1000
+        monitor.record_metric("face_crop", crop_duration, success=True, 
+                            face_id=face_id, size=size, cache_miss=True)
 
-        return Response(content=buffer.getvalue(), media_type="image/jpeg")
+        # Cache the crop for future requests
+        cache.cache_crop(
+            face_id=face_id_str,
+            crop_data=crop_data,
+            size=size,
+            source_photo_path=image_path
+        )
+
+        return Response(content=crop_data, media_type="image/jpeg")
     except HTTPException:
         raise
     except Exception as e:
@@ -1129,22 +1171,14 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
             first_seen = date_range["earliest"]
             last_seen = date_range["latest"]
         elif paths:
-            # Fallback to file creation dates (birthtime on macOS)
+            # Fallback to file modified dates
             import os
             from datetime import datetime
-
             file_dates = []
             for path in paths:
                 try:
-                    stat_info = os.stat(path)
-                    # Use birthtime (creation) if available, else ctime
-                    if hasattr(stat_info, "st_birthtime"):
-                        ctime = stat_info.st_birthtime
-                    else:
-                        ctime = stat_info.st_ctime
-                    file_dates.append(
-                        datetime.fromtimestamp(ctime).strftime("%Y-%m-%d")
-                    )
+                    mtime = os.path.getmtime(path)
+                    file_dates.append(datetime.fromtimestamp(mtime).strftime("%Y-%m-%d"))
                 except Exception:
                     pass
             if file_dates:
@@ -1412,6 +1446,19 @@ async def undo_operation(state: AppState = Depends(get_state)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api/faces/undo/status")
+async def undo_status(state: AppState = Depends(get_state)):
+    """Check if there is an operation that can be undone."""
+    try:
+        from pathlib import Path
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        status = face_db.get_undo_status()
+        return status
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/api/faces/unassigned")
 async def get_unassigned_faces_endpoint(
     state: AppState = Depends(get_state), limit: int = 100, offset: int = 0
@@ -1618,7 +1665,7 @@ async def get_embedding_index_stats(state: AppState = Depends(get_state)):
     """
     Get statistics about the embedding index.
 
-    Returns count of prototypes and index health info.
+    Returns count of prototypes, backend type, and performance metrics.
     """
     try:
         from pathlib import Path
@@ -1626,12 +1673,16 @@ async def get_embedding_index_stats(state: AppState = Depends(get_state)):
         face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
 
         index = face_db.build_embedding_index()
+        stats = index.get_stats() if hasattr(index, 'get_stats') else {}
 
         return {
             "success": True,
             "prototype_count": index.count(),
-            "backend": "linear",
-            "message": f"Index ready with {index.count()} cluster prototypes",
+            "backend": stats.get("index_type", "unknown"),
+            "memory_usage_mb": stats.get("memory_usage_mb", 0),
+            "dimension": stats.get("dimension", 512),
+            "message": f"Index ready with {index.count()} cluster prototypes using {stats.get('index_type', 'unknown')} backend",
+            "performance_tier": "production" if stats.get("index_type") == "faiss" else "development"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -2015,5 +2066,282 @@ async def resume_global_indexing(state: AppState = Depends(get_state)):
         success = face_db.set_face_indexing_paused(False)
 
         return {"success": success, "status": "active"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Face Crop Cache Management Endpoints
+# ===================================================================
+
+
+@router.get("/api/faces/cache/stats")
+async def get_face_cache_stats(state: AppState = Depends(get_state)):
+    """Get face crop cache statistics and health information."""
+    try:
+        from server.face_crop_cache import get_global_cache
+        
+        cache = get_global_cache()
+        stats = cache.get_stats()
+        
+        return {
+            "success": True,
+            "cache_stats": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/cache/clear")
+async def clear_face_cache(state: AppState = Depends(get_state)):
+    """Clear all cached face crops to free up disk space."""
+    try:
+        from server.face_crop_cache import get_global_cache
+        
+        cache = get_global_cache()
+        cache.clear_cache()
+        
+        return {
+            "success": True,
+            "message": "Face crop cache cleared successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/cache/invalidate/{face_id}")
+async def invalidate_face_cache(face_id: str, state: AppState = Depends(get_state)):
+    """Invalidate cached crops for a specific face (useful after face updates)."""
+    try:
+        from server.face_crop_cache import get_global_cache
+        
+        cache = get_global_cache()
+        cache.invalidate_face(face_id)
+        
+        return {
+            "success": True,
+            "face_id": face_id,
+            "message": f"Cache invalidated for face {face_id}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Database Optimization Endpoints
+# ===================================================================
+
+
+@router.get("/api/faces/database/stats")
+async def get_face_database_stats(state: AppState = Depends(get_state)):
+    """Get comprehensive face database statistics and health metrics."""
+    try:
+        from server.face_db_optimizer import get_face_database_stats
+        
+        stats = get_face_database_stats(Path(settings.FACE_CLUSTERS_DB_PATH))
+        
+        return {
+            "success": True,
+            "database_stats": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/database/optimize")
+async def optimize_face_database(state: AppState = Depends(get_state)):
+    """Run comprehensive database optimization (indexes, vacuum, analyze)."""
+    try:
+        from server.face_db_optimizer import optimize_face_database
+        
+        results = optimize_face_database(Path(settings.FACE_CLUSTERS_DB_PATH))
+        
+        return {
+            "success": True,
+            "optimization_results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Performance Monitoring & Analytics Endpoints
+# ===================================================================
+
+
+@router.get("/api/faces/performance/stats")
+async def get_performance_stats(state: AppState = Depends(get_state)):
+    """Get real-time performance statistics and system health metrics."""
+    try:
+        from server.face_performance_monitor import get_global_monitor
+        
+        monitor = get_global_monitor()
+        summary = monitor.get_performance_summary()
+        
+        return {
+            "success": True,
+            "performance_stats": summary
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/analytics")
+async def get_face_analytics(state: AppState = Depends(get_state)):
+    """Get comprehensive analytics about face recognition system usage and patterns."""
+    try:
+        from server.face_performance_monitor import FaceAnalytics
+        
+        analytics = FaceAnalytics(Path(settings.FACE_CLUSTERS_DB_PATH))
+        results = analytics.get_usage_analytics()
+        
+        return {
+            "success": True,
+            "analytics": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/performance/reset")
+async def reset_performance_stats(state: AppState = Depends(get_state)):
+    """Reset performance monitoring statistics (useful for benchmarking)."""
+    try:
+        from server.face_performance_monitor import reset_global_monitor
+        
+        reset_global_monitor()
+        
+        return {
+            "success": True,
+            "message": "Performance statistics reset successfully"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Video Face Tracking Endpoints
+# ===================================================================
+
+
+@router.post("/api/faces/video/track")
+async def track_faces_in_video(data: dict, state: AppState = Depends(get_state)):
+    """Track faces throughout a video with temporal consistency."""
+    try:
+        from server.video_face_tracker import get_video_face_tracker
+        
+        video_path = data.get("video_path")
+        sample_rate = data.get("sample_rate", 5)
+        
+        if not video_path:
+            raise HTTPException(status_code=400, detail="video_path is required")
+        
+        # Initialize video face tracker
+        tracker = get_video_face_tracker(
+            Path(settings.FACE_CLUSTERS_DB_PATH),
+            state.face_clusterer
+        )
+        
+        # Track faces
+        results = tracker.track_faces_in_video(video_path, sample_rate)
+        
+        return {
+            "success": True,
+            "tracking_results": results
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/video/{video_path:path}/summary")
+async def get_video_face_summary(video_path: str, state: AppState = Depends(get_state)):
+    """Get face tracking summary for a specific video."""
+    try:
+        from server.video_face_tracker import get_video_face_tracker
+        import urllib.parse
+        
+        # URL decode the path
+        decoded_path = urllib.parse.unquote(video_path)
+        
+        # Initialize video face tracker
+        tracker = get_video_face_tracker(
+            Path(settings.FACE_CLUSTERS_DB_PATH),
+            state.face_clusterer
+        )
+        
+        # Get summary
+        summary = tracker.get_video_face_summary(decoded_path)
+        
+        return {
+            "success": True,
+            "video_summary": summary
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/video/{video_path:path}/tracks")
+async def get_video_face_tracks(
+    video_path: str, 
+    state: AppState = Depends(get_state),
+    include_detections: bool = False
+):
+    """Get all face tracks for a video with optional detection details."""
+    try:
+        import urllib.parse
+        
+        # URL decode the path
+        decoded_path = urllib.parse.unquote(video_path)
+        
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        
+        with sqlite3.connect(str(db.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            
+            # Get tracks
+            cursor = conn.execute("""
+                SELECT track_id, start_frame, end_frame, start_time, end_time,
+                       cluster_id, confidence_avg, quality_score, best_frame_data
+                FROM video_face_tracks
+                WHERE video_path = ?
+                ORDER BY start_time ASC
+            """, (decoded_path,))
+            
+            tracks = []
+            for row in cursor.fetchall():
+                track_data = dict(row)
+                
+                # Parse best frame data
+                if track_data['best_frame_data']:
+                    track_data['best_frame'] = json.loads(track_data['best_frame_data'])
+                
+                # Include detections if requested
+                if include_detections:
+                    det_cursor = conn.execute("""
+                        SELECT frame_number, timestamp, bounding_box, confidence,
+                               quality_metrics, is_best_frame
+                        FROM video_face_detections
+                        WHERE track_id = ? AND video_path = ?
+                        ORDER BY frame_number ASC
+                    """, (track_data['track_id'], decoded_path))
+                    
+                    detections = []
+                    for det_row in det_cursor.fetchall():
+                        det_data = dict(det_row)
+                        det_data['bounding_box'] = json.loads(det_data['bounding_box'])
+                        if det_data['quality_metrics']:
+                            det_data['quality_metrics'] = json.loads(det_data['quality_metrics'])
+                        detections.append(det_data)
+                    
+                    track_data['detections'] = detections
+                
+                tracks.append(track_data)
+        
+        return {
+            "success": True,
+            "video_path": decoded_path,
+            "tracks": tracks,
+            "track_count": len(tracks)
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

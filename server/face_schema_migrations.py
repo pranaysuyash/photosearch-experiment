@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -379,6 +379,35 @@ def migration_v5_video_support(conn: sqlite3.Connection):
         logger.info("Added is_best_frame column to face_detections")
 
 
+def migration_v6_performance_indexes(conn: sqlite3.Connection):
+    """
+    Version 6: Add performance indexes for common face queries.
+
+    Changes:
+    - Composite index for photo/person lookups
+    - Assignment state index for review workflows
+    - Created_at indexes for temporal filtering
+    - Label index for quick lookup by name
+    """
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_photo_person_photo_cluster ON photo_person_associations(photo_path, cluster_id)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_photo_person_assignment_state ON photo_person_associations(assignment_state)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)"
+    )
+    logger.info("Added performance indexes for face clustering")
+
+
 # Migration registry: version -> (migration_function, description)
 MIGRATIONS = {
     1: (migration_v1_base_schema, "Base schema for face clustering"),
@@ -397,6 +426,10 @@ MIGRATIONS = {
     5: (
         migration_v5_video_support,
         "Add video face tracking tables",
+    ),
+    6: (
+        migration_v6_performance_indexes,
+        "Add performance indexes for face clustering",
     ),
 }
 

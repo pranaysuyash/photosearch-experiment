@@ -23,6 +23,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 
+from src.insightface_compat import patch_insightface_deprecations
+
 logger = logging.getLogger(__name__)
 
 
@@ -75,6 +77,8 @@ class InsightFaceBackend(FaceBackend):
             return
 
         from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
+
+        patch_insightface_deprecations()
 
         self._models_dir.mkdir(parents=True, exist_ok=True)
 

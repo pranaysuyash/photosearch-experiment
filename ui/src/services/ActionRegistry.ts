@@ -1,4 +1,4 @@
-import type { PhotoAction, PhotoContext, ActionResult, Photo, ActionOptions } from '../types/actions';
+import type { PhotoAction, PhotoContext, ActionResult, Photo, ActionOptions, FileCapabilities } from '../types/actions';
 
 /**
  * Central registry for all available photo actions with context-aware filtering.
@@ -201,7 +201,7 @@ export class ActionRegistry {
   /**
    * Check if a capability is available
    */
-  private checkCapability(capability: string, capabilities: any): boolean {
+  private checkCapability(capability: string, capabilities: FileCapabilities): boolean {
     switch (capability) {
       case 'canEdit':
         return capabilities.canEdit === true;

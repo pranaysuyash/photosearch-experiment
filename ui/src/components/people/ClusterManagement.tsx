@@ -433,7 +433,11 @@ export function ClusterManagement({ onClusterSelected, showControls = true }: Cl
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              isHidden ? unhideCluster(cluster.cluster_id) : hideCluster(cluster.cluster_id);
+                              if (isHidden) {
+                                unhideCluster(cluster.cluster_id);
+                              } else {
+                                hideCluster(cluster.cluster_id);
+                              }
                             }}
                             disabled={hidingCluster === cluster.cluster_id}
                             className="p-1 hover:bg-white/10 rounded"

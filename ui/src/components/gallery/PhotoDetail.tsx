@@ -50,6 +50,7 @@ import { useToast } from '../ui/Toast';
 import ImageAnalysis from './AIAnalysis';
 import { PhotoDetailTabs, type TabName } from './tabs/PhotoDetailTabs';
 import { VideoFacesPanel } from '../video/VideoFacesPanel';
+import { PhotoFacePanel } from './PhotoFacePanel';
 
 interface PhotoDetailProps {
   photos: Photo[]; // Full list for navigation
@@ -712,39 +713,16 @@ export function PhotoDetail({
 
             {/* People/Faces section - only show when there are faces */}
             {faceClusters.length > 0 && (
-              <div className='glass-surface rounded-xl p-3'>
-                <div className='flex items-center justify-between gap-2 mb-2'>
-                  <div className='text-xs uppercase tracking-wider text-white/60 flex items-center gap-2'>
-                    <UserCircle2 size={12} />
-                    People
-                  </div>
-                  <button
-                    className='btn-glass btn-glass--muted w-7 h-7 p-0 justify-center'
-                    onClick={refreshFaces}
-                    disabled={busy || facesLoading}
-                    title='Refresh faces'
-                  >
-                    <RotateCw size={12} />
-                  </button>
-                </div>
-                <div className='flex flex-wrap gap-2'>
-                  {faceClusters.map((c, idx) => (
-                    <div
-                      key={c.id || idx}
-                      className='flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 py-1'
-                    >
-                      <span className='text-xs text-white/85'>
-                        {c.label || c.cluster_label || `Person ${c.id || idx + 1}`}
-                      </span>
-                      {typeof c.face_count === 'number' && (
-                        <span className='text-[10px] text-white/60'>
-                          {c.face_count} face{c.face_count === 1 ? '' : 's'}
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <PhotoFacePanel
+                photoPath={photo.path}
+                faceClusters={faceClusters}
+                onRefresh={refreshFaces}
+                isLoading={facesLoading}
+                onNavigateToPeople={() => {
+                  // Navigate to people page - could be implemented via router
+                  window.location.href = '/people';
+                }}
+              />
             )}
 
             {/* AI Analysis */}

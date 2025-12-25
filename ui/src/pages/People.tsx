@@ -18,14 +18,20 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle,
+  EyeOff,
   Pause,
   Play,
   ToggleLeft,
+  Shield,
+  Star,
+  Undo2,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
 import ReviewQueue from '../components/people/ReviewQueue';
 import MergeSuggestions from '../components/people/MergeSuggestions';
+import SplitClusterModal from '../components/people/SplitClusterModal';
+import BooleanPeopleSearch from '../components/people/BooleanPeopleSearch';
 
 interface FaceCluster {
   id: string;
@@ -42,6 +48,8 @@ interface FaceCluster {
     quality_score?: number;
   };
   indexing_disabled?: boolean;
+  coherence_score?: number; // Quality metric from backend
+  hidden?: boolean;
 }
 
 interface FaceStats {
@@ -51,6 +59,16 @@ interface FaceStats {
   unidentified_faces: number;
   singletons: number;
   low_confidence: number;
+}
+
+interface MixedCluster {
+  cluster_id: string;
+  label?: string;
+  face_count: number;
+  coherence_score?: number;
+  low_quality_ratio?: number;
+  variance?: number;
+  is_mixed_suspected?: boolean;
 }
 
 export function People() {
@@ -69,9 +87,9 @@ export function People() {
   const [pauseLoading, setPauseLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'people' | 'review' | 'merge'>(
-    'people'
-  );
+  const [activeTab, setActiveTab] = useState<
+    'people' | 'hidden' | 'review' | 'merge'
+  >('people');
   const [reviewCount, setReviewCount] = useState(0);
 
   // Hidden Genius: surface remaining face scan/name endpoints
@@ -116,38 +134,174 @@ export function People() {
   const [renameLoading, setRenameLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const fetchIndexingStatus = async () => {
+  // Undo functionality
+  const [canUndo, setCanUndo] = useState(false);
+  const [undoLoading, setUndoLoading] = useState(false);
+  const [lastUndoOperation, setLastUndoOperation] = useState<string | null>(
+    null
+  );
+
+  // Hide/Unhide functionality
+  const [hideLoading, setHideLoading] = useState(false);
+
+  // Split cluster functionality
+  const [splitModal, setSplitModal] = useState<{
+    open: boolean;
+    cluster: FaceCluster | null;
+  }>({
+    open: false,
+    cluster: null,
+  });
+
+  // Boolean search functionality
+  const [booleanSearchOpen, setBooleanSearchOpen] = useState(false);
+
+  // Mixed cluster detection tools
+  const [mixedClusters, setMixedClusters] = useState<MixedCluster[]>([]);
+  const [mixedThreshold, setMixedThreshold] = useState('0.5');
+  const [mixedLoading, setMixedLoading] = useState(false);
+  const [mixedError, setMixedError] = useState<string | null>(null);
+  const [mixedQueried, setMixedQueried] = useState(false);
+
+  // Embedding index stats
+  const [indexStats, setIndexStats] = useState<any>(null);
+  const [indexStatsLoading, setIndexStatsLoading] = useState(false);
+  const [indexStatsError, setIndexStatsError] = useState<string | null>(null);
+
+  // Prototype recompute
+  const [recomputeLoading, setRecomputeLoading] = useState(false);
+  const [recomputeMessage, setRecomputeMessage] = useState<string | null>(null);
+
+  const fetchIndexingStatus = useCallback(async () => {
     try {
       const status = await api.getGlobalIndexingStatus();
-      setIsIndexingPaused(status.paused);
+      setIsIndexingPaused(Boolean(status?.paused));
     } catch (err) {
       console.error('Failed to fetch indexing status:', err);
+      setIsIndexingPaused(false);
+    }
+  }, []);
+
+  const checkUndoAvailability = async () => {
+    try {
+      const status = await api.getUndoStatus();
+      setCanUndo(Boolean(status?.can_undo));
+      setLastUndoOperation(status?.operation_type || null);
+    } catch (err) {
+      console.error('Failed to check undo availability:', err);
+      setCanUndo(false);
+      setLastUndoOperation(null);
     }
   };
 
-  const handleTogglePause = async () => {
-    setPauseLoading(true);
+  const handleUndo = async () => {
     try {
-      if (isIndexingPaused) {
-        await api.resumeGlobalIndexing();
-        setIsIndexingPaused(false);
+      setUndoLoading(true);
+      const result = await api.undoLastOperation();
+      
+      if (result.success) {
+        // Refresh all data after undo
+        await Promise.all([
+          fetchClusters(),
+          fetchStats(),
+          fetchReviewCount(),
+          checkUndoAvailability()
+        ]);
+        
+        // Show success message
+        const operationType = result.operation_type || 'operation';
+        alert(`Successfully undid ${operationType}`);
       } else {
-        await api.pauseGlobalIndexing();
-        setIsIndexingPaused(true);
+        alert(result.message || 'Nothing to undo');
       }
     } catch (err) {
-      console.error('Failed to toggle indexing pause:', err);
+      console.error('Failed to undo operation:', err);
+      alert('Failed to undo operation');
     } finally {
-      setPauseLoading(false);
+      setUndoLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchClusters();
-    fetchStats();
-    fetchReviewCount();
-    fetchIndexingStatus();
-  }, []);
+  const handleHidePerson = async (clusterId: string) => {
+    try {
+      setHideLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}/hide`,
+        { method: 'POST' }
+      );
+      
+      if (response.ok) {
+        // Mark as hidden locally and refresh stats
+        setClusters((prev) =>
+          prev.map((cluster) =>
+            cluster.id === clusterId ? { ...cluster, hidden: true } : cluster
+          )
+        );
+        await Promise.all([
+          fetchStats(),
+          checkUndoAvailability()
+        ]);
+        alert('Person hidden successfully');
+      } else {
+        throw new Error('Failed to hide person');
+      }
+    } catch (err) {
+      console.error('Failed to hide person:', err);
+      alert('Failed to hide person');
+    } finally {
+      setHideLoading(false);
+    }
+  };
+
+  const handleUnhidePerson = async (clusterId: string) => {
+    try {
+      setHideLoading(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}/unhide`,
+        { method: 'POST' }
+      );
+      
+      if (response.ok) {
+        // Mark as visible locally and refresh stats
+        setClusters((prev) =>
+          prev.map((cluster) =>
+            cluster.id === clusterId ? { ...cluster, hidden: false } : cluster
+          )
+        );
+        await Promise.all([
+          fetchStats(),
+          checkUndoAvailability()
+        ]);
+        alert('Person unhidden successfully');
+      } else {
+        throw new Error('Failed to unhide person');
+      }
+    } catch (err) {
+      console.error('Failed to unhide person:', err);
+      alert('Failed to unhide person');
+    } finally {
+      setHideLoading(false);
+    }
+  };
+
+  const openSplitModal = (cluster: FaceCluster) => {
+    setSplitModal({ open: true, cluster });
+  };
+
+  const closeSplitModal = () => {
+    setSplitModal({ open: false, cluster: null });
+  };
+
+  const handleSplitComplete = async () => {
+    // Refresh all data after split
+    await Promise.all([
+      fetchClusters(),
+      fetchStats(),
+      fetchReviewCount(),
+      checkUndoAvailability()
+    ]);
+    closeSplitModal();
+  };
 
   const fetchReviewCount = useCallback(async () => {
     try {
@@ -205,7 +359,7 @@ export function People() {
       const pollInterval = setInterval(async () => {
         try {
           const statusResponse = await fetch(
-            `${apiUrl}/api/faces/scan-async/${startData.job_id}`
+            `${apiUrl}/api/faces/scan-status/${startData.job_id}`
           );
           const statusData = await statusResponse.json();
 
@@ -313,10 +467,58 @@ export function People() {
     }
   };
 
+  const handleLoadMixedClusters = async () => {
+    const parsedThreshold = Number(mixedThreshold);
+    const threshold = Number.isFinite(parsedThreshold) ? parsedThreshold : 0.5;
+    try {
+      setMixedLoading(true);
+      setMixedError(null);
+      setMixedQueried(true);
+      const data = await api.getMixedClusters(threshold);
+      setMixedClusters(data?.clusters || []);
+    } catch (err: any) {
+      console.error('Failed to load mixed clusters:', err);
+      setMixedError(err?.message || 'Failed to load mixed clusters');
+      setMixedClusters([]);
+    } finally {
+      setMixedLoading(false);
+    }
+  };
+
+  const handleLoadIndexStats = async () => {
+    try {
+      setIndexStatsLoading(true);
+      setIndexStatsError(null);
+      const data = await api.getEmbeddingIndexStats();
+      setIndexStats(data);
+    } catch (err: any) {
+      console.error('Failed to load index stats:', err);
+      setIndexStatsError(err?.message || 'Failed to load index stats');
+      setIndexStats(null);
+    } finally {
+      setIndexStatsLoading(false);
+    }
+  };
+
+  const handleRecomputePrototypes = async () => {
+    try {
+      setRecomputeLoading(true);
+      setRecomputeMessage(null);
+      const data = await api.recomputePrototypes();
+      setRecomputeMessage(data?.message || 'Prototypes recomputed');
+      await handleLoadIndexStats();
+    } catch (err: any) {
+      console.error('Failed to recompute prototypes:', err);
+      setRecomputeMessage(err?.message || 'Failed to recompute prototypes');
+    } finally {
+      setRecomputeLoading(false);
+    }
+  };
+
   const handleSetLabel = async (clusterId: string, newLabel: string) => {
     try {
       setRenameLoading(true);
-      await api.setFaceClusterLabel(clusterId, newLabel);
+      await api.renameCluster(clusterId, newLabel);
 
       // Update local state
       setClusters(
@@ -326,7 +528,7 @@ export function People() {
       );
 
       // Refresh stats in case labels affect counts
-      await fetchStats();
+      await Promise.all([fetchStats(), checkUndoAvailability()]);
     } catch (err) {
       console.error('Failed to set label:', err);
       setError('Failed to update label');
@@ -350,7 +552,11 @@ export function People() {
       );
       if (response.ok) {
         setClusters(clusters.filter((c) => c.id !== clusterId));
-        await fetchStats();
+        await Promise.all([
+          fetchStats(),
+          fetchReviewCount(),
+          checkUndoAvailability()
+        ]);
         setDeleteModal({ open: false, clusterId: '', label: '' });
       } else {
         throw new Error('Failed to delete cluster');
@@ -382,6 +588,58 @@ export function People() {
       cluster.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cluster.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const hiddenCount = clusters.filter((cluster) => cluster.hidden).length;
+  const visibleClusters = filteredClusters.filter((cluster) => !cluster.hidden);
+  const hiddenClusters = filteredClusters.filter((cluster) => cluster.hidden);
+  const showHidden = activeTab === 'hidden';
+  const displayedClusters = showHidden ? hiddenClusters : visibleClusters;
+  const noResults = !loading && displayedClusters.length === 0;
+
+  const formatUndoLabel = (operationType?: string | null) => {
+    if (!operationType) return 'last operation';
+    const labels: Record<string, string> = {
+      delete_person: 'delete person',
+      review_confirm: 'review confirm',
+      review_reject: 'review reject',
+    };
+    return labels[operationType] || operationType.replace(/_/g, ' ');
+  };
+
+  // Coherence Badge Component
+  const CoherenceBadge = ({ coherenceScore }: { coherenceScore?: number }) => {
+    if (coherenceScore === undefined) return null;
+
+    const getQualityInfo = (score: number) => {
+      if (score >= 0.8) return { 
+        label: 'High Quality', 
+        color: 'text-green-400 bg-green-400/10 border-green-400/20',
+        icon: Star
+      };
+      if (score >= 0.6) return { 
+        label: 'Good Quality', 
+        color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+        icon: Shield
+      };
+      return { 
+        label: 'Needs Review', 
+        color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+        icon: AlertCircle
+      };
+    };
+
+    const quality = getQualityInfo(coherenceScore);
+    const Icon = quality.icon;
+
+    return (
+      <div 
+        className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${quality.color}`}
+        title={`Cluster coherence: ${(coherenceScore * 100).toFixed(0)}%`}
+      >
+        <Icon size={10} />
+        <span className="hidden sm:inline">{quality.label}</span>
+      </div>
+    );
+  };
 
   return (
     <div className='min-h-screen'>
@@ -400,6 +658,41 @@ export function People() {
             </div>
 
             <div className='flex items-center gap-3'>
+              {/* Advanced Search Button */}
+              <button
+                onClick={() => setBooleanSearchOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors bg-white/5 border-white/10 hover:bg-white/10 text-foreground"
+                title="Advanced people search with AND/OR/NOT logic"
+              >
+                <Search size={14} />
+                <span className='hidden sm:inline'>Advanced Search</span>
+              </button>
+
+              {/* Undo Button */}
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo || undoLoading}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  canUndo && !undoLoading
+                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
+                    : 'bg-white/5 border-white/5 text-muted-foreground cursor-not-allowed'
+                }`}
+                title={
+                  canUndo
+                    ? `Undo ${formatUndoLabel(lastUndoOperation)}`
+                    : 'No operations to undo'
+                }
+              >
+                {undoLoading ? (
+                  <RefreshCw size={14} className='animate-spin' />
+                ) : (
+                  <Undo2 size={14} />
+                )}
+                <span className='hidden sm:inline'>
+                  {undoLoading ? 'Undoing...' : 'Undo'}
+                </span>
+              </button>
+
               {/* Global Pause Button - Phase 6 */}
               <button
                 onClick={handleTogglePause}
@@ -464,6 +757,21 @@ export function People() {
               People
             </button>
             <button
+              onClick={() => setActiveTab('hidden')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <EyeOff size={16} />
+              Hidden
+              {hiddenCount > 0 && (
+                <span className='bg-yellow-500 text-black text-xs rounded-full px-2 py-0.5 min-w-[20px] text-center'>
+                  {hiddenCount}
+                </span>
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('review')}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
                   ? 'border-primary text-foreground'
@@ -508,7 +816,7 @@ export function People() {
       )}
 
       {/* People Tab Content */}
-      {activeTab === 'people' && (
+      {(activeTab === 'people' || activeTab === 'hidden') && (
         <>
           {/* Stats and Search */}
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
@@ -873,6 +1181,169 @@ export function People() {
                       </details>
                     )}
                   </div>
+
+                  {/* Mixed cluster detection */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <AlertCircle size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Detect mixed clusters
+                      </span>
+                    </div>
+                    <div className='flex flex-wrap gap-2 items-center'>
+                      <input
+                        type='number'
+                        min='0'
+                        max='1'
+                        step='0.05'
+                        value={mixedThreshold}
+                        onChange={(e) => setMixedThreshold(e.target.value)}
+                        className='w-24 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+                        placeholder='0.5'
+                        aria-label='Coherence threshold'
+                      />
+                      <button
+                        onClick={handleLoadMixedClusters}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={mixedLoading}
+                      >
+                        {mixedLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Find mixed clusters'
+                        )}
+                      </button>
+                    </div>
+                    {mixedError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {mixedError}
+                      </div>
+                    )}
+                    {mixedClusters.length > 0 && (
+                      <div className='mt-3 space-y-2'>
+                        {mixedClusters.map((cluster) => (
+                          <div
+                            key={cluster.cluster_id}
+                            className='flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-2'
+                          >
+                            <div className='min-w-0'>
+                              <div className='text-sm text-foreground truncate'>
+                                {cluster.label || `Person ${cluster.cluster_id}`}
+                              </div>
+                              <div className='text-xs text-muted-foreground'>
+                                {cluster.face_count} faces •{' '}
+                                {cluster.coherence_score !== undefined
+                                  ? `${Math.round(
+                                      cluster.coherence_score * 100
+                                    )}% coherence`
+                                  : 'coherence n/a'}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() =>
+                                navigate(`/people/${cluster.cluster_id}`)
+                              }
+                              className='btn-glass btn-glass--muted text-xs px-2 py-1.5'
+                            >
+                              Open
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {!mixedLoading &&
+                      !mixedError &&
+                      mixedQueried &&
+                      mixedClusters.length === 0 && (
+                        <div className='mt-2 text-xs text-muted-foreground'>
+                          No mixed clusters detected.
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Embedding index stats */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Users size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Embedding index stats
+                      </span>
+                    </div>
+                    <div className='flex gap-2'>
+                      <button
+                        onClick={handleLoadIndexStats}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={indexStatsLoading}
+                      >
+                        {indexStatsLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Refresh stats'
+                        )}
+                      </button>
+                    </div>
+                    {indexStatsError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {indexStatsError}
+                      </div>
+                    )}
+                    {indexStats && (
+                      <div className='mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs text-muted-foreground'>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {indexStats.prototype_count ?? 0}
+                          </div>
+                          <div>Prototypes</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {indexStats.backend || 'unknown'}
+                          </div>
+                          <div>Backend</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {indexStats.memory_usage_mb ?? 0} MB
+                          </div>
+                          <div>Memory</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {indexStats.performance_tier || 'unknown'}
+                          </div>
+                          <div>Tier</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recompute prototypes */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <RefreshCw size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Recompute face prototypes
+                      </span>
+                    </div>
+                    <div className='flex gap-2'>
+                      <button
+                        onClick={handleRecomputePrototypes}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={recomputeLoading}
+                      >
+                        {recomputeLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Recompute prototypes'
+                        )}
+                      </button>
+                    </div>
+                    {recomputeMessage && (
+                      <div className='mt-2 text-xs text-muted-foreground'>
+                        {recomputeMessage}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -899,47 +1370,67 @@ export function People() {
               </div>
             )}
 
-            {/* No People State */}
-            {!loading && clusters.length === 0 && (
+            {/* Empty State */}
+            {noResults && (
               <div className='text-center py-20'>
                 <Users
                   size={48}
                   className='mx-auto text-muted-foreground mb-4'
                 />
                 <h3 className='text-lg font-medium text-foreground mb-2'>
-                  No People Found
+                  {showHidden
+                    ? 'No Hidden People'
+                    : clusters.length === 0
+                    ? 'No People Found'
+                    : 'No Matches Found'}
                 </h3>
                 <p className='text-muted-foreground mb-6'>
-                  Start by scanning your photos for faces
+                  {showHidden
+                    ? 'Hidden people will show up here when you hide them.'
+                    : clusters.length === 0
+                    ? 'Start by scanning your photos for faces'
+                    : 'Try a different search term.'}
                 </p>
-                <button
-                  onClick={handleScan}
-                  disabled={scanning}
-                  className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                    }`}
-                >
-                  {scanning ? (
-                    <div className='flex items-center gap-2'>
-                      <RefreshCw size={16} className='animate-spin' />
-                      Scanning...
-                    </div>
-                  ) : (
-                    <div className='flex items-center gap-2'>
-                      <Camera size={16} />
-                      Scan for Faces
-                    </div>
-                  )}
-                </button>
+                {!showHidden && clusters.length === 0 && (
+                  <button
+                    onClick={handleScan}
+                    disabled={scanning}
+                    className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                      }`}
+                  >
+                    {scanning ? (
+                      <div className='flex items-center gap-2'>
+                        <RefreshCw size={16} className='animate-spin' />
+                        Scanning...
+                      </div>
+                    ) : (
+                      <div className='flex items-center gap-2'>
+                        <Camera size={16} />
+                        Scan for Faces
+                      </div>
+                    )}
+                  </button>
+                )}
               </div>
             )}
 
             {/* Face Clusters Grid */}
-            {!loading && filteredClusters.length > 0 && (
+            {!loading && displayedClusters.length > 0 && (
               <div
                 id='clusters-section'
-                className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
+                className='space-y-4'
               >
-                {filteredClusters.map((cluster) => (
+                {showHidden && (
+                  <div className='text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3'>
+                    <div className='flex items-center gap-2'>
+                      <AlertCircle size={16} />
+                      <span>Showing {hiddenClusters.length} hidden people. These won't appear in search results or suggestions.</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
+                  {displayedClusters.map((cluster) => (
                   <div
                     key={cluster.id}
                     className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors`}
@@ -1015,9 +1506,13 @@ export function People() {
                         </div>
                       </div>
 
+                      {/* Quality and Stats Row */}
                       <div className='flex items-center justify-between mb-3'>
-                        <div className='text-xs text-muted-foreground'>
-                          {cluster.image_count} photos
+                        <div className='flex items-center gap-2'>
+                          <CoherenceBadge coherenceScore={cluster.coherence_score} />
+                          <div className='text-xs text-muted-foreground'>
+                            {cluster.image_count} photos
+                          </div>
                         </div>
                         {cluster.created_at && (
                           <div className='text-xs text-muted-foreground flex items-center gap-1'>
@@ -1040,6 +1535,50 @@ export function People() {
                         >
                           <Tag size={12} />
                         </button>
+
+                        {showHidden ? (
+                          <button
+                            onClick={() => handleUnhidePerson(cluster.id)}
+                            disabled={hideLoading}
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-green-400'
+                            title='Unhide this person'
+                          >
+                            {hideLoading ? (
+                              <RefreshCw size={12} className='animate-spin' />
+                            ) : (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                              </svg>
+                            )}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleHidePerson(cluster.id)}
+                            disabled={hideLoading}
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400'
+                            title='Hide this person'
+                          >
+                            {hideLoading ? (
+                              <RefreshCw size={12} className='animate-spin' />
+                            ) : (
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                <line x1="1" y1="1" x2="23" y2="23"/>
+                              </svg>
+                            )}
+                          </button>
+                        )}
+
+                        {!showHidden && cluster.face_count > 1 && (
+                          <button
+                            onClick={() => openSplitModal(cluster)}
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-blue-400'
+                            title='Split this person into separate people'
+                          >
+                            <Users size={12} />
+                          </button>
+                        )}
 
                         <button
                           onClick={() =>
@@ -1064,7 +1603,8 @@ export function People() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1167,6 +1707,22 @@ export function People() {
           </div>
         </div>
       )}
+
+      {/* Split Cluster Modal */}
+      {splitModal.open && splitModal.cluster && (
+        <SplitClusterModal
+          cluster={splitModal.cluster}
+          isOpen={splitModal.open}
+          onClose={closeSplitModal}
+          onSplit={handleSplitComplete}
+        />
+      )}
+
+      {/* Boolean People Search Modal */}
+      <BooleanPeopleSearch
+        isOpen={booleanSearchOpen}
+        onClose={() => setBooleanSearchOpen(false)}
+      />
     </div>
   );
 }

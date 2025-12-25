@@ -5,12 +5,14 @@
  */
 import { useToast } from '../components/toast/ToastProvider';
 
+type BulkActionState = Record<string, unknown>;
+
 interface BulkAction {
   id: string;
   type: 'delete' | 'favorite' | 'tag' | 'album';
   targetIds: string[]; // photo paths
-  beforeState: any;    // state before the action
-  afterState: any;     // state after the action (for potential redo)
+  beforeState: BulkActionState;    // state before the action
+  afterState: BulkActionState;     // state after the action (for potential redo)
   description: string; // user-friendly description
   timestamp: Date;
 }
@@ -145,6 +147,7 @@ export function useBulkActions() {
         duration: 8000 // Keep visible longer for undo
       });
     } catch (error) {
+      console.error('Bulk delete failed', error);
       addToast({
         type: 'error',
         message: 'Failed to delete photos'
@@ -190,6 +193,7 @@ export function useBulkActions() {
         duration: 5000
       });
     } catch (error) {
+      console.error('Bulk favorite toggle failed', error);
       addToast({
         type: 'error',
         message: 'Failed to toggle favorites'

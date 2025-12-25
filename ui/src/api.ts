@@ -1971,6 +1971,12 @@ export const api = {
     return res.data;
   },
 
+  // Check whether an undoable operation exists
+  getUndoStatus: async () => {
+    const res = await apiClient.get('/api/faces/undo/status');
+    return res.data as { can_undo: boolean; operation_type?: string; performed_at?: string };
+  },
+
   // Get unassigned faces (unknown bucket)
   getUnassignedFaces: async (limit: number = 100, offset: number = 0) => {
     const res = await apiClient.get('/api/faces/unassigned', {
@@ -2002,6 +2008,26 @@ export const api = {
       `/api/faces/clusters/${encodeURIComponent(clusterId)}/coherence`
     );
     return res.data;
+  },
+
+  // Find similar faces for a detection
+  getSimilarFaces: async (detectionId: string, limit: number = 12) => {
+    const res = await apiClient.get(
+      `/api/faces/${encodeURIComponent(detectionId)}/similar`,
+      { params: { limit } }
+    );
+    return res.data as {
+      detection_id: string;
+      similar_faces: Array<{
+        detection_id: string;
+        photo_path: string;
+        similarity: number;
+        person_id?: string;
+        person_label?: string;
+      }>;
+      count?: number;
+      success?: boolean;
+    };
   },
 
   // Get all clusters suspected to contain multiple people

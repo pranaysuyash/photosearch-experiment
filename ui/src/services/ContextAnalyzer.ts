@@ -36,11 +36,11 @@ export class ContextAnalyzer {
   isLocalFile(path: string): boolean {
     // Local file patterns
     const localPatterns = [
-      /^[A-Za-z]:\\/,  // Windows drive letters
-      /^\/[^\/]/,      // Unix absolute paths
-      /^~\//,          // Home directory
-      /^\.\//,         // Relative paths
-      /^file:\/\//     // File protocol
+      /^[A-Za-z]:\\/, // Windows drive letters
+      new RegExp('^/[^/]'), // Unix absolute paths
+      /^~\//, // Home directory
+      /^\.\//, // Relative paths
+      new RegExp('^file://'), // File protocol
     ];
 
     return localPatterns.some(pattern => pattern.test(path));
@@ -52,15 +52,15 @@ export class ContextAnalyzer {
   isCloudFile(path: string): boolean {
     // Cloud service patterns
     const cloudPatterns = [
-      /^https?:\/\/.*\.googleapis\.com/,     // Google Drive/Photos
-      /^https?:\/\/.*\.dropbox\.com/,        // Dropbox
-      /^https?:\/\/.*\.onedrive\.com/,       // OneDrive
-      /^https?:\/\/.*\.icloud\.com/,         // iCloud
-      /^https?:\/\/.*\.amazonaws\.com/,      // AWS S3
-      /^cloud:/,                             // Generic cloud prefix
-      /^gdrive:/,                            // Google Drive
-      /^dropbox:/,                           // Dropbox
-      /^onedrive:/                           // OneDrive
+      new RegExp('^https?://.*\\.googleapis\\.com'), // Google Drive/Photos
+      new RegExp('^https?://.*\\.dropbox\\.com'), // Dropbox
+      new RegExp('^https?://.*\\.onedrive\\.com'), // OneDrive
+      new RegExp('^https?://.*\\.icloud\\.com'), // iCloud
+      new RegExp('^https?://.*\\.amazonaws\\.com'), // AWS S3
+      /^cloud:/, // Generic cloud prefix
+      /^gdrive:/, // Google Drive
+      /^dropbox:/, // Dropbox
+      /^onedrive:/, // OneDrive
     ];
 
     return cloudPatterns.some(pattern => pattern.test(path));

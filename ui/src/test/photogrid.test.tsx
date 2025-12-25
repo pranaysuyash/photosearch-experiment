@@ -1,8 +1,8 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { PhotoGrid } from '../components/gallery/PhotoGrid';
-import { api } from '../api';
+import { api, type Photo } from '../api';
 import { AmbientThemeProvider } from '../contexts/AmbientThemeContext';
 import { PhotoSearchProvider } from '../contexts/PhotoSearchContext';
 
@@ -10,7 +10,7 @@ import { PhotoSearchProvider } from '../contexts/PhotoSearchContext';
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('PhotoGrid favorites batching', () => {
-  const photos = [
+  const photos: Photo[] = [
     {
       path: '/media/photo1.jpg',
       filename: 'photo1.jpg',
@@ -41,7 +41,7 @@ describe('PhotoGrid favorites batching', () => {
     root.render(
       <AmbientThemeProvider>
         <PhotoSearchProvider>
-          <PhotoGrid photos={photos as any} onPhotoSelect={() => {}} />
+          <PhotoGrid photos={photos} onPhotoSelect={() => {}} />
         </PhotoSearchProvider>
       </AmbientThemeProvider>
     );

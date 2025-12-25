@@ -1,5 +1,5 @@
 export async function pickDirectory(): Promise<string | null> {
-  // @ts-ignore
+  // @ts-expect-error Tauri global injected at runtime in desktop builds
   const isTauri = typeof window !== 'undefined' && !!window.__TAURI__;
   if (!isTauri) return null;
 

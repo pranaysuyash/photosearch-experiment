@@ -282,7 +282,8 @@ describe('ActionRegistry Property Tests', () => {
           // Action should not be available when location doesn't match
           const differentLocations = ['local', 'cloud', 'hybrid'].filter(loc => loc !== requiredLocation);
           if (differentLocations.length > 0) {
-            const wrongContext = { ...context, fileLocation: differentLocations[0] as any };
+            const wrongLocation = differentLocations[0] as 'local' | 'cloud' | 'hybrid';
+            const wrongContext = { ...context, fileLocation: wrongLocation };
             const wrongLocationActions = registry.getActionsForContext(wrongContext);
             expect(wrongLocationActions.some(a => a.id === action.id)).toBe(false);
           }

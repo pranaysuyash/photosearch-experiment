@@ -41,6 +41,7 @@ import sqlite3
 import hashlib
 import threading
 import logging
+import numpy as np
 from typing import List, Dict, Optional, Any, Tuple, Callable, cast
 from pathlib import Path
 from datetime import datetime
@@ -51,6 +52,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import cv2
 
+from src.insightface_compat import patch_insightface_deprecations
+
 # Configure logging
 logger = logging.getLogger(__name__)
 
@@ -59,6 +62,7 @@ try:
     from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
 
     FACE_LIBRARIES_AVAILABLE = True
+    patch_insightface_deprecations()
 
     # Hardware detection for optimal providers
     try:
@@ -542,6 +546,16 @@ class EnhancedFaceClusterer:
             image_files.extend(Path(directory_path).glob(f"*{ext}"))
             image_files.extend(Path(directory_path).glob(f"*{ext.upper()}"))
 
+        # Skip zero-byte files that are not valid images
+        filtered_files: List[Path] = []
+        for img_path in image_files:
+            try:
+                if img_path.stat().st_size > 0:
+                    filtered_files.append(img_path)
+            except OSError:
+                continue
+
+        image_files = filtered_files
         results["total_images"] = len(image_files)
 
         if show_progress and self.progress_callback:
@@ -664,6 +678,8 @@ class EnhancedFaceClusterer:
 
             # Convert to distance matrix (DBSCAN uses distance)
             distance_matrix = 1 - similarity_matrix
+            # Guard against tiny negative values from floating point error
+            distance_matrix = np.clip(distance_matrix, 0.0, 2.0)
 
             # Apply DBSCAN with adaptive parameters
             eps = 0.3  # Distance threshold
