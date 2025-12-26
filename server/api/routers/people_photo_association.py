@@ -100,6 +100,7 @@ async def remove_person_from_photo(photo_path: str, person_id: str, detection_id
 
 # Face Detection Endpoints
 
+
 @router.post("/api/photos/{photo_path:path}/faces/detect")
 async def detect_faces_in_photo(photo_path: str):
     """Detect faces in a specific photo."""
@@ -242,6 +243,7 @@ async def detect_faces_in_batch(payload: dict):
 
 
 # Automatic Clustering Endpoints
+
 
 @router.post("/api/faces/cluster")
 async def cluster_faces_api(similarity_threshold: float = 0.6, min_samples: int = 2):

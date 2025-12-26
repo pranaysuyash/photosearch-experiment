@@ -59,9 +59,7 @@ async def get_vlm_status(state: AppState = Depends(get_state)):
 
 
 @router.post("/generate", response_model=CaptionResponse)
-async def generate_caption(
-    request: GenerateCaptionRequest, state: AppState = Depends(get_state)
-):
+async def generate_caption(request: GenerateCaptionRequest, state: AppState = Depends(get_state)):
     """
     Generate an AI caption for a photo.
 
@@ -114,9 +112,7 @@ async def get_caption(photo_path: str, state: AppState = Depends(get_state)):
 
 
 @router.put("/")
-async def update_caption(
-    request: UpdateCaptionRequest, state: AppState = Depends(get_state)
-):
+async def update_caption(request: UpdateCaptionRequest, state: AppState = Depends(get_state)):
     """Manually update/edit a caption."""
     try:
         from server.vlm_caption_service import VLMCaptionService

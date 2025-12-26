@@ -1,11 +1,11 @@
 # Task 6: UI Foundation (Visual Interface)
 
-**Files:** 
+**Files:**
 - `server/main.py` - FastAPI backend
 - `ui/` - React + Vite frontend
 
-**Status:** ✅ Complete  
-**Date:** 2025-12-07  
+**Status:** ✅ Complete
+**Date:** 2025-12-07
 **Dependencies:** Tasks 1-5 (CLI foundation)
 
 ---

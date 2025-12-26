@@ -2,15 +2,14 @@
 Duplicate Detection and Management System
 Provides functionality to detect exact and perceptual duplicates with SQLite backend.
 """
+
 import sqlite3
 import hashlib
 import os
 from pathlib import Path
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from dataclasses import dataclass
 from datetime import datetime
-import numpy as np
-from PIL import Image
 
 
 @dataclass
@@ -75,20 +74,26 @@ class DuplicatesDB:
 
         with sqlite3.connect(str(self.db_path)) as conn:
             # Add group
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO duplicate_groups (id, hash_type, similarity_score)
                 VALUES (?, ?, ?)
-            """, (group_id, hash_type, similarity_score))
+            """,
+                (group_id, hash_type, similarity_score),
+            )
 
             # Add files to group
             for file_path in files:
                 file_hash = self._calculate_file_hash(file_path)
                 file_size = os.path.getsize(file_path) if os.path.exists(file_path) else 0
 
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO duplicate_files (file_path, file_hash, file_size, group_id)
                     VALUES (?, ?, ?, ?)
-                """, (file_path, file_hash, file_size, group_id))
+                """,
+                    (file_path, file_hash, file_size, group_id),
+                )
 
         return group_id
 
@@ -106,7 +111,9 @@ class DuplicatesDB:
         except (IOError, OSError):
             return f"error_{hashlib.md5(file_path.encode()).hexdigest()}"
 
-    def get_duplicate_groups(self, hash_type: Optional[str] = None, limit: int = 100, offset: int = 0) -> List[DuplicateGroup]:
+    def get_duplicate_groups(
+        self, hash_type: Optional[str] = None, limit: int = 100, offset: int = 0
+    ) -> List[DuplicateGroup]:
         """Get duplicate groups."""
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
@@ -128,18 +135,20 @@ class DuplicatesDB:
                 # Get files for this group
                 file_rows = conn.execute(
                     "SELECT file_path, file_hash, file_size FROM duplicate_files WHERE group_id = ?",
-                    (row['id'],)
+                    (row["id"],),
                 ).fetchall()
 
-                files = [f['file_path'] for f in file_rows]
+                files = [f["file_path"] for f in file_rows]
 
-                groups.append(DuplicateGroup(
-                    id=row['id'],
-                    hash_type=row['hash_type'],
-                    files=files,
-                    similarity_score=row['similarity_score'],
-                    created_at=row['created_at']
-                ))
+                groups.append(
+                    DuplicateGroup(
+                        id=row["id"],
+                        hash_type=row["hash_type"],
+                        files=files,
+                        similarity_score=row["similarity_score"],
+                        created_at=row["created_at"],
+                    )
+                )
 
             return groups
 
@@ -149,27 +158,28 @@ class DuplicatesDB:
             stats = {}
 
             # Total groups
-            stats['total_groups'] = conn.execute(
+            stats["total_groups"] = conn.execute(
                 "SELECT COUNT(*) FROM duplicate_groups WHERE resolved_at IS NULL"
             ).fetchone()[0]
 
             # Groups by type
-            for hash_type in ['md5', 'perceptual']:
+            for hash_type in ["md5", "perceptual"]:
                 count = conn.execute(
                     "SELECT COUNT(*) FROM duplicate_groups WHERE hash_type = ? AND resolved_at IS NULL",
-                    (hash_type,)
+                    (hash_type,),
                 ).fetchone()[0]
-                stats[f'{hash_type}_groups'] = count
+                stats[f"{hash_type}_groups"] = count
 
             # Total duplicate files
-            stats['total_duplicate_files'] = conn.execute("""
+            stats["total_duplicate_files"] = conn.execute("""
                 SELECT COUNT(*) FROM duplicate_files df
                 JOIN duplicate_groups dg ON df.group_id = dg.id
                 WHERE dg.resolved_at IS NULL
             """).fetchone()[0]
 
             # Potential space saved (sum of duplicates - keep one per group)
-            stats['potential_space_saved'] = conn.execute("""
+            stats["potential_space_saved"] = (
+                conn.execute("""
                 SELECT SUM(df.file_size) - (
                     SELECT MAX(file_size)
                     FROM duplicate_files df2
@@ -178,18 +188,20 @@ class DuplicatesDB:
                 FROM duplicate_files df
                 JOIN duplicate_groups dg ON df.group_id = dg.id
                 WHERE dg.resolved_at IS NULL
-            """).fetchone()[0] or 0
+            """).fetchone()[0]
+                or 0
+            )
 
             return stats
 
     def resolve_duplicates(self, group_id: str, resolution: str, keep_files: List[str] = None) -> bool:
         """Mark a duplicate group as resolved."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            if resolution == 'keep_selected' and keep_files:
+            if resolution == "keep_selected" and keep_files:
                 # Move non-selected files to trash or mark for deletion
                 group_files = conn.execute(
                     "SELECT file_path FROM duplicate_files WHERE group_id = ?",
-                    (group_id,)
+                    (group_id,),
                 ).fetchall()
 
                 all_files = [f[0] for f in group_files]
@@ -201,11 +213,14 @@ class DuplicatesDB:
             else:
                 resolution_info = resolution
 
-            conn.execute("""
+            conn.execute(
+                """
                 UPDATE duplicate_groups
                 SET resolved_at = CURRENT_TIMESTAMP, resolution = ?
                 WHERE id = ?
-            """, (resolution_info, group_id))
+            """,
+                (resolution_info, group_id),
+            )
 
             return True
 
@@ -236,13 +251,8 @@ class DuplicatesDB:
         groups = []
         for file_hash, files in hash_to_files.items():
             if len(files) > 1:
-                group_id = self.add_duplicate_group('md5', files)
-                groups.append(DuplicateGroup(
-                    id=group_id,
-                    hash_type='md5',
-                    files=files,
-                    similarity_score=1.0
-                ))
+                group_id = self.add_duplicate_group("md5", files)
+                groups.append(DuplicateGroup(id=group_id, hash_type="md5", files=files, similarity_score=1.0))
 
         return groups
 

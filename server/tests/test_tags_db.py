@@ -29,4 +29,3 @@ def test_tags_db_basic(tmp_path: Path):
     ok = db.delete_tag("trip")
     assert ok
     assert not db.has_tag("trip")
-

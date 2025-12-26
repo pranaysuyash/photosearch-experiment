@@ -32,12 +32,8 @@ class PeopleTagsDB:
                 )
                 """
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_people_path ON photo_people(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_people_name ON photo_people(person_name)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_people_path ON photo_people(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_people_name ON photo_people(person_name)")
 
     def add_people(self, photo_path: str, people: Iterable[str]) -> int:
         cleaned = [p.strip() for p in people if isinstance(p, str) and p.strip()]

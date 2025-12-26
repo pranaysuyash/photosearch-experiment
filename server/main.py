@@ -127,16 +127,9 @@ async def lifespan(app: FastAPI):
 
     Also updates module-level globals for backward compatibility during migration.
     """
-    global \
-        embedding_generator, \
-        file_watcher, \
-        ps_logger, \
-        perf_tracker, \
-        photo_search_engine
+    global embedding_generator, file_watcher, ps_logger, perf_tracker, photo_search_engine
 
-    test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or (
-        "PYTEST_CURRENT_TEST" in os.environ
-    )
+    test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or ("PYTEST_CURRENT_TEST" in os.environ)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Build AppState using bootstrap (this triggers component init)
@@ -149,9 +142,7 @@ async def lifespan(app: FastAPI):
     # ─────────────────────────────────────────────────────────────────────────
     print("Initializing logging...")
     try:
-        state.ps_logger, state.perf_tracker = setup_logging(
-            log_level="INFO", log_file="logs/app.log"
-        )
+        state.ps_logger, state.perf_tracker = setup_logging(log_level="INFO", log_file="logs/app.log")
         ps_logger = state.ps_logger  # Backward compat
         perf_tracker = state.perf_tracker
         print("Logging initialized.")
@@ -206,9 +197,7 @@ async def lifespan(app: FastAPI):
 
                         metadata = extract_all_metadata(filepath)
                         if metadata and state.photo_search_engine:
-                            state.photo_search_engine.db.store_metadata(
-                                filepath, metadata
-                            )
+                            state.photo_search_engine.db.store_metadata(filepath, metadata)
                             print(f"Metadata indexed: {filepath}")
 
                             # Trigger Semantic Indexing
@@ -222,13 +211,9 @@ async def lifespan(app: FastAPI):
                                     if result.get("status") == "completed":
                                         faces_found = result.get("total_faces", 0)
                                         if faces_found > 0:
-                                            print(
-                                                f"Face detection: found {faces_found} faces in {filepath}"
-                                            )
+                                            print(f"Face detection: found {faces_found} faces in {filepath}")
                                 except Exception as face_err:
-                                    print(
-                                        f"Face detection failed for {filepath}: {face_err}"
-                                    )
+                                    print(f"Face detection failed for {filepath}: {face_err}")
                     except Exception as e:
                         print(f"Real-time indexing failed for {filepath}: {e}")
 
@@ -290,8 +275,7 @@ async def _ensure_cors_header(request: Request, call_next):
         if (
             origin
             and origin in cors_origins
-            and "access-control-allow-origin"
-            not in (k.lower() for k in response.headers.keys())
+            and "access-control-allow-origin" not in (k.lower() for k in response.headers.keys())
         ):
             response.headers["Access-Control-Allow-Origin"] = origin
             if settings.DEBUG:

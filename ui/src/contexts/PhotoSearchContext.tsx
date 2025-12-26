@@ -250,9 +250,7 @@ export function PhotoSearchProvider({
       if (manualSearchMode) return;
       const detectedMode = detectSearchMode(query);
       if (detectedMode !== searchMode) {
-        console.log(
-          `[PhotoSearchContext] Auto-switching from ${searchMode} to ${detectedMode} for query: "${query}"`
-        );
+        // Auto-switch search mode based on query pattern
         setSearchMode(detectedMode, { source: 'auto' });
       }
     },
@@ -285,9 +283,7 @@ export function PhotoSearchProvider({
         currentTag ?? ''
       }|${currentDateFrom ?? ''}|${currentDateTo ?? ''}`;
       if (!isLoadMore && searchParams === lastSearchParamsRef.current) {
-        console.log(
-          `[PhotoSearchContext] Skipping duplicate search: ${searchParams}`
-        );
+        // Skip duplicate search with same parameters
         return;
       }
 
@@ -317,9 +313,7 @@ export function PhotoSearchProvider({
           const cacheKey = `${searchParams}|0`;
           const cached = searchCache.current.get(cacheKey);
           if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-            console.log(
-              `[PhotoSearchContext] Using cached results for: ${cacheKey}`
-            );
+            // Use cached results if available and fresh
             recordCacheHit();
             setPhotos(cached.results);
             offsetRef.current = cached.results.length;
@@ -330,9 +324,7 @@ export function PhotoSearchProvider({
           }
         }
 
-        console.log(
-          `[PhotoSearchContext] API call: query="${query}" mode=${currentSearchMode} offset=${effectiveOffset}`
-        );
+        // Execute search API call
         recordApiCall();
 
         const res = await api.search(
@@ -387,7 +379,7 @@ export function PhotoSearchProvider({
         }
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
-          console.log('[PhotoSearchContext] Search aborted');
+          // Search was cancelled, ignore silently
           return;
         }
         console.error('[PhotoSearchContext] Search failed:', err);
@@ -456,11 +448,13 @@ export function PhotoSearchProvider({
   useEffect(() => {
     if (!timelineFetchedRef.current) {
       timelineFetchedRef.current = true;
-      console.log('[PhotoSearchContext] Fetching timeline data (once)');
+      // Fetch timeline data once on component mount
       api
         .getTimeline()
         .then(setTimelineData)
-        .catch(console.error)
+        .catch((err) => {
+          console.error('Failed to fetch timeline data:', err);
+        })
         .finally(() => setTimelineLoading(false));
     }
   }, []);

@@ -2,7 +2,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 
 def _utc_now_iso() -> str:

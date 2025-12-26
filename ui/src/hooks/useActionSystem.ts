@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { actionService } from '../services/ActionService';
-import type { Photo, PhotoAction, ActionResult, InstalledApp, PhotoContext } from '../types/actions';
+import type {
+  Photo,
+  PhotoAction,
+  ActionResult,
+  InstalledApp,
+  PhotoContext,
+} from '../types/actions';
 
 /**
  * React hook for using the context-aware photo action system
@@ -18,15 +24,19 @@ export function useActionSystem() {
       try {
         setLoading(true);
         setError(null);
-        
+
         await actionService.initialize();
-        
+
         if (mounted) {
           setInitialized(true);
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to initialize action system');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to initialize action system'
+          );
         }
       } finally {
         if (mounted) {
@@ -43,32 +53,41 @@ export function useActionSystem() {
   }, []);
 
   // Get actions for a photo
-  const getActionsForPhoto = useCallback(async (photo: Photo) => {
-    if (!initialized) {
-      throw new Error('Action system not initialized');
-    }
-    return actionService.getActionsForPhoto(photo);
-  }, [initialized]);
+  const getActionsForPhoto = useCallback(
+    async (photo: Photo) => {
+      if (!initialized) {
+        throw new Error('Action system not initialized');
+      }
+      return actionService.getActionsForPhoto(photo);
+    },
+    [initialized]
+  );
 
   // Execute an action
-  const executeAction = useCallback(async (
-    actionId: string, 
-    photo: Photo, 
-    options?: any
-  ): Promise<ActionResult> => {
-    if (!initialized) {
-      throw new Error('Action system not initialized');
-    }
-    return actionService.executeAction(actionId, photo, options);
-  }, [initialized]);
+  const executeAction = useCallback(
+    async (
+      actionId: string,
+      photo: Photo,
+      options?: any
+    ): Promise<ActionResult> => {
+      if (!initialized) {
+        throw new Error('Action system not initialized');
+      }
+      return actionService.executeAction(actionId, photo, options);
+    },
+    [initialized]
+  );
 
   // Get compatible apps for a photo
-  const getCompatibleApps = useCallback(async (photo: Photo): Promise<InstalledApp[]> => {
-    if (!initialized) {
-      throw new Error('Action system not initialized');
-    }
-    return actionService.getCompatibleApps(photo);
-  }, [initialized]);
+  const getCompatibleApps = useCallback(
+    async (photo: Photo): Promise<InstalledApp[]> => {
+      if (!initialized) {
+        throw new Error('Action system not initialized');
+      }
+      return actionService.getCompatibleApps(photo);
+    },
+    [initialized]
+  );
 
   // Refresh installed apps
   const refreshApps = useCallback(async (): Promise<InstalledApp[]> => {
@@ -85,7 +104,7 @@ export function useActionSystem() {
     getActionsForPhoto,
     executeAction,
     getCompatibleApps,
-    refreshApps
+    refreshApps,
   };
 }
 
@@ -112,16 +131,18 @@ export function usePhotoActions(photo: Photo | null) {
       try {
         setLoading(true);
         setError(null);
-        
+
         const result = await getActionsForPhoto(photo);
-        
+
         if (mounted) {
           setActions(result.actions);
           setContext(result.context);
         }
       } catch (err) {
         if (mounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load actions');
+          setError(
+            err instanceof Error ? err.message : 'Failed to load actions'
+          );
         }
       } finally {
         if (mounted) {
@@ -141,6 +162,6 @@ export function usePhotoActions(photo: Photo | null) {
     actions,
     context,
     loading,
-    error
+    error,
   };
 }

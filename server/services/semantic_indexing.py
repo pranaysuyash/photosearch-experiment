@@ -1,6 +1,6 @@
 import os
 import time
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, TYPE_CHECKING
 
 from server.image_loader import load_image
 
@@ -16,7 +16,7 @@ def process_semantic_indexing(
 ):
     """
     Helper to generate embeddings for a list of file paths.
-    
+
     Args:
         files_to_index: List of file paths to index
         embedding_generator: The embedding generator instance
@@ -51,8 +51,8 @@ def process_semantic_indexing(
 
         try:
             # Check for valid image or video extensions
-            valid_img_exts = ['.jpg', '.jpeg', '.png', '.bmp', '.webp', '.gif', '.heic', '.tiff', '.tif']
-            valid_vid_exts = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']
+            valid_img_exts = [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif", ".heic", ".tiff", ".tif"]
+            valid_vid_exts = [".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"]
 
             is_video = False
             if any(file_path.lower().endswith(ext) for ext in valid_vid_exts):
@@ -63,6 +63,7 @@ def process_semantic_indexing(
             img = None
             if is_video:
                 from server.image_loader import extract_video_frame
+
                 # Extract frame
                 try:
                     img = extract_video_frame(file_path)
@@ -79,17 +80,17 @@ def process_semantic_indexing(
                     ids.append(file_path)
                     vectors.append(vec)
                     # Store minimalist metadata, relies on main DB for details
-                    metadatas.append({
-                        "path": file_path,
-                        "filename": os.path.basename(file_path),
-                        "type": "video" if is_video else "image",
-                    })
+                    metadatas.append(
+                        {
+                            "path": file_path,
+                            "filename": os.path.basename(file_path),
+                            "type": "video" if is_video else "image",
+                        }
+                    )
         except Exception as e:
             print(f"Failed to embed {file_path}: {e}")
 
     if ids:
         time_start = time.time()
         vector_store.add_batch(ids, vectors, metadatas)
-        print(
-            f"Added {len(ids)} vectors to LanceDB in {time.time() - time_start:.2f}s."
-        )
+        print(f"Added {len(ids)} vectors to LanceDB in {time.time() - time_start:.2f}s.")

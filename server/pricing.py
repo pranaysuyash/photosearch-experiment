@@ -11,11 +11,11 @@ This module provides:
 from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-import os
 
 
 class PricingTier(BaseModel):
     """Represents a pricing tier with limits and features."""
+
     name: str
     image_limit: int
     price_monthly: float
@@ -27,6 +27,7 @@ class PricingTier(BaseModel):
 
 class UsageStats(BaseModel):
     """Represents current usage statistics for a user."""
+
     current_tier: str
     image_count: int
     image_limit: int
@@ -38,14 +39,14 @@ class UsageStats(BaseModel):
 
 class PricingManager:
     """Manage pricing tiers and usage tracking."""
-    
+
     def __init__(self):
         """Initialize pricing manager with default tiers."""
         self.tiers = self._load_default_tiers()
         self.usage_cache: Dict[str, Dict[str, Any]] = {}  # Simple in-memory cache for demo
         # Minimal in-memory time series. In production this should live in a DB.
         self.usage_history: Dict[str, List[Dict[str, Any]]] = {}
-    
+
     def _load_default_tiers(self) -> Dict[str, PricingTier]:
         """Load default pricing tiers."""
         return {
@@ -58,10 +59,10 @@ class PricingManager:
                     "Basic search functionality",
                     "Metadata extraction",
                     "Up to 5,000 images",
-                    "Community support"
+                    "Community support",
                 ],
                 stripe_price_id=None,
-                is_popular=False
+                is_popular=False,
             ),
             "basic": PricingTier(
                 name="Basic",
@@ -73,10 +74,10 @@ class PricingManager:
                     "Advanced search",
                     "Up to 25,000 images",
                     "Priority support",
-                    "Usage analytics"
+                    "Usage analytics",
                 ],
                 stripe_price_id="price_basic_monthly",
-                is_popular=True
+                is_popular=True,
             ),
             "pro": PricingTier(
                 name="Pro",
@@ -89,10 +90,10 @@ class PricingManager:
                     "API access",
                     "Team collaboration",
                     "Advanced analytics",
-                    "Dedicated support"
+                    "Dedicated support",
                 ],
                 stripe_price_id="price_pro_monthly",
-                is_popular=False
+                is_popular=False,
             ),
             "enterprise": PricingTier(
                 name="Enterprise",
@@ -104,53 +105,53 @@ class PricingManager:
                     "Custom features",
                     "Dedicated account manager",
                     "SLA guarantees",
-                    "On-premise options"
+                    "On-premise options",
                 ],
                 stripe_price_id=None,
-                is_popular=False
-            )
+                is_popular=False,
+            ),
         }
-    
+
     def get_all_tiers(self) -> List[PricingTier]:
         """Get all available pricing tiers."""
         return list(self.tiers.values())
-    
+
     def get_tier(self, tier_name: str) -> Optional[PricingTier]:
         """Get a specific pricing tier by name."""
         return self.tiers.get(tier_name.lower())
-    
+
     def get_tier_by_image_count(self, image_count: int) -> PricingTier:
         """Get the appropriate tier based on image count."""
         # Find the smallest tier that can accommodate the image count
         suitable_tiers = []
-        
+
         for tier_name, tier in self.tiers.items():
             if tier_name == "enterprise":
                 continue  # Skip enterprise for auto-selection
-            
+
             if tier.image_limit == -1 or image_count <= tier.image_limit:
                 suitable_tiers.append(tier)
-        
+
         # Return the smallest suitable tier (cheapest that fits)
         if suitable_tiers:
             return min(suitable_tiers, key=lambda x: x.image_limit)
-        
+
         # If no suitable tier found, return enterprise
         return self.tiers["enterprise"]
-    
+
     def track_usage(self, user_id: str, image_count: int) -> UsageStats:
         """Track usage for a user and return current stats."""
         # In a real implementation, this would query the database
         # For now, we'll use a simple cache
-        
+
         if user_id not in self.usage_cache:
             # New user - start with free tier
             self.usage_cache[user_id] = {
                 "tier": "free",
                 "image_count": 0,
-                "billing_cycle_start": datetime.now()
+                "billing_cycle_start": datetime.now(),
             }
-        
+
         # Update image count
         self.usage_cache[user_id]["image_count"] = image_count
 
@@ -166,14 +167,14 @@ class PricingManager:
         # Keep history bounded to avoid unbounded growth in long-running processes.
         if len(hist) > 5000:
             del hist[:-1000]
-        
+
         # Get current tier
         current_tier = self.usage_cache[user_id]["tier"]
         tier_info = self.tiers[current_tier]
-        
+
         # Calculate usage stats
         usage_percentage = (image_count / tier_info.image_limit) * 100 if tier_info.image_limit > 0 else 0
-        
+
         return UsageStats(
             current_tier=current_tier,
             image_count=image_count,
@@ -181,7 +182,7 @@ class PricingManager:
             usage_percentage=min(usage_percentage, 100),  # Cap at 100%
             billing_cycle_start=self.usage_cache[user_id]["billing_cycle_start"],
             billing_cycle_end=None,  # Would be calculated in real implementation
-            days_remaining=30  # Placeholder
+            days_remaining=30,  # Placeholder
         )
 
     def get_usage_history(self, user_id: str, days: int = 30) -> List[Dict[str, Any]]:
@@ -248,7 +249,12 @@ class PricingManager:
                     "max_image_count": max(counts),
                 }
             else:
-                out[tier] = {"users": 0, "avg_image_count": 0.0, "min_image_count": 0, "max_image_count": 0}
+                out[tier] = {
+                    "users": 0,
+                    "avg_image_count": 0.0,
+                    "min_image_count": 0,
+                    "max_image_count": 0,
+                }
         return out
 
     def get_company_usage_analytics(self) -> Dict[str, Any]:
@@ -276,36 +282,36 @@ class PricingManager:
             "top_users": top_users,
             "generated_at": datetime.now().isoformat(),
         }
-    
+
     def check_limit(self, user_id: str, additional_images: int = 0) -> bool:
         """Check if user can add more images without exceeding limit."""
         if user_id not in self.usage_cache:
             return True  # New users can always add images
-        
+
         current_count = self.usage_cache[user_id]["image_count"]
         current_tier = self.usage_cache[user_id]["tier"]
         tier_info = self.tiers[current_tier]
-        
+
         if tier_info.image_limit == -1:  # Unlimited
             return True
-        
+
         return (current_count + additional_images) <= tier_info.image_limit
-    
+
     def upgrade_tier(self, user_id: str, new_tier: str) -> bool:
         """Upgrade a user to a new tier."""
         if new_tier not in self.tiers:
             return False
-        
+
         if user_id not in self.usage_cache:
             self.usage_cache[user_id] = {
                 "tier": new_tier,
                 "image_count": 0,
-                "billing_cycle_start": datetime.now()
+                "billing_cycle_start": datetime.now(),
             }
         else:
             self.usage_cache[user_id]["tier"] = new_tier
             self.usage_cache[user_id]["billing_cycle_start"] = datetime.now()
-        
+
         return True
 
 

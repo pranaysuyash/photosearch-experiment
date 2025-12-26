@@ -34,6 +34,22 @@ class Settings(BaseSettings):
     # Kept optional so the server can start without heavyweight deps.
     FACE_YOLO_WEIGHTS: str | None = None
 
+    # Optional: embedding backend preference list for clustering when detection backends
+    # do not provide embeddings. Example: "insightface,clip,remote".
+    FACE_EMBEDDING_BACKENDS: str = "insightface,clip,remote"
+    FACE_CLIP_EMBEDDING_MODEL: str = "clip-ViT-B-32"
+
+    # Optional: remote face detection service (HTTP JSON).
+    FACE_REMOTE_DETECT_URL: str | None = None
+    FACE_REMOTE_DETECT_API_KEY: str | None = None
+    FACE_REMOTE_DETECT_TIMEOUT: float = 10.0
+    FACE_REMOTE_DETECT_EMBEDDINGS: bool = False
+
+    # Optional: remote face embedding service (HTTP JSON).
+    FACE_REMOTE_EMBEDDING_URL: str | None = None
+    FACE_REMOTE_EMBEDDING_API_KEY: str | None = None
+    FACE_REMOTE_EMBEDDING_TIMEOUT: float = 10.0
+
     # Path to face clustering database (SQLite)
     FACE_CLUSTERS_DB_PATH: str = str(
         # Store face DB at repo root so all components share the same file.
@@ -61,9 +77,7 @@ class Settings(BaseSettings):
 
     # Media storage roots (defaults are inside project for dev)
     MEDIA_DIR: Path = Path(__file__).resolve().parent.parent / "media"
-    VECTOR_STORE_PATH: Path = (
-        Path(__file__).resolve().parent.parent / "data" / "vector_store"
-    )
+    VECTOR_STORE_PATH: Path = Path(__file__).resolve().parent.parent / "data" / "vector_store"
 
     # JWT Auth for cloud deployments
     JWT_AUTH_ENABLED: bool = False
@@ -93,9 +107,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True  # Enable rate limiting by default
     RATE_LIMIT_REQS_PER_MIN: int = 300  # Higher limit for development
 
-    model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore")
 
 
 settings = Settings()
@@ -132,9 +144,7 @@ def validate_production_config():
             settings.ACCESS_LOG_HASH_SALT = secrets.token_urlsafe(32)
 
         if issues:
-            raise ValueError(
-                f"Production configuration security issues detected: {'; '.join(issues)}"
-            )
+            raise ValueError(f"Production configuration security issues detected: {'; '.join(issues)}")
 
     return True
 

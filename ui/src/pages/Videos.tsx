@@ -19,8 +19,20 @@ export default function VideosPage() {
 
   useEffect(() => {
     const previous = previousTypeFilterRef.current;
-    setTypeFilter('videos');
-    return () => setTypeFilter(previous);
+    let cancelled = false;
+
+    const rafId = window.requestAnimationFrame(() => {
+      if (!cancelled) setTypeFilter('videos');
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+      // Schedule restore asynchronously to avoid synchronous setState in cleanup
+      window.requestAnimationFrame(() => {
+        if (!cancelled) setTypeFilter(previous);
+      });
+    };
   }, [setTypeFilter]);
 
   return (
@@ -43,4 +55,3 @@ export default function VideosPage() {
     </div>
   );
 }
-

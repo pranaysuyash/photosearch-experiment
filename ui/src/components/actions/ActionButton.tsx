@@ -141,7 +141,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         ) : (
           <IconComponent size={iconSizes[size]} />
         )}
-        
+
         {showLabel && (
           <span className={size === 'sm' ? 'hidden sm:inline' : ''}>
             {action.label}

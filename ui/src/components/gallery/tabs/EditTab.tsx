@@ -114,10 +114,13 @@ export function EditTab({
                             active={settings.flipV}
                         />
                         <ControlButton
-                            onClick={() => { }} // TODO: Toggle Crop Mode
+                            onClick={() => {
+                                // Crop functionality not yet implemented
+                                console.warn('Crop mode not yet implemented');
+                            }}
                             icon={CropIcon}
                             label="Crop"
-                            active={false} // Todo
+                            active={false}
                             disabled={true}
                         />
                     </div>

@@ -5,7 +5,6 @@ from server.config import settings
 from server.models.schemas.collaborative_spaces import (
     AddMemberRequest,
     CollaborativeSpaceCreateRequest,
-    CollaborativeSpaceUpdateRequest,
     SpaceCommentCreateRequest,
     SpacePhotoCreateRequest,
 )

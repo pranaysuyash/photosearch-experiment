@@ -1,7 +1,7 @@
 # UI Concept Exploration - Living Document
 
-**Purpose:** Brainstorm innovative UI concepts beyond standard photo grids  
-**Status:** 🔄 Living Document - Multiple AI models contributing  
+**Purpose:** Brainstorm innovative UI concepts beyond standard photo grids
+**Status:** 🔄 Living Document - Multiple AI models contributing
 **Goal:** Create something that STANDS OUT while delivering all capabilities
 
 ---
@@ -344,8 +344,8 @@ Makes photo organization feel like a game. Low cognitive load. One decision at a
 
 ## Claude Opus 4.5 Thoughts on Which to Pursue
 
-**Most Innovative:** The Constellation (Concept 1)  
-**Most Practical:** The Story Mode (Concept 4)  
+**Most Innovative:** The Constellation (Concept 1)
+**Most Practical:** The Story Mode (Concept 4)
 **Best Hybrid:** Combine Command Line (5) + Map (6) + Grid fallback
 
 **My Recommendation:**

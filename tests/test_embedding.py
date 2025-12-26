@@ -4,10 +4,11 @@ from pathlib import Path
 import time
 import sys
 
+
 def test_embeddings():
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("Testing Embedding Generator (Task 10)")
-    print("="*50)
+    print("=" * 50)
 
     # 1. Initialize
     print("1. Initializing Model (CLIP)...")
@@ -37,7 +38,7 @@ def test_embeddings():
         if not img_path.exists():
             print(f"   ❌ Test image not found at {img_path}")
             sys.exit(1)
-            
+
         img = load_image(img_path)
         vec = generator.generate_image_embedding(img)
         print(f"   ✓ Vector length: {len(vec)}")
@@ -45,9 +46,10 @@ def test_embeddings():
     except Exception as e:
         print(f"   ❌ Failed image: {e}")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("✓ Task 10 (Embeddings) Verified")
-    print("="*50)
+    print("=" * 50)
+
 
 if __name__ == "__main__":
     test_embeddings()

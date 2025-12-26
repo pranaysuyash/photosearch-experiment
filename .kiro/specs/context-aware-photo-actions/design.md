@@ -75,7 +75,7 @@ interface PhotoAction {
 
 enum ActionCategory {
   FILE_SYSTEM = 'file_system',
-  EDITING = 'editing', 
+  EDITING = 'editing',
   SHARING = 'sharing',
   EXPORT = 'export',
   NAVIGATION = 'navigation'
@@ -134,7 +134,7 @@ interface InstalledApp {
 
 enum AppCategory {
   PHOTO_EDITOR = 'photo_editor',
-  RAW_PROCESSOR = 'raw_processor', 
+  RAW_PROCESSOR = 'raw_processor',
   VIDEO_EDITOR = 'video_editor',
   VIEWER = 'viewer',
   ORGANIZER = 'organizer'
@@ -219,7 +219,7 @@ interface PhotoActionModel {
 
 enum ActionType {
   COPY_PATH = 'copy_path',
-  OPEN_LOCATION = 'open_location', 
+  OPEN_LOCATION = 'open_location',
   OPEN_WITH = 'open_with',
   DOWNLOAD = 'download',
   EXPORT = 'export',

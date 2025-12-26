@@ -5,7 +5,7 @@
  * reduced motion, and keyboard navigation preferences.
  */
 import { useState, useEffect } from 'react';
-import { 
+import {
   Accessibility,
   Contrast,
   Moon,
@@ -44,21 +44,21 @@ export function AccessibilityPanel() {
       altTextSuggestions: true
     };
   });
-  
+
   const [showHelp, setShowHelp] = useState(false);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('accessibility-settings', JSON.stringify(settings));
-    
+
     // Apply settings to document
     document.body.classList.toggle('high-contrast', settings.highContrast);
     document.body.classList.toggle('reduced-motion', settings.reducedMotion);
-    document.documentElement.style.setProperty('--font-size-multiplier', 
-      settings.fontSize === 'large' ? '1.2' : 
+    document.documentElement.style.setProperty('--font-size-multiplier',
+      settings.fontSize === 'large' ? '1.2' :
       settings.fontSize === 'largest' ? '1.5' : '1.0');
-    document.documentElement.style.setProperty('--focus-indicator-width', 
-      settings.focusIndicator === 'thick' ? '3px' : 
+    document.documentElement.style.setProperty('--focus-indicator-width',
+      settings.focusIndicator === 'thick' ? '3px' :
       settings.focusIndicator === 'border' ? '2px solid' : '2px');
   }, [settings]);
 
@@ -79,7 +79,7 @@ export function AccessibilityPanel() {
       screenReaderFriendly: true,
       altTextSuggestions: true
     };
-    
+
     setSettings(defaultSettings);
     localStorage.removeItem('accessibility-settings');
   };
@@ -96,7 +96,7 @@ export function AccessibilityPanel() {
             </p>
           </div>
         </div>
-        
+
         <button
           onClick={resetSettings}
           className="btn-glass btn-glass--muted text-sm px-3 py-2 flex items-center gap-2"
@@ -105,14 +105,14 @@ export function AccessibilityPanel() {
           Reset Defaults
         </button>
       </div>
-      
+
       {/* Visual Adjustments */}
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Contrast size={20} className="text-foreground" />
           <h2 className="text-lg font-semibold text-foreground">Visual Adjustments</h2>
         </div>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -125,19 +125,19 @@ export function AccessibilityPanel() {
             <button
               onClick={() => updateSetting('highContrast', !settings.highContrast)}
               className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                settings.highContrast 
-                  ? 'bg-primary' 
+                settings.highContrast
+                  ? 'bg-primary'
                   : 'bg-white/10'
               }`}
             >
-              <div 
+              <div
                 className={`bg-white w-4 h-4 rounded-full transition-transform ${
                   settings.highContrast ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-foreground flex items-center gap-2">
@@ -149,19 +149,19 @@ export function AccessibilityPanel() {
             <button
               onClick={() => updateSetting('reducedMotion', !settings.reducedMotion)}
               className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                settings.reducedMotion 
-                  ? 'bg-primary' 
+                settings.reducedMotion
+                  ? 'bg-primary'
                   : 'bg-white/10'
               }`}
             >
-              <div 
+              <div
                 className={`bg-white w-4 h-4 rounded-full transition-transform ${
                   settings.reducedMotion ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
-          
+
           <div>
             <div className="font-medium text-foreground flex items-center gap-2 mb-2">
               <MousePointer size={16} />
@@ -173,8 +173,8 @@ export function AccessibilityPanel() {
                   key={option}
                   onClick={() => updateSetting('focusIndicator', option)}
                   className={`btn-glass py-2 text-sm ${
-                    settings.focusIndicator === option 
-                      ? 'btn-glass--primary' 
+                    settings.focusIndicator === option
+                      ? 'btn-glass--primary'
                       : 'btn-glass--muted'
                   }`}
                 >
@@ -183,7 +183,7 @@ export function AccessibilityPanel() {
               ))}
             </div>
           </div>
-          
+
           <div>
             <div className="font-medium text-foreground flex items-center gap-2 mb-2">
               <Keyboard size={16} />
@@ -195,8 +195,8 @@ export function AccessibilityPanel() {
                   key={size}
                   onClick={() => updateSetting('fontSize', size)}
                   className={`btn-glass py-2 text-sm ${
-                    settings.fontSize === size 
-                      ? 'btn-glass--primary' 
+                    settings.fontSize === size
+                      ? 'btn-glass--primary'
                       : 'btn-glass--muted'
                   }`}
                 >
@@ -207,14 +207,14 @@ export function AccessibilityPanel() {
           </div>
         </div>
       </div>
-      
+
       {/* Navigation Preferences */}
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
         <div className="flex items-center gap-2 mb-4">
           <Keyboard size={20} className="text-foreground" />
           <h2 className="text-lg font-semibold text-foreground">Navigation Preferences</h2>
         </div>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -227,19 +227,19 @@ export function AccessibilityPanel() {
             <button
               onClick={() => updateSetting('keyboardNavigation', !settings.keyboardNavigation)}
               className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                settings.keyboardNavigation 
-                  ? 'bg-primary' 
+                settings.keyboardNavigation
+                  ? 'bg-primary'
                   : 'bg-white/10'
               }`}
             >
-              <div 
+              <div
                 className={`bg-white w-4 h-4 rounded-full transition-transform ${
                   settings.keyboardNavigation ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-foreground flex items-center gap-2">
@@ -251,19 +251,19 @@ export function AccessibilityPanel() {
             <button
               onClick={() => updateSetting('screenReaderFriendly', !settings.screenReaderFriendly)}
               className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                settings.screenReaderFriendly 
-                  ? 'bg-primary' 
+                settings.screenReaderFriendly
+                  ? 'bg-primary'
                   : 'bg-white/10'
               }`}
             >
-              <div 
+              <div
                 className={`bg-white w-4 h-4 rounded-full transition-transform ${
                   settings.screenReaderFriendly ? 'translate-x-6' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
-          
+
           <div className="flex items-center justify-between">
             <div>
               <div className="font-medium text-foreground flex items-center gap-2">
@@ -275,12 +275,12 @@ export function AccessibilityPanel() {
             <button
               onClick={() => updateSetting('altTextSuggestions', !settings.altTextSuggestions)}
               className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                settings.altTextSuggestions 
-                  ? 'bg-primary' 
+                settings.altTextSuggestions
+                  ? 'bg-primary'
                   : 'bg-white/10'
               }`}
             >
-              <div 
+              <div
                 className={`bg-white w-4 h-4 rounded-full transition-transform ${
                   settings.altTextSuggestions ? 'translate-x-6' : 'translate-x-0'
                 }`}
@@ -289,14 +289,14 @@ export function AccessibilityPanel() {
           </div>
         </div>
       </div>
-      
+
       {/* Accessibility Tips */}
       <div className={`${glass.surface} rounded-xl border border-white/10 p-4`}>
         <div className="flex items-center gap-2 mb-3">
           <Accessibility size={20} className="text-foreground" />
           <h2 className="text-lg font-semibold text-foreground">Accessibility Tips</h2>
         </div>
-        
+
         <div className="space-y-3 text-sm text-muted-foreground">
           <p><strong>Keyboard Shortcuts:</strong></p>
           <ul className="list-disc list-inside space-y-1 ml-2">
@@ -307,15 +307,15 @@ export function AccessibilityPanel() {
             <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">+</kbd> - Zoom in</li>
             <li><kbd className="kbd">Ctrl</kbd>+<kbd className="kbd">-</kbd> - Zoom out</li>
           </ul>
-          
+
           <div className="mt-3">
-            <button 
+            <button
               onClick={() => setShowHelp(!showHelp)}
               className="btn-glass btn-glass--muted text-xs px-2 py-1 flex items-center gap-2"
             >
               {showHelp ? 'Hide' : 'Show'} Additional Tips
             </button>
-            
+
             {showHelp && (
               <div className="mt-3 p-3 rounded-lg bg-white/5 text-xs space-y-2">
                 <p>• All interactive elements have visible focus indicators</p>

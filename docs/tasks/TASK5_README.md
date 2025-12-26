@@ -1,7 +1,7 @@
 # Task 5: Unified Photo Search Interface
 
-**File:** `photo_search.py`  
-**Status:** ✅ Complete  
+**File:** `photo_search.py`
+**Status:** ✅ Complete
 **Dependencies:** file_discovery, metadata_extractor, metadata_search
 
 ## Overview
@@ -88,9 +88,9 @@ python photo_search.py --search
 
 ## Test Results
 
-✅ Scanning working (found 3 files)  
-✅ Catalog creation working  
-✅ Statistics display working  
+✅ Scanning working (found 3 files)
+✅ Catalog creation working
+✅ Statistics display working
 ⚠️ Metadata extraction needs catalog format fix
 
 ## Next Steps

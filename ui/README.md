@@ -25,4 +25,3 @@ If you run the UI alone, make sure the backend is running separately.
 See:
 
 - `docs/UI_STYLING.md`
-

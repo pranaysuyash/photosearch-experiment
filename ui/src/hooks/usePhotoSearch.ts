@@ -16,18 +16,18 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  
+
   // Store ALL mutable values in refs to prevent re-render loops
   const offsetRef = useRef(0);
   const loadingRef = useRef(false);
   const hasMoreRef = useRef(true);
   const queryRef = useRef(query);
   const initialFetchDoneRef = useRef(false);
-  
+
   // Store options in refs so they don't cause useCallback recreation
   const optionsRef = useRef(options);
   optionsRef.current = options;
-  
+
   const LIMIT = 50;
 
   // Stable search function - no dependencies that change
@@ -54,9 +54,9 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
       const sortBy = opts.sortBy || 'date_desc';
       const typeFilter = opts.typeFilter || 'all';
       const effectiveOffset = isLoadMore ? offsetRef.current : 0;
-      
-      console.log(`[usePhotoSearch] Fetching: query="${searchQuery}" mode=${searchMode} offset=${effectiveOffset}`);
-      
+
+      // Execute search with current parameters
+
       const res = await api.search(
         searchQuery,
         searchMode,
@@ -81,8 +81,8 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
       const moreAvailable = newPhotos.length >= LIMIT;
       hasMoreRef.current = moreAvailable;
       setHasMore(moreAvailable);
-      console.log(`[usePhotoSearch] Got ${newPhotos.length} results, hasMore=${moreAvailable}, offset now=${offsetRef.current}`);
-      
+      // Search completed successfully
+
     } catch (err) {
       console.error("[usePhotoSearch] Search failed:", err);
       setError(err instanceof Error ? err : new Error("Search failed"));
@@ -97,7 +97,7 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
 
   const loadMore = useCallback(() => {
     if (!loadingRef.current && hasMoreRef.current) {
-      console.log('[usePhotoSearch] loadMore triggered, offset:', offsetRef.current);
+      // Load more results from current offset
       doSearch(queryRef.current, true);
     }
   }, [doSearch]);
@@ -126,7 +126,7 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
     if (!initialFetchDoneRef.current) {
       return;
     }
-    
+
     const timer = setTimeout(() => {
       doSearch(query, false);
     }, optionsRef.current.debounceMs || 300);

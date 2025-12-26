@@ -12,11 +12,11 @@ def test_server_config_endpoint(monkeypatch):
     monkeypatch.setattr(settings, "ACCESS_LOG_MASKING", True)
     monkeypatch.setattr(settings, "JWT_AUTH_ENABLED", False)
 
-    res = client.get('/server/config')
+    res = client.get("/server/config")
     assert res.status_code == 200
     data = res.json()
-    assert data['signed_url_enabled'] is True
-    assert data['sandbox_strict'] is True
-    assert data['rate_limit_enabled'] is False
-    assert data['access_log_masking'] is True
-    assert data['jwt_auth_enabled'] is False
+    assert data["signed_url_enabled"] is True
+    assert data["sandbox_strict"] is True
+    assert data["rate_limit_enabled"] is False
+    assert data["access_log_masking"] is True
+    assert data["jwt_auth_enabled"] is False

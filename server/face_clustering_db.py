@@ -106,9 +106,7 @@ class FaceClusteringDB:
             # Verify schema version
             with sqlite3.connect(str(self.db_path)) as conn:
                 version = get_schema_version(conn)
-                logger.info(
-                    f"Face clustering DB initialized at schema version {version}"
-                )
+                logger.info(f"Face clustering DB initialized at schema version {version}")
         except Exception as e:
             logger.warning(f"Migration failed, falling back to legacy init: {e}")
             self._init_db_legacy()
@@ -156,15 +154,9 @@ class FaceClusteringDB:
             """)
 
             # Indexes for performance
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_face_detections_photo ON face_detections(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_person_photo ON photo_person_associations(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_person_cluster ON photo_person_associations(cluster_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_photo ON face_detections(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_photo ON photo_person_associations(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_cluster ON photo_person_associations(cluster_id)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_photo_person_photo_cluster ON photo_person_associations(photo_path, cluster_id)"
             )
@@ -174,19 +166,12 @@ class FaceClusteringDB:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)")
 
             # Lightweight migrations for older DBs
             try:
-                cols = [
-                    r[1]
-                    for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
-                ]
+                cols = [r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()]
                 if "label" not in cols:
                     conn.execute("ALTER TABLE face_clusters ADD COLUMN label TEXT")
             except Exception:
@@ -293,9 +278,7 @@ class FaceClusteringDB:
 
         return cluster_id
 
-    def associate_person_with_photo(
-        self, photo_path: str, cluster_id: str, detection_id: str, confidence: float
-    ):
+    def associate_person_with_photo(self, photo_path: str, cluster_id: str, detection_id: str, confidence: float):
         """Associate a person (cluster) with a photo."""
         with sqlite3.connect(str(self.db_path)) as conn:
             # Check if cluster exists
@@ -417,18 +400,12 @@ class FaceClusteringDB:
                 # If there was an existing association for the cluster but not for this specific
                 # detection_id, create a new association row.
                 if cur.rowcount == 0:
-                    self.associate_person_with_photo(
-                        photo_path, cluster_id, detection_id, confidence
-                    )
+                    self.associate_person_with_photo(photo_path, cluster_id, detection_id, confidence)
         else:
             # New association
-            self.associate_person_with_photo(
-                photo_path, cluster_id, detection_id, confidence
-            )
+            self.associate_person_with_photo(photo_path, cluster_id, detection_id, confidence)
 
-    def remove_person_from_photo(
-        self, photo_path: str, cluster_id: str, detection_id: str
-    ):
+    def remove_person_from_photo(self, photo_path: str, cluster_id: str, detection_id: str):
         """Remove a person association from a photo."""
         with sqlite3.connect(str(self.db_path)) as conn:
             # Remove association
@@ -569,9 +546,7 @@ class FaceClusteringDB:
         """Remove associations for photos that no longer exist."""
         with sqlite3.connect(str(self.db_path)) as conn:
             # Get all unique photo paths
-            cursor = conn.execute(
-                "SELECT DISTINCT photo_path FROM photo_person_associations"
-            )
+            cursor = conn.execute("SELECT DISTINCT photo_path FROM photo_person_associations")
             all_photos = [row[0] for row in cursor.fetchall()]
 
             missing_photos = [f for f in all_photos if not os.path.exists(f)]
@@ -583,9 +558,7 @@ class FaceClusteringDB:
                     (photo_path,),
                 )
                 # Remove detections
-                conn.execute(
-                    "DELETE FROM face_detections WHERE photo_path = ?", (photo_path,)
-                )
+                conn.execute("DELETE FROM face_detections WHERE photo_path = ?", (photo_path,))
 
             return len(missing_photos)
 
@@ -619,9 +592,7 @@ class FaceClusteringDB:
                 )
                 detection_ids.append(detection_id)
 
-            logger.info(
-                f"Detected and stored {len(detection_ids)} faces in {photo_path}"
-            )
+            logger.info(f"Detected and stored {len(detection_ids)} faces in {photo_path}")
             return detection_ids
 
         except ImportError:
@@ -690,9 +661,7 @@ class FaceClusteringDB:
 
         return None
 
-    def _calculate_cosine_similarity(
-        self, emb1: List[float], emb2: List[float]
-    ) -> float:
+    def _calculate_cosine_similarity(self, emb1: List[float], emb2: List[float]) -> float:
         """Calculate cosine similarity between two embeddings."""
         try:
             vec1 = np.array(emb1)
@@ -728,9 +697,7 @@ class FaceClusteringDB:
 
         return detection_ids, embeddings
 
-    def cluster_faces(
-        self, similarity_threshold: float = 0.6, min_samples: int = 2
-    ) -> Dict[str, List[str]]:
+    def cluster_faces(self, similarity_threshold: float = 0.6, min_samples: int = 2) -> Dict[str, List[str]]:
         """Automatically cluster similar faces using DBSCAN."""
         try:
             # Get all face embeddings
@@ -752,17 +719,13 @@ class FaceClusteringDB:
             # Cosine similarity of 0.6 ≈ distance of 0.894 (1 - 0.6^2, but simplified)
             distance_threshold = 1.0 - similarity_threshold
 
-            clustering = DBSCAN(
-                eps=distance_threshold, min_samples=min_samples, metric="cosine"
-            )
+            clustering = DBSCAN(eps=distance_threshold, min_samples=min_samples, metric="cosine")
 
             # Fit the clustering
             labels = clustering.fit_predict(embedding_array)
 
             # Create clusters
-            clusters: Dict[
-                int, Dict[str, Any]
-            ] = {}  # label -> {'cluster_id': str, 'detection_ids': List[str]}
+            clusters: Dict[int, Dict[str, Any]] = {}  # label -> {'cluster_id': str, 'detection_ids': List[str]}
             noise_detections = []  # Detections not in any cluster
 
             for detection_id, label in zip(detection_ids, labels):
@@ -771,17 +734,13 @@ class FaceClusteringDB:
                 else:
                     if label not in clusters:
                         # Create a new cluster
-                        cluster_id = self.add_face_cluster(
-                            label=f"Auto Cluster {label}"
-                        )
+                        cluster_id = self.add_face_cluster(label=f"Auto Cluster {label}")
                         clusters[label] = {
                             "cluster_id": cluster_id,
                             "detection_ids": cast(List[str], []),
                         }
 
-                    cast(List[str], clusters[label]["detection_ids"]).append(
-                        detection_id
-                    )
+                    cast(List[str], clusters[label]["detection_ids"]).append(detection_id)
 
             # Associate faces with their clusters
             for cluster_label, cluster_data in clusters.items():
@@ -815,9 +774,7 @@ class FaceClusteringDB:
                 cid = cast(str, cluster_data["cluster_id"])
                 result[cid] = cast(List[str], cluster_data["detection_ids"])
 
-            logger.info(
-                f"Created {len(clusters)} clusters from {len(detection_ids)} faces"
-            )
+            logger.info(f"Created {len(clusters)} clusters from {len(detection_ids)} faces")
             logger.info(f"Noise detections (not clustered): {len(noise_detections)}")
 
             return result
@@ -855,9 +812,7 @@ class FaceClusteringDB:
 
             # Calculate statistics
             avg_confidence = sum(confidences) / len(confidences) if confidences else 0
-            avg_quality = (
-                sum(quality_scores) / len(quality_scores) if quality_scores else 0
-            )
+            avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
 
             # Calculate cluster coherence (how similar faces are to each other)
             coherence_score = 1.0
@@ -865,9 +820,7 @@ class FaceClusteringDB:
                 similarities = []
                 for i in range(len(embeddings)):
                     for j in range(i + 1, len(embeddings)):
-                        sim = self._calculate_cosine_similarity(
-                            embeddings[i], embeddings[j]
-                        )
+                        sim = self._calculate_cosine_similarity(embeddings[i], embeddings[j])
                         similarities.append(sim)
 
                 if similarities:
@@ -879,9 +832,7 @@ class FaceClusteringDB:
                 "avg_confidence": avg_confidence,
                 "avg_quality_score": avg_quality,
                 "coherence_score": coherence_score,
-                "quality_rating": self._calculate_quality_rating(
-                    avg_quality, coherence_score
-                ),
+                "quality_rating": self._calculate_quality_rating(avg_quality, coherence_score),
             }
 
         except Exception as e:
@@ -907,9 +858,7 @@ class FaceClusteringDB:
     # Phase 0: Assignment State Management
     # ===================================================================
 
-    def update_assignment_state(
-        self, detection_id: str, cluster_id: str, state: str
-    ) -> bool:
+    def update_assignment_state(self, detection_id: str, cluster_id: str, state: str) -> bool:
         """
         Update the assignment state of a face-to-cluster association.
 
@@ -954,9 +903,7 @@ class FaceClusteringDB:
                 {
                     "detection_id": detection_id,
                     "cluster_id": cluster_id,
-                    "previous_state": self._get_association_snapshot(
-                        conn, detection_id, cluster_id
-                    ),
+                    "previous_state": self._get_association_snapshot(conn, detection_id, cluster_id),
                 },
             )
 
@@ -1087,9 +1034,7 @@ class FaceClusteringDB:
     # Phase 0: Undo System (Full Reversible Snapshots)
     # ===================================================================
 
-    def _log_operation(
-        self, conn: sqlite3.Connection, operation_type: str, operation_data: dict
-    ):
+    def _log_operation(self, conn: sqlite3.Connection, operation_type: str, operation_data: dict):
         """Log an operation for potential undo. Call within an existing transaction."""
         conn.execute(
             """
@@ -1099,9 +1044,7 @@ class FaceClusteringDB:
             (operation_type, json.dumps(operation_data)),
         )
 
-    def _get_association_snapshot(
-        self, conn: sqlite3.Connection, detection_id: str, cluster_id: str
-    ) -> Optional[dict]:
+    def _get_association_snapshot(self, conn: sqlite3.Connection, detection_id: str, cluster_id: str) -> Optional[dict]:
         """Get current state of an association for undo purposes."""
         conn.row_factory = sqlite3.Row
         row = conn.execute(
@@ -1117,9 +1060,7 @@ class FaceClusteringDB:
             return dict(row)
         return None
 
-    def _get_cluster_snapshot(
-        self, conn: sqlite3.Connection, cluster_id: str
-    ) -> Optional[dict]:
+    def _get_cluster_snapshot(self, conn: sqlite3.Connection, cluster_id: str) -> Optional[dict]:
         """Get current state of a cluster for undo purposes."""
         conn.row_factory = sqlite3.Row
         row = conn.execute(
@@ -1139,9 +1080,7 @@ class FaceClusteringDB:
             if result.get("prototype_embedding"):
                 import base64
 
-                result["prototype_embedding"] = base64.b64encode(
-                    result["prototype_embedding"]
-                ).decode()
+                result["prototype_embedding"] = base64.b64encode(result["prototype_embedding"]).decode()
             return result
         return None
 
@@ -1464,9 +1403,7 @@ class FaceClusteringDB:
                 self._update_cluster_counts_conn(conn, original_cluster_id)
 
         # Delete the new cluster
-        conn.execute(
-            "DELETE FROM face_clusters WHERE cluster_id = ?", (new_cluster_id,)
-        )
+        conn.execute("DELETE FROM face_clusters WHERE cluster_id = ?", (new_cluster_id,))
 
     def _undo_move(self, conn: sqlite3.Connection, op_data: dict):
         """Undo a move operation."""
@@ -1533,9 +1470,7 @@ class FaceClusteringDB:
     # Phase 0: Split Flow (Move Faces to New Person)
     # ===================================================================
 
-    def split_faces_to_new_person(
-        self, detection_ids: List[str], new_label: Optional[str] = None
-    ) -> str:
+    def split_faces_to_new_person(self, detection_ids: List[str], new_label: Optional[str] = None) -> str:
         """
         Move selected faces from their current clusters to a new person.
 
@@ -1616,9 +1551,7 @@ class FaceClusteringDB:
             # Update counts on new cluster
             self._update_cluster_counts_conn(conn, new_cluster_id)
 
-            logger.info(
-                f"Split {len(detection_ids)} faces to new cluster {new_cluster_id}"
-            )
+            logger.info(f"Split {len(detection_ids)} faces to new cluster {new_cluster_id}")
             return new_cluster_id
 
     def move_face_to_cluster(self, detection_id: str, to_cluster_id: str) -> bool:
@@ -1694,9 +1627,7 @@ class FaceClusteringDB:
     # Phase 0: Enhanced Merge with Undo Support
     # ===================================================================
 
-    def merge_clusters_with_undo(
-        self, source_cluster_id: str, target_cluster_id: str
-    ) -> bool:
+    def merge_clusters_with_undo(self, source_cluster_id: str, target_cluster_id: str) -> bool:
         """
         Merge source cluster into target cluster with full undo support.
 
@@ -1761,9 +1692,7 @@ class FaceClusteringDB:
                 )
 
             # Delete source cluster
-            conn.execute(
-                "DELETE FROM face_clusters WHERE cluster_id = ?", (source_cluster_id,)
-            )
+            conn.execute("DELETE FROM face_clusters WHERE cluster_id = ?", (source_cluster_id,))
 
             # Update target cluster counts
             self._update_cluster_counts_conn(conn, target_cluster_id)
@@ -1818,11 +1747,7 @@ class FaceClusteringDB:
         for row in rows:
             if row[0]:
                 try:
-                    emb = (
-                        json.loads(row[0])
-                        if isinstance(row[0], str)
-                        else np.frombuffer(row[0], dtype=np.float32)
-                    )
+                    emb = json.loads(row[0]) if isinstance(row[0], str) else np.frombuffer(row[0], dtype=np.float32)
                     embeddings.append(np.array(emb, dtype=np.float32))
                 except Exception:
                     continue
@@ -1849,12 +1774,7 @@ class FaceClusteringDB:
     def recompute_all_prototypes(self):
         """Recompute prototypes for all clusters."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            cluster_ids = [
-                row[0]
-                for row in conn.execute(
-                    "SELECT cluster_id FROM face_clusters"
-                ).fetchall()
-            ]
+            cluster_ids = [row[0] for row in conn.execute("SELECT cluster_id FROM face_clusters").fetchall()]
 
             for cluster_id in cluster_ids:
                 self._recompute_prototype(conn, cluster_id)
@@ -1862,9 +1782,7 @@ class FaceClusteringDB:
 
             logger.info(f"Recomputed prototypes for {len(cluster_ids)} clusters")
 
-    def _compute_representative_face(
-        self, conn: sqlite3.Connection, cluster_id: str
-    ) -> str | None:
+    def _compute_representative_face(self, conn: sqlite3.Connection, cluster_id: str) -> str | None:
         """
         Select the best representative face for a cluster using a deterministic algorithm.
 
@@ -1917,9 +1835,7 @@ class FaceClusteringDB:
 
             # 3. Recency bonus (10% weight) - newer is better
             try:
-                created_at = datetime.fromisoformat(
-                    created_at_str.replace("Z", "+00:00")
-                )
+                created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
                 # Recency bonus: faces added in last 30 days get up to 0.1 bonus
                 age_days = (datetime.now() - created_at.replace(tzinfo=None)).days
                 recency_factor = max(0.0, 1.0 - (age_days / 30.0))
@@ -2091,12 +2007,8 @@ class FaceClusteringDB:
 
                     # Compare prototype embeddings
                     try:
-                        emb1 = np.frombuffer(
-                            c1["prototype_embedding"], dtype=np.float32
-                        )
-                        emb2 = np.frombuffer(
-                            c2["prototype_embedding"], dtype=np.float32
-                        )
+                        emb1 = np.frombuffer(c1["prototype_embedding"], dtype=np.float32)
+                        emb2 = np.frombuffer(c2["prototype_embedding"], dtype=np.float32)
 
                         # Cosine similarity (embeddings should be L2-normalized)
                         similarity = float(np.dot(emb1, emb2))
@@ -2105,26 +2017,18 @@ class FaceClusteringDB:
                             suggestions.append(
                                 {
                                     "cluster_a_id": cluster_a_id,
-                                    "cluster_a_label": c1["label"]
-                                    or f"Person {cluster_a_id}",
-                                    "cluster_a_face_count": face_counts.get(
-                                        cluster_a_id, 0
-                                    ),
+                                    "cluster_a_label": c1["label"] or f"Person {cluster_a_id}",
+                                    "cluster_a_face_count": face_counts.get(cluster_a_id, 0),
                                     "cluster_b_id": cluster_b_id,
-                                    "cluster_b_label": c2["label"]
-                                    or f"Person {cluster_b_id}",
-                                    "cluster_b_face_count": face_counts.get(
-                                        cluster_b_id, 0
-                                    ),
+                                    "cluster_b_label": c2["label"] or f"Person {cluster_b_id}",
+                                    "cluster_b_face_count": face_counts.get(cluster_b_id, 0),
                                     "similarity": round(similarity, 3),
                                     "representative_a": rep_info.get(cluster_a_id),
                                     "representative_b": rep_info.get(cluster_b_id),
                                 }
                             )
                     except Exception as e:
-                        logger.warning(
-                            f"Error comparing clusters {cluster_a_id} and {cluster_b_id}: {e}"
-                        )
+                        logger.warning(f"Error comparing clusters {cluster_a_id} and {cluster_b_id}: {e}")
 
             # Sort by similarity (highest first) and limit
             suggestions.sort(key=lambda x: x["similarity"], reverse=True)
@@ -2168,9 +2072,7 @@ class FaceClusteringDB:
     # Phase 6: Privacy Controls
     # ===================================================================
 
-    def set_person_indexing_enabled(
-        self, cluster_id: str, enabled: bool, reason: str | None = None
-    ) -> bool:
+    def set_person_indexing_enabled(self, cluster_id: str, enabled: bool, reason: str | None = None) -> bool:
         """
         Enable or disable auto-assignment to a specific person cluster.
 
@@ -2231,9 +2133,7 @@ class FaceClusteringDB:
     def get_app_setting(self, key: str, default: str | None = None) -> str | None:
         """Get an app setting value."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            row = conn.execute(
-                "SELECT value FROM app_settings WHERE key = ?", (key,)
-            ).fetchone()
+            row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
             return row[0] if row else default
 
     def set_app_setting(self, key: str, value: str) -> bool:
@@ -2258,9 +2158,7 @@ class FaceClusteringDB:
 
     def set_face_indexing_paused(self, paused: bool) -> bool:
         """Pause or resume global face indexing."""
-        return self.set_app_setting(
-            "faces_indexing_paused", "true" if paused else "false"
-        )
+        return self.set_app_setting("faces_indexing_paused", "true" if paused else "false")
 
     # ===================================================================
     # Phase 0: Unknown Bucket (Unassigned Faces)
@@ -2305,9 +2203,7 @@ class FaceClusteringDB:
         """Rename a cluster with undo support."""
         with sqlite3.connect(str(self.db_path)) as conn:
             # Get current label
-            row = conn.execute(
-                "SELECT label FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
-            ).fetchone()
+            row = conn.execute("SELECT label FROM face_clusters WHERE cluster_id = ?", (cluster_id,)).fetchone()
 
             if not row:
                 raise ValueError(f"Cluster {cluster_id} not found")
@@ -2413,16 +2309,12 @@ class FaceClusteringDB:
 
             # Low quality ratio
             low_quality_count = sum(1 for q in quality_scores if q < 0.5)
-            low_quality_ratio = (
-                low_quality_count / len(quality_scores) if quality_scores else 0.0
-            )
+            low_quality_ratio = low_quality_count / len(quality_scores) if quality_scores else 0.0
 
             # Mixed cluster heuristic:
             # - High variance (> 0.15) OR
             # - Low coherence (< 0.5) AND high low-quality ratio (> 0.4)
-            is_mixed_suspected = variance > 0.15 or (
-                coherence_score < 0.5 and low_quality_ratio > 0.4
-            )
+            is_mixed_suspected = variance > 0.15 or (coherence_score < 0.5 and low_quality_ratio > 0.4)
 
             return {
                 "coherence_score": coherence_score,
@@ -2430,9 +2322,7 @@ class FaceClusteringDB:
                 "low_quality_ratio": low_quality_ratio,
                 "is_mixed_suspected": is_mixed_suspected,
                 "face_count": face_count,
-                "avg_confidence": sum(confidences) / len(confidences)
-                if confidences
-                else 0.0,
+                "avg_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
             }
 
     def get_gray_zone_faces(
@@ -2512,10 +2402,7 @@ class FaceClusteringDB:
 
                 coherence = self.get_cluster_coherence(row["cluster_id"])
 
-                if (
-                    coherence["is_mixed_suspected"]
-                    or coherence["coherence_score"] < threshold
-                ):
+                if coherence["is_mixed_suspected"] or coherence["coherence_score"] < threshold:
                     mixed_clusters.append(
                         {
                             "cluster_id": row["cluster_id"],
@@ -2577,23 +2464,19 @@ class FaceClusteringDB:
             prototypes = {}
             for row in rows:
                 try:
-                    embedding = np.frombuffer(
-                        row["prototype_embedding"], dtype=np.float32
-                    )
+                    embedding = np.frombuffer(row["prototype_embedding"], dtype=np.float32)
                     prototypes[row["cluster_id"]] = (embedding, row["label"])
                 except Exception as e:
-                    logger.warning(
-                        f"Failed to load prototype for {row['cluster_id']}: {e}"
-                    )
+                    logger.warning(f"Failed to load prototype for {row['cluster_id']}: {e}")
 
             # Use bulk loading if available (FAISS), otherwise add individually
-            if hasattr(index, 'bulk_load'):
+            if hasattr(index, "bulk_load"):
                 index.bulk_load(prototypes)
             else:
                 for cluster_id, (embedding, label) in prototypes.items():
                     index.add_prototype(cluster_id, embedding, label)
 
-            backend_type = getattr(index, 'get_stats', lambda: {}).get('index_type', 'unknown')
+            backend_type = getattr(index, "get_stats", lambda: {}).get("index_type", "unknown")
             logger.info(f"Built {backend_type} embedding index with {index.count()} prototypes")
 
         return index
@@ -2632,9 +2515,7 @@ class FaceClusteringDB:
             index = self.build_embedding_index()
 
         # Create assigner with thresholds
-        assigner = PrototypeAssigner(
-            index=index, auto_assign_min=auto_assign_min, review_min=review_min
-        )
+        assigner = PrototypeAssigner(index=index, auto_assign_min=auto_assign_min, review_min=review_min)
 
         # Get assignment
         result = assigner.assign_face(embedding)
@@ -2732,9 +2613,7 @@ class FaceClusteringDB:
         review_count = sum(1 for r in results.values() if r["action"] == "review")
         unknown_count = sum(1 for r in results.values() if r["action"] == "unknown")
 
-        logger.info(
-            f"Batch assignment: {auto_count} auto, {review_count} review, {unknown_count} unknown"
-        )
+        logger.info(f"Batch assignment: {auto_count} auto, {review_count} review, {unknown_count} unknown")
 
         return results
 
@@ -2841,11 +2720,7 @@ class FaceClusteringDB:
             results = []
             for row in rows:
                 # Skip same cluster if requested
-                if (
-                    not include_same_cluster
-                    and ref_cluster is not None
-                    and row["cluster_id"] == ref_cluster
-                ):
+                if not include_same_cluster and ref_cluster is not None and row["cluster_id"] == ref_cluster:
                     continue
 
                 try:
@@ -2955,9 +2830,7 @@ class FaceClusteringDB:
                     WHERE cluster_id IN ({exclude_placeholders})
                     AND photo_path IN ({path_placeholders})
                 """
-                excluded = conn.execute(
-                    exclude_query, exclude_people + photo_paths
-                ).fetchall()
+                excluded = conn.execute(exclude_query, exclude_people + photo_paths).fetchall()
                 excluded_paths = {row["photo_path"] for row in excluded}
 
                 photo_paths = [p for p in photo_paths if p not in excluded_paths]
@@ -2984,10 +2857,7 @@ class FaceClusteringDB:
                 results.append(
                     {
                         "photo_path": path,
-                        "people": [
-                            {"cluster_id": p["cluster_id"], "label": p["label"]}
-                            for p in people
-                        ],
+                        "people": [{"cluster_id": p["cluster_id"], "label": p["label"]} for p in people],
                     }
                 )
 
@@ -3035,9 +2905,7 @@ class FaceClusteringDB:
                     "label": row["label"],
                     "confidence": row["confidence"],
                     "assignment_state": row["assignment_state"],
-                    "bounding_box": json.loads(row["bounding_box"])
-                    if row["bounding_box"]
-                    else None,
+                    "bounding_box": json.loads(row["bounding_box"]) if row["bounding_box"] else None,
                     "quality_score": row["quality_score"],
                 }
                 for row in rows
@@ -3177,9 +3045,7 @@ class FaceClusteringDB:
                     "status": row["status"],
                     "created_at": row["created_at"],
                     "photo_path": row["photo_path"],
-                    "bounding_box": json.loads(row["bounding_box"])
-                    if row["bounding_box"]
-                    else None,
+                    "bounding_box": json.loads(row["bounding_box"]) if row["bounding_box"] else None,
                     "quality_score": row["quality_score"],
                     "candidate_label": row["candidate_label"],
                     "candidate_face_count": row["candidate_face_count"],
@@ -3190,9 +3056,7 @@ class FaceClusteringDB:
     def get_review_queue_count(self) -> int:
         """Get count of pending items in review queue."""
         with sqlite3.connect(str(self.db_path)) as conn:
-            row = conn.execute(
-                "SELECT COUNT(*) FROM face_review_queue WHERE status = 'pending'"
-            ).fetchone()
+            row = conn.execute("SELECT COUNT(*) FROM face_review_queue WHERE status = 'pending'").fetchone()
             return row[0] if row else 0
 
     def add_to_review_queue(
@@ -3412,10 +3276,7 @@ class FaceClusteringDB:
                 INSERT INTO face_rejections (detection_id, cluster_id, created_at)
                 VALUES (?, ?, ?)
                 """,
-                [
-                    (r["detection_id"], r["cluster_id"], r["created_at"])
-                    for r in rejections
-                ],
+                [(r["detection_id"], r["cluster_id"], r["created_at"]) for r in rejections],
             )
 
     def delete_face_cluster(self, cluster_id: str) -> bool:
@@ -3434,9 +3295,7 @@ class FaceClusteringDB:
 
             # 1. Fetch data for undo
             # Cluster info
-            cluster_row = conn.execute(
-                "SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
-            ).fetchone()
+            cluster_row = conn.execute("SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)).fetchone()
             if not cluster_row:
                 return False  # Already deleted?
 
@@ -3461,9 +3320,7 @@ class FaceClusteringDB:
             # Rejections
             rejections = [
                 dict(row)
-                for row in conn.execute(
-                    "SELECT * FROM face_rejections WHERE cluster_id = ?", (cluster_id,)
-                ).fetchall()
+                for row in conn.execute("SELECT * FROM face_rejections WHERE cluster_id = ?", (cluster_id,)).fetchall()
             ]
 
             # Log for undo
@@ -3487,12 +3344,8 @@ class FaceClusteringDB:
                 "DELETE FROM face_review_queue WHERE candidate_cluster_id = ?",
                 (cluster_id,),
             )
-            conn.execute(
-                "DELETE FROM face_rejections WHERE cluster_id = ?", (cluster_id,)
-            )
-            conn.execute(
-                "DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
-            )
+            conn.execute("DELETE FROM face_rejections WHERE cluster_id = ?", (cluster_id,))
+            conn.execute("DELETE FROM face_clusters WHERE cluster_id = ?", (cluster_id,))
 
             logger.info(f"Deleted person {cluster_id}")
             return True
@@ -3503,9 +3356,7 @@ class FaceClusteringDB:
             conn.row_factory = sqlite3.Row
 
             # Cluster info
-            cluster = conn.execute(
-                "SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)
-            ).fetchone()
+            cluster = conn.execute("SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_id,)).fetchone()
             if not cluster:
                 return None
 
@@ -3556,15 +3407,9 @@ class FaceClusteringDB:
             # Stats
             stats = {}
             try:
-                stats["associations"] = conn.execute(
-                    "SELECT COUNT(*) FROM photo_person_associations"
-                ).fetchone()[0]
-                stats["clusters"] = conn.execute(
-                    "SELECT COUNT(*) FROM face_clusters"
-                ).fetchone()[0]
-                stats["detections"] = conn.execute(
-                    "SELECT COUNT(*) FROM face_detections"
-                ).fetchone()[0]
+                stats["associations"] = conn.execute("SELECT COUNT(*) FROM photo_person_associations").fetchone()[0]
+                stats["clusters"] = conn.execute("SELECT COUNT(*) FROM face_clusters").fetchone()[0]
+                stats["detections"] = conn.execute("SELECT COUNT(*) FROM face_detections").fetchone()[0]
             except sqlite3.OperationalError:
                 stats = {"error": "Could not fetch stats"}
 

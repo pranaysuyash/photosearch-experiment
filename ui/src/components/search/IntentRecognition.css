@@ -135,20 +135,20 @@
   .intent-recognition {
     @apply p-3;
   }
-  
+
   .intent-header {
     @apply gap-2;
   }
-  
+
   .intent-icon {
     @apply w-8 h-8 text-base;
   }
-  
+
   .suggestion-list,
   .badge-list {
     @apply gap-1;
   }
-  
+
   .suggestion-item,
   .badge-item {
     @apply text-xs px-1.5 py-0.5;

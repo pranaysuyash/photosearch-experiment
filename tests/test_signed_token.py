@@ -1,6 +1,6 @@
 from server.signed_urls import issue_token, verify_token, TokenError
 from server.config import settings
-import time
+
 
 def test_issue_and_verify_token(monkeypatch):
     monkeypatch.setattr(settings, "SIGNED_URL_SECRET", "test_secret")

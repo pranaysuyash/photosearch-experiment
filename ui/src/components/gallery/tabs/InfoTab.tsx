@@ -189,7 +189,7 @@ function ControlButton({ onClick, icon: Icon, label, active, activeColor, highli
             title={label}
         >
             <Icon size={18} className={active && activeColor ? activeColor : ""} />
-            {/* Tooltip implementation could go here if using a Tooltip primitives, 
+            {/* Tooltip implementation could go here if using a Tooltip primitives,
                 for now standard title attribute serves as basic tooltip */}
         </button>
     );

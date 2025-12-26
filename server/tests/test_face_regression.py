@@ -62,15 +62,9 @@ def populated_db(face_db):
     )
 
     # Associate faces with clusters
-    face_db.associate_person_with_photo(
-        "/photo1.jpg", cluster_a, det_a1, confidence=0.98
-    )
-    face_db.associate_person_with_photo(
-        "/photo2.jpg", cluster_a, det_a2, confidence=0.92
-    )
-    face_db.associate_person_with_photo(
-        "/photo3.jpg", cluster_b, det_b1, confidence=0.95
-    )
+    face_db.associate_person_with_photo("/photo1.jpg", cluster_a, det_a1, confidence=0.98)
+    face_db.associate_person_with_photo("/photo2.jpg", cluster_a, det_a2, confidence=0.92)
+    face_db.associate_person_with_photo("/photo3.jpg", cluster_b, det_b1, confidence=0.95)
 
     return {
         "db": face_db,
@@ -216,9 +210,7 @@ class TestTransactionality:
 
         with sqlite3.connect(str(db.db_path)) as conn:
             # Check cluster B is deleted
-            rows = conn.execute(
-                "SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_b,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM face_clusters WHERE cluster_id = ?", (cluster_b,)).fetchall()
             assert len(rows) == 0
 
             # Check log entry exists
@@ -249,9 +241,7 @@ def run_smoke_test():
         print("\n1. Create cluster and confirm face...")
         cluster_id = db.add_face_cluster(label="Test Person")
         emb = np.random.randn(512).astype(np.float32).tolist()
-        det_id = db.add_face_detection(
-            "/photo1.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}, emb, 0.9
-        )
+        det_id = db.add_face_detection("/photo1.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}, emb, 0.9)
         db.associate_person_with_photo("/photo1.jpg", cluster_id, det_id, 0.95)
         db.confirm_face_assignment(det_id, cluster_id)
 
@@ -263,9 +253,7 @@ def run_smoke_test():
         print("\n2. Merge clusters...")
         cluster2 = db.add_face_cluster(label="To Merge")
         emb2 = np.random.randn(512).astype(np.float32).tolist()
-        det2 = db.add_face_detection(
-            "/photo2.jpg", {"x": 0.2, "y": 0.2, "w": 0.2, "h": 0.2}, emb2, 0.85
-        )
+        det2 = db.add_face_detection("/photo2.jpg", {"x": 0.2, "y": 0.2, "w": 0.2, "h": 0.2}, emb2, 0.85)
         db.associate_person_with_photo("/photo2.jpg", cluster2, det2, 0.90)
 
         db.merge_clusters_with_undo(cluster2, cluster_id)
@@ -287,9 +275,7 @@ def run_smoke_test():
         import sqlite3
 
         with sqlite3.connect(str(db_path)) as conn:
-            rows = conn.execute(
-                "SELECT * FROM face_rejections WHERE detection_id = ?", (det2,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM face_rejections WHERE detection_id = ?", (det2,)).fetchall()
             assert len(rows) == 1, "❌ Rejection not recorded"
         print("   ✅ Reject works")
 
@@ -298,9 +284,7 @@ def run_smoke_test():
         db.undo_last_operation()
 
         with sqlite3.connect(str(db_path)) as conn:
-            rows = conn.execute(
-                "SELECT * FROM face_rejections WHERE detection_id = ?", (det2,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM face_rejections WHERE detection_id = ?", (det2,)).fetchall()
             assert len(rows) == 0, "❌ Undo reject failed"
         print("   ✅ Undo reject works")
 
@@ -335,9 +319,7 @@ class TestReviewQueue:
     def test_add_to_review_queue(self, face_db):
         """Test adding items to review queue."""
         cluster = face_db.add_face_cluster(label="Test Person")
-        det = face_db.add_face_detection(
-            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
-        )
+        det = face_db.add_face_detection("/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2})
 
         item_id = face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
         assert item_id > 0
@@ -355,9 +337,7 @@ class TestReviewQueue:
         assert face_db.get_review_queue_count() == 0
 
         for i in range(3):
-            det = face_db.add_face_detection(
-                f"/test{i}.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
-            )
+            det = face_db.add_face_detection(f"/test{i}.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2})
             face_db.add_to_review_queue(det, cluster, 0.51 + i * 0.01, "gray_zone")
 
         assert face_db.get_review_queue_count() == 3
@@ -365,9 +345,7 @@ class TestReviewQueue:
     def test_resolve_confirm(self, face_db):
         """Test confirming a review item."""
         cluster = face_db.add_face_cluster(label="Test Person")
-        det = face_db.add_face_detection(
-            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
-        )
+        det = face_db.add_face_detection("/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2})
         face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
 
         result = face_db.resolve_review_item(det, "confirm", cluster)
@@ -379,9 +357,7 @@ class TestReviewQueue:
     def test_resolve_reject(self, face_db):
         """Test rejecting a review item."""
         cluster = face_db.add_face_cluster(label="Test Person")
-        det = face_db.add_face_detection(
-            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
-        )
+        det = face_db.add_face_detection("/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2})
         face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
 
         result = face_db.resolve_review_item(det, "reject", cluster)
@@ -394,17 +370,13 @@ class TestReviewQueue:
         import sqlite3
 
         with sqlite3.connect(str(face_db.db_path)) as conn:
-            rows = conn.execute(
-                "SELECT * FROM face_rejections WHERE detection_id = ?", (det,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM face_rejections WHERE detection_id = ?", (det,)).fetchall()
             assert len(rows) == 1
 
     def test_resolve_skip(self, face_db):
         """Test skipping a review item."""
         cluster = face_db.add_face_cluster(label="Test Person")
-        det = face_db.add_face_detection(
-            "/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2}
-        )
+        det = face_db.add_face_detection("/test.jpg", {"x": 0.1, "y": 0.1, "w": 0.2, "h": 0.2})
         face_db.add_to_review_queue(det, cluster, 0.52, "gray_zone")
 
         result = face_db.resolve_review_item(det, "skip")

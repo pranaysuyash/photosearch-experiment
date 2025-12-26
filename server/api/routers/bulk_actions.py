@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 
 from server.bulk_actions_db import get_bulk_actions_db
 from server.config import settings
-from server.models.schemas.bulk_actions import BulkActionRequest, BulkActionUndoRequest
+from server.models.schemas.bulk_actions import BulkActionRequest
 
 
 router = APIRouter()

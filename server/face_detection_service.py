@@ -112,9 +112,7 @@ class FaceDetectionService:
                         "width": detection.bbox[2] - detection.bbox[0],
                         "height": detection.bbox[3] - detection.bbox[1],
                     },
-                    embedding=detection.embedding.tolist()
-                    if detection.embedding is not None
-                    else None,
+                    embedding=detection.embedding.tolist() if detection.embedding is not None else None,
                     quality_score=detection.quality,
                     confidence=detection.confidence,
                     landmarks=detection.landmarks,
@@ -145,9 +143,7 @@ class FaceDetectionService:
                 error=str(e),
             )
 
-    def detect_faces_from_array(
-        self, image_array: np.ndarray, source_id: str = "array"
-    ) -> FaceDetectionResult:
+    def detect_faces_from_array(self, image_array: np.ndarray, source_id: str = "array") -> FaceDetectionResult:
         """
         Detect faces in an image provided as a numpy array.
 
@@ -222,9 +218,7 @@ class FaceDetectionService:
                         "width": detection.bbox[2] - detection.bbox[0],
                         "height": detection.bbox[3] - detection.bbox[1],
                     },
-                    embedding=detection.embedding.tolist()
-                    if detection.embedding is not None
-                    else None,
+                    embedding=detection.embedding.tolist() if detection.embedding is not None else None,
                     quality_score=detection.quality,
                     confidence=detection.confidence,
                     landmarks=detection.landmarks,
@@ -255,9 +249,7 @@ class FaceDetectionService:
                 error=str(e),
             )
 
-    def detect_faces_batch(
-        self, photo_paths: List[str], batch_size: int = 10
-    ) -> List[FaceDetectionResult]:
+    def detect_faces_batch(self, photo_paths: List[str], batch_size: int = 10) -> List[FaceDetectionResult]:
         """Detect faces in multiple photos with batch processing."""
         results = []
 
@@ -273,9 +265,7 @@ class FaceDetectionService:
 
             # Log progress
             progress = min((i + len(batch)) / len(photo_paths), 1.0)
-            logger.info(
-                f"Processed {i + len(batch)}/{len(photo_paths)} photos ({progress:.1%})"
-            )
+            logger.info(f"Processed {i + len(batch)}/{len(photo_paths)} photos ({progress:.1%})")
 
         return results
 
@@ -286,9 +276,7 @@ class FaceDetectionService:
 
         try:
             # Use the clusterer to extract face thumbnail
-            thumbnail_data = self.clusterer.extract_face_thumbnail(
-                photo_path, face.bounding_box
-            )
+            thumbnail_data = self.clusterer.extract_face_thumbnail(photo_path, face.bounding_box)
 
             if thumbnail_data:
                 # Convert to base64 for easy transmission
@@ -311,9 +299,7 @@ class FaceDetectionService:
 
         try:
             # Use the clusterer to analyze face quality
-            quality_analysis = self.clusterer.analyze_face_quality(
-                face.embedding, face.landmarks, face.pose
-            )
+            quality_analysis = self.clusterer.analyze_face_quality(face.embedding, face.landmarks, face.pose)
 
             return {
                 "quality_score": quality_analysis.score,

@@ -4,10 +4,19 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const SERVER_CONFIG_TTL_MS = 60_000;
 let serverConfigCache: {
-  value: any | null;
+  value: unknown | null;
   timestamp: number;
-  promise: Promise<any> | null;
+  promise: Promise<unknown> | null;
 } = { value: null, timestamp: 0, promise: null };
+
+// Module-level caches to avoid mutating the exported api object with `any`
+let signedUrlEnabledCache: boolean | null = null;
+let signedUrlEnabledCacheExpires = 0;
+const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+const favoriteCache = new Map<
+  string,
+  { is_favorited: boolean; expiresAt: number }
+>();
 
 // Create axios instance with proper configuration
 const apiClient = axios.create({
@@ -122,19 +131,15 @@ export interface ExportOptions {
 
 export interface IntentSearchParams {
   query: string;
-  intent_context?: Record<string, any>;
-  filters?: Record<string, any>;
+  intent_context?: Record<string, unknown>;
+  filters?: Record<string, unknown>;
   limit?: number;
   offset?: number;
 }
 
-export interface SearchResult {
-  [key: string]: any;
-}
+export type SearchResult = Record<string, unknown>;
 
-export interface SmartCollectionRule {
-  [key: string]: any;
-}
+export type SmartCollectionRule = Record<string, unknown>;
 
 export interface SmartCollectionUpdate {
   name?: string;
@@ -145,15 +150,13 @@ export interface SmartCollectionUpdate {
   is_favorite?: boolean;
 }
 
-export interface AIInsightData {
-  [key: string]: any;
-}
+export type AIInsightData = Record<string, unknown>;
 
 export interface StoryUpdate {
   title?: string;
   description?: string;
   is_published?: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface StoryPhotoData {
@@ -170,9 +173,7 @@ export interface TimelineEntryUpdate {
   narrative_order?: number;
 }
 
-export interface BulkActionOperationData {
-  [key: string]: any;
-}
+export type BulkActionOperationData = Record<string, unknown>;
 
 export interface TagExpression {
   tag: string;
@@ -186,7 +187,7 @@ export interface TagFilterUpdate {
 }
 
 export interface EditInstructions {
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TimelineData {
@@ -396,11 +397,11 @@ export const api = {
   http: apiClient,
 
   // Low-level helpers that resolve to `response.data` (payload-first ergonomics).
-  get: async <T = any>(url: string, config?: AxiosRequestConfig) => {
+  get: async <T = unknown>(url: string, config?: AxiosRequestConfig) => {
     const res = await apiClient.get<T>(url, config);
     return res.data;
   },
-  post: async <T = any, D = any>(
+  post: async <T = unknown, D = unknown>(
     url: string,
     data?: D,
     config?: AxiosRequestConfig
@@ -408,7 +409,7 @@ export const api = {
     const res = await apiClient.post<T>(url, data, config);
     return res.data;
   },
-  put: async <T = any, D = any>(
+  put: async <T = unknown, D = unknown>(
     url: string,
     data?: D,
     config?: AxiosRequestConfig
@@ -416,7 +417,7 @@ export const api = {
     const res = await apiClient.put<T>(url, data, config);
     return res.data;
   },
-  delete: async <T = any>(url: string, config?: AxiosRequestConfig) => {
+  delete: async <T = unknown>(url: string, config?: AxiosRequestConfig) => {
     const res = await apiClient.delete<T>(url, config);
     return res.data;
   },
@@ -635,7 +636,7 @@ export const api = {
     const isLocal = (() => {
       const localPatterns = [
         /^[A-Za-z]:\\/,
-        /^\/[^\/]/,
+        /^\/[^/]/,
         /^~\//,
         /^\.\//,
         /^file:\/\//,
@@ -650,42 +651,35 @@ export const api = {
       }`;
     }
 
-    // Cached flags and token map (module-level singletons)
-    // Implement lazy initialization
-    if (!(api as any)._signedUrlEnabledCache)
-      (api as any)._signedUrlEnabledCache = null;
-    if (!(api as any)._tokenCache)
-      (api as any)._tokenCache = new Map<
-        string,
-        { token: string; expiresAt: number }
-      >();
-
     // Resolve whether server supports signed URLs (cache for 30s)
-    if ((api as any)._signedUrlEnabledCache === null) {
+    if (signedUrlEnabledCache === null) {
       try {
         const cfg = await api.getServerConfig();
-        (api as any)._signedUrlEnabledCache = !!cfg?.signed_url_enabled;
-        (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        signedUrlEnabledCache = Boolean(
+          (cfg as Record<string, unknown>)?.signed_url_enabled
+        );
+        signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
       } catch {
-        (api as any)._signedUrlEnabledCache = false;
-        (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        signedUrlEnabledCache = false;
+        signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
       }
-    } else if (Date.now() > (api as any)._signedUrlEnabledCacheExpires) {
+    } else if (Date.now() > signedUrlEnabledCacheExpires) {
       // Refresh cache asynchronously (don't block); start refresh but proceed with current value
       (async () => {
         try {
           const cfg = await api.getServerConfig();
-          (api as any)._signedUrlEnabledCache = !!cfg?.signed_url_enabled;
-          (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+          signedUrlEnabledCache = Boolean(
+            (cfg as Record<string, unknown>)?.signed_url_enabled
+          );
+          signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
         } catch {
-          (api as any)._signedUrlEnabledCache =
-            (api as any)._signedUrlEnabledCache || false;
-          (api as any)._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+          signedUrlEnabledCache = signedUrlEnabledCache || false;
+          signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
         }
       })();
     }
 
-    const signedEnabled = !!(api as any)._signedUrlEnabledCache;
+    const signedEnabled = Boolean(signedUrlEnabledCache);
     if (!signedEnabled) {
       // Signed URLs are disabled, fall back to direct path
       return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
@@ -694,7 +688,7 @@ export const api = {
     }
 
     // If we already have a cached token that is still valid, return it
-    const existing = (api as any)._tokenCache.get(path);
+    const existing = tokenCache.get(path);
     if (existing && existing.expiresAt > Date.now()) {
       return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(
         existing.token
@@ -712,7 +706,7 @@ export const api = {
 
       if (token) {
         const expireMs = expiresIn ? expiresIn * 1000 : 60 * 60 * 1000;
-        (api as any)._tokenCache.set(path, {
+        tokenCache.set(path, {
           token,
           expiresAt: Date.now() + expireMs,
         });
@@ -725,7 +719,7 @@ export const api = {
       return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
         size ? `&size=${size}` : ''
       }`;
-    } catch (e) {
+    } catch {
       // On error, return path-based URL
       return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
         size ? `&size=${size}` : ''
@@ -881,10 +875,7 @@ export const api = {
       notes,
     });
     // Invalidate cached favorite for this file
-    try {
-      if ((api as any)._favoriteCache)
-        (api as any)._favoriteCache.delete(filePath);
-    } catch {}
+    favoriteCache.delete(filePath);
     return res.data;
   },
 
@@ -983,13 +974,7 @@ export const api = {
 
   checkFavorite: async (filePath: string) => {
     // Simple in-memory cache to prevent duplicate per-photo requests within short window
-    if (!(api as any)._favoriteCache)
-      (api as any)._favoriteCache = new Map<
-        string,
-        { is_favorited: boolean; expiresAt: number }
-      >();
-
-    const cached = (api as any)._favoriteCache.get(filePath);
+    const cached = favoriteCache.get(filePath);
     if (cached && cached.expiresAt > Date.now()) {
       return { is_favorited: cached.is_favorited };
     }
@@ -999,12 +984,10 @@ export const api = {
     });
 
     // Cache for 30s
-    try {
-      (api as any)._favoriteCache.set(filePath, {
-        is_favorited: res.data.is_favorited,
-        expiresAt: Date.now() + 30 * 1000,
-      });
-    } catch {}
+    favoriteCache.set(filePath, {
+      is_favorited: res.data.is_favorited,
+      expiresAt: Date.now() + 30 * 1000,
+    });
 
     return res.data;
   },
@@ -1340,7 +1323,7 @@ export const api = {
   },
 
   getSharedContent: async (shareId: string, password?: string) => {
-    const params: any = {};
+    const params: { password?: string } = {};
     if (password) params.password = password;
 
     const res = await apiClient.get(`/shared/${encodeURIComponent(shareId)}`, {
@@ -1491,7 +1474,7 @@ export const api = {
 
   // Performance and caching (getCacheStats already defined above)
 
-  clearCache: async (_cacheType?: string) => {
+  clearCache: async () => {
     // Backend route is API-prefixed (see server/api/routers/system.py @ /api/cache/clear)
     const res = await apiClient.post('/api/cache/clear');
     return res.data;
@@ -1865,7 +1848,7 @@ export const api = {
 
   deleteAllFaceData: async () => {
     const res = await apiClient.delete('/api/faces/all', {
-      data: { confirmation: 'DELETE' }
+      data: { confirmation: 'DELETE' },
     });
     return res.data;
   },
@@ -1974,7 +1957,11 @@ export const api = {
   // Check whether an undoable operation exists
   getUndoStatus: async () => {
     const res = await apiClient.get('/api/faces/undo/status');
-    return res.data as { can_undo: boolean; operation_type?: string; performed_at?: string };
+    return res.data as {
+      can_undo: boolean;
+      operation_type?: string;
+      performed_at?: string;
+    };
   },
 
   // Get unassigned faces (unknown bucket)
@@ -2499,7 +2486,7 @@ export const api = {
     operator: string = 'OR',
     excludeTags?: string[]
   ) => {
-    const params: any = {
+    const params: Record<string, string> = {
       tags: tags.join(','),
       operator,
     };
@@ -2742,22 +2729,30 @@ export const api = {
   },
 
   getVideoFaceStatus: async (videoId: string) => {
-    const res = await apiClient.get(`/api/video-faces/status/${encodeURIComponent(videoId)}`);
+    const res = await apiClient.get(
+      `/api/video-faces/status/${encodeURIComponent(videoId)}`
+    );
     return res.data;
   },
 
   getVideoTracks: async (videoId: string) => {
-    const res = await apiClient.get(`/api/video-faces/tracks/${encodeURIComponent(videoId)}`);
+    const res = await apiClient.get(
+      `/api/video-faces/tracks/${encodeURIComponent(videoId)}`
+    );
     return res.data;
   },
 
   getVideoPeople: async (videoId: string) => {
-    const res = await apiClient.get(`/api/video-faces/people/${encodeURIComponent(videoId)}`);
+    const res = await apiClient.get(
+      `/api/video-faces/people/${encodeURIComponent(videoId)}`
+    );
     return res.data;
   },
 
   deleteVideoFaces: async (videoId: string) => {
-    const res = await apiClient.delete(`/api/video-faces/${encodeURIComponent(videoId)}`);
+    const res = await apiClient.delete(
+      `/api/video-faces/${encodeURIComponent(videoId)}`
+    );
     return res.data;
   },
 };

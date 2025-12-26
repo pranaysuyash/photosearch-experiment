@@ -4,11 +4,11 @@
  * Provides options for exporting photos with various formats and settings.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Download, 
-  Link, 
-  Copy, 
+import {
+  X,
+  Download,
+  Link,
+  Copy,
   Calendar,
   Eye,
   Lock,
@@ -220,7 +220,7 @@ export function ExportDialog({ isOpen, onClose, photoPaths }: ExportDialogProps)
             <div className="space-y-6">
               <div>
                 <h4 className="font-medium text-foreground mb-3">Export Options</h4>
-                
+
                 {/* Preset Selection */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -320,7 +320,7 @@ export function ExportDialog({ isOpen, onClose, photoPaths }: ExportDialogProps)
             <div className="space-y-6">
               <div>
                 <h4 className="font-medium text-foreground mb-3">Share Options</h4>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">

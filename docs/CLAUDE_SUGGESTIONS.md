@@ -1,6 +1,6 @@
 # Claude's Comprehensive Review & Recommendations
-**Owner:** Claude (Anthropic)  
-**Last Updated:** 2025-12-08 00:55  
+**Owner:** Claude (Anthropic)
+**Last Updated:** 2025-12-08 00:55
 **Context:** Post-Task 11 Assessment - Backend Complete, Frontend Integration Pending
 
 ---
@@ -31,7 +31,7 @@
 
 ### 1. Frontend Integration Strategy
 
-The frontend (`ui/`) exists and works, but it only uses **metadata search** (`/search`). 
+The frontend (`ui/`) exists and works, but it only uses **metadata search** (`/search`).
 We need to add **semantic search** (`/search/semantic`) to the UI.
 
 **Options:**
@@ -84,8 +84,8 @@ git merge feat/ui-semantic
 Add semantic search method:
 ```typescript
 searchSemantic: async (query: string, limit: number = 50) => {
-  const res = await axios.get(`${API_BASE}/search/semantic`, { 
-    params: { query, limit } 
+  const res = await axios.get(`${API_BASE}/search/semantic`, {
+    params: { query, limit }
   });
   return res.data;
 },
@@ -134,13 +134,13 @@ Per `UI_ARCHITECTURE_DECISION.md`, the plan was:
    Should use:
    ```python
    from contextlib import asynccontextmanager
-   
+
    @asynccontextmanager
    async def lifespan(app: FastAPI):
        # Startup
        yield
        # Shutdown
-   
+
    app = FastAPI(lifespan=lifespan)
    ```
 
@@ -161,8 +161,8 @@ Per `UI_ARCHITECTURE_DECISION.md`, the plan was:
 **Missing:**
 ```typescript
 searchSemantic: async (query: string, limit?: number) => {
-  const res = await axios.get(`${API_BASE}/search/semantic`, { 
-    params: { query, limit: limit || 50 } 
+  const res = await axios.get(`${API_BASE}/search/semantic`, {
+    params: { query, limit: limit || 50 }
   });
   return res.data;
 },

@@ -84,9 +84,7 @@ class VideoPeopleResponse(BaseModel):
 # ----- Background Task -----
 
 
-def _process_video_background(
-    file_path: str, sample_fps: float, db_path: Path, state: AppState
-):
+def _process_video_background(file_path: str, sample_fps: float, db_path: Path, state: AppState):
     """Background task to process a video for faces."""
     try:
         from server.video_face_service import VideoFaceService
@@ -95,9 +93,7 @@ def _process_video_background(
         result = service.process_video(file_path)
 
         if result:
-            logger.info(
-                f"Video processed: {file_path} - {result.get('tracks', 0)} tracks"
-            )
+            logger.info(f"Video processed: {file_path} - {result.get('tracks', 0)} tracks")
         else:
             logger.error(f"Video processing failed: {file_path}")
     except Exception as e:

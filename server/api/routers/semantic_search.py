@@ -18,9 +18,7 @@ router = APIRouter()
 
 
 @router.post("/api/search/count")
-async def get_search_count(
-    request: SearchCountRequest, state: AppState = Depends(get_state)
-):
+async def get_search_count(request: SearchCountRequest, state: AppState = Depends(get_state)):
     """
     Get count of search results for live feedback while typing.
     Used for the live match count feature in the UI.
@@ -39,9 +37,7 @@ async def get_search_count(
         # Get count based on search mode
         if mode == "metadata":
             # Check if query has structured operators
-            has_operators = any(
-                op in query for op in ["=", ">", "<", "!=", " LIKE ", " CONTAINS ", ":"]
-            )
+            has_operators = any(op in query for op in ["=", ">", "<", "!=", " LIKE ", " CONTAINS ", ":"])
 
             if not has_operators:
                 # Simple search term - search in filename
@@ -69,9 +65,7 @@ async def get_search_count(
                 if adjusted_score >= 0.22:  # Only include meaningful matches
                     # Cap scores to prevent unrealistic high matches
                     if adjusted_score > 0.9:
-                        adjusted_score = (
-                            0.85 + (adjusted_score - 0.9) * 0.3
-                        )  # Compress high scores
+                        adjusted_score = 0.85 + (adjusted_score - 0.9) * 0.3  # Compress high scores
                     r["score"] = adjusted_score
                     filtered_results.append(r)
             return {"count": len(filtered_results)}
@@ -88,9 +82,7 @@ async def get_search_count(
                     metadata_results = photo_search_engine.query_engine.search(query)
                 else:
                     safe_query = query.replace("'", "''")
-                    metadata_results = photo_search_engine.query_engine.search(
-                        f"file.path LIKE '%{safe_query}%'"
-                    )
+                    metadata_results = photo_search_engine.query_engine.search(f"file.path LIKE '%{safe_query}%'")
                 metadata_count = len(metadata_results)
             except Exception:
                 pass
@@ -99,12 +91,8 @@ async def get_search_count(
             try:
                 if embedding_generator:
                     text_vec = embedding_generator.generate_text_embedding(query)
-                    semantic_results = vector_store.search(
-                        text_vec, limit=1000, offset=0
-                    )
-                    semantic_count = len(
-                        [r for r in semantic_results if r["score"] >= 0.22]
-                    )
+                    semantic_results = vector_store.search(text_vec, limit=1000, offset=0)
+                    semantic_count = len([r for r in semantic_results if r["score"] >= 0.22])
             except Exception:
                 pass
 
@@ -149,9 +137,7 @@ async def search_semantic(
                 formatted = []
                 for r in all_records:
                     file_path = r.get("path", r.get("id", ""))
-                    full_metadata = photo_search_engine.db.get_metadata_by_path(
-                        file_path
-                    )
+                    full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
                     formatted.append(
                         {
                             "path": file_path,
@@ -189,12 +175,10 @@ async def search_semantic(
 
                 # Generate match explanation for semantic search
                 if query.strip():
-                    result_item["matchExplanation"] = (
-                        generate_semantic_match_explanation(
-                            query,
-                            result_item,
-                            r["score"],
-                        )
+                    result_item["matchExplanation"] = generate_semantic_match_explanation(
+                        query,
+                        result_item,
+                        r["score"],
                     )
 
                 formatted.append(result_item)

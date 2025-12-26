@@ -19,6 +19,7 @@ router = APIRouter()
 # TRASH / RESTORE (RECENTLY DELETED)
 # ==============================================================================
 
+
 def _trash_root() -> Path:
     root = settings.BASE_DIR / "trash_files"
     root.mkdir(parents=True, exist_ok=True)
@@ -147,7 +148,6 @@ async def trash_move(req: TrashMoveRequest, state: AppState = Depends(get_state)
 
 @router.get("/trash")
 async def list_trash(limit: int = 200, offset: int = 0, state: AppState = Depends(get_state)):
-
     items = state.trash_db.list(status="trashed", limit=limit, offset=offset)
     out: List[dict] = []
     for it in items:

@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ChevronDown, 
-  Edit, 
-  Loader2, 
-  AlertCircle, 
-  Palette, 
-  Camera, 
-  Video, 
-  Eye, 
+import {
+  ChevronDown,
+  Edit,
+  Loader2,
+  AlertCircle,
+  Palette,
+  Camera,
+  Video,
+  Eye,
   FolderOpen,
-  Smartphone 
+  Smartphone
 } from 'lucide-react';
 import type { Photo, InstalledApp, ActionResult } from '../../types/actions';
 
@@ -84,7 +84,7 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        menuRef.current && 
+        menuRef.current &&
         !menuRef.current.contains(event.target as Node) &&
         buttonRef.current &&
         !buttonRef.current.contains(event.target as Node)
@@ -177,15 +177,15 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
         whileHover={{ scale: isDisabled ? 1 : 1.02 }}
         whileTap={{ scale: isDisabled ? 1 : 0.98 }}
         title={
-          availableApps.length === 0 
-            ? 'No compatible applications found' 
+          availableApps.length === 0
+            ? 'No compatible applications found'
             : `Open with ${availableApps.length} available app${availableApps.length === 1 ? '' : 's'}`
         }
       >
         <Edit size={iconSizes[size]} />
         <span>Open With</span>
-        <ChevronDown 
-          size={iconSizes[size] - 2} 
+        <ChevronDown
+          size={iconSizes[size] - 2}
           className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
         {availableApps.length > 0 && (

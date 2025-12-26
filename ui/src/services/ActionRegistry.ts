@@ -1,4 +1,11 @@
-import type { PhotoAction, PhotoContext, ActionResult, Photo, ActionOptions, FileCapabilities } from '../types/actions';
+import type {
+  PhotoAction,
+  PhotoContext,
+  ActionResult,
+  Photo,
+  ActionOptions,
+  FileCapabilities,
+} from '../types/actions';
 
 /**
  * Central registry for all available photo actions with context-aware filtering.
@@ -18,7 +25,7 @@ export class ActionRegistry {
    * Register multiple actions at once
    */
   registerActions(actions: PhotoAction[]): void {
-    actions.forEach(action => this.registerAction(action));
+    actions.forEach((action) => this.registerAction(action));
   }
 
   /**
@@ -26,7 +33,7 @@ export class ActionRegistry {
    */
   getActionsForContext(context: PhotoContext): PhotoAction[] {
     const availableActions = Array.from(this.actions.values())
-      .filter(action => this.isActionAvailable(action, context))
+      .filter((action) => this.isActionAvailable(action, context))
       .sort((a, b) => b.priority - a.priority); // Higher priority first
 
     return availableActions;
@@ -39,7 +46,7 @@ export class ActionRegistry {
     const actions = this.getActionsForContext(context);
     const grouped: Record<string, PhotoAction[]> = {};
 
-    actions.forEach(action => {
+    actions.forEach((action) => {
       if (!grouped[action.category]) {
         grouped[action.category] = [];
       }
@@ -53,24 +60,24 @@ export class ActionRegistry {
    * Execute a specific action by ID
    */
   async executeAction(
-    actionId: string, 
-    photo: Photo, 
+    actionId: string,
+    photo: Photo,
     context: PhotoContext,
     options?: ActionOptions
   ): Promise<ActionResult> {
     const action = this.actions.get(actionId);
-    
+
     if (!action) {
       return {
         success: false,
-        error: `Action with ID '${actionId}' not found`
+        error: `Action with ID '${actionId}' not found`,
       };
     }
 
     if (!this.isActionAvailable(action, context)) {
       return {
         success: false,
-        error: `Action '${action.label}' is not available in the current context`
+        error: `Action '${action.label}' is not available in the current context`,
       };
     }
 
@@ -79,7 +86,8 @@ export class ActionRegistry {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       };
     }
   }
@@ -115,14 +123,17 @@ export class ActionRegistry {
   /**
    * Check if an action is available in the given context
    */
-  private isActionAvailable(action: PhotoAction, context: PhotoContext): boolean {
+  private isActionAvailable(
+    action: PhotoAction,
+    context: PhotoContext
+  ): boolean {
     // First check the action's own isEnabled function
     if (!action.isEnabled(context)) {
       return false;
     }
 
     // Then check context requirements
-    return action.contextRequirements.every(requirement => 
+    return action.contextRequirements.every((requirement) =>
       this.checkContextRequirement(requirement, context)
     );
   }
@@ -131,7 +142,7 @@ export class ActionRegistry {
    * Check if a specific context requirement is met
    */
   private checkContextRequirement(
-    requirement: { type: string; value: string | string[]; operator?: string }, 
+    requirement: { type: string; value: string | string[]; operator?: string },
     context: PhotoContext
   ): boolean {
     const { type, value, operator = 'equals' } = requirement;
@@ -139,31 +150,31 @@ export class ActionRegistry {
     switch (type) {
       case 'fileLocation':
         return this.checkValue(context.fileLocation, value, operator);
-      
+
       case 'fileType':
         return this.checkValue(context.fileType, value, operator);
-      
+
       case 'capability':
         if (typeof value === 'string') {
           return this.checkCapability(value, context.capabilities);
         }
         return false;
-      
+
       case 'app':
         if (typeof value === 'string') {
-          return context.availableApps.some(app => 
-            app.category === value || app.name === value
+          return context.availableApps.some(
+            (app) => app.category === value || app.name === value
           );
         }
         if (Array.isArray(value)) {
-          return value.some(v => 
-            context.availableApps.some(app => 
-              app.category === v || app.name === v
+          return value.some((v) =>
+            context.availableApps.some(
+              (app) => app.category === v || app.name === v
             )
           );
         }
         return false;
-      
+
       default:
         return true;
     }
@@ -173,26 +184,26 @@ export class ActionRegistry {
    * Check if a value matches the requirement
    */
   private checkValue(
-    contextValue: string, 
-    requirementValue: string | string[], 
+    contextValue: string,
+    requirementValue: string | string[],
     operator: string
   ): boolean {
     switch (operator) {
       case 'equals':
-        return Array.isArray(requirementValue) 
+        return Array.isArray(requirementValue)
           ? requirementValue.includes(contextValue)
           : contextValue === requirementValue;
-      
+
       case 'includes':
         return Array.isArray(requirementValue)
-          ? requirementValue.some(v => contextValue.includes(v))
+          ? requirementValue.some((v) => contextValue.includes(v))
           : contextValue.includes(requirementValue);
-      
+
       case 'excludes':
         return Array.isArray(requirementValue)
-          ? !requirementValue.some(v => contextValue.includes(v))
+          ? !requirementValue.some((v) => contextValue.includes(v))
           : !contextValue.includes(requirementValue);
-      
+
       default:
         return false;
     }
@@ -201,7 +212,10 @@ export class ActionRegistry {
   /**
    * Check if a capability is available
    */
-  private checkCapability(capability: string, capabilities: FileCapabilities): boolean {
+  private checkCapability(
+    capability: string,
+    capabilities: FileCapabilities
+  ): boolean {
     switch (capability) {
       case 'canEdit':
         return capabilities.canEdit === true;

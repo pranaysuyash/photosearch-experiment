@@ -1,6 +1,6 @@
 # Photo Search Application - FAQ
 
-**Purpose:** Track all questions, clarifications, and decisions made during development  
+**Purpose:** Track all questions, clarifications, and decisions made during development
 **Last Updated:** 2025-12-06
 
 ---
@@ -8,10 +8,10 @@
 ## Project Setup & Structure
 
 ### Q1: Where should documentation be stored?
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Question:** "Would you like me to first create an initial project overview document that outlines the potential architecture and task breakdown for the photo search application? Or would you prefer to jump straight into the first specific task you have in mind? - first create your docs and put in a folder called antigravity (under docs folder at the root), all docs would be put under docs folder at the root then i will start with each task, i will ask questions for clarity, understanding etc as well which you should put under an faq doc of what i asked etc."
 
-**Answer:**  
+**Answer:**
 All documentation should be organized as follows:
 - **Antigravity (AI) documentation** → `docs/antigravity/`
   - Architecture documents
@@ -36,16 +36,16 @@ docs/
 ---
 
 ### Q2: What should be the first task?
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Question:** "once we get to the point create the config etc as needed...for now 1st req. is program that looks through the system (no system files and folders - only user ones) lists/saves all image and video files, so it would be something like folder name, file names, 1st would be the full list and 2nd user can enter a folder name it gives all image and video file names, or user enters file name it gives folders where it exists else result for all is that not found"
 
-**Answer:**  
+**Answer:**
 First task is to create a file discovery system before configuration. This makes sense as we need to:
 1. Discover and catalog all image/video files on the system
 2. Build a searchable index
 3. This will be the foundation for the photo search application
 
-**Decision:** 
+**Decision:**
 - Skip Task 1 (config) for now, implement as needed later
 - Start with file discovery system as `file_discovery.py`
 - This becomes the new Task 1 in practical implementation order
@@ -53,7 +53,7 @@ First task is to create a file discovery system before configuration. This makes
 ---
 
 ### Q3: Implementation details for file discovery system
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Question:** "yes keep it to /users/pranay/ but we generalise so when run on any computer it does so only in the users folder, all media file images and videos gifs etc., json is fine, no unless we are at the last node, also how would it work in case files are added or removed, folders are added removed?"
 
 **Answer:**
@@ -77,7 +77,7 @@ First task is to create a file discovery system before configuration. This makes
 ---
 
 ### Q4: Task 2 - Format analysis extension
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Question:** "next would be an extension to this: list directory wise formats like dir 1 has 4 jpg, 3 png etc, so now search becomes find jpg , list all folders with jpg, find by jpg in dir 1, if yes list else say no, and other file type wise...this would be our proj file 2 as its a new second task but has dependency on task 1"
 
 **Answer:**
@@ -99,7 +99,7 @@ Task 2 will be a format analysis extension that builds on Task 1's file discover
 ---
 
 ### Q5: Task 3 - Comprehensive metadata extraction
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Question:** "task 3 - read a file's metadata - everything i mean the most comprehensive metadata reader- created by, modified, times, size, permissions, formats, camera exifs, locations, resolutions etc. so for anu given file should be able to get everything in a properly readable json"
 
 **Answer:**
@@ -176,7 +176,7 @@ Task 3 will be a comprehensive metadata extraction system that reads ALL metadat
 
 ## Q6: Task 4 - Metadata Search System Requirements
 
-**Asked:** 2025-12-06  
+**Asked:** 2025-12-06
 **Context:** Planning Task 4 implementation
 
 **User's Vision:**

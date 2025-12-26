@@ -4,15 +4,15 @@
  * Provides granular privacy controls for photos, including encryption and sharing permissions.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, 
-  Globe, 
-  Users, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Key, 
-  Settings, 
+import {
+  Shield,
+  Globe,
+  Users,
+  Lock,
+  Eye,
+  EyeOff,
+  Key,
+  Settings,
   UserPlus,
   UserX,
   Share2,
@@ -45,7 +45,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<'general' | 'sharing' | 'encryption'>('general');
   const [newAllowedUser, setNewAllowedUser] = useState('');
-  
+
   // Default privacy settings
   const [settings, setSettings] = useState({
     visibility: 'private',
@@ -70,10 +70,10 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       const privacyData = await api.getPhotoPrivacy(photoPath);
       setPrivacy(privacyData);
-      
+
       setSettings({
         visibility: privacyData.visibility,
         sharePermissions: privacyData.share_permissions || {
@@ -99,17 +99,17 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
     try {
       setSaving(true);
       setError(null);
-      
+
       await api.updatePhotoPrivacy(photoPath, {
         visibility: settings.visibility,
         share_permissions: settings.sharePermissions,
         encryption_enabled: settings.encryptionEnabled,
-        encryption_key_hash: settings.encryptionEnabled ? 
+        encryption_key_hash: settings.encryptionEnabled ?
           btoa(settings.encryptionKey) : undefined, // In a real app, use proper hashing
         allowed_users: settings.allowedUsers,
         allowed_groups: settings.allowedGroups
       });
-      
+
       // Reload settings to confirm changes
       loadPrivacySettings();
     } catch (err) {
@@ -165,7 +165,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
           <Shield className="text-primary" size={24} />
           Privacy Controls
         </h2>
-        
+
         <button
           onClick={savePrivacySettings}
           disabled={saving}
@@ -227,7 +227,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               <Lock size={16} />
               Visibility Settings
             </h3>
-            
+
             <div className="space-y-3">
               {[
                 { value: 'private', label: 'Private', desc: 'Only you can view this photo', icon: <Lock size={16} /> },
@@ -235,8 +235,8 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                 { value: 'shared', label: 'Shared', desc: 'Specific users and groups can view this photo', icon: <Share2 size={16} /> },
                 { value: 'public', label: 'Public', desc: 'Anyone can discover and view this photo', icon: <Globe size={16} /> }
               ].map(option => (
-                <label 
-                  key={option.value} 
+                <label
+                  key={option.value}
                   className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer border ${
                     settings.visibility === option.value
                       ? 'border-primary bg-primary/10'
@@ -256,8 +256,8 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                   />
                   <div className="flex items-start gap-2 flex-1">
                     <div className={`p-1.5 rounded ${
-                      settings.visibility === option.value 
-                        ? 'text-primary' 
+                      settings.visibility === option.value
+                        ? 'text-primary'
                         : 'text-muted-foreground'
                     }`}>
                       {option.icon}
@@ -277,7 +277,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               <Eye size={16} />
               View and Download Permissions
             </h3>
-            
+
             <div className="space-y-3">
               {[
                 { key: 'view', label: 'View Photo', desc: 'Users can view the photo' },
@@ -285,8 +285,8 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                 { key: 'share', label: 'Share Photo', desc: 'Users can share the photo with others' },
                 { key: 'edit', label: 'Edit Photo', desc: 'Users can make edits to the photo' }
               ].map(permission => (
-                <label 
-                  key={permission.key} 
+                <label
+                  key={permission.key}
                   className="flex items-center gap-3 p-3 rounded-lg cursor-pointer border border-white/10 hover:border-white/20"
                 >
                   <input
@@ -314,7 +314,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               <Share2 size={16} />
               Authorized Users
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex gap-2">
                 <input
@@ -332,7 +332,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                   Add
                 </button>
               </div>
-              
+
               {settings.allowedUsers.length > 0 ? (
                 <div className="space-y-2">
                   {settings.allowedUsers.map(user => (
@@ -366,7 +366,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               <Users size={16} />
               Authorized Groups
             </h3>
-            
+
             <div className="space-y-3">
               {settings.allowedGroups.length > 0 ? (
                 <div className="space-y-2">
@@ -393,7 +393,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                   No authorized groups yet
                 </div>
               )}
-              
+
               <button
                 className="btn-glass btn-glass--muted w-full py-2 flex items-center justify-center gap-2"
                 onClick={() => alert('Group creation/selection would open here')}
@@ -414,7 +414,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               <Key size={16} />
               Encryption Settings
             </h3>
-            
+
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <input
@@ -431,7 +431,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                   Enable Client-Side Encryption
                 </label>
               </div>
-              
+
               {settings.encryptionEnabled && (
                 <div className="space-y-3 p-3 rounded-lg bg-white/5">
                   <div>
@@ -452,7 +452,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                       <button
                         onClick={() => setSettings(prev => ({
                           ...prev,
-                          encryptionKey: Math.random().toString(36).substring(2, 15) + 
+                          encryptionKey: Math.random().toString(36).substring(2, 15) +
                                          Math.random().toString(36).substring(2, 15)
                         }))}
                         className="btn-glass btn-glass--muted px-3 py-2"
@@ -464,7 +464,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                       Keep this key secure. Without it, you will not be able to decrypt your photo.
                     </p>
                   </div>
-                  
+
                   <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
                     <AlertTriangle size={16} className="text-warning mt-0.5 flex-shrink-0" />
                     <div>
@@ -477,7 +477,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                   </div>
                 </div>
               )}
-              
+
               <div className="text-sm text-muted-foreground space-y-2">
                 <p>
                   Client-side encryption ensures that your photo data is encrypted in your browser before being sent to our servers.
@@ -496,8 +496,8 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
       {error && (
         <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
           {error}
-          <button 
-            className="ml-2" 
+          <button
+            className="ml-2"
             onClick={() => setError(null)}
           >
             <X size={16} />
@@ -508,7 +508,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
       {/* Summary Card */}
       <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
         <h3 className="font-medium text-foreground mb-3">Privacy Summary</h3>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
             <div className="text-muted-foreground">Visibility:</div>
@@ -526,14 +526,14 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               )}
             </div>
           </div>
-          
+
           <div>
             <div className="text-muted-foreground">Authorized Users:</div>
             <div className="font-medium">
               {settings.allowedUsers.length} {settings.allowedUsers.length === 1 ? 'user' : 'users'}
             </div>
           </div>
-          
+
           <div>
             <div className="text-muted-foreground">Encryption:</div>
             <div className="font-medium">
@@ -544,7 +544,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               )}
             </div>
           </div>
-          
+
           <div>
             <div className="text-muted-foreground">Download Permission:</div>
             <div className="font-medium">

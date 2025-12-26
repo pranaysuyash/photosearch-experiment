@@ -14,7 +14,9 @@ router = APIRouter()
 
 
 @router.post("/video/analyze")
-async def analyze_video_content(background_tasks: BackgroundTasks, request: VideoAnalysisRequest, state: AppState = Depends(get_state)):
+async def analyze_video_content(
+    background_tasks: BackgroundTasks, request: VideoAnalysisRequest, state: AppState = Depends(get_state)
+):
     """
     Analyze video content for keyframes, scenes, and text detection.
 
@@ -35,10 +37,7 @@ async def analyze_video_content(background_tasks: BackgroundTasks, request: Vide
             raise HTTPException(status_code=404, detail="Video file not found")
 
         # Check if it's actually a video file
-        if not any(
-            video_path.lower().endswith(ext)
-            for ext in [".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"]
-        ):
+        if not any(video_path.lower().endswith(ext) for ext in [".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"]):
             raise HTTPException(status_code=400, detail="File is not a supported video format")
 
         # Start analysis in background
@@ -218,9 +217,7 @@ async def get_video_ocr_results(video_path: str, min_confidence: float = 0.5, st
         ocr_results = analysis.get("ocr_results", [])
 
         # Filter by confidence threshold
-        filtered_results = [
-            result for result in ocr_results if result.get("confidence", 0) >= min_confidence
-        ]
+        filtered_results = [result for result in ocr_results if result.get("confidence", 0) >= min_confidence]
 
         return {
             "video_path": video_path,
@@ -262,6 +259,7 @@ async def get_video_thumbnail(
     video_path: str,
     timestamp: Optional[float] = None,
     size: int = 300,
+    state: AppState = Depends(get_state),
 ):
     """
     Get a thumbnail image from a video at a specific timestamp.
@@ -302,11 +300,13 @@ async def get_video_thumbnail(
         # Resize image if needed
         if size != 300:  # Default size
             from PIL import Image
+
             with Image.open(frame_path) as img:
                 img.thumbnail((size, size), Image.Resampling.LANCZOS)
 
                 # Save resized thumbnail to temp file
                 import tempfile
+
                 with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_file:
                     img.save(temp_file.name, "JPEG", quality=85)
                     frame_path = temp_file.name
@@ -389,7 +389,9 @@ async def delete_video_analysis(video_path: str, state: AppState = Depends(get_s
 
 
 @router.post("/video/batch-analyze")
-async def batch_analyze_videos(background_tasks: BackgroundTasks, video_paths: List[str] = Body(...), state: AppState = Depends(get_state)):
+async def batch_analyze_videos(
+    background_tasks: BackgroundTasks, video_paths: List[str] = Body(...), state: AppState = Depends(get_state)
+):
     """
     Analyze multiple videos in batch.
 

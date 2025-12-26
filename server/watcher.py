@@ -1,8 +1,8 @@
 import logging
-import time
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
+
 
 def start_watcher(path: str, callback: Callable[[str], None]) -> Optional[Any]:
     """Start monitoring a directory for new files in a background thread."""
@@ -21,7 +21,7 @@ def start_watcher(path: str, callback: Callable[[str], None]) -> Optional[Any]:
 
         def on_created(self, event):
             if not event.is_directory:
-                if event.src_path.split('/')[-1].startswith('.'):  # ignore hidden files
+                if event.src_path.split("/")[-1].startswith("."):  # ignore hidden files
                     return
                 logger.info(f"Watcher: New file detected: {event.src_path}")
                 self.callback(event.src_path)

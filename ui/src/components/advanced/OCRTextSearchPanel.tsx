@@ -15,32 +15,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   FileText,
-  Globe,
-  PenTool,
   Loader2,
-  Check,
-  X,
   AlertCircle,
   Settings,
   Download,
-  Upload,
   Play,
-  Pause,
   Eye,
-  EyeOff,
   Highlighter,
-  Type,
   Languages,
-  Zap,
   Camera,
   FolderOpen,
-  BarChart3,
-  Filter,
   Trash2,
 } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
-import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 
 export interface TextRegion {
   id: string;
@@ -83,8 +71,19 @@ interface ProcessingJob {
   progress: number;
   created_at: string;
   updated_at?: string;
-  results?: any;
+  results?: Record<string, unknown>;
 }
+
+type TabId = 'search' | 'extract' | 'regions' | 'settings';
+type OcrStats = {
+  total_text_regions_in_db?: number;
+  [key: string]: unknown;
+};
+type OcrAnalyticsResponse = { analytics?: { ocr_processing?: OcrStats } };
+type OcrSearchResponse = { matches: TextRegion[] };
+type OcrBatchStartResponse = { job_id: string; message?: string };
+type JobStatusResponse = { job_status: ProcessingJob } | ProcessingJob;
+type RegionsResponse = { regions: TextRegion[] };
 
 const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'en', name: 'English', supported: true },
@@ -102,10 +101,7 @@ const SUPPORTED_LANGUAGES: LanguageInfo[] = [
 ];
 
 export function OCRTextSearchPanel() {
-  const { isDark } = useAmbientThemeContext();
-  const [activeTab, setActiveTab] = useState<
-    'search' | 'extract' | 'regions' | 'settings'
-  >('search');
+  const [activeTab, setActiveTab] = useState<TabId>('search');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TextRegion[]>([]);
   const [selectedRegions, setSelectedRegions] = useState<TextRegion[]>([]);
@@ -118,36 +114,39 @@ export function OCRTextSearchPanel() {
   const [enableHandwriting, setEnableHandwriting] = useState(true);
   const [showHighlighting, setShowHighlighting] = useState(true);
   const [batchProgress, setBatchProgress] = useState(0);
-  const [stats, setStats] = useState<any>({});
-
-  // Load stats on mount
-  useEffect(() => {
-    loadStats();
-  }, []);
+  const [stats, setStats] = useState<OcrStats>({});
 
   const loadStats = useCallback(async () => {
     try {
-      const response = await api.get('/api/analytics/library', {
-        params: { metric_types: ['ocr_processing'] },
-      });
-      setStats(response.data.analytics.ocr_processing || {});
+      const response = await api.get<OcrAnalyticsResponse>(
+        '/api/analytics/library',
+        {
+          params: { metric_types: ['ocr_processing'] },
+        }
+      );
+      setStats(response?.analytics?.ocr_processing ?? {});
     } catch (error) {
       console.error('Failed to load OCR stats:', error);
     }
   }, []);
 
+  // Load stats on mount
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
+
   const searchText = useCallback(
     async (query: string, language?: string) => {
       try {
         setLoading(true);
-        const response = await api.post('/api/ocr/search', {
+        const response = await api.post<OcrSearchResponse>('/api/ocr/search', {
           query,
           language,
           min_confidence: minConfidence,
           limit: 100,
         });
 
-        setSearchResults(response.data.matches);
+        setSearchResults(response?.matches ?? []);
       } catch (error) {
         console.error('Failed to search text:', error);
         setSearchResults([]);
@@ -163,46 +162,61 @@ export function OCRTextSearchPanel() {
       try {
         setLoading(true);
 
-        const response = await api.post('/api/ocr/extract-batch', {
-          image_paths: imagePaths,
-          languages: selectedLanguages,
-          enable_handwriting: enableHandwriting,
-        });
+        const response = await api.post<OcrBatchStartResponse>(
+          '/api/ocr/extract-batch',
+          {
+            image_paths: imagePaths,
+            languages: selectedLanguages,
+            enable_handwriting: enableHandwriting,
+          }
+        );
 
-        const jobId = response.data.job_id;
+        const jobId = response?.job_id;
+        if (!jobId) {
+          setLoading(false);
+          return;
+        }
         setProcessingJobs((prev) => ({
           ...prev,
           [jobId]: {
             job_id: jobId,
             status: 'queued',
-            message: response.data.message,
+            message: response?.message ?? '',
             progress: 0,
             created_at: new Date().toISOString(),
           },
         }));
 
         // Start polling for job status
-        const pollInterval = setInterval(async () => {
+        const pollInterval = window.setInterval(async () => {
           try {
-            const jobResponse = await api.get(`/api/jobs/${jobId}`);
-            const jobStatus = jobResponse.data.job_status;
+            const jobResponse = await api.get<JobStatusResponse>(
+              `/api/jobs/${jobId}`
+            );
+            const jobStatus =
+              jobResponse && 'job_status' in jobResponse
+                ? jobResponse.job_status
+                : jobResponse;
 
-            setProcessingJobs((prev) => ({
-              ...prev,
-              [jobId]: jobStatus,
-            }));
+            if (jobStatus) {
+              setProcessingJobs((prev) => ({
+                ...prev,
+                [jobId]: jobStatus,
+              }));
+            }
 
-            setBatchProgress(jobStatus.progress || 0);
+            setBatchProgress(jobStatus?.progress ?? 0);
 
-            if (jobStatus.status === 'completed') {
+            if (jobStatus?.status === 'completed') {
               clearInterval(pollInterval);
               setLoading(false);
               loadStats();
-            } else if (jobStatus.status === 'failed') {
+            } else if (jobStatus?.status === 'failed') {
               clearInterval(pollInterval);
               setLoading(false);
             }
-          } catch (error) {
+          } catch (pollError) {
+            console.error('Failed to poll OCR batch:', pollError);
             clearInterval(pollInterval);
             setLoading(false);
           }
@@ -217,10 +231,10 @@ export function OCRTextSearchPanel() {
 
   const getTextRegions = useCallback(async (imagePath: string) => {
     try {
-      const response = await api.get(
+      const response = await api.get<RegionsResponse>(
         `/api/ocr/regions/${encodeURIComponent(imagePath)}`
       );
-      setSelectedRegions(response.data.regions);
+      setSelectedRegions(response?.regions ?? []);
     } catch (error) {
       console.error('Failed to get text regions:', error);
       setSelectedRegions([]);
@@ -387,19 +401,21 @@ export function OCRTextSearchPanel() {
 
       {/* Tabs */}
       <div className='flex space-x-1 p-1 bg-black/20 rounded-lg'>
-        {['search', 'extract', 'regions', 'settings'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab as any)}
-            className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
-              activeTab === tab
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+        {(['search', 'extract', 'regions', 'settings'] as TabId[]).map(
+          (tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
+                activeTab === tab
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {tab}
+            </button>
+          )
+        )}
       </div>
 
       <AnimatePresence mode='wait'>

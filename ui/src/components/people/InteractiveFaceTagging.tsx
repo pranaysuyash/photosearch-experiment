@@ -1,6 +1,6 @@
 /**
  * Interactive Face Tagging Component
- * 
+ *
  * Provides visual face detection and tagging interface
  * Integrates with face detection API and clustering system
  */
@@ -41,10 +41,10 @@ export function InteractiveFaceTagging({
       try {
         setLoading(true);
         setError(null);
-        
+
         // Detect faces in the photo
         const result: FaceDetectionResult = await api.detectFaces(photoPath);
-        
+
         if (result.success && result.faces.length > 0) {
           setFaces(result.faces);
           if (onFacesDetected) {
@@ -74,13 +74,13 @@ export function InteractiveFaceTagging({
 
       try {
         setTagging(true);
-        
+
         // Find similar faces
         const result: SimilarFacesResult = await api.findSimilarFaces(
-          selectedFace.detection_id, 
+          selectedFace.detection_id,
           0.7
         );
-        
+
         if (result.success) {
           setSimilarFaces(result.similar_faces);
         }
@@ -113,20 +113,20 @@ export function InteractiveFaceTagging({
 
     try {
       setTagging(true);
-      
+
       // Add person to face
       const result = await api.addPersonToPhoto(photoPath, personId, selectedFace.detection_id);
-      
+
       if (result.success && onFaceTagged) {
         onFaceTagged(selectedFace.detection_id, personId);
       }
-      
+
       // Refresh faces
       const detectionResult = await api.detectFaces(photoPath);
       if (detectionResult.success) {
         setFaces(detectionResult.faces);
       }
-      
+
       // Close tagging panel
       setSelectedFace(null);
     } catch (err) {
@@ -143,13 +143,13 @@ export function InteractiveFaceTagging({
 
     try {
       setTagging(true);
-      
+
       // Create new person cluster (currently using clustering - manual cluster creation not available)
-      // TODO: Implement manual cluster creation API
+      // Note: Manual cluster creation API would be ideal for this workflow
       const clusterResult = await api.clusterFaces(0.6, 2);
       const newCluster = clusterResult.clusters.find((c: any) => c.label === name);
       const clusterId = newCluster?.cluster_id;
-      
+
       // Tag the face with the new person
       await tagFace(clusterId);
     } catch (err) {

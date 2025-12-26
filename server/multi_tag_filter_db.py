@@ -57,18 +57,10 @@ class MultiTagFilterDB:
             """)
 
             # Indexes must be created separately in SQLite.
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_tags_photo_path ON photo_tags(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_tags_tag ON photo_tags(tag)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_tags_photo_path_tag ON photo_tags(photo_path, tag)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_tag_filters_created_at ON tag_filters(created_at)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_tags_photo_path ON photo_tags(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_tags_tag ON photo_tags(tag)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_tags_photo_path_tag ON photo_tags(photo_path, tag)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tag_filters_created_at ON tag_filters(created_at)")
 
     def add_tag_to_photo(self, photo_path: str, tag: str) -> bool:
         """
@@ -183,9 +175,7 @@ class MultiTagFilterDB:
 
                     # Apply exclusions if specified
                     if exclude_tags:
-                        matching_photos = self._apply_exclude_tags(
-                            conn, matching_photos, exclude_tags
-                        )
+                        matching_photos = self._apply_exclude_tags(conn, matching_photos, exclude_tags)
 
                 elif operator.upper() == "OR":
                     # Any of the tags can be present (union)
@@ -202,9 +192,7 @@ class MultiTagFilterDB:
 
                     # Apply exclusions if specified
                     if exclude_tags:
-                        matching_photos = self._apply_exclude_tags(
-                            conn, matching_photos, exclude_tags
-                        )
+                        matching_photos = self._apply_exclude_tags(conn, matching_photos, exclude_tags)
                 else:
                     raise ValueError("Operator must be 'AND' or 'OR'")
 
@@ -286,17 +274,13 @@ class MultiTagFilterDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                result = conn.execute(
-                    "SELECT * FROM tag_filters WHERE id = ?", (filter_id,)
-                ).fetchone()
+                result = conn.execute("SELECT * FROM tag_filters WHERE id = ?", (filter_id,)).fetchone()
 
                 if result:
                     return TagFilter(
                         id=result["id"],
                         name=result["name"],
-                        tag_expressions=json.loads(result["tag_expressions"])
-                        if result["tag_expressions"]
-                        else [],
+                        tag_expressions=json.loads(result["tag_expressions"]) if result["tag_expressions"] else [],
                         combination_operator=result["combination_operator"],
                         created_at=result["created_at"],
                         updated_at=result["updated_at"],
@@ -305,9 +289,7 @@ class MultiTagFilterDB:
         except Exception:
             return None
 
-    def apply_tag_filter(
-        self, tag_expressions: List[Dict[str, Any]], combination_operator: str = "AND"
-    ) -> List[str]:
+    def apply_tag_filter(self, tag_expressions: List[Dict[str, Any]], combination_operator: str = "AND") -> List[str]:
         """
         Apply a tag filter to find matching photos.
 
@@ -341,9 +323,7 @@ class MultiTagFilterDB:
                 if op_upper not in ("AND", "OR"):
                     op_upper = "AND"
                 operator_lit = cast(Literal["AND", "OR"], op_upper)
-                return self.get_photos_by_tags(
-                    include_tags, operator_lit, exclude_tags or None
-                )
+                return self.get_photos_by_tags(include_tags, operator_lit, exclude_tags or None)
             else:
                 # If only exclude tags are specified, we'd need to return all photos except excluded ones
                 # For now, return empty list - a more complex implementation would handle this case
@@ -385,21 +365,13 @@ class MultiTagFilterDB:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
 
-                total_tag_rows = conn.execute(
-                    "SELECT COUNT(*) AS c FROM photo_tags"
-                ).fetchone()
-                total_tag_assignments = (
-                    int(total_tag_rows["c"]) if total_tag_rows else 0
-                )
+                total_tag_rows = conn.execute("SELECT COUNT(*) AS c FROM photo_tags").fetchone()
+                total_tag_assignments = int(total_tag_rows["c"]) if total_tag_rows else 0
 
-                unique_tag_rows = conn.execute(
-                    "SELECT COUNT(DISTINCT tag) AS c FROM photo_tags"
-                ).fetchone()
+                unique_tag_rows = conn.execute("SELECT COUNT(DISTINCT tag) AS c FROM photo_tags").fetchone()
                 unique_tags = int(unique_tag_rows["c"]) if unique_tag_rows else 0
 
-                tagged_photo_rows = conn.execute(
-                    "SELECT COUNT(DISTINCT photo_path) AS c FROM photo_tags"
-                ).fetchone()
+                tagged_photo_rows = conn.execute("SELECT COUNT(DISTINCT photo_path) AS c FROM photo_tags").fetchone()
                 tagged_photos = int(tagged_photo_rows["c"]) if tagged_photo_rows else 0
 
                 top_tags = self.get_photo_tags_with_counts()[:20]
@@ -418,9 +390,7 @@ class MultiTagFilterDB:
                 "top_tags": [],
             }
 
-    def get_all_tag_filters(
-        self, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_all_tag_filters(self, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get all tag filters with pagination.
 
@@ -470,9 +440,7 @@ class MultiTagFilterDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM tag_filters WHERE id = ?", (filter_id,)
-                )
+                cursor = conn.execute("DELETE FROM tag_filters WHERE id = ?", (filter_id,))
                 return cursor.rowcount > 0
         except Exception:
             return False
@@ -497,10 +465,7 @@ class MultiTagFilterDB:
                 )
                 rows = cursor.fetchall()
 
-                return [
-                    {"tag": row["tag"], "photo_count": row["photo_count"]}
-                    for row in rows
-                ]
+                return [{"tag": row["tag"], "photo_count": row["photo_count"]} for row in rows]
         except Exception:
             return []
 

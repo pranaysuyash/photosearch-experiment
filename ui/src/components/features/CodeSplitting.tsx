@@ -362,7 +362,7 @@ const CodeSplitting = () => {
 
           <div className='code-example'>
             <pre>{`// Example: Lazy loading a component
-const PhotoGrid = React.lazy(() => 
+const PhotoGrid = React.lazy(() =>
   import(/* webpackChunkName: "photo-grid" */ './PhotoGrid')
 );
 

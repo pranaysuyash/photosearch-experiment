@@ -1,8 +1,8 @@
 # Task 7: Spotlight Search (Cmd+K Interface)
 
-**File:** `ui/src/components/Spotlight.tsx`  
-**Status:** ✅ Complete  
-**Date:** 2025-12-07  
+**File:** `ui/src/components/Spotlight.tsx`
+**Status:** ✅ Complete
+**Date:** 2025-12-07
 **Dependencies:** Task 6 (UI Foundation)
 
 ---

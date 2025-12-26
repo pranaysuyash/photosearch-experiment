@@ -1,6 +1,6 @@
 /**
  * Similar Face Search Component
- * 
+ *
  * Allows users to find faces similar to a selected face.
  * Uses the glass design system and follows living language guidelines.
  */
@@ -35,18 +35,18 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/similar?threshold=${threshold}`
       );
-      
+
       if (!response.ok) {
         throw new Error('Failed to find similar faces');
       }
-      
+
       const data = await response.json();
       setSimilarFaces(data.similar_faces || []);
-      
+
     } catch (err: any) {
       console.error('Failed to find similar faces:', err);
       setError(err.message || 'Failed to find similar faces');
@@ -65,7 +65,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -169,7 +169,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
                           img.src = api.getImageUrl(face.photo_path, 150);
                         }}
                       />
-                      
+
                       {/* Similarity Score */}
                       {face.similarity_score && (
                         <div className="absolute top-2 right-2 bg-primary/80 text-white text-xs px-2 py-1 rounded">
@@ -183,13 +183,13 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
                       <div className="text-xs text-muted-foreground mb-1">
                         {face.cluster_label || 'Unknown Person'}
                       </div>
-                      
+
                       {face.quality_score && (
                         <div className="text-xs text-muted-foreground">
                           Quality: {Math.round(face.quality_score * 100)}%
                         </div>
                       )}
-                      
+
                       <div className="text-xs text-muted-foreground truncate mt-1" title={face.photo_path}>
                         {face.photo_path.split('/').pop()}
                       </div>

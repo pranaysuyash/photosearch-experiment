@@ -285,18 +285,14 @@ class EnhancedFaceClusterer:
             "yes",
             "YES",
         }:
-            logger.info(
-                "Skipping legacy face model downloads (set FACE_LEGACY_MODEL_DOWNLOADS=1 to enable)"
-            )
+            logger.info("Skipping legacy face model downloads (set FACE_LEGACY_MODEL_DOWNLOADS=1 to enable)")
             return
 
         for model_type, config in MODEL_CONFIG.items():
             model_path = self.models_dir / config["file"]
             if not model_path.exists():
                 if self.progress_callback:
-                    self.progress_callback(
-                        f"Downloading {config['description']} ({config['size']:.1f}MB)..."
-                    )
+                    self.progress_callback(f"Downloading {config['description']} ({config['size']:.1f}MB)...")
 
                 # Download model with progress tracking
                 self._download_model(config["url"], model_path)
@@ -348,9 +344,7 @@ class EnhancedFaceClusterer:
         with self.model_lock:
             try:
                 # Determine optimal providers
-                providers = (
-                    _DEFAULT_PROVIDERS if self.enable_gpu else ["CPUExecutionProvider"]
-                )
+                providers = _DEFAULT_PROVIDERS if self.enable_gpu else ["CPUExecutionProvider"]
 
                 # Initialize face analysis with detection and recognition
                 self.face_detector = FaceAnalysis(
@@ -394,9 +388,7 @@ class EnhancedFaceClusterer:
             return json.loads(decrypted_bytes.decode())
         return json.loads(encrypted_data.decode())
 
-    def _calculate_face_quality(
-        self, face_data: Dict, image_shape: Tuple[int, int]
-    ) -> float:
+    def _calculate_face_quality(self, face_data: Dict, image_shape: Tuple[int, int]) -> float:
         """Calculate face quality score based on multiple factors"""
         quality_score = 0.0
 
@@ -435,22 +427,14 @@ class EnhancedFaceClusterer:
         # Pytest should never trigger heavyweight model initialization or asset
         # downloads. The test suite expects this method to be safe and return a
         # list (possibly empty) without blocking.
-        if "pytest" in sys.modules and (
-            not self.models_loaded or not self.face_detector
-        ):
-            logger.info(
-                "Test mode: skipping face model initialization; returning no detections"
-            )
+        if "pytest" in sys.modules and (not self.models_loaded or not self.face_detector):
+            logger.info("Test mode: skipping face model initialization; returning no detections")
             return []
 
         if not self.models_loaded or not self.face_detector:
-            logger.info(
-                "Face models not loaded yet; attempting synchronous initialization"
-            )
+            logger.info("Face models not loaded yet; attempting synchronous initialization")
             if not self.ensure_models_loaded():
-                logger.warning(
-                    "Face models still unavailable after initialization attempt"
-                )
+                logger.warning("Face models still unavailable after initialization attempt")
                 return []
 
         assert self.face_detector is not None
@@ -499,9 +483,7 @@ class EnhancedFaceClusterer:
                     },
                     blur_score=0.0,  # Would need additional analysis
                     face_size=max(face_width, face_height),
-                    landmarks=[
-                        (int(point[0]), int(point[1])) for point in face.get("kps", [])
-                    ],
+                    landmarks=[(int(point[0]), int(point[1])) for point in face.get("kps", [])],
                     age_estimate=face.get("age"),
                     gender=face.get("gender"),
                     created_at=datetime.now().isoformat(),
@@ -563,10 +545,7 @@ class EnhancedFaceClusterer:
 
         # Process images in parallel
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_file = {
-                executor.submit(self.detect_faces, str(img_path)): img_path
-                for img_path in image_files
-            }
+            future_to_file = {executor.submit(self.detect_faces, str(img_path)): img_path for img_path in image_files}
 
             for i, future in enumerate(as_completed(future_to_file)):
                 img_path = future_to_file[future]

@@ -29,4 +29,3 @@ def test_trash_db_lifecycle(tmp_path: Path):
     deleted = db.get("t1")
     assert deleted.status == "deleted"
     assert deleted.deleted_at is not None
-

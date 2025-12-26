@@ -16,4 +16,3 @@ describe('Sources UX', () => {
     expect(html).not.toContain('Add a folder path…');
   });
 });
-

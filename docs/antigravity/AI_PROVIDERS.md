@@ -1,7 +1,7 @@
 # AI Providers & Services Guide
 
-**Created by:** Antigravity (AI Assistant)  
-**Date:** 2025-12-06  
+**Created by:** Antigravity (AI Assistant)
+**Date:** 2025-12-06
 **Purpose:** Comprehensive guide to AI providers, models, and services for photo search
 
 ---
@@ -422,18 +422,18 @@ OPENROUTER_API_KEY=sk-or-...
 ## Model Selection Guide
 
 ### For Image Embeddings
-**Best Quality:** OpenAI CLIP Large  
-**Best Free:** HuggingFace CLIP ViT-L/14  
+**Best Quality:** OpenAI CLIP Large
+**Best Free:** HuggingFace CLIP ViT-L/14
 **Best Speed:** HuggingFace CLIP ViT-B/32 (local with GPU)
 
 ### For Image Captions
-**Best Quality:** GPT-4 Vision  
-**Best Free:** HuggingFace BLIP-2  
+**Best Quality:** GPT-4 Vision
+**Best Free:** HuggingFace BLIP-2
 **Best Balance:** Replicate BLIP-2
 
 ### For Object Detection
-**Best Quality:** Roboflow (custom trained)  
-**Best Free:** HuggingFace DETR  
+**Best Quality:** Roboflow (custom trained)
+**Best Free:** HuggingFace DETR
 **Best Speed:** YOLOv8 (local)
 
 ---
@@ -474,5 +474,5 @@ OPENROUTER_API_KEY=sk-or-...
 
 ---
 
-**Document Status:** Living Document - Updated as new providers are tested  
+**Document Status:** Living Document - Updated as new providers are tested
 **Next Update:** After Task 3 (Embedding Generation) implementation

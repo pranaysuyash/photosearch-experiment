@@ -26,11 +26,7 @@ def _parse_month_or_date(value: Optional[str], end: bool = False) -> Optional[da
             year = int(v[0:4])
             month = int(v[5:7])
             last_day = calendar.monthrange(year, month)[1]
-            return (
-                datetime(year, month, last_day, 23, 59, 59)
-                if end
-                else datetime(year, month, 1, 0, 0, 0)
-            )
+            return datetime(year, month, last_day, 23, 59, 59) if end else datetime(year, month, 1, 0, 0, 0)
         except Exception:
             return None
 
@@ -44,11 +40,7 @@ def _parse_month_or_date(value: Optional[str], end: bool = False) -> Optional[da
             year = int(v[0:4])
             month = int(v[5:7])
             day = int(v[8:10])
-            return (
-                datetime(year, month, day, 23, 59, 59)
-                if end
-                else datetime(year, month, day, 0, 0, 0)
-            )
+            return datetime(year, month, day, 23, 59, 59) if end else datetime(year, month, day, 0, 0, 0)
     except Exception:
         return None
 

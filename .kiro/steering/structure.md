@@ -8,7 +8,7 @@ photosearch_experiment/
 ├── .env.example           # Environment template
 ├── requirements.txt       # Root Python dependencies
 ├── README.md             # Main project documentation
-├── 
+├──
 ├── src/                  # Core Python modules (modular design)
 │   ├── file_discovery.py     # Task 1: File system scanning
 │   ├── format_analyzer.py    # Task 2: Format analysis

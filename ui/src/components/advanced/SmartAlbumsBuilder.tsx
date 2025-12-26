@@ -15,7 +15,6 @@ import {
   Plus,
   Trash2,
   Settings,
-  Play,
   Save,
   Sparkles,
   Filter,
@@ -23,23 +22,14 @@ import {
   MapPin,
   Tag,
   Image as ImageIcon,
-  Users,
-  Clock,
   Star,
   Heart,
   Zap,
   FolderPlus,
-  Check,
   X,
-  AlertCircle,
   Loader2,
   Eye,
-  EyeOff,
-  Copy,
-  Download,
-  Upload,
   Target,
-  Layers,
   BarChart3,
 } from 'lucide-react';
 import { api } from '../../api';
@@ -50,7 +40,7 @@ export interface AlbumRule {
   id: string;
   field: string;
   operator: string;
-  value: any;
+  value: unknown;
   label?: string;
 }
 
@@ -74,7 +64,7 @@ export interface SmartAlbum {
 }
 
 export function SmartAlbumsBuilder() {
-  const { isDark } = useAmbientThemeContext();
+  useAmbientThemeContext();
   const [activeTab, setActiveTab] = useState<
     'builder' | 'templates' | 'albums' | 'analytics'
   >('builder');
@@ -83,16 +73,15 @@ export function SmartAlbumsBuilder() {
   const [rules, setRules] = useState<AlbumRule[]>([]);
   const [templates, setTemplates] = useState<AlbumTemplate[]>([]);
   const [albums, setAlbums] = useState<SmartAlbum[]>([]);
-  const [previewResults, setPreviewResults] = useState<any[]>([]);
+  const [previewResults, setPreviewResults] = useState<unknown[]>([]);
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [draggedRule, setDraggedRule] = useState<AlbumRule | null>(null);
 
   // Load data on mount
   useEffect(() => {
     loadTemplates();
     loadAlbums();
-  }, []);
+  }, [loadTemplates, loadAlbums]);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -168,7 +157,7 @@ export function SmartAlbumsBuilder() {
 
     try {
       setLoading(true);
-      const response = await api.post('/api/albums/create', {
+      await api.post('/api/albums/create', {
         name: albumName,
         description: albumDescription,
         rules: rules,
@@ -330,10 +319,14 @@ export function SmartAlbumsBuilder() {
 
       {/* Tabs */}
       <div className='flex space-x-1 p-1 bg-black/20 rounded-lg'>
-        {['builder', 'templates', 'albums', 'analytics'].map((tab) => (
+        {(
+          ['builder', 'templates', 'albums', 'analytics'] as Array<
+            'builder' | 'templates' | 'albums' | 'analytics'
+          >
+        ).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => setActiveTab(tab)}
             className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
               activeTab === tab
                 ? 'bg-blue-600 text-white'
@@ -538,18 +531,24 @@ export function SmartAlbumsBuilder() {
 
                 {previewResults.length > 0 ? (
                   <div className='grid grid-cols-3 gap-2 max-h-96 overflow-y-auto'>
-                    {previewResults.slice(0, 24).map((photo, index) => (
-                      <div
-                        key={index}
-                        className='aspect-square bg-black/20 rounded-lg overflow-hidden'
-                      >
-                        <img
-                          src={`/api/image/${encodeURIComponent(photo.path)}`}
-                          alt={`Preview ${index + 1}`}
-                          className='w-full h-full object-cover hover:scale-110 transition-transform cursor-pointer'
-                        />
-                      </div>
-                    ))}
+                    {previewResults
+                      .filter((p): p is { path: string } => {
+                        const maybe = (p as { path?: unknown }).path;
+                        return typeof maybe === 'string';
+                      })
+                      .slice(0, 24)
+                      .map((photo, index) => (
+                        <div
+                          key={index}
+                          className='aspect-square bg-black/20 rounded-lg overflow-hidden'
+                        >
+                          <img
+                            src={`/api/image/${encodeURIComponent(photo.path)}`}
+                            alt={`Preview ${index + 1}`}
+                            className='w-full h-full object-cover hover:scale-110 transition-transform cursor-pointer'
+                          />
+                        </div>
+                      ))}
                   </div>
                 ) : (
                   <div className='text-center py-8'>

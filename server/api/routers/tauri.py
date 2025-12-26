@@ -15,7 +15,6 @@ async def get_tauri_commands(state: AppState = Depends(get_state)):
         Dictionary with Tauri commands
     """
     try:
-
         commands = state.tauri_integration.get_all_commands()
         return {"status": "success", "commands": commands}
     except Exception as e:
@@ -34,7 +33,6 @@ async def get_tauri_command(command_name: str, state: AppState = Depends(get_sta
         Dictionary with command details
     """
     try:
-
         command = state.tauri_integration.get_command(command_name)
         if command:
             return {"status": "success", "command": command}
@@ -53,7 +51,6 @@ async def get_rust_skeleton(state: AppState = Depends(get_state)):
         Dictionary with Rust skeleton code
     """
     try:
-
         skeleton = state.tauri_integration.generate_rust_skeleton()
         return {"status": "success", "skeleton": skeleton}
     except Exception as e:
@@ -69,7 +66,6 @@ async def get_frontend_hooks(state: AppState = Depends(get_state)):
         Dictionary with frontend hooks code
     """
     try:
-
         hooks = state.tauri_integration.generate_frontend_hooks()
         return {"status": "success", "hooks": hooks}
     except Exception as e:
@@ -85,7 +81,6 @@ async def get_tauri_config(state: AppState = Depends(get_state)):
         Dictionary with Tauri configuration
     """
     try:
-
         config = state.tauri_integration.generate_tauri_config()
         return {"status": "success", "config": config}
     except Exception as e:
@@ -101,7 +96,6 @@ async def get_security_recommendations(state: AppState = Depends(get_state)):
         Dictionary with security recommendations
     """
     try:
-
         recommendations = state.tauri_integration.get_security_recommendations()
         return {"status": "success", "recommendations": recommendations}
     except Exception as e:
@@ -117,7 +111,6 @@ async def get_performance_tips(state: AppState = Depends(get_state)):
         Dictionary with performance tips
     """
     try:
-
         tips = state.tauri_integration.get_performance_tips()
         return {"status": "success", "tips": tips}
     except Exception as e:
@@ -133,7 +126,6 @@ async def get_integration_checklist(state: AppState = Depends(get_state)):
         Dictionary with integration checklist
     """
     try:
-
         checklist = state.tauri_integration.get_integration_checklist()
         return {"status": "success", "checklist": checklist}
     except Exception as e:

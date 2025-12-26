@@ -64,11 +64,11 @@ export function PerformanceDashboard() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load cache statistics
       const statsResponse = await api.get('/cache/stats');
       setCacheStats(statsResponse.stats);
-      
+
       // Load health check
       const healthResponse = await api.get('/cache/health');
       setHealth(healthResponse);
@@ -178,9 +178,9 @@ export function PerformanceDashboard() {
           <span className="text-sm font-medium">{totalUsed} / {totalMaxCapacity} ({totalUsagePercentage}%)</span>
         </div>
         <div className="w-full bg-white/10 rounded-full h-3">
-          <div 
+          <div
             className={`h-3 rounded-full ${
-              totalUsagePercentage < 70 ? 'bg-green-500' : 
+              totalUsagePercentage < 70 ? 'bg-green-500' :
               totalUsagePercentage < 90 ? 'bg-yellow-500' : 'bg-red-500'
             }`}
             style={{ width: `${totalUsagePercentage}%` }}
@@ -209,8 +209,8 @@ export function PerformanceDashboard() {
           };
 
           return (
-            <div 
-              key={cacheName} 
+            <div
+              key={cacheName}
               className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -220,19 +220,19 @@ export function PerformanceDashboard() {
                 </div>
                 <span className="text-xs font-medium">{percentage}%</span>
               </div>
-              
+
               <div className="mb-2">
                 <div className="w-full bg-white/10 rounded-full h-2">
-                  <div 
+                  <div
                     className={`h-2 rounded-full ${
-                      percentage < 70 ? 'bg-green-500' : 
+                      percentage < 70 ? 'bg-green-500' :
                       percentage < 90 ? 'bg-yellow-500' : 'bg-red-500'
                     }`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
               </div>
-              
+
               <div className="text-xs text-muted-foreground space-y-1">
                 <div className="flex justify-between">
                   <span>Entries:</span>
@@ -258,7 +258,7 @@ export function PerformanceDashboard() {
           <Trash2 size={16} />
           Cache Management
         </h3>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <div className="flex-1">
             <label className="block text-sm font-medium text-foreground mb-2">
@@ -276,7 +276,7 @@ export function PerformanceDashboard() {
               <option value="embeddings">Embeddings Cache</option>
             </select>
           </div>
-          
+
           <button
             onClick={clearCache}
             disabled={cacheClearing}

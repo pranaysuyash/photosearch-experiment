@@ -1,7 +1,7 @@
 # Task 4: Metadata Search System
 
-**File:** `metadata_search.py`  
-**Status:** ✅ Complete  
+**File:** `metadata_search.py`
+**Status:** ✅ Complete
 **Dependencies:** sqlite3 (built-in), file_discovery, metadata_extractor
 
 ## Quick Links
@@ -49,8 +49,8 @@ python metadata_search.py --history photo.jpg
 
 ## Query Language
 
-**Operators:** `=`, `!=`, `>`, `<`, `>=`, `<=`, `LIKE`, `CONTAINS`  
-**Combinators:** `AND`  
+**Operators:** `=`, `!=`, `>`, `<`, `>=`, `<=`, `LIKE`, `CONTAINS`
+**Combinators:** `AND`
 **Field Access:** Nested (e.g., `exif.image.Make`, `filesystem.size_bytes`)
 
 **Examples:**

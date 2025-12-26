@@ -21,9 +21,7 @@ async def create_share_link(payload: ShareRequest, request: Request):
     import uuid
     from datetime import datetime, timedelta
 
-    test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or (
-        "PYTEST_CURRENT_TEST" in os.environ
-    )
+    test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or ("PYTEST_CURRENT_TEST" in os.environ)
 
     if not payload.paths:
         raise HTTPException(status_code=400, detail="No files specified")
@@ -48,10 +46,7 @@ async def create_share_link(payload: ShareRequest, request: Request):
                 else:
                     allowed_paths = [settings.BASE_DIR.resolve()]
 
-                is_allowed = any(
-                    requested_path.is_relative_to(allowed_path)
-                    for allowed_path in allowed_paths
-                )
+                is_allowed = any(requested_path.is_relative_to(allowed_path) for allowed_path in allowed_paths)
 
                 if is_allowed and os.path.exists(path):
                     valid_paths.append(path)
@@ -146,9 +141,7 @@ async def download_shared_content(share_id: str, password: Optional[str] = None)
         for path in content["paths"]:
             filename = os.path.basename(path)
             # Handle duplicate filenames by adding parent folder
-            if any(
-                os.path.basename(p) == filename and p != path for p in content["paths"]
-            ):
+            if any(os.path.basename(p) == filename and p != path for p in content["paths"]):
                 parent = os.path.basename(os.path.dirname(path))
                 filename = f"{parent}_{filename}"
             zip_file.write(path, filename)

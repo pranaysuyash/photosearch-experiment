@@ -1,7 +1,7 @@
 # Task 1: File Discovery System
 
-**File:** `file_discovery.py`  
-**Status:** ✅ Complete  
+**File:** `file_discovery.py`
+**Status:** ✅ Complete
 **Dependencies:** tqdm
 
 ## Quick Links

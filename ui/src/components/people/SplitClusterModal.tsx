@@ -1,6 +1,6 @@
 /**
  * Split Cluster Modal - Advanced Face Management
- * 
+ *
  * Allows users to select faces from a mixed cluster and create a new person.
  * Uses the glass design system and follows living language guidelines.
  */
@@ -54,18 +54,18 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
     try {
       setLoading(true);
       setError(null);
-      
+
       // Fetch detailed face information for this cluster
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${cluster.id}/photos`
       );
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch cluster faces');
       }
-      
+
       const data = await response.json();
-      
+
       // Extract faces from the response
       const clusterFaces: Face[] = [];
       if (data.photos) {
@@ -83,7 +83,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
           }
         });
       }
-      
+
       setFaces(clusterFaces);
     } catch (err) {
       console.error('Failed to fetch cluster faces:', err);
@@ -134,15 +134,15 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
       }
 
       const result = await response.json();
-      
+
       // Success - close modal and refresh parent
       onSplit();
       onClose();
-      
+
       // Reset state
       setSelectedFaces(new Set());
       setNewPersonName('');
-      
+
     } catch (err: any) {
       console.error('Failed to split cluster:', err);
       setError(err.message || 'Failed to split cluster');
@@ -162,7 +162,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -302,7 +302,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
               </span>
             )}
           </div>
-          
+
           <div className="flex gap-3">
             <button
               onClick={handleClose}

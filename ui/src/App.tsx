@@ -1,6 +1,6 @@
 /**
  * Main Application Entry Point
- * 
+ *
  * Integrates all components with routing and state management
  */
 

@@ -1,6 +1,6 @@
 /**
  * About Page
- * 
+ *
  * Information about the application
  */
 

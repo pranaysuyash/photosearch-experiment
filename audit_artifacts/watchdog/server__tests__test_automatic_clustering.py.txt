@@ -18,13 +18,13 @@ server/tests/test_automatic_clustering.py::test_cosine_similarity 🧪 Testing c
 ✅ Different vectors: similarity = 0.577
 ✅ Cosine similarity calculation tests passed!
 [32mPASSED[0m
-server/tests/test_automatic_clustering.py::test_face_embedding_retrieval 
+server/tests/test_automatic_clustering.py::test_face_embedding_retrieval
 🧪 Testing face embedding retrieval...
 ✅ Retrieved 5 face embeddings
 ✅ All embeddings retrieved correctly
 ✅ Face embedding retrieval tests passed!
 [32mPASSED[0m
-server/tests/test_automatic_clustering.py::test_similar_face_finding 
+server/tests/test_automatic_clustering.py::test_similar_face_finding
 🧪 Testing similar face finding...
 [31mFAILED[0m
 
@@ -73,8 +73,8 @@ server/tests/test_automatic_clustering.py::test_similar_face_finding
 >           similar_faces = face_db.find_similar_faces(ref_det_id, threshold=[94m0.7[39;49;00m)[90m[39;49;00m
                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[90m[39;49;00m
 
-[1m[31mserver/tests/test_automatic_clustering.py[0m:159: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+[1m[31mserver/tests/test_automatic_clustering.py[0m:159:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 self = <face_clustering_db.FaceClusteringDB object at 0x104140910>
 detection_id = 'face_e829b50af09d1621e831824b033195de', limit = 20, threshold = 0.7

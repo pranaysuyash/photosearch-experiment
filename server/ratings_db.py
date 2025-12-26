@@ -2,11 +2,11 @@
 Photo Rating System
 Provides 1-5 star rating functionality for photos with SQLite backend.
 """
+
 import sqlite3
 from pathlib import Path
-from typing import Optional, List, Dict
+from typing import List, Dict
 from dataclasses import dataclass
-from datetime import datetime
 
 
 @dataclass
@@ -50,10 +50,13 @@ class RatingsDB:
                 conn.execute("DELETE FROM photo_ratings WHERE photo_path = ?", (photo_path,))
             else:
                 # Insert or update rating
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO photo_ratings (photo_path, rating, updated_at)
                     VALUES (?, ?, CURRENT_TIMESTAMP)
-                """, (photo_path, rating))
+                """,
+                    (photo_path, rating),
+                )
         return True
 
     def get_rating(self, photo_path: str) -> int:
@@ -68,30 +71,39 @@ class RatingsDB:
             return []
 
         with sqlite3.connect(str(self.db_path)) as conn:
-            results = conn.execute("""
+            results = conn.execute(
+                """
                 SELECT photo_path FROM photo_ratings
                 WHERE rating = ?
                 ORDER BY updated_at DESC
                 LIMIT ? OFFSET ?
-            """, (rating, limit, offset)).fetchall()
+            """,
+                (rating, limit, offset),
+            ).fetchall()
             return [r[0] for r in results]
 
     def get_all_ratings(self, limit: int = 1000, offset: int = 0) -> List[PhotoRating]:
         """Get all photo ratings."""
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
-            results = conn.execute("""
+            results = conn.execute(
+                """
                 SELECT * FROM photo_ratings
                 ORDER BY updated_at DESC
                 LIMIT ? OFFSET ?
-            """, (limit, offset)).fetchall()
+            """,
+                (limit, offset),
+            ).fetchall()
 
-            return [PhotoRating(
-                photo_path=r['photo_path'],
-                rating=r['rating'],
-                created_at=r['created_at'],
-                updated_at=r['updated_at']
-            ) for r in results]
+            return [
+                PhotoRating(
+                    photo_path=r["photo_path"],
+                    rating=r["rating"],
+                    created_at=r["created_at"],
+                    updated_at=r["updated_at"],
+                )
+                for r in results
+            ]
 
     def get_rating_stats(self) -> Dict[int, int]:
         """Get count of photos for each rating."""
@@ -117,12 +129,18 @@ class RatingsDB:
             for photo_path, rating in ratings:
                 if 0 <= rating <= 5:
                     if rating == 0:
-                        conn.execute("DELETE FROM photo_ratings WHERE photo_path = ?", (photo_path,))
+                        conn.execute(
+                            "DELETE FROM photo_ratings WHERE photo_path = ?",
+                            (photo_path,),
+                        )
                     else:
-                        conn.execute("""
+                        conn.execute(
+                            """
                             INSERT OR REPLACE INTO photo_ratings (photo_path, rating, updated_at)
                             VALUES (?, ?, CURRENT_TIMESTAMP)
-                        """, (photo_path, rating))
+                        """,
+                            (photo_path, rating),
+                        )
                     count += 1
         return count
 

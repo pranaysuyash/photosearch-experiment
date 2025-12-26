@@ -20,7 +20,6 @@ async def toggle_favorite(payload: dict = Body(...), state: AppState = Depends(g
         raise HTTPException(status_code=400, detail="file_path is required")
 
     try:
-
         is_favorited = state.photo_search_engine.toggle_favorite(file_path, notes)
         return {"success": True, "is_favorited": is_favorited}
     except Exception as e:
@@ -33,7 +32,6 @@ async def get_favorites(limit: int = 1000, offset: int = 0, state: AppState = De
     Get all favorited files.
     """
     try:
-
         favorites = state.photo_search_engine.get_favorites(limit, offset)
         return {"count": len(favorites), "results": favorites}
     except Exception as e:
@@ -48,7 +46,6 @@ async def check_favorite(file_path: str, state: AppState = Depends(get_state)):
     Query param: file_path=/path/to/file.jpg
     """
     try:
-
         is_favorited = state.photo_search_engine.is_favorite(file_path)
         return {"is_favorited": is_favorited}
     except Exception as e:
@@ -68,7 +65,6 @@ async def remove_favorite(payload: dict = Body(...), state: AppState = Depends(g
         raise HTTPException(status_code=400, detail="file_path is required")
 
     try:
-
         success = state.photo_search_engine.remove_favorite(file_path)
         return {"success": success}
     except Exception as e:

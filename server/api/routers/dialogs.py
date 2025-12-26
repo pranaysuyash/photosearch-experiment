@@ -3,6 +3,7 @@ Dialogs Router
 
 Uses Depends(get_state) for accessing shared application state.
 """
+
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException

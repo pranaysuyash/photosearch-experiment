@@ -1,7 +1,7 @@
 ## Task 3: Comprehensive Metadata Extraction
 
-**File:** `metadata_extractor.py`  
-**Status:** ✅ Complete  
+**File:** `metadata_extractor.py`
+**Status:** ✅ Complete
 **Dependencies:** Pillow, exifread, ffmpeg-python, python-magic, xattr
 
 ### Features

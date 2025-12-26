@@ -5,17 +5,17 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  User, 
-  MapPin, 
-  Search, 
-  Calendar, 
-  Palette, 
-  Smile, 
-  Wand2, 
-  Star, 
-  Settings, 
-  Lightbulb, 
+import {
+  User,
+  MapPin,
+  Search,
+  Calendar,
+  Palette,
+  Smile,
+  Wand2,
+  Star,
+  Settings,
+  Lightbulb,
   FolderOpen,
   Sparkles
 } from 'lucide-react';

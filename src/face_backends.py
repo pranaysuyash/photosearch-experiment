@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
+import requests
 
 from src.insightface_compat import patch_insightface_deprecations
 
@@ -38,11 +39,18 @@ class FaceBackendConfig:
     # Ultralytics backend options
     yolo_weights_path: Optional[Path] = None
 
+    # Remote API backend options
+    remote_detect_url: Optional[str] = None
+    remote_detect_api_key: Optional[str] = None
+    remote_detect_timeout: float = 10.0
+    remote_detect_embeddings: bool = False
+
 
 class FaceBackend:
     """Base interface for a face detection backend."""
 
     name: str = "base"
+    supports_embeddings: bool = False
 
     def is_available(self) -> bool:
         raise NotImplementedError
@@ -58,6 +66,7 @@ class FaceBackend:
 
 class InsightFaceBackend(FaceBackend):
     name = "insightface"
+    supports_embeddings = True
 
     def __init__(self, models_dir: Path, providers: Optional[List[str]] = None):
         self._models_dir = models_dir
@@ -66,7 +75,6 @@ class InsightFaceBackend(FaceBackend):
 
     def is_available(self) -> bool:
         try:
-            import insightface  # type: ignore[import-untyped]
             import cv2  # noqa: F401
         except Exception:
             return False
@@ -123,7 +131,7 @@ class MediaPipeBackend(FaceBackend):
 
     def is_available(self) -> bool:
         try:
-            import mediapipe as mp  # type: ignore[import-not-found]
+            pass  # type: ignore[import-not-found]
         except Exception:
             return False
         return True
@@ -135,9 +143,7 @@ class MediaPipeBackend(FaceBackend):
         import mediapipe as mp  # type: ignore[import-not-found]
 
         # model_selection=1 generally favors more accurate model
-        self._detector = mp.solutions.face_detection.FaceDetection(
-            model_selection=1, min_detection_confidence=0.5
-        )
+        self._detector = mp.solutions.face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5)
 
     def detect_bgr(self, img_bgr: np.ndarray) -> List[Dict]:
         if self._detector is None:
@@ -182,7 +188,7 @@ class UltralyticsYoloBackend(FaceBackend):
 
     def is_available(self) -> bool:
         try:
-            import ultralytics  # type: ignore[import-not-found]
+            pass  # type: ignore[import-not-found]
         except Exception:
             return False
         return self._weights_path.exists()
@@ -229,7 +235,74 @@ class UltralyticsYoloBackend(FaceBackend):
         return out
 
 
-def load_face_backend(config: FaceBackendConfig, insightface_providers: Optional[List[str]] = None) -> Optional[FaceBackend]:
+class RemoteApiBackend(FaceBackend):
+    name = "remote"
+
+    def __init__(
+        self,
+        url: str,
+        api_key: Optional[str] = None,
+        timeout: float = 10.0,
+        provides_embeddings: bool = False,
+    ):
+        self._url = url
+        self._api_key = api_key
+        self._timeout = timeout
+        self.supports_embeddings = provides_embeddings
+
+    def is_available(self) -> bool:
+        return bool(self._url)
+
+    def detect_bgr(self, img_bgr: np.ndarray) -> List[Dict]:
+        if not self._url:
+            return []
+
+        from PIL import Image
+        import base64
+        import io
+
+        image = Image.fromarray(img_bgr[:, :, ::-1])
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=95)
+        payload = {"image_b64": base64.b64encode(buffer.getvalue()).decode("ascii")}
+
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
+
+        response = requests.post(
+            self._url,
+            json=payload,
+            headers=headers,
+            timeout=self._timeout,
+        )
+        response.raise_for_status()
+        data = response.json()
+        faces = data.get("faces", [])
+        if not isinstance(faces, list):
+            return []
+
+        results: List[Dict] = []
+        for face in faces:
+            if not isinstance(face, dict):
+                continue
+            bbox = face.get("bounding_box")
+            if not isinstance(bbox, list) or len(bbox) != 4:
+                continue
+            results.append(
+                {
+                    "bounding_box": bbox,
+                    "confidence": float(face.get("confidence", 0.0)),
+                    "embedding": face.get("embedding"),
+                    "embedding_version": face.get("embedding_version"),
+                }
+            )
+        return results
+
+
+def load_face_backend(
+    config: FaceBackendConfig, insightface_providers: Optional[List[str]] = None
+) -> Optional[FaceBackend]:
     """Pick the first available backend from the preference list."""
     for name in config.preferred_backends:
         n = name.strip().lower()
@@ -237,9 +310,7 @@ def load_face_backend(config: FaceBackendConfig, insightface_providers: Optional
             continue
 
         if n == "insightface":
-            backend: FaceBackend = InsightFaceBackend(
-                models_dir=config.models_dir, providers=insightface_providers
-            )
+            backend: FaceBackend = InsightFaceBackend(models_dir=config.models_dir, providers=insightface_providers)
         elif n == "mediapipe":
             backend = MediaPipeBackend()
         elif n in {"yolo", "ultralytics"}:
@@ -247,6 +318,16 @@ def load_face_backend(config: FaceBackendConfig, insightface_providers: Optional
                 logger.info("YOLO backend requested but FACE_YOLO_WEIGHTS is not set")
                 continue
             backend = UltralyticsYoloBackend(weights_path=config.yolo_weights_path)
+        elif n in {"remote", "api", "http"}:
+            if not config.remote_detect_url:
+                logger.info("Remote backend requested but FACE_REMOTE_DETECT_URL is not set")
+                continue
+            backend = RemoteApiBackend(
+                url=config.remote_detect_url,
+                api_key=config.remote_detect_api_key,
+                timeout=config.remote_detect_timeout,
+                provides_embeddings=config.remote_detect_embeddings,
+            )
         else:
             logger.warning("Unknown face backend '%s'", n)
             continue

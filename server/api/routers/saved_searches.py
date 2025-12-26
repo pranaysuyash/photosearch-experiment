@@ -3,6 +3,7 @@ Saved Searches Router
 
 Uses Depends(get_state) for accessing shared application state.
 """
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.models.schemas.saved_searches import SaveSearchRequest, UpdateSearchRequest
@@ -175,9 +176,11 @@ async def export_analytics(state: AppState = Depends(get_state), format_type: st
 
         if format_type == "json":
             import json
+
             return json.loads(exported_data)
         else:
             from fastapi.responses import PlainTextResponse
+
             return PlainTextResponse(exported_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

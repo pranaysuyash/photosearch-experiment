@@ -17,7 +17,6 @@ async def get_code_splitting_config(state: AppState = Depends(get_state)):
         Dictionary with code splitting configuration
     """
     try:
-
         config = state.code_splitting_config.get_config()
         return {"status": "success", "config": config}
     except Exception as e:
@@ -36,7 +35,6 @@ async def get_chunk_config(chunk_name: str, state: AppState = Depends(get_state)
         Dictionary with chunk configuration
     """
     try:
-
         config = state.code_splitting_config.get_chunk_config(chunk_name)
         if config:
             return {"status": "success", "config": config}
@@ -59,7 +57,6 @@ async def set_chunk_config(chunk_name: str, request: CodeSplittingConfigRequest,
         Dictionary with update status
     """
     try:
-
         success = state.code_splitting_config.set_chunk_config(chunk_name, request.config)
         return {"status": "success" if success else "failed", "updated": success}
     except Exception as e:
@@ -75,7 +72,6 @@ async def get_code_splitting_enabled(state: AppState = Depends(get_state)):
         Dictionary with enabled status
     """
     try:
-
         enabled = state.code_splitting_config.is_code_splitting_enabled()
         return {"status": "success", "enabled": enabled}
     except Exception as e:
@@ -94,7 +90,6 @@ async def set_code_splitting_enabled(enabled: bool, state: AppState = Depends(ge
         Dictionary with update status
     """
     try:
-
         state.code_splitting_config.enable_code_splitting(enabled)
         return {"status": "success", "enabled": enabled}
     except Exception as e:
@@ -113,7 +108,6 @@ async def record_lazy_load_performance(request: PerformanceRecordRequest, state:
         Dictionary with recording status
     """
     try:
-
         state.lazy_load_tracker.record_lazy_load(
             component_name=request.component_name,
             load_time_ms=request.load_time_ms,
@@ -137,7 +131,6 @@ async def get_lazy_load_performance(component_name: str | None = None, state: Ap
         Dictionary with performance statistics
     """
     try:
-
         stats = state.lazy_load_tracker.get_performance_stats(component_name)
         return {"status": "success", "stats": stats}
     except Exception as e:
@@ -153,7 +146,6 @@ async def get_chunk_performance(state: AppState = Depends(get_state)):
         Dictionary with chunk performance statistics
     """
     try:
-
         stats = state.lazy_load_tracker.get_chunk_performance()
         return {"status": "success", "stats": stats}
     except Exception as e:

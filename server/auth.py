@@ -2,7 +2,7 @@ import base64
 import json
 import hmac
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from .config import settings
 
 
@@ -35,7 +35,11 @@ def verify_jwt(token: str) -> Dict[str, Any]:
     except Exception:
         raise AuthError("Invalid signature encoding")
 
-    expected_sig = hmac.new(settings.JWT_SECRET.encode("utf-8"), f"{header_b64}.{payload_b64}".encode("utf-8"), hashlib.sha256).digest()
+    expected_sig = hmac.new(
+        settings.JWT_SECRET.encode("utf-8"),
+        f"{header_b64}.{payload_b64}".encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
     if not hmac.compare_digest(expected_sig, sig):
         raise AuthError("Invalid signature")
 
@@ -62,8 +66,18 @@ def create_jwt(payload: Dict[str, Any]) -> str:
     Note: This is not intended to replace a full auth provider.
     """
     header = {"alg": settings.JWT_ALGO, "typ": "JWT"}
-    header_b64 = base64.urlsafe_b64encode(json.dumps(header, separators=(",", ":")).encode("utf-8")).rstrip(b"=").decode("ascii")
-    payload_b64 = base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8")).rstrip(b"=").decode("ascii")
-    sig = hmac.new(settings.JWT_SECRET.encode("utf-8"), f"{header_b64}.{payload_b64}".encode("utf-8"), hashlib.sha256).digest()
+    header_b64 = (
+        base64.urlsafe_b64encode(json.dumps(header, separators=(",", ":")).encode("utf-8")).rstrip(b"=").decode("ascii")
+    )
+    payload_b64 = (
+        base64.urlsafe_b64encode(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+        .rstrip(b"=")
+        .decode("ascii")
+    )
+    sig = hmac.new(
+        settings.JWT_SECRET.encode("utf-8"),
+        f"{header_b64}.{payload_b64}".encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
     sig_b64 = base64.urlsafe_b64encode(sig).rstrip(b"=").decode("ascii")
     return f"{header_b64}.{payload_b64}.{sig_b64}"

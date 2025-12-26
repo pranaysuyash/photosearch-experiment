@@ -47,7 +47,6 @@ async def get_tag(tag_name: str, include_photos: bool = True, state: AppState = 
         raise HTTPException(status_code=404, detail="Tag not found")
     out: Dict[str, object] = {"tag": tag_name}
     if include_photos:
-
         paths = tags_db.get_tag_paths(tag_name)
         photos = []
         for path in paths:

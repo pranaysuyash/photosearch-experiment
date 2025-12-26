@@ -146,9 +146,7 @@ async def search_photos(
     type_filter: str = "all",  # all, photos, videos
     source_filter: str = "all",  # all, local, cloud, hybrid
     favorites_filter: str = "all",  # all, favorites_only
-    tag: Optional[
-        str
-    ] = None,  # Filter to a single user tag (deprecated, use tags instead)
+    tag: Optional[str] = None,  # Filter to a single user tag (deprecated, use tags instead)
     tags: Optional[str] = None,  # Filter by multiple tags, format: "tag1,tag2,tag3"
     tag_logic: str = "OR",  # "AND" or "OR" for combining multiple tags
     date_from: Optional[str] = None,  # YYYY-MM or ISO date/datetime
@@ -259,9 +257,7 @@ async def search_photos(
             )
 
         if tag_logic not in {"AND", "OR"}:
-            raise HTTPException(
-                status_code=400, detail="Invalid tag_logic: Must be 'AND' or 'OR'"
-            )
+            raise HTTPException(status_code=400, detail="Invalid tag_logic: Must be 'AND' or 'OR'")
 
         tagged_paths = None
         if tag or tags:
@@ -315,9 +311,7 @@ async def search_photos(
         if not person and query and query.lower().startswith("person:"):
             person_to_search = query.split(":", 1)[1].strip()
             remaining_query = ""
-            print(
-                f"Explicit person search: '{person_to_search}', remaining query: '{remaining_query}'"
-            )
+            print(f"Explicit person search: '{person_to_search}', remaining query: '{remaining_query}'")
 
         # Auto-detect: if query matches a person/cluster label, treat it as person search
         if not person_to_search and query and face_clusterer:
@@ -336,9 +330,7 @@ async def search_photos(
                 if matching_labels:
                     # Query matches a person name - use it as person filter
                     person_to_search = query
-                    print(
-                        f"Auto-detected person search: '{query}' matches {matching_labels}"
-                    )
+                    print(f"Auto-detected person search: '{query}' matches {matching_labels}")
             except Exception as e:
                 print(f"Person auto-detection error: {e}")
 
@@ -386,9 +378,7 @@ async def search_photos(
                     list(person_paths),
                 )
                 for row in cursor.fetchall():
-                    metadata = (
-                        json.loads(row["metadata_json"]) if row["metadata_json"] else {}
-                    )
+                    metadata = json.loads(row["metadata_json"]) if row["metadata_json"] else {}
                     person_results.append(
                         {
                             "path": row["file_path"],
@@ -422,11 +412,7 @@ async def search_photos(
 
             # Apply favorites filter
             if favorites_filter == "favorites_only":
-                results = [
-                    r
-                    for r in results
-                    if photo_search_engine.is_favorite(r.get("path", ""))
-                ]
+                results = [r for r in results if photo_search_engine.is_favorite(r.get("path", ""))]
 
             # Apply date filter (filesystem.created)
             results = apply_date_filter(results, date_from, date_to)
@@ -461,10 +447,7 @@ async def search_photos(
                     results = [
                         r
                         for r in results
-                        if (
-                            not is_local_path(r.get("path", ""))
-                            and not is_cloud_path(r.get("path", ""))
-                        )
+                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
                     ]
 
             # Apply sort
@@ -509,25 +492,18 @@ async def search_photos(
                     results.append(
                         {
                             "file_path": row["file_path"],
-                            "metadata": json.loads(row["metadata_json"])
-                            if row["metadata_json"]
-                            else {},
+                            "metadata": json.loads(row["metadata_json"]) if row["metadata_json"] else {},
                         }
                     )
             else:
                 # Check if query has structured operators (=, >, <, LIKE, etc.)
-                has_operators = any(
-                    op in query
-                    for op in ["=", ">", "<", "!=", " LIKE ", " CONTAINS ", ":"]
-                )
+                has_operators = any(op in query for op in ["=", ">", "<", "!=", " LIKE ", " CONTAINS ", ":"])
                 print(f"DEBUG: Query='{query}', has_operators={has_operators}")
 
                 if not has_operators:
                     # Simple search term - search in filename using shortcut format
                     search_query = f"filename:{query}"
-                    print(
-                        f"DEBUG: Simple query '{query}' converted to '{search_query}'"
-                    )
+                    print(f"DEBUG: Simple query '{query}' converted to '{search_query}'")
                     results = photo_search_engine.query_engine.search(search_query)
                 else:
                     # Structured query - use as-is
@@ -547,9 +523,7 @@ async def search_photos(
 
                 # Generate match explanation for metadata search
                 if query.strip():
-                    result_item["matchExplanation"] = (
-                        generate_metadata_match_explanation(query, r)
-                    )
+                    result_item["matchExplanation"] = generate_metadata_match_explanation(query, r)
 
                 formatted_results.append(result_item)
 
@@ -570,41 +544,27 @@ async def search_photos(
                             "filename": os.path.basename(p),
                             "score": 0.55,
                             "metadata": meta,
-                            "matchExplanation": _aux_match_explanation(query)
-                            if query.strip()
-                            else None,
+                            "matchExplanation": _aux_match_explanation(query) if query.strip() else None,
                         }
                     )
                     seen_paths.add(p)
 
             # Apply type filter
             if type_filter == "photos":
-                formatted_results = [
-                    r for r in formatted_results if not is_video_file(r.get("path", ""))
-                ]
+                formatted_results = [r for r in formatted_results if not is_video_file(r.get("path", ""))]
             elif type_filter == "videos":
-                formatted_results = [
-                    r for r in formatted_results if is_video_file(r.get("path", ""))
-                ]
+                formatted_results = [r for r in formatted_results if is_video_file(r.get("path", ""))]
 
             if tagged_paths is not None:
-                formatted_results = [
-                    r for r in formatted_results if r.get("path") in tagged_paths
-                ]
+                formatted_results = [r for r in formatted_results if r.get("path") in tagged_paths]
 
             # Apply person filter
             if person_paths is not None:
-                formatted_results = [
-                    r for r in formatted_results if r.get("path") in person_paths
-                ]
+                formatted_results = [r for r in formatted_results if r.get("path") in person_paths]
 
             # Apply favorites filter
             if favorites_filter == "favorites_only":
-                formatted_results = [
-                    r
-                    for r in formatted_results
-                    if photo_search_engine.is_favorite(r.get("path", ""))
-                ]
+                formatted_results = [r for r in formatted_results if photo_search_engine.is_favorite(r.get("path", ""))]
 
             # Apply date filter (filesystem.created)
             formatted_results = apply_date_filter(formatted_results, date_from, date_to)
@@ -632,21 +592,14 @@ async def search_photos(
                     return bool(re.match(r"^[A-Za-z]:\\|^/|^file://|^~/", p))
 
                 if source_filter == "local":
-                    formatted_results = [
-                        r for r in formatted_results if is_local_path(r.get("path", ""))
-                    ]
+                    formatted_results = [r for r in formatted_results if is_local_path(r.get("path", ""))]
                 elif source_filter == "cloud":
-                    formatted_results = [
-                        r for r in formatted_results if is_cloud_path(r.get("path", ""))
-                    ]
+                    formatted_results = [r for r in formatted_results if is_cloud_path(r.get("path", ""))]
                 elif source_filter == "hybrid":
                     formatted_results = [
                         r
                         for r in formatted_results
-                        if (
-                            not is_local_path(r.get("path", ""))
-                            and not is_cloud_path(r.get("path", ""))
-                        )
+                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
                     ]
 
             # Apply sorting
@@ -710,18 +663,14 @@ async def search_photos(
                     metadata_results = photo_search_engine.query_engine.search(query)
                 else:
                     safe_query = query.replace("'", "''")
-                    metadata_results = photo_search_engine.query_engine.search(
-                        f"file.path LIKE '%{safe_query}%'"
-                    )
+                    metadata_results = photo_search_engine.query_engine.search(f"file.path LIKE '%{safe_query}%'")
             except Exception as e:
                 print(f"Metadata search error in hybrid: {e}")
 
             # B. Get Semantic Results (Top N = limit + offset)
             # We need deep fetch to ensure correct global ranking after merge
             semantic_limit = limit + offset
-            semantic_response = await search_semantic(
-                state=state, query=query, limit=semantic_limit, offset=0
-            )
+            semantic_response = await search_semantic(state=state, query=query, limit=semantic_limit, offset=0)
             semantic_results = semantic_response["results"]
 
             # C. Normalize semantic scores
@@ -762,9 +711,7 @@ async def search_photos(
                 else:
                     return 0.6, 0.4
 
-            intent_metadata_weight, intent_semantic_weight = get_weights_from_intent(
-                intent_result["primary_intent"]
-            )
+            intent_metadata_weight, intent_semantic_weight = get_weights_from_intent(intent_result["primary_intent"])
 
             seen_paths = set()
             hybrid_results = []
@@ -772,15 +719,12 @@ async def search_photos(
             for r in metadata_results:
                 path = r.get("file_path", r.get("path"))
                 seen_paths.add(path)
-                semantic_match = next(
-                    (s for s in semantic_results if s["path"] == path), None
-                )
+                semantic_match = next((s for s in semantic_results if s["path"] == path), None)
 
                 if semantic_match:
                     # Both sources available - use intent-based weights
                     combined_score = (intent_metadata_weight * 1.0) + (
-                        intent_semantic_weight
-                        * semantic_match.get("normalized_score", 0.5)
+                        intent_semantic_weight * semantic_match.get("normalized_score", 0.5)
                     )
                 else:
                     # Only metadata available
@@ -805,8 +749,7 @@ async def search_photos(
                             "path": r["path"],
                             "filename": r["filename"],
                             "score": round(
-                                intent_semantic_weight
-                                * r.get("normalized_score", r["score"]),
+                                intent_semantic_weight * r.get("normalized_score", r["score"]),
                                 3,
                             ),
                             "metadata": r.get("metadata", {}),
@@ -820,32 +763,20 @@ async def search_photos(
 
             # Apply type filter
             if type_filter == "photos":
-                hybrid_results = [
-                    r for r in hybrid_results if not is_video_file(r.get("path", ""))
-                ]
+                hybrid_results = [r for r in hybrid_results if not is_video_file(r.get("path", ""))]
             elif type_filter == "videos":
-                hybrid_results = [
-                    r for r in hybrid_results if is_video_file(r.get("path", ""))
-                ]
+                hybrid_results = [r for r in hybrid_results if is_video_file(r.get("path", ""))]
 
             if tagged_paths is not None:
-                hybrid_results = [
-                    r for r in hybrid_results if r.get("path") in tagged_paths
-                ]
+                hybrid_results = [r for r in hybrid_results if r.get("path") in tagged_paths]
 
             # Apply person filter
             if person_paths is not None:
-                hybrid_results = [
-                    r for r in hybrid_results if r.get("path") in person_paths
-                ]
+                hybrid_results = [r for r in hybrid_results if r.get("path") in person_paths]
 
             # Apply favorites filter
             if favorites_filter == "favorites_only":
-                hybrid_results = [
-                    r
-                    for r in hybrid_results
-                    if photo_search_engine.is_favorite(r.get("path", ""))
-                ]
+                hybrid_results = [r for r in hybrid_results if photo_search_engine.is_favorite(r.get("path", ""))]
 
             # Apply date filter (filesystem.created)
             hybrid_results = apply_date_filter(hybrid_results, date_from, date_to)
@@ -873,21 +804,14 @@ async def search_photos(
                     return bool(re.match(r"^[A-Za-z]:\\|^/|^file://|^~/", p))
 
                 if source_filter == "local":
-                    hybrid_results = [
-                        r for r in hybrid_results if is_local_path(r.get("path", ""))
-                    ]
+                    hybrid_results = [r for r in hybrid_results if is_local_path(r.get("path", ""))]
                 elif source_filter == "cloud":
-                    hybrid_results = [
-                        r for r in hybrid_results if is_cloud_path(r.get("path", ""))
-                    ]
+                    hybrid_results = [r for r in hybrid_results if is_cloud_path(r.get("path", ""))]
                 elif source_filter == "hybrid":
                     hybrid_results = [
                         r
                         for r in hybrid_results
-                        if (
-                            not is_local_path(r.get("path", ""))
-                            and not is_cloud_path(r.get("path", ""))
-                        )
+                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
                     ]
 
             # Merge person results (highest priority) with other results

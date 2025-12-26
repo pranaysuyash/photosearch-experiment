@@ -15,13 +15,17 @@ def _redact_config(source_type: str, cfg: Dict[str, Any]) -> Dict[str, Any]:
     redacted = dict(cfg or {})
     if source_type == "s3":
         if "access_key_id" in redacted:
-            redacted["access_key_id"] = (
-                str(redacted["access_key_id"])[0:4] + "…" if redacted["access_key_id"] else None
-            )
+            redacted["access_key_id"] = str(redacted["access_key_id"])[0:4] + "…" if redacted["access_key_id"] else None
         if "secret_access_key" in redacted:
             redacted["secret_access_key"] = "••••••••"
     if source_type == "google_drive":
-        for k in ("client_id", "client_secret", "access_token", "refresh_token", "state_nonce"):
+        for k in (
+            "client_id",
+            "client_secret",
+            "access_token",
+            "refresh_token",
+            "state_nonce",
+        ):
             if k in redacted:
                 redacted[k] = "••••••••"
     if source_type == "local_folder":
@@ -175,4 +179,3 @@ class SourceStore:
     def delete_source(self, source_id: str) -> None:
         with self._conn() as conn:
             conn.execute("DELETE FROM sources WHERE id = ?", (source_id,))
-

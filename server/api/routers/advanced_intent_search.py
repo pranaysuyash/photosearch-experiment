@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -22,18 +22,17 @@ async def search_with_intent(params: IntentSearchParams, state: AppState = Depen
     """
     try:
         import time
+
         start_time = time.time()
 
         # Detect intent from query
         intent_result = state.intent_detector.detect_intent(params.query)
 
         # Apply intent-specific search logic
-        results: List[Dict[str, Any]] = []
 
         # For people intent, search using face recognition if available
         if intent_result["primary_intent"] == "people":
             # Check if person name is in query
-            people_results: List[Dict[str, Any]] = []
             try:
                 from src.face_clustering import FACE_LIBRARIES_AVAILABLE
 
@@ -49,13 +48,13 @@ async def search_with_intent(params: IntentSearchParams, state: AppState = Depen
         elif intent_result["primary_intent"] == "location":
             # Search for photos with matching location info
             locations_db = get_locations_db(settings.BASE_DIR / "locations.db")
-            location_results = locations_db.get_photos_by_place(params.query)
+            locations_db.get_photos_by_place(params.query)
             # Add to results with location context
 
         # For date intent, enhance date filtering
         elif intent_result["primary_intent"] == "date":
             # Parse date expressions from query and apply to search
-            base_query = params.query
+            pass
             # Extract date ranges from query if possible
             # This would be enhanced with NLP for date parsing
 
@@ -67,10 +66,10 @@ async def search_with_intent(params: IntentSearchParams, state: AppState = Depen
 
         # Perform base search depending on intent
         # Use hybrid search with intent-based weightings
-        metadata_weight, semantic_weight = 0.5, 0.5
+        _metadata_weight, _semantic_weight = 0.5, 0.5
 
         if intent_result["primary_intent"] in ["camera", "date", "technical"]:
-            metadata_weight, semantic_weight = 0.8, 0.2
+            _metadata_weight, _semantic_weight = 0.8, 0.2
         elif intent_result["primary_intent"] in [
             "people",
             "object",
@@ -79,9 +78,9 @@ async def search_with_intent(params: IntentSearchParams, state: AppState = Depen
             "emotion",
             "activity",
         ]:
-            metadata_weight, semantic_weight = 0.2, 0.8
+            _metadata_weight, _semantic_weight = 0.2, 0.8
         elif intent_result["primary_intent"] in ["location", "color"]:
-            metadata_weight, semantic_weight = 0.6, 0.4
+            _metadata_weight, _semantic_weight = 0.6, 0.4
 
         # Perform hybrid search with appropriate weights
         # This would use the existing hybrid search logic with intent weights
@@ -113,7 +112,9 @@ async def search_with_intent(params: IntentSearchParams, state: AppState = Depen
 
 
 @router.post("/search/refine")
-async def refine_search(query: str, previous_results: List[Dict], refinement: str, state: AppState = Depends(get_state)):
+async def refine_search(
+    query: str, previous_results: List[Dict], refinement: str, state: AppState = Depends(get_state)
+):
     """
     Refine search results based on user feedback.
 
@@ -121,7 +122,6 @@ async def refine_search(query: str, previous_results: List[Dict], refinement: st
     additional criteria or corrections.
     """
     try:
-
         # Detect intent in refinement query
         intent_result = state.intent_detector.detect_intent(refinement)
 

@@ -113,8 +113,8 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
     }
   };
 
-  const filteredAvailablePeople = availablePeople.filter(person => 
-    !people.some(p => p.id === person.id) && 
+  const filteredAvailablePeople = availablePeople.filter(person =>
+    !people.some(p => p.id === person.id) &&
     person.label?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -129,7 +129,7 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
             <User size={size === 'sm' ? 12 : 14} />
             People
           </div>
-          
+
           <button
             onClick={() => setShowAdd(!showAdd)}
             className="btn-glass btn-glass--muted text-xs px-2 py-1 flex items-center gap-1"
@@ -152,7 +152,7 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
               className="flex-1 bg-transparent border border-white/10 rounded-lg px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
-          
+
           {filteredAvailablePeople.length > 0 ? (
             <div className="space-y-2 max-h-40 overflow-y-auto">
               {filteredAvailablePeople.map(person => (

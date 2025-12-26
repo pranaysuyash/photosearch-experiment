@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Try to import FAISS, fall back gracefully if not available
 try:
     import faiss
+
     FAISS_AVAILABLE = True
     logger.info("FAISS available for high-performance similarity search")
 except ImportError:
@@ -44,9 +45,7 @@ class EmbeddingIndex(ABC):
     """
 
     @abstractmethod
-    def add_prototype(
-        self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None
-    ) -> None:
+    def add_prototype(self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None) -> None:
         """Add or update a cluster prototype embedding."""
         pass
 
@@ -56,9 +55,7 @@ class EmbeddingIndex(ABC):
         pass
 
     @abstractmethod
-    def search(
-        self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0
-    ) -> List[SearchResult]:
+    def search(self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0) -> List[SearchResult]:
         """
         Find k most similar cluster prototypes.
 
@@ -100,9 +97,7 @@ class LinearIndex(EmbeddingIndex):
         self._prototypes: Dict[str, np.ndarray] = {}
         self._labels: Dict[str, Optional[str]] = {}
 
-    def add_prototype(
-        self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None
-    ) -> None:
+    def add_prototype(self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None) -> None:
         """Add or update a cluster prototype embedding."""
         # Ensure L2 normalization
         norm = np.linalg.norm(embedding)
@@ -120,9 +115,7 @@ class LinearIndex(EmbeddingIndex):
             return True
         return False
 
-    def search(
-        self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0
-    ) -> List[SearchResult]:
+    def search(self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0) -> List[SearchResult]:
         """Find k most similar cluster prototypes using cosine similarity."""
         if not self._prototypes:
             return []
@@ -164,9 +157,7 @@ class LinearIndex(EmbeddingIndex):
         self._prototypes.clear()
         self._labels.clear()
 
-    def bulk_load(
-        self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]
-    ) -> None:
+    def bulk_load(self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]) -> None:
         """
         Efficiently load multiple prototypes at once.
 
@@ -175,188 +166,180 @@ class LinearIndex(EmbeddingIndex):
         """
         for cluster_id, (embedding, label) in prototypes.items():
             self.add_prototype(cluster_id, embedding, label)
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics."""
         return {
             "index_type": "linear",
             "num_prototypes": len(self._prototypes),
-            "memory_usage_mb": sum(p.nbytes for p in self._prototypes.values()) / (1024 * 1024)
+            "memory_usage_mb": sum(p.nbytes for p in self._prototypes.values()) / (1024 * 1024),
         }
-        for cluster_id, (embedding, label) in prototypes.items():
-            self.add_prototype(cluster_id, embedding, label)
 
 
 class FAISSIndex(EmbeddingIndex):
     """
     FAISS-based similarity search for large face collections (10K+ faces).
-    
+
     Uses IndexFlatIP (inner product) for exact cosine similarity search.
     Provides O(log n) search performance vs O(n) for LinearIndex.
     """
-    
+
     def __init__(self, dimension: int = 512):
         if not FAISS_AVAILABLE:
             raise ImportError("FAISS not available. Install with: pip install faiss-cpu")
-        
+
         self.dimension = dimension
         self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
         self.cluster_ids: List[str] = []  # Maps FAISS indices to cluster IDs
         self.id_to_index: Dict[str, int] = {}  # Maps cluster IDs to FAISS indices
         self.labels: Dict[str, Optional[str]] = {}  # Cluster labels
-        
-    def add_prototype(
-        self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None
-    ) -> None:
+
+    def add_prototype(self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None) -> None:
         """Add or update a cluster prototype embedding."""
         # Remove existing prototype if it exists
         if cluster_id in self.id_to_index:
             self.remove_prototype(cluster_id)
-        
+
         # Ensure L2 normalization for cosine similarity
         norm = np.linalg.norm(embedding)
         if norm > 0:
             embedding = embedding / norm
-        
+
         # Add to FAISS index
         faiss_index = len(self.cluster_ids)
-        self.index.add(embedding.reshape(1, -1).astype('float32'))
-        
+        self.index.add(embedding.reshape(1, -1).astype("float32"))
+
         # Update mappings
         self.cluster_ids.append(cluster_id)
         self.id_to_index[cluster_id] = faiss_index
         self.labels[cluster_id] = label
-    
+
     def remove_prototype(self, cluster_id: str) -> bool:
         """Remove a cluster prototype."""
         if cluster_id not in self.id_to_index:
             return False
-        
+
         # FAISS doesn't support efficient removal, so we rebuild the index
         # This is acceptable for prototype management (infrequent operation)
         old_index = self.id_to_index[cluster_id]
-        
+
         # Collect all embeddings except the one to remove
         remaining_embeddings = []
         remaining_ids = []
         remaining_labels = {}
-        
+
         for i, cid in enumerate(self.cluster_ids):
             if i != old_index:
                 embedding = self.index.reconstruct(i)
                 remaining_embeddings.append(embedding)
                 remaining_ids.append(cid)
                 remaining_labels[cid] = self.labels[cid]
-        
+
         # Rebuild index
         self.index = faiss.IndexFlatIP(self.dimension)
         self.cluster_ids = remaining_ids
         self.labels = remaining_labels
         self.id_to_index = {cid: i for i, cid in enumerate(remaining_ids)}
-        
+
         # Add remaining embeddings
         if remaining_embeddings:
-            embeddings_array = np.vstack(remaining_embeddings).astype('float32')
+            embeddings_array = np.vstack(remaining_embeddings).astype("float32")
             self.index.add(embeddings_array)
-        
+
         return True
-    
-    def search(
-        self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0
-    ) -> List[SearchResult]:
+
+    def search(self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0) -> List[SearchResult]:
         """Find k most similar cluster prototypes using FAISS."""
         if self.index.ntotal == 0:
             return []
-        
+
         # Normalize query embedding
         query = query_embedding.astype(np.float32)
         norm = np.linalg.norm(query)
         if norm > 0:
             query = query / norm
-        
+
         # Search FAISS index
         k = min(k, self.index.ntotal)  # Don't search for more than available
         scores, indices = self.index.search(query.reshape(1, -1), k)
-        
+
         # Convert results and apply threshold
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx != -1 and score >= threshold:  # Valid result above threshold
                 cluster_id = self.cluster_ids[idx]
-                results.append(SearchResult(
-                    cluster_id=cluster_id,
-                    similarity=float(score),
-                    cluster_label=self.labels.get(cluster_id)
-                ))
-        
+                results.append(
+                    SearchResult(
+                        cluster_id=cluster_id, similarity=float(score), cluster_label=self.labels.get(cluster_id)
+                    )
+                )
+
         return results
-    
+
     def get_prototype(self, cluster_id: str) -> Optional[np.ndarray]:
         """Get the prototype embedding for a cluster."""
         if cluster_id not in self.id_to_index:
             return None
-        
+
         faiss_index = self.id_to_index[cluster_id]
         return self.index.reconstruct(faiss_index)
-    
+
     def count(self) -> int:
         """Return number of prototypes in the index."""
         return self.index.ntotal
-    
+
     def clear(self) -> None:
         """Clear all prototypes from the index."""
         self.index = faiss.IndexFlatIP(self.dimension)
         self.cluster_ids.clear()
         self.id_to_index.clear()
         self.labels.clear()
-    
-    def bulk_load(
-        self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]
-    ) -> None:
+
+    def bulk_load(self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]) -> None:
         """
         Efficiently load multiple prototypes at once.
-        
+
         Args:
             prototypes: Dict of cluster_id -> (embedding, label)
         """
         if not prototypes:
             return
-        
+
         # Clear existing data
         self.clear()
-        
+
         # Prepare data
         embeddings = []
         cluster_ids = []
         labels = {}
-        
+
         for cluster_id, (embedding, label) in prototypes.items():
             # Normalize embedding
             norm = np.linalg.norm(embedding)
             if norm > 0:
                 embedding = embedding / norm
-            
+
             embeddings.append(embedding.astype(np.float32))
             cluster_ids.append(cluster_id)
             labels[cluster_id] = label
-        
+
         # Bulk add to FAISS
         if embeddings:
             embeddings_array = np.vstack(embeddings)
             self.index.add(embeddings_array)
-            
+
             # Update mappings
             self.cluster_ids = cluster_ids
             self.id_to_index = {cid: i for i, cid in enumerate(cluster_ids)}
             self.labels = labels
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics."""
         return {
             "index_type": "faiss",
             "num_prototypes": self.index.ntotal,
             "dimension": self.dimension,
-            "memory_usage_mb": self.index.ntotal * self.dimension * 4 / (1024 * 1024)  # float32
+            "memory_usage_mb": self.index.ntotal * self.dimension * 4 / (1024 * 1024),  # float32
         }
 
 
@@ -432,9 +415,7 @@ class PrototypeAssigner:
                 "candidates": results,
             }
 
-    def batch_assign(
-        self, embeddings: List[Tuple[str, np.ndarray]]
-    ) -> Dict[str, Dict[str, Any]]:
+    def batch_assign(self, embeddings: List[Tuple[str, np.ndarray]]) -> Dict[str, Dict[str, Any]]:
         """
         Assign multiple face embeddings.
 

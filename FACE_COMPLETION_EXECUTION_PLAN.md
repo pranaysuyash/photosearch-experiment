@@ -1,6 +1,6 @@
 # Face Features Completion: Execution Plan
-**Date**: December 25, 2025  
-**Status**: Ready for Implementation  
+**Date**: December 25, 2025
+**Status**: Ready for Implementation
 **Goal**: Complete the remaining 35% of face UI features to achieve 95% system completion
 
 ---
@@ -27,7 +27,7 @@ Based on comprehensive analysis, the face recognition system is **87% complete**
 **Goal**: Surface the most impactful backend capabilities
 
 ### Task 1.1: Undo/Redo System UI (Priority: CRITICAL)
-**Effort**: 4-6 hours  
+**Effort**: 4-6 hours
 **Impact**: HIGH - Prevents irreversible mistakes
 
 **Implementation**:
@@ -47,7 +47,7 @@ const handleUndo = async () => {
 };
 
 // UI Component
-<button 
+<button
   className="btn-glass btn-glass--primary"
   onClick={handleUndo}
   disabled={!canUndo}
@@ -63,7 +63,7 @@ const handleUndo = async () => {
 - `GET /api/faces/operations/history` - Get operation history
 
 ### Task 1.2: Cluster Quality Indicators (Priority: HIGH)
-**Effort**: 4-6 hours  
+**Effort**: 4-6 hours
 **Impact**: MEDIUM - Builds user trust
 
 **Implementation**:
@@ -78,7 +78,7 @@ const CoherenceBadge = ({ coherence }: { coherence: number }) => {
 
   return (
     <div className={`px-2 py-1 rounded-full text-xs ${getQualityColor(coherence)}`}>
-      {coherence >= 0.8 ? 'High Quality' : 
+      {coherence >= 0.8 ? 'High Quality' :
        coherence >= 0.6 ? 'Good Quality' : 'Mixed Cluster'}
     </div>
   );
@@ -89,7 +89,7 @@ const CoherenceBadge = ({ coherence }: { coherence: number }) => {
 - `GET /api/faces/clusters/{id}/coherence` - Get cluster quality score
 
 ### Task 1.3: Hide/Unhide People Workflow (Priority: MEDIUM)
-**Effort**: 6-8 hours  
+**Effort**: 6-8 hours
 **Impact**: MEDIUM - Privacy feature
 
 **Implementation**:
@@ -124,7 +124,7 @@ const handleHidePerson = async (clusterId: string) => {
 **Goal**: Enable sophisticated cluster management
 
 ### Task 2.1: Split Cluster Interface (Priority: HIGH)
-**Effort**: 1-2 days  
+**Effort**: 1-2 days
 **Impact**: HIGH - Fix mixed clusters
 
 **Implementation**:
@@ -152,11 +152,11 @@ const SplitClusterModal = ({ cluster, onClose, onSplit }) => {
     <Modal>
       <div className="space-y-4">
         <h3>Split "{cluster.label}" into separate people</h3>
-        
+
         {/* Face grid with checkboxes */}
         <div className="grid grid-cols-4 gap-2">
           {cluster.faces.map(face => (
-            <FaceCard 
+            <FaceCard
               key={face.id}
               face={face}
               selected={selectedFaces.includes(face.id)}
@@ -185,7 +185,7 @@ const SplitClusterModal = ({ cluster, onClose, onSplit }) => {
 - `POST /api/faces/split` - Split faces to new person
 
 ### Task 2.2: Move Face Between Clusters (Priority: MEDIUM)
-**Effort**: 6-8 hours  
+**Effort**: 6-8 hours
 **Impact**: MEDIUM - Fine-tune assignments
 
 **Implementation**:
@@ -213,11 +213,11 @@ const MoveFaceModal = ({ face, onClose, onMove }) => {
     <Modal>
       <div className="space-y-4">
         <h3>Move face to different person</h3>
-        
+
         <img src={face.cropUrl} alt="Face to move" className="w-24 h-24" />
-        
-        <select 
-          value={targetCluster} 
+
+        <select
+          value={targetCluster}
           onChange={(e) => setTargetCluster(e.target.value)}
         >
           <option value="">Select person...</option>
@@ -247,7 +247,7 @@ const MoveFaceModal = ({ face, onClose, onMove }) => {
 **Goal**: Enable advanced search capabilities
 
 ### Task 3.1: Similar Face Search (Priority: HIGH)
-**Effort**: 1 day  
+**Effort**: 1 day
 **Impact**: HIGH - Discovery feature
 
 **Implementation**:
@@ -271,7 +271,7 @@ const SimilarFaceSearch = ({ faceId }) => {
 
   return (
     <div className="space-y-4">
-      <button 
+      <button
         onClick={findSimilarFaces}
         disabled={loading}
         className="btn-glass btn-glass--primary"
@@ -296,7 +296,7 @@ const SimilarFaceSearch = ({ faceId }) => {
 - `GET /api/faces/{id}/similar` - Find similar faces
 
 ### Task 3.2: Boolean People Search (Priority: HIGH)
-**Effort**: 1-2 days  
+**Effort**: 1-2 days
 **Impact**: HIGH - Power user feature
 
 **Implementation**:
@@ -327,11 +327,11 @@ const BooleanPeopleSearch = () => {
     <div className="space-y-4">
       <div className="glass-surface p-4 rounded-xl">
         <h3 className="text-lg font-medium mb-4">Advanced People Search</h3>
-        
+
         {/* Include people */}
         <div className="space-y-2">
           <label>Include people:</label>
-          <PersonSelector 
+          <PersonSelector
             selected={query.include}
             onChange={(people) => setQuery({...query, include: people})}
           />
@@ -340,7 +340,7 @@ const BooleanPeopleSearch = () => {
         {/* Operator */}
         <div className="space-y-2">
           <label>Operator:</label>
-          <select 
+          <select
             value={query.operator}
             onChange={(e) => setQuery({...query, operator: e.target.value})}
           >
@@ -352,7 +352,7 @@ const BooleanPeopleSearch = () => {
         {/* Exclude people */}
         <div className="space-y-2">
           <label>Exclude people:</label>
-          <PersonSelector 
+          <PersonSelector
             selected={query.exclude}
             onChange={(people) => setQuery({...query, exclude: people})}
           />
@@ -379,7 +379,7 @@ const BooleanPeopleSearch = () => {
 **Goal**: Optimize for scale and professional UX
 
 ### Task 4.1: FAISS Similarity Search (Priority: HIGH)
-**Effort**: 2-3 days  
+**Effort**: 2-3 days
 **Impact**: HIGH - Scalability for 10K+ faces
 
 **Implementation**:
@@ -394,40 +394,40 @@ class FAISSIndex(EmbeddingIndex):
         self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
         self.id_map = {}
         self.reverse_map = {}
-        
+
     def add_prototype(self, cluster_id: str, embedding: np.ndarray) -> None:
         # Normalize embedding for cosine similarity
         embedding = embedding / np.linalg.norm(embedding)
-        
+
         # Add to FAISS index
         faiss_id = len(self.id_map)
         self.index.add(embedding.reshape(1, -1).astype('float32'))
-        
+
         # Maintain mappings
         self.id_map[cluster_id] = faiss_id
         self.reverse_map[faiss_id] = cluster_id
-    
+
     def search(self, query_embedding: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
         # Normalize query
         query_embedding = query_embedding / np.linalg.norm(query_embedding)
-        
+
         # Search FAISS index
         scores, indices = self.index.search(
             query_embedding.reshape(1, -1).astype('float32'), k
         )
-        
+
         # Convert back to cluster IDs
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx != -1:  # Valid result
                 cluster_id = self.reverse_map[idx]
                 results.append((cluster_id, float(score)))
-        
+
         return results
 ```
 
 ### Task 4.2: Database Query Optimization (Priority: MEDIUM)
-**Effort**: 1 day  
+**Effort**: 1 day
 **Impact**: MEDIUM - Performance improvement
 
 **Implementation**:
@@ -447,7 +447,7 @@ CREATE INDEX IF NOT EXISTS idx_membership_cluster_state ON cluster_membership(cl
 ```
 
 ### Task 4.3: Face Crop Caching (Priority: MEDIUM)
-**Effort**: 4-6 hours  
+**Effort**: 4-6 hours
 **Impact**: MEDIUM - UI responsiveness
 
 **Implementation**:
@@ -461,17 +461,17 @@ class FaceCropCache:
     def __init__(self, cache_dir: Path):
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(exist_ok=True)
-    
+
     def get_cache_path(self, face_id: str, size: int = 150) -> Path:
         cache_key = hashlib.md5(f"{face_id}_{size}".encode()).hexdigest()
         return self.cache_dir / f"{cache_key}.jpg"
-    
+
     def get_cached_crop(self, face_id: str, size: int = 150) -> Optional[bytes]:
         cache_path = self.get_cache_path(face_id, size)
         if cache_path.exists():
             return cache_path.read_bytes()
         return None
-    
+
     def cache_crop(self, face_id: str, crop_data: bytes, size: int = 150):
         cache_path = self.get_cache_path(face_id, size)
         cache_path.write_bytes(crop_data)
@@ -485,13 +485,13 @@ async def get_face_crop(face_id: str, size: int = 150):
     cached_crop = face_crop_cache.get_cached_crop(face_id, size)
     if cached_crop:
         return Response(content=cached_crop, media_type="image/jpeg")
-    
+
     # Generate crop if not cached
     crop_data = generate_face_crop(face_id, size)
-    
+
     # Cache for future requests
     face_crop_cache.cache_crop(face_id, crop_data, size)
-    
+
     return Response(content=crop_data, media_type="image/jpeg")
 ```
 
@@ -682,6 +682,6 @@ async def get_face_crop(face_id: str, size: int = 150):
 
 ---
 
-**Document Status**: Ready for Implementation  
-**Next Review**: January 1, 2026 (end of Phase 1)  
+**Document Status**: Ready for Implementation
+**Next Review**: January 1, 2026 (end of Phase 1)
 **Success Criteria**: 95% face system completion, professional UX quality, competitive differentiation achieved

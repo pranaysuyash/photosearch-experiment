@@ -5,7 +5,7 @@ Auto-generated albums based on rules and metadata.
 """
 
 import os
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any
 from datetime import datetime, timedelta
 
 
@@ -24,8 +24,8 @@ class FilenameContainsRule(SmartAlbumRule):
     """Match photos where filename contains a string."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        value = self.config.get('value', '')
-        case_sensitive = self.config.get('case_sensitive', False)
+        value = self.config.get("value", "")
+        case_sensitive = self.config.get("case_sensitive", False)
 
         filename = os.path.basename(photo_path)
 
@@ -38,33 +38,33 @@ class FileExtensionRule(SmartAlbumRule):
     """Match photos with specific extension."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        extensions = self.config.get('extensions', [])
+        extensions = self.config.get("extensions", [])
         if isinstance(extensions, str):
             extensions = [extensions]
 
         ext = os.path.splitext(photo_path)[1].lower()
-        return ext in [e.lower() if e.startswith('.') else f'.{e.lower()}' for e in extensions]
+        return ext in [e.lower() if e.startswith(".") else f".{e.lower()}" for e in extensions]
 
 
 class FileSizeRule(SmartAlbumRule):
     """Match photos by file size."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        operator = self.config.get('operator', '>')
-        size_bytes = self.config.get('size_bytes', 0)
+        operator = self.config.get("operator", ">")
+        size_bytes = self.config.get("size_bytes", 0)
 
-        fs_meta = photo_metadata.get('filesystem', {})
-        file_size = fs_meta.get('size_bytes', 0)
+        fs_meta = photo_metadata.get("filesystem", {})
+        file_size = fs_meta.get("size_bytes", 0)
 
-        if operator == '>':
+        if operator == ">":
             return file_size > size_bytes
-        elif operator == '<':
+        elif operator == "<":
             return file_size < size_bytes
-        elif operator == '>=':
+        elif operator == ">=":
             return file_size >= size_bytes
-        elif operator == '<=':
+        elif operator == "<=":
             return file_size <= size_bytes
-        elif operator == '==':
+        elif operator == "==":
             return file_size == size_bytes
 
         return False
@@ -74,17 +74,17 @@ class DateRangeRule(SmartAlbumRule):
     """Match photos within a date range."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        from_date = self.config.get('from_date')
-        to_date = self.config.get('to_date')
+        from_date = self.config.get("from_date")
+        to_date = self.config.get("to_date")
 
-        fs_meta = photo_metadata.get('filesystem', {})
-        created = fs_meta.get('created')
+        fs_meta = photo_metadata.get("filesystem", {})
+        created = fs_meta.get("created")
 
         if not created:
             return False
 
         try:
-            photo_date = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            photo_date = datetime.fromisoformat(created.replace("Z", "+00:00"))
 
             if from_date:
                 from_dt = datetime.fromisoformat(from_date)
@@ -105,8 +105,8 @@ class NoGPSRule(SmartAlbumRule):
     """Match photos without GPS data."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        gps = photo_metadata.get('gps', {})
-        has_gps = bool(gps.get('latitude') and gps.get('longitude'))
+        gps = photo_metadata.get("gps", {})
+        has_gps = bool(gps.get("latitude") and gps.get("longitude"))
         return not has_gps
 
 
@@ -114,20 +114,20 @@ class HasGPSRule(SmartAlbumRule):
     """Match photos with GPS data."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        gps = photo_metadata.get('gps', {})
-        return bool(gps.get('latitude') and gps.get('longitude'))
+        gps = photo_metadata.get("gps", {})
+        return bool(gps.get("latitude") and gps.get("longitude"))
 
 
 class CameraModelRule(SmartAlbumRule):
     """Match photos from specific camera."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        models = self.config.get('models', [])
+        models = self.config.get("models", [])
         if isinstance(models, str):
             models = [models]
 
-        exif = photo_metadata.get('exif', {})
-        camera_model = exif.get('image', {}).get('Model', '')
+        exif = photo_metadata.get("exif", {})
+        camera_model = exif.get("image", {}).get("Model", "")
 
         return any(model.lower() in camera_model.lower() for model in models)
 
@@ -136,16 +136,16 @@ class RecentPhotosRule(SmartAlbumRule):
     """Match photos from last N days."""
 
     def matches(self, photo_metadata: Dict[str, Any], photo_path: str) -> bool:
-        days = self.config.get('days', 30)
+        days = self.config.get("days", 30)
 
-        fs_meta = photo_metadata.get('filesystem', {})
-        created = fs_meta.get('created')
+        fs_meta = photo_metadata.get("filesystem", {})
+        created = fs_meta.get("created")
 
         if not created:
             return False
 
         try:
-            photo_date = datetime.fromisoformat(created.replace('Z', '+00:00'))
+            photo_date = datetime.fromisoformat(created.replace("Z", "+00:00"))
             cutoff = datetime.now() - timedelta(days=days)
             return photo_date >= cutoff
         except:
@@ -154,14 +154,14 @@ class RecentPhotosRule(SmartAlbumRule):
 
 # Rule registry
 RULE_TYPES: Dict[str, type] = {
-    'filename_contains': FilenameContainsRule,
-    'file_extension': FileExtensionRule,
-    'file_size': FileSizeRule,
-    'date_range': DateRangeRule,
-    'no_gps': NoGPSRule,
-    'has_gps': HasGPSRule,
-    'camera_model': CameraModelRule,
-    'recent_photos': RecentPhotosRule,
+    "filename_contains": FilenameContainsRule,
+    "file_extension": FileExtensionRule,
+    "file_size": FileSizeRule,
+    "date_range": DateRangeRule,
+    "no_gps": NoGPSRule,
+    "has_gps": HasGPSRule,
+    "camera_model": CameraModelRule,
+    "recent_photos": RecentPhotosRule,
 }
 
 
@@ -171,7 +171,7 @@ class SmartAlbumEngine:
     @staticmethod
     def create_rule(rule_config: Dict[str, Any]) -> SmartAlbumRule:
         """Create a rule instance from config."""
-        rule_type = rule_config.get('type')
+        rule_type = rule_config.get("type")
         rule_class = RULE_TYPES.get(rule_type)
 
         if not rule_class:
@@ -180,8 +180,9 @@ class SmartAlbumEngine:
         return rule_class(rule_config)
 
     @staticmethod
-    def evaluate_rules(rules: List[Dict[str, Any]], photo_metadata: Dict[str, Any],
-                      photo_path: str, match_all: bool = True) -> bool:
+    def evaluate_rules(
+        rules: List[Dict[str, Any]], photo_metadata: Dict[str, Any], photo_path: str, match_all: bool = True
+    ) -> bool:
         """
         Evaluate all rules for a photo.
 
@@ -208,46 +209,38 @@ class SmartAlbumEngine:
 # Predefined smart albums
 PREDEFINED_SMART_ALBUMS = [
     {
-        'id': 'screenshots',
-        'name': 'Screenshots',
-        'description': 'All screenshots',
-        'rules': [
-            {'type': 'filename_contains', 'value': 'screenshot', 'case_sensitive': False}
-        ]
+        "id": "screenshots",
+        "name": "Screenshots",
+        "description": "All screenshots",
+        "rules": [{"type": "filename_contains", "value": "screenshot", "case_sensitive": False}],
     },
     {
-        'id': 'large_videos',
-        'name': 'Large Videos',
-        'description': 'Videos larger than 100MB',
-        'rules': [
-            {'type': 'file_extension', 'extensions': ['.mp4', '.mov', '.avi', '.mkv']},
-            {'type': 'file_size', 'operator': '>', 'size_bytes': 100 * 1024 * 1024}
-        ]
+        "id": "large_videos",
+        "name": "Large Videos",
+        "description": "Videos larger than 100MB",
+        "rules": [
+            {"type": "file_extension", "extensions": [".mp4", ".mov", ".avi", ".mkv"]},
+            {"type": "file_size", "operator": ">", "size_bytes": 100 * 1024 * 1024},
+        ],
     },
     {
-        'id': 'no_location',
-        'name': 'No Location',
-        'description': 'Photos without GPS data',
-        'rules': [
-            {'type': 'no_gps'}
-        ]
+        "id": "no_location",
+        "name": "No Location",
+        "description": "Photos without GPS data",
+        "rules": [{"type": "no_gps"}],
     },
     {
-        'id': 'recent_30_days',
-        'name': 'Recent (30 days)',
-        'description': 'Photos from the last 30 days',
-        'rules': [
-            {'type': 'recent_photos', 'days': 30}
-        ]
+        "id": "recent_30_days",
+        "name": "Recent (30 days)",
+        "description": "Photos from the last 30 days",
+        "rules": [{"type": "recent_photos", "days": 30}],
     },
     {
-        'id': 'with_location',
-        'name': 'With Location',
-        'description': 'Photos with GPS data',
-        'rules': [
-            {'type': 'has_gps'}
-        ]
-    }
+        "id": "with_location",
+        "name": "With Location",
+        "description": "Photos with GPS data",
+        "rules": [{"type": "has_gps"}],
+    },
 ]
 
 
@@ -256,18 +249,18 @@ def initialize_predefined_smart_albums(albums_db):
     existing_albums = {album.id: album for album in albums_db.list_albums()}
 
     for smart_album_config in PREDEFINED_SMART_ALBUMS:
-        album_id = smart_album_config['id']
+        album_id = smart_album_config["id"]
 
         if album_id not in existing_albums:
             albums_db.create_album(
                 album_id=album_id,
-                name=smart_album_config['name'],
-                description=smart_album_config['description'],
+                name=smart_album_config["name"],
+                description=smart_album_config["description"],
                 is_smart=True,
                 smart_rules={
-                    'rules': smart_album_config['rules'],
-                    'match_all': True  # AND logic by default
-                }
+                    "rules": smart_album_config["rules"],
+                    "match_all": True,  # AND logic by default
+                },
             )
 
 
@@ -285,8 +278,8 @@ def populate_smart_album(albums_db, album_id: str, all_photos_with_metadata: Lis
     if not album or not album.is_smart or not album.smart_rules:
         return
 
-    rules = album.smart_rules.get('rules', [])
-    match_all = album.smart_rules.get('match_all', True)
+    rules = album.smart_rules.get("rules", [])
+    match_all = album.smart_rules.get("match_all", True)
 
     # Find matching photos
     matching_paths = []

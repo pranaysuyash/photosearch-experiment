@@ -1,4 +1,3 @@
-import os
 import tempfile
 from fastapi.testclient import TestClient
 from server.main import app
@@ -20,6 +19,7 @@ def test_issue_token_and_fetch_thumbnail(monkeypatch):
 
         # Create a small JPEG file
         from PIL import Image
+
         img_path = media_dir / "sample.jpg"
         Image.new("RGB", (32, 32), color=(255, 0, 0)).save(img_path)
 

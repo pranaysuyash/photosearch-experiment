@@ -39,24 +39,24 @@ import sys
 import json
 import sqlite3
 import numpy as np
-import hashlib
 import threading
 import logging
-from typing import List, Dict, Optional, Any, Tuple, Callable
+from typing import List, Dict, Optional, Tuple, Callable
 from pathlib import Path
-from datetime import datetime
-from collections import defaultdict
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from cryptography.fernet import Fernet
 import requests  # type: ignore[import-untyped]
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import time
 
 from src.face_backends import (
     FaceBackendConfig,
     InsightFaceBackend,
     env_preferred_backends,
     load_face_backend,
+)
+from src.face_embeddings import (
+    FaceEmbeddingBackendConfig,
+    env_preferred_embedding_backends,
+    load_embedding_backend,
 )
 from src.insightface_compat import patch_insightface_deprecations
 
@@ -65,55 +65,59 @@ logger = logging.getLogger(__name__)
 
 # Face detection libraries
 try:
-    from insightface.app import FaceAnalysis  # type: ignore[import-untyped]
-    import cv2
-    FACE_LIBRARIES_AVAILABLE = True
-    patch_insightface_deprecations()
+    import importlib.util
+
+    if importlib.util.find_spec("insightface") and importlib.util.find_spec("cv2"):
+        FACE_LIBRARIES_AVAILABLE = True
+        patch_insightface_deprecations()
+    else:
+        raise ImportError("insightface or cv2 not available")
 
     # Hardware detection for optimal providers
     try:
         import torch
+
         if torch.cuda.is_available():
-            _DEFAULT_PROVIDERS = ['CUDAExecutionProvider', 'CPUExecutionProvider']
+            _DEFAULT_PROVIDERS = ["CUDAExecutionProvider", "CPUExecutionProvider"]
             _DEVICE_INFO = f"CUDA GPU ({torch.cuda.get_device_name()})"
-            _DEVICE_TYPE = 'cuda'
-        elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-            _DEFAULT_PROVIDERS = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
-            _DEVICE_INFO = 'Apple Silicon MPS'
-            _DEVICE_TYPE = 'mps'
+            _DEVICE_TYPE = "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            _DEFAULT_PROVIDERS = ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+            _DEVICE_INFO = "Apple Silicon MPS"
+            _DEVICE_TYPE = "mps"
         else:
-            _DEFAULT_PROVIDERS = ['CPUExecutionProvider']
-            _DEVICE_INFO = 'CPU'
-            _DEVICE_TYPE = 'cpu'
+            _DEFAULT_PROVIDERS = ["CPUExecutionProvider"]
+            _DEVICE_INFO = "CPU"
+            _DEVICE_TYPE = "cpu"
     except ImportError:
-        _DEFAULT_PROVIDERS = ['CPUExecutionProvider']
-        _DEVICE_INFO = 'CPU (torch not available)'
-        _DEVICE_TYPE = 'cpu'
+        _DEFAULT_PROVIDERS = ["CPUExecutionProvider"]
+        _DEVICE_INFO = "CPU (torch not available)"
+        _DEVICE_TYPE = "cpu"
 
 except ImportError:
     FACE_LIBRARIES_AVAILABLE = False
     _DEFAULT_PROVIDERS = []
-    _DEVICE_INFO = 'N/A'
-    _DEVICE_TYPE = 'none'
+    _DEVICE_INFO = "N/A"
+    _DEVICE_TYPE = "none"
     logger.warning("Face detection libraries not available. Install with:")
     logger.warning("pip install insightface onnxruntime opencv-python")
 
 # Model configuration
 MODEL_CONFIG = {
-    'retinaface': {
-        'name': 'retinaface_r50_v1',
-        'file': 'det_10g.onnx',
-        'size': 49.2,  # MB
-        'url': 'https://github.com/deepinsight/insightface/releases/download/v1.0/models/retinaface_r50_v1.zip',
-        'description': 'High accuracy face detection'
+    "retinaface": {
+        "name": "retinaface_r50_v1",
+        "file": "det_10g.onnx",
+        "size": 49.2,  # MB
+        "url": "https://github.com/deepinsight/insightface/releases/download/v1.0/models/retinaface_r50_v1.zip",
+        "description": "High accuracy face detection",
     },
-    'arcface': {
-        'name': 'arcface_r100_v1',
-        'file': 'w600k_r50.onnx',
-        'size': 98.5,  # MB
-        'url': 'https://github.com/deepinsight/insightface/releases/download/v1.0/models/arcface_r100_v1.zip',
-        'description': 'High quality face recognition'
-    }
+    "arcface": {
+        "name": "arcface_r100_v1",
+        "file": "w600k_r50.onnx",
+        "size": 98.5,  # MB
+        "url": "https://github.com/deepinsight/insightface/releases/download/v1.0/models/arcface_r100_v1.zip",
+        "description": "High quality face recognition",
+    },
 }
 
 # Embedding version for migration tracking
@@ -121,9 +125,11 @@ FACE_EMBEDDING_VERSION = "arcface_r100_v1"
 MIN_FACE_SIZE = 32  # Minimum face size in pixels
 MAX_FACE_SIZE = 1024  # Maximum face size for processing
 
+
 @dataclass
 class FaceDetection:
     """Face detection result with all metadata"""
+
     id: str
     photo_path: str
     bbox_x: int
@@ -141,9 +147,11 @@ class FaceDetection:
     gender: Optional[str] = None
     created_at: Optional[str] = None
 
+
 @dataclass
 class FaceCluster:
     """Face cluster with metadata"""
+
     id: str
     cluster_label: Optional[str]
     representative_face_id: Optional[str]
@@ -154,15 +162,18 @@ class FaceCluster:
     created_at: str
     updated_at: str
 
+
 class FaceClusterer:
     """Production-ready face detection and clustering system."""
 
-    def __init__(self,
-                 db_path: str = "face_clusters.db",
-                 models_dir: str = "models",
-                 encryption_key: Optional[bytes] = None,
-                 enable_gpu: bool = True,
-                 progress_callback: Optional[Callable] = None):
+    def __init__(
+        self,
+        db_path: str = "face_clusters.db",
+        models_dir: str = "models",
+        encryption_key: Optional[bytes] = None,
+        enable_gpu: bool = True,
+        progress_callback: Optional[Callable] = None,
+    ):
         """
         Initialize face clusterer with production features.
 
@@ -177,7 +188,7 @@ class FaceClusterer:
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(exist_ok=True)
         self.encryption_key = encryption_key
-        self.enable_gpu = enable_gpu and _DEVICE_TYPE != 'cpu'
+        self.enable_gpu = enable_gpu and _DEVICE_TYPE != "cpu"
         self.progress_callback = progress_callback
 
         # Threading and performance
@@ -190,14 +201,11 @@ class FaceClusterer:
         self.face_detector = None
         self.embedding_model = None
         self.models_loaded = False
+        self._embedding_backend = None
+        self._embeddings_available = False
 
         # Performance tracking
-        self.stats = {
-            'faces_processed': 0,
-            'clusters_created': 0,
-            'processing_time_ms': 0,
-            'accuracy_improvements': 0
-        }
+        self.stats = {"faces_processed": 0, "clusters_created": 0, "processing_time_ms": 0, "accuracy_improvements": 0}
 
         # Initialize components
         self._initialize_database()
@@ -212,7 +220,7 @@ class FaceClusterer:
             # Generate key for new installations
             self.encryption_key = Fernet.generate_key()
             # Store key securely (this would need proper secure storage in production)
-            key_file = self.models_dir / '.face_encryption_key'
+            key_file = self.models_dir / ".face_encryption_key"
             key_file.write_bytes(self.encryption_key)
 
         self.cipher_suite = Fernet(self.encryption_key)
@@ -248,9 +256,7 @@ class FaceClusterer:
             model_path = self.models_dir / config["file"]
             if not model_path.exists():
                 if self.progress_callback:
-                    self.progress_callback(
-                        f"Downloading {config['description']} ({config['size']:.1f}MB)..."
-                    )
+                    self.progress_callback(f"Downloading {config['description']} ({config['size']:.1f}MB)...")
                 self._download_model(config["url"], model_path)
 
     def _download_model(self, url: str, dest_path: Path):
@@ -258,9 +264,9 @@ class FaceClusterer:
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
-            total_size = int(response.headers.get('content-length', 0))
+            total_size = int(response.headers.get("content-length", 0))
 
-            with open(dest_path, 'wb') as f:
+            with open(dest_path, "wb") as f:
                 downloaded = 0
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -277,7 +283,7 @@ class FaceClusterer:
     def _initialize_database(self):
         """Initialize enhanced database with new schema"""
         # Import schema extensions
-        schema_ext = Path(__file__).parent.parent / 'server' / 'schema_extensions.py'
+        schema_ext = Path(__file__).parent.parent / "server" / "schema_extensions.py"
         if schema_ext.exists():
             from server.schema_extensions import SchemaExtensions
 
@@ -358,11 +364,23 @@ class FaceClusterer:
 
             yolo_weights = os.environ.get("FACE_YOLO_WEIGHTS")
             yolo_weights_path = Path(yolo_weights).expanduser() if yolo_weights else None
+            remote_detect_url = os.environ.get("FACE_REMOTE_DETECT_URL")
+            remote_detect_api_key = os.environ.get("FACE_REMOTE_DETECT_API_KEY")
+            remote_detect_timeout = float(os.environ.get("FACE_REMOTE_DETECT_TIMEOUT", "10"))
+            remote_detect_embeddings = os.environ.get("FACE_REMOTE_DETECT_EMBEDDINGS", "0").lower() in {
+                "1",
+                "true",
+                "yes",
+            }
 
             cfg = FaceBackendConfig(
                 models_dir=self.models_dir,
                 preferred_backends=env_preferred_backends(default="insightface"),
                 yolo_weights_path=yolo_weights_path,
+                remote_detect_url=remote_detect_url,
+                remote_detect_api_key=remote_detect_api_key,
+                remote_detect_timeout=remote_detect_timeout,
+                remote_detect_embeddings=remote_detect_embeddings,
             )
 
             backend = load_face_backend(cfg, insightface_providers=providers)
@@ -377,6 +395,26 @@ class FaceClusterer:
             if backend is None:
                 logger.warning("No face backend could be loaded; face features disabled")
                 return
+
+            if backend.supports_embeddings:
+                self._embeddings_available = True
+            else:
+                remote_url = os.environ.get("FACE_REMOTE_EMBEDDING_URL")
+                remote_api_key = os.environ.get("FACE_REMOTE_EMBEDDING_API_KEY")
+                remote_timeout = float(os.environ.get("FACE_REMOTE_EMBEDDING_TIMEOUT", "10"))
+                clip_model = os.environ.get("FACE_CLIP_EMBEDDING_MODEL", "clip-ViT-B-32")
+                embedding_cfg = FaceEmbeddingBackendConfig(
+                    models_dir=self.models_dir,
+                    preferred_backends=env_preferred_embedding_backends(default="insightface,clip,remote"),
+                    insightface_providers=providers,
+                    remote_url=remote_url,
+                    remote_api_key=remote_api_key,
+                    remote_timeout=remote_timeout,
+                    clip_model=clip_model,
+                )
+                self._embedding_backend = load_embedding_backend(embedding_cfg)
+                if self._embedding_backend is not None:
+                    self._embeddings_available = True
 
             logger.info("Face backend active: %s (providers=%s)", backend.name, providers)
 
@@ -422,17 +460,17 @@ class FaceClusterer:
         quality_score = 0.0
 
         # Size score (0-30 points)
-        face_size = face_data.get('bbox', [0, 0, 0, 0])[2]  # width
+        face_size = face_data.get("bbox", [0, 0, 0, 0])[2]  # width
         size_score = min(30, (face_size / 100) * 30)
         quality_score += size_score
 
         # Confidence score (0-40 points)
-        det_score = face_data.get('det_score', 0.0)
+        det_score = face_data.get("det_score", 0.0)
         confidence_score = det_score * 40
         quality_score += confidence_score
 
         # Pose score (0-20 points) - more frontal faces get higher scores
-        pose = face_data.get('pose', [0, 0, 0])  # yaw, pitch, roll
+        pose = face_data.get("pose", [0, 0, 0])  # yaw, pitch, roll
         pose_penalty = sum(abs(angle) for angle in pose) / 90.0
         pose_score = max(0, 20 - (pose_penalty * 20))
         quality_score += pose_score
@@ -443,23 +481,23 @@ class FaceClusterer:
         quality_score += sharpness_score
 
         return min(100.0, quality_score)
-    
+
     def detect_faces(self, image_path: str, min_confidence: float = 0.75, min_face_area: int = 1000) -> List[Dict]:
         """
         Detect faces in an image using InsightFace RetinaFace.
-        
+
         Args:
             image_path: Path to image file
             min_confidence: Minimum confidence threshold (default 0.75)
             min_face_area: Minimum face area in pixels (default 1000)
-            
+
         Returns:
             List of face detection results with bounding boxes and embeddings
         """
         backend = getattr(self, "_backend", None)
         if backend is None:
             return []
-        
+
         try:
             img = self._read_image_bgr(image_path)
             if img is None:
@@ -469,127 +507,149 @@ class FaceClusterer:
             # Delegate to backend (BGR image)
             results = backend.detect_bgr(img)
 
+            embedding_backend = getattr(self, "_embedding_backend", None)
+
             # Filter by confidence and face size
             filtered_results = []
             for r in results:
                 confidence = r.get("confidence", 0)
                 bbox = r.get("bounding_box", [0, 0, 0, 0])
                 face_area = bbox[2] * bbox[3] if len(bbox) == 4 else 0
-                
+
                 if confidence >= min_confidence and face_area >= min_face_area:
+                    if r.get("embedding") is None and embedding_backend is not None:
+                        embedding = embedding_backend.embed_bgr(img, bbox)
+                        if embedding is not None:
+                            r["embedding"] = embedding
+                            if not r.get("embedding_version"):
+                                r["embedding_version"] = embedding_backend.embedding_version or FACE_EMBEDDING_VERSION
                     r.setdefault("embedding_version", FACE_EMBEDDING_VERSION)
                     filtered_results.append(r)
                 else:
                     logger.debug(f"Filtered face: conf={confidence:.2f}, area={face_area}")
-            
+
             return filtered_results
-            
+
         except Exception as e:
             print(f"Error detecting faces in {image_path}: {e}")
             return []
-    
+
     def extract_face_embedding(self, image_path: str, bounding_box: List[int]) -> Optional[np.ndarray]:
         """
         Extract face embedding from a face region.
-        
+
         Note: With InsightFace, embeddings are already extracted during detect_faces().
         This method is kept for compatibility and re-extraction scenarios.
-        
+
         Args:
             image_path: Path to image file
             bounding_box: Bounding box [x, y, width, height]
-            
+
         Returns:
             Face embedding vector (512-dim) or None if extraction fails
         """
-        # Only InsightFace backend supports embeddings today.
         if not hasattr(self, "face_analyzer") or self.face_analyzer is None:
-            return None
-        
+            embedding_backend = getattr(self, "_embedding_backend", None)
+            if embedding_backend is None:
+                return None
+            img = self._read_image_bgr(image_path)
+            if img is None:
+                return None
+            return embedding_backend.embed_bgr(img, bounding_box)
+
         try:
             img = self._read_image_bgr(image_path)
             if img is None:
                 return None
-            
+
             # Crop face region with padding
             x, y, width, height = bounding_box
             padding = int(max(width, height) * 0.2)
-            
+
             y1 = max(0, y - padding)
             y2 = min(img.shape[0], y + height + padding)
             x1 = max(0, x - padding)
             x2 = min(img.shape[1], x + width + padding)
-            
+
             face_crop = img[y1:y2, x1:x2]
-            
+
             # Detect face in cropped region and get embedding
             faces = self.face_analyzer.get(face_crop)
-            
+
             if faces and len(faces) > 0:
                 return faces[0].embedding
-            
+
             return None
-            
+
         except Exception as e:
             print(f"Error extracting embedding from {image_path}: {e}")
             return None
-    
+
     def _upsert_face(self, cursor, record: Dict) -> Tuple[int, Optional[int]]:
         """
         Insert or update a face record, preserving cluster membership.
-        
+
         Args:
             cursor: Database cursor
             record: Face record with image_path, bounding_box, embedding, confidence
-            
+
         Returns:
             Tuple of (face_id, existing_cluster_id or None)
         """
-        bbox_json = json.dumps(record['bounding_box'])
-        embedding_blob = record['embedding'].tobytes() if record['embedding'] is not None else None
-        
+        bbox_json = json.dumps(record["bounding_box"])
+        embedding_blob = record["embedding"].tobytes() if record["embedding"] is not None else None
+
         # Check if face already exists (same image + similar bounding box)
-        cursor.execute("""
-            SELECT id, cluster_id FROM faces 
+        cursor.execute(
+            """
+            SELECT id, cluster_id FROM faces
             WHERE image_path = ? AND bounding_box = ?
-        """, (record['image_path'], bbox_json))
-        
+        """,
+            (record["image_path"], bbox_json),
+        )
+
         existing = cursor.fetchone()
-        
+
         if existing:
             # Update existing face, preserve cluster_id
-            face_id = existing['id']
-            existing_cluster = existing['cluster_id']
-            cursor.execute("""
-                UPDATE faces 
+            face_id = existing["id"]
+            existing_cluster = existing["cluster_id"]
+            cursor.execute(
+                """
+                UPDATE faces
                 SET embedding = ?, confidence = ?, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (embedding_blob, record['confidence'], face_id))
+            """,
+                (embedding_blob, record["confidence"], face_id),
+            )
             logger.debug(f"Updated existing face {face_id}, cluster={existing_cluster}")
             return face_id, existing_cluster
         else:
             # Insert new face
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO faces (image_path, bounding_box, embedding, confidence)
                 VALUES (?, ?, ?, ?)
-            """, (record['image_path'], bbox_json, embedding_blob, record['confidence']))
+            """,
+                (record["image_path"], bbox_json, embedding_blob, record["confidence"]),
+            )
             face_id = cursor.lastrowid
             logger.debug(f"Inserted new face {face_id}")
             return face_id, None
-    
+
     def _find_matching_labeled_cluster(self, embedding: np.ndarray, threshold: float = 0.5) -> Optional[Dict]:
         """
         Find an existing labeled cluster that matches this embedding.
-        
+
         Args:
             embedding: Face embedding to match
             threshold: Minimum cosine similarity (0.5 = 50%)
-            
+
         Returns:
             Dict with cluster id, label, similarity if found, else None
         """
         cursor = self.conn.cursor()
-        
+
         # Get embeddings from all labeled clusters
         cursor.execute("""
             SELECT c.id, c.label, f.embedding
@@ -599,12 +659,12 @@ class FaceClusterer:
             WHERE c.label IS NOT NULL AND c.label != ''
             AND f.embedding IS NOT NULL
         """)
-        
+
         best_match = None
         best_similarity = threshold
-        
+
         for row in cursor.fetchall():
-            existing_blob = row['embedding']
+            existing_blob = row["embedding"]
             if existing_blob:
                 try:
                     existing = np.frombuffer(existing_blob, dtype=np.float32)
@@ -615,133 +675,152 @@ class FaceClusterer:
                         )
                         if similarity > best_similarity:
                             best_similarity = similarity
-                            best_match = {
-                                'id': row['id'], 
-                                'label': row['label'], 
-                                'similarity': float(similarity)
-                            }
+                            best_match = {"id": row["id"], "label": row["label"], "similarity": float(similarity)}
                 except Exception as e:
                     logger.warning(f"Error comparing embeddings: {e}")
                     continue
-        
+
         if best_match:
-            logger.info(f"Matched face to cluster {best_match['id']} ({best_match['label']}) with {best_match['similarity']:.2%} similarity")
-        
+            logger.info(
+                f"Matched face to cluster {best_match['id']} ({best_match['label']}) with {best_match['similarity']:.2%} similarity"
+            )
+
         return best_match
-    
+
     def _add_to_cluster(self, cursor, face_id: int, cluster_id: int) -> None:
         """Add a face to a cluster, updating membership and size."""
         # Check if already in cluster
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT 1 FROM cluster_membership WHERE face_id = ? AND cluster_id = ?
-        """, (face_id, cluster_id))
-        
+        """,
+            (face_id, cluster_id),
+        )
+
         if not cursor.fetchone():
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO cluster_membership (cluster_id, face_id)
                 VALUES (?, ?)
-            """, (cluster_id, face_id))
-            
+            """,
+                (cluster_id, face_id),
+            )
+
             # Update cluster size
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE clusters SET size = size + 1, updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
-            """, (cluster_id,))
-            
+            """,
+                (cluster_id,),
+            )
+
             # Update face's cluster_id reference
-            cursor.execute("""
+            cursor.execute(
+                """
                 UPDATE faces SET cluster_id = ? WHERE id = ?
-            """, (cluster_id, face_id))
-            
+            """,
+                (cluster_id, face_id),
+            )
+
             logger.debug(f"Added face {face_id} to cluster {cluster_id}")
-    
+
     def _create_cluster(self, cursor, faces: List[Dict]) -> int:
         """Create a new cluster from a list of faces."""
         if not faces:
             return -1
-        
+
         representative_face = faces[0]
-        
-        cursor.execute("""
+
+        cursor.execute(
+            """
             INSERT INTO clusters (representative_face_id, size, created_at, updated_at)
             VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        """, (representative_face['db_id'], len(faces)))
-        
+        """,
+            (representative_face["db_id"], len(faces)),
+        )
+
         cluster_id = cursor.lastrowid
-        
+
         # Add all faces to cluster
         for face in faces:
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO cluster_membership (cluster_id, face_id)
                 VALUES (?, ?)
-            """, (cluster_id, face['db_id']))
-            
-            cursor.execute("""
+            """,
+                (cluster_id, face["db_id"]),
+            )
+
+            cursor.execute(
+                """
                 UPDATE faces SET cluster_id = ? WHERE id = ?
-            """, (cluster_id, face['db_id']))
-        
+            """,
+                (cluster_id, face["db_id"]),
+            )
+
         logger.info(f"Created new cluster {cluster_id} with {len(faces)} faces")
         return cluster_id
 
     def cluster_faces(self, image_paths: List[str], eps: float = 0.6, min_samples: int = 2) -> Dict:
         """
         Cluster faces across multiple images using DBSCAN.
-        
+
         This method now properly:
         1. Upserts faces (preserves existing face IDs and cluster assignments)
         2. Matches new faces to existing labeled clusters before DBSCAN
         3. Only clusters unmatched faces with DBSCAN
-        
+
         Args:
             image_paths: List of image file paths
             eps: DBSCAN eps parameter (maximum distance between samples)
             min_samples: DBSCAN min_samples parameter (minimum samples per cluster)
-            
+
         Returns:
             Dictionary with clustering results
         """
-        # Clustering requires embeddings. Only the InsightFace backend currently provides them.
-        if not hasattr(self, "face_analyzer") or self.face_analyzer is None:
+        # Clustering requires embeddings.
+        if not self._embeddings_available:
             return {
-                'status': 'error',
-                'message': 'Face embeddings are not available for clustering (use InsightFace backend)'
+                "status": "error",
+                "message": "Face embeddings are not available for clustering (configure FACE_EMBEDDING_BACKENDS)",
             }
-        
+
         try:
             from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
-            
+
             cursor = self.conn.cursor()
             face_records = []
             matched_to_existing = 0
-            
+
             # Step 1: Detect faces and upsert to database
             logger.info(f"Processing {len(image_paths)} images for face detection")
-            
+
             for i, image_path in enumerate(image_paths):
                 if (i + 1) % 10 == 0 or i == 0:
                     print(f"Processing {i+1}/{len(image_paths)}: {image_path.split('/')[-1]}")
-                
+
                 # Detect faces
                 faces = self.detect_faces(image_path)
-                
+
                 for face in faces:
-                    embedding = face.get('embedding')
+                    embedding = face.get("embedding")
                     if embedding is None:
-                        embedding = self.extract_face_embedding(image_path, face['bounding_box'])
-                    
+                        embedding = self.extract_face_embedding(image_path, face["bounding_box"])
+
                     if embedding is not None:
                         record = {
-                            'image_path': image_path,
-                            'bounding_box': face['bounding_box'],
-                            'confidence': face['confidence'],
-                            'embedding': embedding
+                            "image_path": image_path,
+                            "bounding_box": face["bounding_box"],
+                            "confidence": face["confidence"],
+                            "embedding": embedding,
                         }
-                        
+
                         # Upsert face - preserves existing cluster assignments
                         face_id, existing_cluster = self._upsert_face(cursor, record)
-                        record['db_id'] = face_id
-                        record['assigned_cluster'] = existing_cluster
-                        
+                        record["db_id"] = face_id
+                        record["assigned_cluster"] = existing_cluster
+
                         if existing_cluster:
                             # Face already assigned - keep it
                             matched_to_existing += 1
@@ -749,419 +828,435 @@ class FaceClusterer:
                             # Check if matches any labeled cluster
                             match = self._find_matching_labeled_cluster(embedding)
                             if match:
-                                self._add_to_cluster(cursor, face_id, match['id'])
-                                record['assigned_cluster'] = match['id']
+                                self._add_to_cluster(cursor, face_id, match["id"])
+                                record["assigned_cluster"] = match["id"]
                                 matched_to_existing += 1
-                        
+
                         face_records.append(record)
-            
+
             if not face_records:
                 self.conn.commit()
-                return {'status': 'completed', 'clusters': [], 'total_faces': 0, 'message': 'No faces found'}
-            
+                return {"status": "completed", "clusters": [], "total_faces": 0, "message": "No faces found"}
+
             # Step 2: Cluster only unassigned faces with DBSCAN
-            unassigned_faces = [r for r in face_records if r.get('assigned_cluster') is None]
+            unassigned_faces = [r for r in face_records if r.get("assigned_cluster") is None]
             clusters_created = []
-            
+
             if len(unassigned_faces) >= min_samples:
                 logger.info(f"Clustering {len(unassigned_faces)} unassigned faces with DBSCAN")
-                
-                embeddings_array = np.array([f['embedding'] for f in unassigned_faces])
-                clustering = DBSCAN(eps=eps, min_samples=min_samples, metric='cosine')
+
+                embeddings_array = np.array([f["embedding"] for f in unassigned_faces])
+                clustering = DBSCAN(eps=eps, min_samples=min_samples, metric="cosine")
                 cluster_labels = clustering.fit_predict(embeddings_array)
-                
+
                 # Create clusters for each DBSCAN group
                 unique_labels = set(cluster_labels)
                 for label in unique_labels:
                     if label == -1:  # Noise - remains unassigned
                         continue
-                    
-                    group_faces = [f for f, l in zip(unassigned_faces, cluster_labels) if l == label]
-                    
+
+                    group_faces = [f for f, lbl in zip(unassigned_faces, cluster_labels) if lbl == label]
+
                     if len(group_faces) >= min_samples:
                         cluster_id = self._create_cluster(cursor, group_faces)
                         clusters_created.append(cluster_id)
-                        
+
                         for f in group_faces:
-                            f['assigned_cluster'] = cluster_id
-            
+                            f["assigned_cluster"] = cluster_id
+
             # Step 3: Update image_clusters table
             for image_path in image_paths:
-                cursor.execute("""
-                    SELECT cluster_id FROM faces 
+                cursor.execute(
+                    """
+                    SELECT cluster_id FROM faces
                     WHERE image_path = ? AND cluster_id IS NOT NULL
-                """, (image_path,))
-                
-                cluster_ids = list(set([row['cluster_id'] for row in cursor.fetchall()]))
+                """,
+                    (image_path,),
+                )
+
+                cluster_ids = list(set([row["cluster_id"] for row in cursor.fetchall()]))
                 face_count = len(cluster_ids)
-                
+
                 if cluster_ids:
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO image_clusters 
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO image_clusters
                         (image_path, cluster_ids, face_count)
                         VALUES (?, ?, ?)
-                    """, (image_path, json.dumps(cluster_ids), face_count))
-            
+                    """,
+                        (image_path, json.dumps(cluster_ids), face_count),
+                    )
+
             self.conn.commit()
-            
+
             # Count results
-            assigned_faces = len([r for r in face_records if r.get('assigned_cluster')])
+            assigned_faces = len([r for r in face_records if r.get("assigned_cluster")])
             unassigned_remaining = len(face_records) - assigned_faces
-            
-            logger.info(f"Clustering complete: {len(face_records)} faces, {matched_to_existing} matched existing, {len(clusters_created)} new clusters")
-            
+
+            logger.info(
+                f"Clustering complete: {len(face_records)} faces, {matched_to_existing} matched existing, {len(clusters_created)} new clusters"
+            )
+
             return {
-                'status': 'completed',
-                'total_faces': len(face_records),
-                'matched_to_existing': matched_to_existing,
-                'new_clusters_created': len(clusters_created),
-                'unassigned_faces': unassigned_remaining,
-                'clusters': clusters_created,
-                'message': f'Found {len(face_records)} faces, {matched_to_existing} matched existing clusters, {len(clusters_created)} new clusters created'
+                "status": "completed",
+                "total_faces": len(face_records),
+                "matched_to_existing": matched_to_existing,
+                "new_clusters_created": len(clusters_created),
+                "unassigned_faces": unassigned_remaining,
+                "clusters": clusters_created,
+                "message": f"Found {len(face_records)} faces, {matched_to_existing} matched existing clusters, {len(clusters_created)} new clusters created",
             }
-            
+
         except Exception as e:
             self.conn.rollback()
             logger.error(f"Clustering failed: {e}")
-            return {'status': 'error', 'message': str(e)}
-    
+            return {"status": "error", "message": str(e)}
+
     def get_face_clusters(self, image_path: str) -> Dict:
         """
         Get face clusters for a specific image.
-        
+
         Args:
             image_path: Path to image file
-            
+
         Returns:
             Dictionary with face cluster information
         """
         cursor = self.conn.cursor()
-        
+
         # Get image cluster info
-        cursor.execute("""
-            SELECT cluster_ids, face_count 
-            FROM image_clusters 
+        cursor.execute(
+            """
+            SELECT cluster_ids, face_count
+            FROM image_clusters
             WHERE image_path = ?
-        """, (image_path,))
-        
+        """,
+            (image_path,),
+        )
+
         row = cursor.fetchone()
-        
+
         if not row:
-            return {'image_path': image_path, 'clusters': [], 'face_count': 0}
-        
-        cluster_ids = json.loads(row['cluster_ids']) if row['cluster_ids'] else []
-        
+            return {"image_path": image_path, "clusters": [], "face_count": 0}
+
+        cluster_ids = json.loads(row["cluster_ids"]) if row["cluster_ids"] else []
+
         # Get details for each cluster
         clusters = []
         for cluster_id in cluster_ids:
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT c.id, c.size, c.label, f.bounding_box, f.confidence
                 FROM clusters c
                 JOIN cluster_membership cm ON c.id = cm.cluster_id
                 JOIN faces f ON cm.face_id = f.id
                 WHERE c.id = ? AND f.image_path = ?
-            """, (cluster_id, image_path))
-            
+            """,
+                (cluster_id, image_path),
+            )
+
             cluster_rows = cursor.fetchall()
             if cluster_rows:
                 cluster_info = dict(cluster_rows[0])
-                cluster_info['faces'] = []
-                
+                cluster_info["faces"] = []
+
                 for face_row in cluster_rows:
-                    cluster_info['faces'].append({
-                        'bounding_box': json.loads(face_row['bounding_box']),
-                        'confidence': face_row['confidence']
-                    })
-                
+                    cluster_info["faces"].append(
+                        {"bounding_box": json.loads(face_row["bounding_box"]), "confidence": face_row["confidence"]}
+                    )
+
                 clusters.append(cluster_info)
-        
-        return {
-            'image_path': image_path,
-            'clusters': clusters,
-            'face_count': row['face_count']
-        }
-    
+
+        return {"image_path": image_path, "clusters": clusters, "face_count": row["face_count"]}
+
     def get_cluster_details(self, cluster_id: int) -> Dict:
         """
         Get details for a specific cluster.
-        
+
         Args:
             cluster_id: Cluster ID
-            
+
         Returns:
             Dictionary with cluster details
         """
         cursor = self.conn.cursor()
-        
+
         # Get cluster info
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT * FROM clusters WHERE id = ?
-        """, (cluster_id,))
-        
+        """,
+            (cluster_id,),
+        )
+
         cluster_row = cursor.fetchone()
-        
+
         if not cluster_row:
-            return {'status': 'error', 'message': 'Cluster not found'}
-        
+            return {"status": "error", "message": "Cluster not found"}
+
         cluster = dict(cluster_row)
-        
+
         # Get all faces in this cluster
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT f.id, f.image_path, f.bounding_box, f.confidence
             FROM cluster_membership cm
             JOIN faces f ON cm.face_id = f.id
             WHERE cm.cluster_id = ?
             ORDER BY f.confidence DESC
-        """, (cluster_id,))
-        
+        """,
+            (cluster_id,),
+        )
+
         faces = []
         for face_row in cursor.fetchall():
-            faces.append({
-                'id': face_row['id'],
-                'image_path': face_row['image_path'],
-                'bounding_box': json.loads(face_row['bounding_box']),
-                'confidence': face_row['confidence']
-            })
-        
-        cluster['faces'] = faces
-        cluster['face_count'] = len(faces)
-        
+            faces.append(
+                {
+                    "id": face_row["id"],
+                    "image_path": face_row["image_path"],
+                    "bounding_box": json.loads(face_row["bounding_box"]),
+                    "confidence": face_row["confidence"],
+                }
+            )
+
+        cluster["faces"] = faces
+        cluster["face_count"] = len(faces)
+
         return cluster
-    
+
     def get_all_clusters(self, limit: int = 100, offset: int = 0) -> Dict:
         """
         Get all clusters with pagination.
-        
+
         Args:
             limit: Maximum number of results
             offset: Pagination offset
-            
+
         Returns:
             Dictionary with clusters and pagination info
         """
         cursor = self.conn.cursor()
-        
+
         # Get clusters
-        cursor.execute("""
-            SELECT * FROM clusters 
+        cursor.execute(
+            """
+            SELECT * FROM clusters
             ORDER BY size DESC, updated_at DESC
             LIMIT ? OFFSET ?
-        """, (limit, offset))
-        
+        """,
+            (limit, offset),
+        )
+
         clusters = []
         for row in cursor.fetchall():
             cluster = dict(row)
-            
+
             # Count faces in cluster
-            cursor.execute("""
-                SELECT COUNT(*) as count FROM cluster_membership 
+            cursor.execute(
+                """
+                SELECT COUNT(*) as count FROM cluster_membership
                 WHERE cluster_id = ?
-            """, (cluster['id'],))
-            
-            face_count = cursor.fetchone()['count']
-            cluster['face_count'] = face_count
-            
+            """,
+                (cluster["id"],),
+            )
+
+            face_count = cursor.fetchone()["count"]
+            cluster["face_count"] = face_count
+
             clusters.append(cluster)
-        
+
         # Get total count
         cursor.execute("SELECT COUNT(*) as count FROM clusters")
-        total = cursor.fetchone()['count']
-        
-        return {
-            'total': total,
-            'limit': limit,
-            'offset': offset,
-            'clusters': clusters
-        }
-    
+        total = cursor.fetchone()["count"]
+
+        return {"total": total, "limit": limit, "offset": offset, "clusters": clusters}
+
     def get_clustered_images(self) -> Dict:
         """
         Get all images that have been clustered.
-        
+
         Returns:
             Dictionary with images and their cluster info
         """
         cursor = self.conn.cursor()
-        
+
         cursor.execute("""
-            SELECT image_path, cluster_ids, face_count 
-            FROM image_clusters 
+            SELECT image_path, cluster_ids, face_count
+            FROM image_clusters
             ORDER BY face_count DESC, updated_at DESC
         """)
-        
+
         images = []
         for row in cursor.fetchall():
-            images.append({
-                'image_path': row['image_path'],
-                'cluster_ids': json.loads(row['cluster_ids']) if row['cluster_ids'] else [],
-                'face_count': row['face_count']
-            })
-        
-        return {
-            'total_images': len(images),
-            'images': images
-        }
-    
+            images.append(
+                {
+                    "image_path": row["image_path"],
+                    "cluster_ids": json.loads(row["cluster_ids"]) if row["cluster_ids"] else [],
+                    "face_count": row["face_count"],
+                }
+            )
+
+        return {"total_images": len(images), "images": images}
+
     def get_cluster_statistics(self) -> Dict:
         """
         Get statistics about face clusters.
-        
+
         Returns:
             Dictionary with cluster statistics
         """
         cursor = self.conn.cursor()
-        
+
         # Total faces
         cursor.execute("SELECT COUNT(*) as count FROM faces")
-        total_faces = cursor.fetchone()['count']
-        
+        total_faces = cursor.fetchone()["count"]
+
         # Total clusters
         cursor.execute("SELECT COUNT(*) as count FROM clusters")
-        total_clusters = cursor.fetchone()['count']
-        
+        total_clusters = cursor.fetchone()["count"]
+
         # Total images with faces
         cursor.execute("SELECT COUNT(*) as count FROM image_clusters")
-        total_images = cursor.fetchone()['count']
-        
+        total_images = cursor.fetchone()["count"]
+
         # Cluster size distribution
         cursor.execute("""
-            SELECT size, COUNT(*) as count 
-            FROM clusters 
-            GROUP BY size 
+            SELECT size, COUNT(*) as count
+            FROM clusters
+            GROUP BY size
             ORDER BY size DESC
         """)
-        
+
         size_distribution = {}
         for row in cursor.fetchall():
-            size_distribution[row['size']] = row['count']
-        
+            size_distribution[row["size"]] = row["count"]
+
         # Largest clusters
         cursor.execute("""
-            SELECT id, size, label 
-            FROM clusters 
-            ORDER BY size DESC 
+            SELECT id, size, label
+            FROM clusters
+            ORDER BY size DESC
             LIMIT 5
         """)
-        
+
         largest_clusters = []
         for row in cursor.fetchall():
-            largest_clusters.append({
-                'id': row['id'],
-                'size': row['size'],
-                'label': row['label']
-            })
-        
+            largest_clusters.append({"id": row["id"], "size": row["size"], "label": row["label"]})
+
         # Images with most faces
         cursor.execute("""
-            SELECT image_path, face_count 
-            FROM image_clusters 
-            ORDER BY face_count DESC 
+            SELECT image_path, face_count
+            FROM image_clusters
+            ORDER BY face_count DESC
             LIMIT 5
         """)
-        
+
         images_with_most_faces = []
         for row in cursor.fetchall():
-            images_with_most_faces.append({
-                'image_path': row['image_path'],
-                'face_count': row['face_count']
-            })
-        
+            images_with_most_faces.append({"image_path": row["image_path"], "face_count": row["face_count"]})
+
         return {
-            'total_faces': total_faces,
-            'total_clusters': total_clusters,
-            'total_images': total_images,
-            'size_distribution': size_distribution,
-            'largest_clusters': largest_clusters,
-            'images_with_most_faces': images_with_most_faces,
-            'avg_faces_per_cluster': round(total_faces / total_clusters, 2) if total_clusters > 0 else 0,
-            'avg_faces_per_image': round(total_faces / total_images, 2) if total_images > 0 else 0
+            "total_faces": total_faces,
+            "total_clusters": total_clusters,
+            "total_images": total_images,
+            "size_distribution": size_distribution,
+            "largest_clusters": largest_clusters,
+            "images_with_most_faces": images_with_most_faces,
+            "avg_faces_per_cluster": round(total_faces / total_clusters, 2) if total_clusters > 0 else 0,
+            "avg_faces_per_image": round(total_faces / total_images, 2) if total_images > 0 else 0,
         }
-    
+
     def update_cluster_label(self, cluster_id: int, label: str) -> bool:
         """
         Update the label for a cluster.
-        
+
         Args:
             cluster_id: Cluster ID
             label: New label for the cluster
-            
+
         Returns:
             True if updated, False if cluster not found
         """
         cursor = self.conn.cursor()
-        cursor.execute("""
-            UPDATE clusters 
+        cursor.execute(
+            """
+            UPDATE clusters
             SET label = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (label, cluster_id))
-        
+        """,
+            (label, cluster_id),
+        )
+
         if cursor.rowcount > 0:
             self.conn.commit()
             return True
-        
+
         return False
-    
+
     def delete_cluster(self, cluster_id: int) -> bool:
         """
         Delete a cluster and its associations.
-        
+
         Args:
             cluster_id: Cluster ID to delete
-            
+
         Returns:
             True if deleted, False if not found
         """
         cursor = self.conn.cursor()
-        
+
         # Delete cluster memberships
         cursor.execute("DELETE FROM cluster_membership WHERE cluster_id = ?", (cluster_id,))
-        
+
         # Update faces to remove cluster assignment
-        cursor.execute("""
-            UPDATE faces 
+        cursor.execute(
+            """
+            UPDATE faces
             SET cluster_id = NULL
             WHERE cluster_id = ?
-        """, (cluster_id,))
-        
+        """,
+            (cluster_id,),
+        )
+
         # Delete the cluster
         cursor.execute("DELETE FROM clusters WHERE id = ?", (cluster_id,))
-        
+
         if cursor.rowcount > 0:
             self.conn.commit()
             return True
-        
+
         return False
-    
+
     def clear_all_clusters(self) -> int:
         """
         Clear all face clustering data.
-        
+
         Returns:
             Number of records deleted
         """
         cursor = self.conn.cursor()
-        
+
         # Delete all cluster-related data
         cursor.execute("DELETE FROM cluster_membership")
         cursor.execute("DELETE FROM clusters")
         cursor.execute("DELETE FROM image_clusters")
         cursor.execute("DELETE FROM faces")
-        
+
         deleted_count = cursor.rowcount
         self.conn.commit()
-        
+
         return deleted_count
-    
+
     def close(self):
         """Close database connection."""
         if self.conn:
             self.conn.close()
             self.conn = None
-    
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.close()
@@ -1170,43 +1265,42 @@ class FaceClusterer:
 def main():
     """CLI interface for testing face clustering."""
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Face Clustering System')
-    parser.add_argument('--db', default='face_clusters.db', help='Database path')
-    parser.add_argument('--images', nargs='+', help='Image files to process')
-    parser.add_argument('--stats', action='store_true', help='Show clustering statistics')
-    parser.add_argument('--list', action='store_true', help='List all clusters')
-    parser.add_argument('--clear', action='store_true', help='Clear all clustering data')
-    
+
+    parser = argparse.ArgumentParser(description="Face Clustering System")
+    parser.add_argument("--db", default="face_clusters.db", help="Database path")
+    parser.add_argument("--images", nargs="+", help="Image files to process")
+    parser.add_argument("--stats", action="store_true", help="Show clustering statistics")
+    parser.add_argument("--list", action="store_true", help="List all clusters")
+    parser.add_argument("--clear", action="store_true", help="Clear all clustering data")
+
     args = parser.parse_args()
-    
+
     with FaceClusterer(args.db) as clusterer:
-        
         if args.images:
             if not FACE_LIBRARIES_AVAILABLE:
                 print("Error: Face detection libraries not available")
                 print("Install with: pip install mtcnn facenet-pytorch torch")
                 return
-            
+
             print(f"Clustering faces in {len(args.images)} images...")
             result = clusterer.cluster_faces(args.images)
-            
-            print(f"\nResults:")
+
+            print("\nResults:")
             print(f"Status: {result['status']}")
             print(f"Total Faces: {result.get('total_faces', 0)}")
             print(f"Total Clusters: {result.get('total_clusters', 0)}")
             print(f"Message: {result.get('message', '')}")
-            
+
             # Show cluster details for each image
             for image_path in args.images:
                 clusters = clusterer.get_face_clusters(image_path)
                 print(f"\n{image_path}:")
                 print(f"  Faces: {clusters['face_count']}")
                 print(f"  Clusters: {len(clusters['clusters'])}")
-                
-                for cluster in clusters['clusters']:
+
+                for cluster in clusters["clusters"]:
                     print(f"    Cluster {cluster['id']}: {len(cluster['faces'])} faces")
-        
+
         elif args.stats:
             stats = clusterer.get_cluster_statistics()
             print("Face Clustering Statistics:")
@@ -1216,31 +1310,31 @@ def main():
             print(f"Total Images: {stats['total_images']}")
             print(f"Avg Faces/Cluster: {stats['avg_faces_per_cluster']}")
             print(f"Avg Faces/Image: {stats['avg_faces_per_image']}")
-            
-            print(f"\nLargest Clusters:")
-            for cluster in stats['largest_clusters']:
+
+            print("\nLargest Clusters:")
+            for cluster in stats["largest_clusters"]:
                 print(f"  Cluster {cluster['id']}: {cluster['size']} faces")
-            
-            print(f"\nImages with Most Faces:")
-            for image in stats['images_with_most_faces']:
+
+            print("\nImages with Most Faces:")
+            for image in stats["images_with_most_faces"]:
                 print(f"  {image['image_path']}: {image['face_count']} faces")
-        
+
         elif args.list:
             clusters = clusterer.get_all_clusters()
             print(f"All Clusters ({clusters['total']}):")
             print("=" * 60)
-            for cluster in clusters['clusters']:
+            for cluster in clusters["clusters"]:
                 print(f"Cluster {cluster['id']}:")
                 print(f"  Size: {cluster['size']}")
                 print(f"  Faces: {cluster['face_count']}")
                 print(f"  Label: {cluster['label'] or 'Unlabeled'}")
                 print(f"  Created: {cluster['created_at']}")
                 print("-" * 40)
-        
+
         elif args.clear:
             count = clusterer.clear_all_clusters()
             print(f"Cleared {count} face clustering records")
-        
+
         else:
             parser.print_help()
 

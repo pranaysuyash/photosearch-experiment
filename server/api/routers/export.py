@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.post("/export")
-async def export_photos(request: ExportRequest):
+async def export_photos(request: ExportRequest, state: AppState = Depends(get_state)):
     """
     Export selected photos with various options.
 
@@ -45,10 +45,7 @@ async def export_photos(request: ExportRequest):
             else:
                 allowed_paths = [settings.BASE_DIR.resolve()]
 
-            is_allowed = any(
-                requested_path.is_relative_to(allowed_path)
-                for allowed_path in allowed_paths
-            )
+            is_allowed = any(requested_path.is_relative_to(allowed_path) for allowed_path in allowed_paths)
 
             if is_allowed and os.path.exists(path):
                 valid_paths.append(path)

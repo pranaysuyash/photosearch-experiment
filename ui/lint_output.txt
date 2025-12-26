@@ -438,7 +438,7 @@ Effects are intended to synchronize state between React and external systems suc
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
 /Users/pranay/Projects/photosearch_experiment/ui/src/components/search/MetadataFieldAutocomplete.tsx:167:7
-  165 |     
+  165 |
   166 |     if (lastWord.length < 2) {
 > 167 |       setSuggestions([]);
       |       ^^^^^^^^^^^^^^ Avoid calling setState() directly within an effect
@@ -524,7 +524,7 @@ Effects are intended to synchronize state between React and external systems suc
 Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
 
 /Users/pranay/Projects/photosearch_experiment/ui/src/hooks/usePlatformDetect.ts:51:5
-  49 |     const hasNotchCandidate = isTauri; 
+  49 |     const hasNotchCandidate = isTauri;
   50 |
 > 51 |     setState({
      |     ^^^^^^^^ Avoid calling setState() directly within an effect
@@ -608,4 +608,3 @@ Calling setState synchronously within an effect body causes cascading renders th
   2:3  error  Use "@ts-expect-error" instead of "@ts-ignore", as "@ts-ignore" will do nothing if the following line is error-free  @typescript-eslint/ban-ts-comment
 
 ✖ 296 problems (270 errors, 26 warnings)
-

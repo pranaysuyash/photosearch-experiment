@@ -4,12 +4,12 @@
  * Provides UI for creating and managing collaborative photo spaces with sharing and permissions.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  Plus, 
-  UserPlus, 
-  UserMinus, 
-  Image, 
+import {
+  Users,
+  Plus,
+  UserPlus,
+  UserMinus,
+  Image,
   MessageSquare,
   Settings,
   Eye,
@@ -76,7 +76,7 @@ export function CollaborativeSpaces() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentUserSpaces, setCurrentUserSpaces] = useState<CollaborativeSpace[]>([]);
-  
+
   // Forms
   const [createSpaceForm, setCreateSpaceForm] = useState({
     name: '',
@@ -106,7 +106,7 @@ export function CollaborativeSpaces() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // In a real app, the user_id would come from authentication
       // For this example, we'll use a placeholder user ID
       const response = await api.get('/collaborative/spaces/user/user-placeholder-id');
@@ -124,19 +124,19 @@ export function CollaborativeSpaces() {
       // Load space members
       const membersResponse = await api.get(`/collaborative/spaces/${spaceId}/members`);
       setSpaceMembers(membersResponse.members || []);
-      
+
       // Load space photos
       const photosResponse = await api.get(`/collaborative/spaces/${spaceId}/photos`);
       setSpacePhotos(photosResponse.photos || []);
-      
+
       // Load space stats
       const statsResponse = await api.get(`/collaborative/spaces/${spaceId}/stats`);
-      
+
       // Find and update the space in the main list
-      setCurrentUserSpaces(prev => 
-        prev.map(space => 
-          space.id === spaceId 
-            ? { ...space, ...statsResponse.stats } 
+      setCurrentUserSpaces(prev =>
+        prev.map(space =>
+          space.id === spaceId
+            ? { ...space, ...statsResponse.stats }
             : space
         )
       );
@@ -148,7 +148,7 @@ export function CollaborativeSpaces() {
 
   const handleCreateSpace = async () => {
     if (!createSpaceForm.name.trim()) return;
-    
+
     try {
       const response = await api.post('/collaborative/spaces', {
         name: createSpaceForm.name,
@@ -156,7 +156,7 @@ export function CollaborativeSpaces() {
         privacy_level: createSpaceForm.privacy_level,
         max_members: createSpaceForm.max_members
       });
-      
+
       // Refresh the list
       loadCurrentUserSpaces();
       setShowCreateForm(false);
@@ -174,13 +174,13 @@ export function CollaborativeSpaces() {
 
   const handleInviteMember = async () => {
     if (!selectedSpace || !inviteForm.user_id) return;
-    
+
     try {
       await api.post(`/collaborative/spaces/${selectedSpace.id}/members`, {
         user_id: inviteForm.user_id,
         role: inviteForm.role
       });
-      
+
       // Refresh the space details
       loadSpaceDetails(selectedSpace.id);
       setShowInviteForm(false);
@@ -193,13 +193,13 @@ export function CollaborativeSpaces() {
 
   const handleAddPhoto = async () => {
     if (!selectedSpace || !addPhotoForm.photo_path) return;
-    
+
     try {
       await api.post(`/collaborative/spaces/${selectedSpace.id}/photos`, {
         photo_path: addPhotoForm.photo_path,
         caption: addPhotoForm.caption
       });
-      
+
       // Refresh the space photos
       loadSpaceDetails(selectedSpace.id);
       setShowAddPhotoForm(false);
@@ -212,12 +212,12 @@ export function CollaborativeSpaces() {
 
   const handleAddComment = async (photoPath: string) => {
     if (!selectedSpace || !newComment.trim()) return;
-    
+
     try {
       await api.post(`/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`, {
         comment: newComment
       });
-      
+
       // Refresh comments for this photo
       const commentsResponse = await api.get(`/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`);
       // In a real implementation, we would update only the specific photo's comments
@@ -232,7 +232,7 @@ export function CollaborativeSpaces() {
 
   const removeMember = async (userId: string) => {
     if (!selectedSpace || !window.confirm('Are you sure you want to remove this member?')) return;
-    
+
     try {
       await api.delete(`/collaborative/spaces/${selectedSpace.id}/members/${userId}`);
       loadSpaceDetails(selectedSpace.id);
@@ -244,7 +244,7 @@ export function CollaborativeSpaces() {
 
   const removePhoto = async (photoPath: string) => {
     if (!selectedSpace || !window.confirm('Are you sure you want to remove this photo?')) return;
-    
+
     try {
       await api.delete(`/collaborative/spaces/${selectedSpace.id}/photos/${encodeURIComponent(photoPath)}`);
       loadSpaceDetails(selectedSpace.id);
@@ -285,7 +285,7 @@ export function CollaborativeSpaces() {
             </p>
           </div>
         </div>
-        
+
         <button
           onClick={() => setShowCreateForm(true)}
           className="btn-glass btn-glass--primary px-4 py-2 flex items-center gap-2"
@@ -299,7 +299,7 @@ export function CollaborativeSpaces() {
       {showCreateForm && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateForm(false)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -311,7 +311,7 @@ export function CollaborativeSpaces() {
                   <X size={18} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Space Name</label>
@@ -323,7 +323,7 @@ export function CollaborativeSpaces() {
                     placeholder="e.g., Family Vacation Photos"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Description</label>
                   <textarea
@@ -334,7 +334,7 @@ export function CollaborativeSpaces() {
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">Privacy</label>
@@ -348,7 +348,7 @@ export function CollaborativeSpaces() {
                       <option value="public">Public</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-1">Max Members</label>
                     <input
@@ -362,7 +362,7 @@ export function CollaborativeSpaces() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => setShowCreateForm(false)}
@@ -386,7 +386,7 @@ export function CollaborativeSpaces() {
       {selectedSpace && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSpace(null)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center justify-between">
@@ -407,7 +407,7 @@ export function CollaborativeSpaces() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex overflow-hidden h-[calc(90vh-150px)]">
               {/* Sidebar */}
               <div className={`${glass.surfaceStrong} w-64 border-r border-white/10 overflow-y-auto`}>
@@ -416,8 +416,8 @@ export function CollaborativeSpaces() {
                     <h3 className="font-medium text-foreground mb-2">Members</h3>
                     <div className="space-y-2">
                       {spaceMembers.map(member => (
-                        <div 
-                          key={member.user_id} 
+                        <div
+                          key={member.user_id}
                           className="flex items-center justify-between p-2 rounded-lg bg-white/5"
                         >
                           <div className="flex items-center gap-2">
@@ -446,7 +446,7 @@ export function CollaborativeSpaces() {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col gap-2">
                     <button
                       onClick={() => setShowInviteForm(true)}
@@ -455,7 +455,7 @@ export function CollaborativeSpaces() {
                       <UserPlus size={14} />
                       Invite Member
                     </button>
-                    
+
                     <button
                       onClick={() => setShowAddPhotoForm(true)}
                       className="btn-glass btn-glass--primary text-sm py-2 flex items-center gap-2"
@@ -463,7 +463,7 @@ export function CollaborativeSpaces() {
                       <Image size={14} />
                       Add Photo
                     </button>
-                    
+
                     <button className="btn-glass btn-glass--muted text-sm py-2 flex items-center gap-2">
                       <Settings size={14} />
                       Space Settings
@@ -471,7 +471,7 @@ export function CollaborativeSpaces() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Main Content */}
               <div className="flex-1 overflow-y-auto p-4">
                 {/* Photos Grid */}
@@ -479,7 +479,7 @@ export function CollaborativeSpaces() {
                   <Image size={16} />
                   Shared Photos
                 </h3>
-                
+
                 {spacePhotos.length === 0 ? (
                   <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-8 text-center`}>
                     <Image size={48} className="mx-auto text-muted-foreground mb-4 opacity-50" />
@@ -512,19 +512,19 @@ export function CollaborativeSpaces() {
                           {photo.caption && (
                             <p className="text-sm text-foreground line-clamp-2 mb-2">{photo.caption}</p>
                           )}
-                          
+
                           <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span>Added by {photo.added_by_username || 'Someone'}</span>
                             <span>{new Date(photo.added_at).toLocaleDateString()}</span>
                           </div>
-                          
+
                           {/* Comments */}
                           <div className="mt-3">
                             <div className="flex items-center gap-2 mb-2">
                               <MessageSquare size={14} className="text-muted-foreground" />
                               <span className="text-xs text-muted-foreground">Comments</span>
                             </div>
-                            
+
                             <div className="space-y-2">
                               {spaceComments
                                 .filter(comment => comment.photo_path === photo.photo_path)
@@ -536,7 +536,7 @@ export function CollaborativeSpaces() {
                                     </span> {comment.comment}
                                   </div>
                                 ))}
-                              
+
                               <div className="flex items-center gap-2 pt-1">
                                 <input
                                   type="text"
@@ -575,7 +575,7 @@ export function CollaborativeSpaces() {
       {showInviteForm && selectedSpace && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInviteForm(false)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -587,7 +587,7 @@ export function CollaborativeSpaces() {
                   <X size={18} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">User ID or Email</label>
@@ -599,7 +599,7 @@ export function CollaborativeSpaces() {
                     placeholder="Enter user ID or email"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Role</label>
                   <select
@@ -613,7 +613,7 @@ export function CollaborativeSpaces() {
                   </select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => setShowInviteForm(false)}
@@ -637,7 +637,7 @@ export function CollaborativeSpaces() {
       {showAddPhotoForm && selectedSpace && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddPhotoForm(false)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -649,7 +649,7 @@ export function CollaborativeSpaces() {
                   <X size={18} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Photo Path</label>
@@ -661,7 +661,7 @@ export function CollaborativeSpaces() {
                     placeholder="/path/to/photo.jpg"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Caption (Optional)</label>
                   <textarea
@@ -673,7 +673,7 @@ export function CollaborativeSpaces() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => setShowAddPhotoForm(false)}
@@ -711,8 +711,8 @@ export function CollaborativeSpaces() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentUserSpaces.map(space => (
-            <div 
-              key={space.id} 
+            <div
+              key={space.id}
               className={`${glass.surfaceStrong} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors cursor-pointer`}
               onClick={() => {
                 setSelectedSpace(space);
@@ -731,13 +731,13 @@ export function CollaborativeSpaces() {
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-2">{space.description}</p>
               </div>
-              
+
               <div className="p-4">
                 <div className="flex justify-between text-xs text-muted-foreground mb-3">
                   <span>Created: {new Date(space.created_at).toLocaleDateString()}</span>
                   <span>Updated: {new Date(space.updated_at).toLocaleDateString()}</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Users size={14} />
@@ -763,8 +763,8 @@ export function CollaborativeSpaces() {
       {error && (
         <div className="fixed bottom-4 right-4 bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded-lg z-[2000]">
           {error}
-          <button 
-            className="ml-2" 
+          <button
+            className="ml-2"
             onClick={() => setError(null)}
           >
             <X size={16} />

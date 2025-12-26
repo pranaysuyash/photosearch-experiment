@@ -1,43 +1,29 @@
 import React from 'react';
-import {
-    Camera,
-    MapPin,
-    Calendar,
-    HardDrive,
-    Image as ImageIcon,
-    Music,
-    FileText,
-    Code,
-} from 'lucide-react';
+import { Camera, MapPin, HardDrive, Image as ImageIcon, Code } from 'lucide-react';
 import { MetadataSection, MetadataRow } from '../MetadataSection';
 
 interface DetailsTabProps {
-    metadata: any; // Using any for now to match strict PhotoDetail type later if needed
-    api: any; // api module
+    metadata: unknown;
+    api: unknown; // api module
     photoPath: string;
 }
 
-export function DetailsTab({ metadata, api, photoPath }: DetailsTabProps) {
+type MetadataShape = {
+    file?: { name?: string; extension?: string; mime_type?: string };
+    filesystem?: { size_human?: string; created?: string; modified?: string; owner?: string };
+    image?: { width?: number; height?: number; format?: string; mode?: string; dpi?: number[]; bits_per_pixel?: number; animation?: boolean };
+    exif?: { image?: Record<string, unknown>; exif?: Record<string, unknown> };
+    gps?: { latitude?: number; longitude?: number; altitude?: number };
+    video?: { format?: { duration?: unknown; format_long_name?: string; bit_rate?: unknown } };
+    hashes?: { md5?: string; sha256?: string };
+};
+
+export function DetailsTab({ metadata }: DetailsTabProps) {
     if (!metadata) {
         return <div className="p-5 text-white/50 text-center text-sm">No metadata available</div>;
     }
 
-    // Helpers
-    const formatBytes = (bytes: number): string => {
-        if (!bytes) return 'Unknown';
-        const units = ['B', 'KB', 'MB', 'GB'];
-        let i = 0;
-        while (bytes >= 1024 && i < units.length - 1) {
-            bytes /= 1024;
-            i++;
-        }
-        return `${bytes.toFixed(1)} ${units[i]}`;
-    };
-
-    const {
-        file, filesystem: fs, image: img, exif, gps, hashes, thumbnail,
-        video, audio, pdf, svg
-    } = metadata;
+    const { file, filesystem: fs, image: img, exif, gps, hashes, video } = (metadata as MetadataShape);
 
     // We can also inject 'calc' stats if passed down, or computed
 

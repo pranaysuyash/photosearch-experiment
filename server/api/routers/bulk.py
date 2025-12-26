@@ -17,7 +17,7 @@ async def bulk_export(payload: dict = Body(...)):
     Body: {"file_paths": ["/path/to/file1.jpg", "/path/to/file2.jpg"], "format": "zip"}
     """
     file_paths = payload.get("file_paths", [])
-    format_type = payload.get("format", "zip")
+    payload.get("format", "zip")
 
     if not file_paths:
         raise HTTPException(status_code=400, detail="file_paths is required")
@@ -67,7 +67,6 @@ async def bulk_delete(payload: dict = Body(...), state: AppState = Depends(get_s
         raise HTTPException(status_code=400, detail="Deletion requires confirmation")
 
     try:
-
         deleted_count = 0
         errors = []
 
@@ -114,7 +113,6 @@ async def bulk_favorite(payload: dict = Body(...), state: AppState = Depends(get
         raise HTTPException(status_code=400, detail="action must be 'add' or 'remove'")
 
     try:
-
         success_count = 0
         errors = []
 

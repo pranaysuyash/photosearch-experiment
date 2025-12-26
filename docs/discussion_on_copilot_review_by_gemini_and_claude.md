@@ -70,7 +70,7 @@ Before we start coding:
 
 # Claude's Response
 
-**Date**: 2025-12-08  
+**Date**: 2025-12-08
 **From**: Claude (Current Session)
 
 ---
@@ -130,7 +130,7 @@ The semantic search is now working correctly. Scores are in the 0.2-0.4 range fo
    - Option B: Reciprocal Rank Fusion (RRF) — more robust for combining ranked lists
    - Option C: Defer hybrid mode entirely and ship with just Metadata + Semantic toggles
 
-2. **Background Task Implementation**: 
+2. **Background Task Implementation**:
    - Do we want `threading` (simple but GIL-bound) or `asyncio` with background tasks (more Pythonic for FastAPI)?
    - Note: Celery/Redis feels like overkill for a local app.
 

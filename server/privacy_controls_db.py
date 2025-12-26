@@ -62,15 +62,9 @@ class PrivacyControlsDB:
             """)
 
             # Indexes must be created separately in SQLite.
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_privacy_controls_photo_path ON privacy_controls(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_privacy_controls_owner_id ON privacy_controls(owner_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_privacy_controls_visibility ON privacy_controls(visibility)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_controls_photo_path ON privacy_controls(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_controls_owner_id ON privacy_controls(owner_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_privacy_controls_visibility ON privacy_controls(visibility)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_privacy_controls_encryption_enabled ON privacy_controls(encryption_enabled)"
             )
@@ -103,9 +97,7 @@ class PrivacyControlsDB:
             ID of the privacy control record
         """
         privacy_id = str(uuid.uuid4())
-        permissions_json = (
-            json.dumps(share_permissions) if share_permissions else json.dumps({})
-        )
+        permissions_json = json.dumps(share_permissions) if share_permissions else json.dumps({})
         users_json = json.dumps(allowed_users) if allowed_users else json.dumps([])
         groups_json = json.dumps(allowed_groups) if allowed_groups else json.dumps([])
 
@@ -146,9 +138,7 @@ class PrivacyControlsDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                result = conn.execute(
-                    "SELECT * FROM privacy_controls WHERE photo_path = ?", (photo_path,)
-                ).fetchone()
+                result = conn.execute("SELECT * FROM privacy_controls WHERE photo_path = ?", (photo_path,)).fetchone()
 
                 if result:
                     return PrivacyControl(
@@ -161,12 +151,8 @@ class PrivacyControlsDB:
                         else {},
                         encryption_enabled=bool(result["encryption_enabled"]),
                         encryption_key_hash=result["encryption_key_hash"],
-                        allowed_users=json.loads(result["allowed_users"])
-                        if result["allowed_users"]
-                        else [],
-                        allowed_groups=json.loads(result["allowed_groups"])
-                        if result["allowed_groups"]
-                        else [],
+                        allowed_users=json.loads(result["allowed_users"]) if result["allowed_users"] else [],
+                        allowed_groups=json.loads(result["allowed_groups"]) if result["allowed_groups"] else [],
                         created_at=result["created_at"],
                         updated_at=result["updated_at"],
                     )
@@ -268,9 +254,7 @@ class PrivacyControlsDB:
         except Exception:
             return []
 
-    def get_photos_for_user(
-        self, user_id: str, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_photos_for_user(self, user_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get photos that a user has access to based on privacy settings.
 
@@ -315,15 +299,9 @@ class PrivacyControlsDB:
                 for row in all_rows:
                     visibility = row["visibility"]
                     owner = row["owner_id"]
-                    allowed_users = (
-                        json.loads(row["allowed_users"]) if row["allowed_users"] else []
-                    )
+                    allowed_users = json.loads(row["allowed_users"]) if row["allowed_users"] else []
 
-                    if (
-                        visibility == "public"
-                        or owner == user_id
-                        or user_id in allowed_users
-                    ):
+                    if visibility == "public" or owner == user_id or user_id in allowed_users:
                         accessible_rows.append(dict(row))
 
                 return accessible_rows[offset : offset + limit]
@@ -422,8 +400,7 @@ class PrivacyControlsDB:
                     "visibility_breakdown": visibility_counts,
                     "encrypted_photos_count": encrypted_count,
                     "total_private_photos": visibility_counts["private"],
-                    "total_shared_photos": visibility_counts["shared"]
-                    + visibility_counts["friends_only"],
+                    "total_shared_photos": visibility_counts["shared"] + visibility_counts["friends_only"],
                     "total_public_photos": visibility_counts["public"],
                 }
         except Exception:
@@ -459,9 +436,7 @@ class PrivacyControlsDB:
             allowed_users = privacy.allowed_users
             if user_id in allowed_users:
                 allowed_users.remove(user_id)
-                return self.update_photo_privacy(
-                    photo_path, allowed_users=allowed_users
-                )
+                return self.update_photo_privacy(photo_path, allowed_users=allowed_users)
             else:
                 # User didn't have access anyway
                 return True

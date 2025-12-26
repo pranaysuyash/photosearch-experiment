@@ -4,12 +4,12 @@
  * Displays a stack of related photo versions (original + edited copies).
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  Image, 
-  Layers, 
-  Plus, 
-  X, 
-  Edit3, 
+import {
+  Image,
+  Layers,
+  Plus,
+  X,
+  Edit3,
   Eye,
   FileText,
   MoreHorizontal,
@@ -50,7 +50,7 @@ export function VersionStack({ photoPath, onVersionSelect }: VersionStackProps) 
     try {
       setLoading(true);
       setError(null);
-      
+
       const stack: PhotoVersion[] = await api.getVersionStack(photoPath);
       setVersions(stack);
     } catch (err) {
@@ -159,11 +159,11 @@ export function VersionStack({ photoPath, onVersionSelect }: VersionStackProps) 
         <div className="p-3 space-y-3">
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {versions.map(version => (
-              <div 
-                key={version.id} 
+              <div
+                key={version.id}
                 className={`flex items-center gap-3 p-2 rounded-lg border ${
-                  photoPath === version.version_path 
-                    ? 'border-primary bg-primary/10' 
+                  photoPath === version.version_path
+                    ? 'border-primary bg-primary/10'
                     : 'border-white/10 hover:border-white/20'
                 }`}
               >

@@ -1,6 +1,6 @@
 /**
  * Boolean People Search Component
- * 
+ *
  * Advanced search interface for finding photos with specific people combinations.
  * Supports AND, OR, and NOT operations for sophisticated queries.
  * Uses the glass design system and follows living language guidelines.
@@ -57,10 +57,10 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.getFaceClusters();
       const clusters = response.clusters || [];
-      
+
       // Convert clusters to people format
       const peopleList: Person[] = clusters
         .filter((cluster: any) => cluster.label) // Only include named people
@@ -70,7 +70,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
           face_count: cluster.face_count || 0,
           image_count: cluster.image_count || 0
         }));
-      
+
       setPeople(peopleList);
     } catch (err) {
       console.error('Failed to fetch people:', err);
@@ -179,7 +179,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
     if (query.includePeople.length === 0) return 'No search criteria';
 
     let description = 'Photos with ';
-    
+
     if (query.includePeople.length === 1) {
       description += getPersonName(query.includePeople[0]);
     } else if (query.operator === 'AND') {
@@ -199,7 +199,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -239,7 +239,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
               <label className="block text-sm font-medium text-foreground mb-3">
                 Include People
               </label>
-              
+
               {query.includePeople.length > 0 && (
                 <div className="mb-3">
                   <div className="flex items-center gap-2 mb-2">
@@ -253,7 +253,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                       <option value="OR">ANY people (OR)</option>
                     </select>
                   </div>
-                  
+
                   <div className="flex flex-wrap gap-2">
                     {query.includePeople.map((personId) => (
                       <div
@@ -280,7 +280,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
               <label className="block text-sm font-medium text-foreground mb-3">
                 Exclude People (Optional)
               </label>
-              
+
               {query.excludePeople.length > 0 && (
                 <div className="mb-3">
                   <div className="flex flex-wrap gap-2">
@@ -309,7 +309,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
               <label className="block text-sm font-medium text-foreground mb-3">
                 Available People
               </label>
-              
+
               {/* Search */}
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
@@ -345,7 +345,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                           </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex gap-2">
                         <button
                           onClick={() => addPersonToInclude(person.id)}
@@ -435,7 +435,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
           >
             Clear
           </button>
-          
+
           <div className="flex gap-3">
             <button
               onClick={onClose}

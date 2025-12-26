@@ -231,9 +231,7 @@ async def get_story_stats(story_id: str):
         # Calculate stats
         # `timeline_db` implementations may return dict rows; normalize access defensively.
         story_title = story.get("title") if isinstance(story, dict) else getattr(story, "title", None)
-        story_created_at = (
-            story.get("created_at") if isinstance(story, dict) else getattr(story, "created_at", None)
-        )
+        story_created_at = story.get("created_at") if isinstance(story, dict) else getattr(story, "created_at", None)
 
         def _entry_field(entry: Any, key: str) -> Any:
             if isinstance(entry, dict):

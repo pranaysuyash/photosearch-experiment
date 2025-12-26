@@ -31,7 +31,12 @@ def test_create_list_redact(tmp_path: Path):
 
 def test_update_and_delete(tmp_path: Path):
     store = SourceStore(tmp_path / "sources.db")
-    src = store.create_source("local_folder", name="Photos", config={"path": "/tmp/photos"}, status="connected")
+    src = store.create_source(
+        "local_folder",
+        name="Photos",
+        config={"path": "/tmp/photos"},
+        status="connected",
+    )
     updated = store.update_source(src.id, status="error", last_error="boom", config_patch={"path": "/tmp/new"})
     assert updated.status == "error"
     assert updated.last_error == "boom"
@@ -39,4 +44,3 @@ def test_update_and_delete(tmp_path: Path):
 
     store.delete_source(src.id)
     assert store.list_sources() == []
-

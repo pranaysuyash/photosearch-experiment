@@ -65,9 +65,7 @@ async def get_thumbnail(
         if settings.SIGNED_URL_ENABLED and settings.SANDBOX_STRICT:
             # Allow loopback clients to use path param for local desktop flows
             if client_host not in ("127.0.0.1", "::1", "localhost"):
-                raise HTTPException(
-                    status_code=401, detail="Signed URL required for this deployment"
-                )
+                raise HTTPException(status_code=401, detail="Signed URL required for this deployment")
 
         requested_path_str = path
 
@@ -80,10 +78,7 @@ async def get_thumbnail(
 
         requested_path = Path(requested_path_str).resolve()
 
-        is_allowed = any(
-            requested_path.is_relative_to(allowed_path)
-            for allowed_path in allowed_paths
-        )
+        is_allowed = any(requested_path.is_relative_to(allowed_path) for allowed_path in allowed_paths)
 
         if not is_allowed:
             logger.warning(
@@ -190,9 +185,7 @@ async def get_thumbnail(
                         lst = _rate_counters.get(client_ip, [])
                         lst = [t for t in lst if now - t < 60]
                         if len(lst) >= settings.RATE_LIMIT_REQS_PER_MIN:
-                            raise HTTPException(
-                                status_code=429, detail="Rate limit exceeded"
-                            )
+                            raise HTTPException(status_code=429, detail="Rate limit exceeded")
                         lst.append(now)
                         _rate_counters[client_ip] = lst
             except HTTPException:
@@ -201,9 +194,7 @@ async def get_thumbnail(
                 pass
 
             content_bytes = img_io.getvalue()
-            logger.info(
-                f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str} as {output_format}"
-            )
+            logger.info(f"Thumbnail produced {len(content_bytes)} bytes for {requested_path_str} as {output_format}")
             # Include cache headers + content type + explicit CORS headers
             headers = dict(cache_headers)
             headers.setdefault(
@@ -261,9 +252,7 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
     if settings.JWT_AUTH_ENABLED:
         auth_header = None
         if request:
-            auth_header = request.headers.get("authorization") or request.headers.get(
-                "Authorization"
-            )
+            auth_header = request.headers.get("authorization") or request.headers.get("Authorization")
         if not auth_header:
             raise HTTPException(status_code=401, detail="Authorization required")
         try:
@@ -284,13 +273,9 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
         if request:
             api_key = request.headers.get("x-api-key")
         if api_key != settings.IMAGE_TOKEN_ISSUER_KEY:
-            raise HTTPException(
-                status_code=401, detail="Missing or invalid issuer API key"
-            )
+            raise HTTPException(status_code=401, detail="Missing or invalid issuer API key")
     else:
-        logger.warning(
-            "No token issuer configured; token issuance is unprotected (dev only)"
-        )
+        logger.warning("No token issuer configured; token issuance is unprotected (dev only)")
 
     # Basic sandbox check - ensure path is inside allowed directories
     try:
@@ -301,15 +286,10 @@ async def issue_image_token(request: Request, payload: dict = Body(...)):
 
         requested_path = Path(path).resolve()
 
-        is_allowed = any(
-            requested_path.is_relative_to(allowed_path)
-            for allowed_path in allowed_paths
-        )
+        is_allowed = any(requested_path.is_relative_to(allowed_path) for allowed_path in allowed_paths)
 
         if not is_allowed:
-            raise HTTPException(
-                status_code=403, detail="Path is outside allowed directories"
-            )
+            raise HTTPException(status_code=403, detail="Path is outside allowed directories")
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
 

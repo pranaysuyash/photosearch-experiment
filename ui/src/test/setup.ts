@@ -21,7 +21,10 @@ class MockIntersectionObserver {
   rootMargin: string;
   thresholds: readonly number[];
   callback: IntersectionObserverCallback;
-  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+  constructor(
+    callback: IntersectionObserverCallback,
+    options?: IntersectionObserverInit
+  ) {
     this.callback = callback;
     this.root = options?.root ?? null;
     this.rootMargin = options?.rootMargin ?? '';
@@ -40,4 +43,8 @@ class MockIntersectionObserver {
     return [];
   }
 }
-(globalThis as typeof globalThis & { IntersectionObserver: typeof MockIntersectionObserver }).IntersectionObserver = MockIntersectionObserver;
+(
+  globalThis as typeof globalThis & {
+    IntersectionObserver: typeof MockIntersectionObserver;
+  }
+).IntersectionObserver = MockIntersectionObserver;

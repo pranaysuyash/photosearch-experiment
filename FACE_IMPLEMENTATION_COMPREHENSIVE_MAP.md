@@ -71,7 +71,7 @@ The PhotoSearch application has a **comprehensive, production-ready face recogni
 
 #### Face Detection Pipeline
 ```python
-def detect_faces(image_path: str, min_confidence: float = 0.75, 
+def detect_faces(image_path: str, min_confidence: float = 0.75,
                  min_face_area: int = 1000) -> List[Dict]
 ```
 - Reads image using OpenCV or PIL

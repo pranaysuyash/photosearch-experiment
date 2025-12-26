@@ -15,4 +15,3 @@ export async function pickDirectory(): Promise<string | null> {
     return null;
   }
 }
-

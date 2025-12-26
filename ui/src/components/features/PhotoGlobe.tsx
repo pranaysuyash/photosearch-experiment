@@ -159,30 +159,54 @@ function buildBuckets(features: RegionFeature[], cellSize: number) {
   return buckets;
 }
 
+type MinimalGeoJSONFeature = {
+  geometry?: { type?: string; coordinates?: unknown };
+  properties?: Record<string, unknown>;
+};
+type MinimalGeoJSON = { features?: unknown };
+
 function buildRegionFeatures(
-  geoJson: any,
+  geoJson: MinimalGeoJSON,
   level: RegionLevel
 ): RegionFeature[] {
-  const features = geoJson?.features;
+  const rawFeatures = geoJson?.features;
+  const features = Array.isArray(rawFeatures)
+    ? (rawFeatures as MinimalGeoJSONFeature[])
+    : [];
   if (!Array.isArray(features)) return [];
 
   const out: RegionFeature[] = [];
 
-  const getKey = (props: any) => {
+  const getKey = (props: Record<string, unknown>) => {
     if (level === 'countries') {
       const iso =
-        props?.ISO_A3 ||
-        props?.ADM0_A3 ||
-        props?.ADM0_A3_US ||
-        props?.ISO3 ||
-        props?.iso_a3;
+        (props['ISO_A3'] as string | undefined) ||
+        (props['ADM0_A3'] as string | undefined) ||
+        (props['ADM0_A3_US'] as string | undefined) ||
+        (props['ISO3'] as string | undefined) ||
+        (props['iso_a3'] as string | undefined);
       const name =
-        props?.NAME || props?.ADMIN || props?.name || iso || 'Unknown';
+        (props['NAME'] as string | undefined) ||
+        (props['ADMIN'] as string | undefined) ||
+        (props['name'] as string | undefined) ||
+        iso ||
+        'Unknown';
       return { key: String(iso || name), name: String(name) };
     }
-    const adm0 = props?.adm0_a3 || props?.ADM0_A3 || props?.ISO_A3 || '';
-    const name = props?.name || props?.name_en || props?.NAME || '';
-    const iso2 = props?.iso_3166_2 || props?.postal || '';
+    const adm0 =
+      (props['adm0_a3'] as string | undefined) ||
+      (props['ADM0_A3'] as string | undefined) ||
+      (props['ISO_A3'] as string | undefined) ||
+      '';
+    const name =
+      (props['name'] as string | undefined) ||
+      (props['name_en'] as string | undefined) ||
+      (props['NAME'] as string | undefined) ||
+      '';
+    const iso2 =
+      (props['iso_3166_2'] as string | undefined) ||
+      (props['postal'] as string | undefined) ||
+      '';
     const key = `${adm0}|${iso2 || name}`.trim();
     return {
       key: key || String(name || adm0 || 'admin1'),
@@ -190,7 +214,7 @@ function buildRegionFeatures(
     };
   };
 
-  const addPolygon = (props: any, poly: any) => {
+  const addPolygon = (props: Record<string, unknown>, poly: unknown) => {
     if (!Array.isArray(poly) || poly.length === 0) return;
     const outer = poly[0];
     if (!Array.isArray(outer) || outer.length < 3) return;
@@ -212,8 +236,8 @@ function buildRegionFeatures(
   for (const f of features) {
     const g = f?.geometry;
     const type = g?.type;
-    const coords = g?.coordinates;
-    const props = f?.properties || {};
+    const coords = g?.coordinates as unknown;
+    const props = (f?.properties || {}) as Record<string, unknown>;
     if (!type || !coords) continue;
     if (type === 'Polygon') addPolygon(props, coords);
     if (type === 'MultiPolygon' && Array.isArray(coords)) {
@@ -237,7 +261,7 @@ function buildRegionFeatures(
 }
 
 function buildRegionIndex(
-  geoJson: any,
+  geoJson: MinimalGeoJSON,
   level: RegionLevel
 ): RegionIndex | null {
   const features = buildRegionFeatures(geoJson, level);
@@ -380,7 +404,7 @@ function drawRegionOverlayAlphaTexture(args: {
 }
 
 function buildCountryBorderGeometry(
-  geoJson: any,
+  geoJson: MinimalGeoJSON,
   radius: number,
   quality: '110m' | '50m'
 ) {
@@ -401,7 +425,7 @@ function buildCountryBorderGeometry(
     return n > 1400 ? 4 : n > 700 ? 2 : 1;
   };
 
-  const addRing = (ring: any[]) => {
+  const addRing = (ring: unknown[]) => {
     if (!Array.isArray(ring) || ring.length < 2) return;
     const step = chooseStep(ring.length);
 
@@ -437,24 +461,26 @@ function buildCountryBorderGeometry(
     }
   };
 
-  const addPolygon = (coords: any[]) => {
+  const addPolygon = (coords: unknown[]) => {
     if (!Array.isArray(coords) || coords.length === 0) return;
     // Outer ring only for clarity/perf
-    addRing(coords[0]);
+    addRing(coords[0] as unknown[]);
   };
 
-  const features = geoJson?.features;
+  const features = Array.isArray(geoJson?.features)
+    ? (geoJson.features as MinimalGeoJSONFeature[])
+    : null;
   if (!Array.isArray(features)) return null;
 
   for (const f of features) {
     const g = f?.geometry;
     const type = g?.type;
-    const coords = g?.coordinates;
+    const coords = g?.coordinates as unknown;
     if (!type || !coords) continue;
-    if (type === 'Polygon') addPolygon(coords);
+    if (type === 'Polygon') addPolygon(coords as unknown[]);
     else if (type === 'MultiPolygon') {
       if (!Array.isArray(coords)) continue;
-      for (const poly of coords) addPolygon(poly);
+      for (const poly of coords) addPolygon(poly as unknown[]);
     }
   }
 
@@ -468,7 +494,7 @@ function buildCountryBorderGeometry(
 }
 
 function buildLineBorderGeometry(
-  geoJson: any,
+  geoJson: MinimalGeoJSON,
   radius: number,
   opts?: { step?: number; maxSegments?: number }
 ) {
@@ -485,11 +511,11 @@ function buildLineBorderGeometry(
     positions.push(v1.x, v1.y, v1.z, v2.x, v2.y, v2.z);
   };
 
-  const addLineString = (coords: any[]) => {
+  const addLineString = (coords: unknown[]) => {
     if (!Array.isArray(coords) || coords.length < 2) return;
     let prev: [number, number] | null = null;
     for (let i = 0; i < coords.length; i += step) {
-      const c = coords[i];
+      const c = coords[i] as unknown;
       if (!Array.isArray(c) || c.length < 2) continue;
       const curr: [number, number] = [Number(c[0]), Number(c[1])];
       if (!Number.isFinite(curr[0]) || !Number.isFinite(curr[1])) continue;
@@ -499,19 +525,21 @@ function buildLineBorderGeometry(
     }
   };
 
-  const features = geoJson?.features;
+  const features = Array.isArray(geoJson?.features)
+    ? (geoJson.features as MinimalGeoJSONFeature[])
+    : null;
   if (!Array.isArray(features)) return null;
 
   for (const f of features) {
     const g = f?.geometry;
     const type = g?.type;
-    const coords = g?.coordinates;
+    const coords = g?.coordinates as unknown;
     if (!type || !coords) continue;
-    if (type === 'LineString') addLineString(coords);
+    if (type === 'LineString') addLineString(coords as unknown[]);
     else if (type === 'MultiLineString') {
       if (!Array.isArray(coords)) continue;
       for (const line of coords) {
-        addLineString(line);
+        addLineString(line as unknown[]);
         if (positions.length / 6 > maxSegments) break;
       }
     }
@@ -827,21 +855,18 @@ function RegionFillOverlay({
 
   const index = useMemo(() => {
     if (!geoJson) return null;
-    const t0 = performance.now();
     const built = buildRegionIndex(geoJson, level);
     if (PERF_LOG && built) {
       console.debug('[PhotoGlobe] region index', {
         level,
         features: built.features.length,
         buckets: built.buckets.size,
-        ms: Math.round(performance.now() - t0),
       });
     }
     return built;
   }, [geoJson, level]);
 
   const { counts, total, maxCount } = useMemo(() => {
-    const t0 = performance.now();
     if (!index)
       return { counts: new Map<string, number>(), total: 0, maxCount: 0 };
     const result = computeRegionCounts(index, points, totalLocated);
@@ -851,16 +876,14 @@ function RegionFillOverlay({
         regionsWithPhotos: result.counts.size,
         totalLocated: result.total,
         maxCount: result.maxCount,
-        ms: Math.round(performance.now() - t0),
       });
     }
     return result;
-  }, [index, points, totalLocated]);
+  }, [index, points, totalLocated, level]);
 
   const texture = useMemo(() => {
     if (!index) return null;
     if (points.length === 0) return null;
-    const t0 = performance.now();
     // Texture resolution: 2k is crisp enough without being too heavy.
     const width = 2048;
     const height = 1024;
@@ -878,7 +901,6 @@ function RegionFillOverlay({
         level,
         regionsWithPhotos: counts.size,
         totalLocated: total,
-        ms: Math.round(performance.now() - t0),
       });
     }
     return tex;
@@ -1364,7 +1386,7 @@ export function PhotoGlobe({
           'globeHover',
           url || api.getImageUrl(hoveredPhoto.path, 96)
         );
-      } catch (e) {
+      } catch {
         if (!mounted) return;
         setOverrideAccentUrl(
           'globeHover',

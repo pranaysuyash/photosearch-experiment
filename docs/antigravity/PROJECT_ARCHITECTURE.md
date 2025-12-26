@@ -1,7 +1,7 @@
 # Photo Search Application - Architecture Document
 
-**Created by:** Antigravity (AI Assistant)  
-**Date:** 2025-12-06  
+**Created by:** Antigravity (AI Assistant)
+**Date:** 2025-12-06
 **Purpose:** Technical architecture and design decisions for the photo search application
 
 ---
@@ -398,5 +398,5 @@ Support multiple providers for flexibility and cost optimization:
 
 ---
 
-**Document Status:** Living Document - Updated as architecture evolves  
+**Document Status:** Living Document - Updated as architecture evolves
 **Next Review:** After completing Tier 1 modules

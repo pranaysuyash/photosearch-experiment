@@ -29,21 +29,15 @@ def test_video_tables():
         conn.row_factory = sqlite3.Row
 
         # Check video_assets table
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='video_assets'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='video_assets'")
         assert cursor.fetchone() is not None, "video_assets table should exist"
 
         # Check face_tracks table
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='face_tracks'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='face_tracks'")
         assert cursor.fetchone() is not None, "face_tracks table should exist"
 
         # Check track_detections table
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='track_detections'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='track_detections'")
         assert cursor.fetchone() is not None, "track_detections table should exist"
 
         # Check face_detections has new columns
@@ -156,15 +150,11 @@ def test_embedding_similarity():
 
         # Same vectors should have similarity of 1
         sim_same = service._embedding_similarity(emb1, emb2)
-        assert (
-            abs(sim_same - 1.0) < 0.001
-        ), f"Same vectors should have sim 1.0, got {sim_same}"
+        assert abs(sim_same - 1.0) < 0.001, f"Same vectors should have sim 1.0, got {sim_same}"
 
         # Orthogonal vectors should have similarity of 0
         sim_ortho = service._embedding_similarity(emb1, emb3)
-        assert (
-            abs(sim_ortho) < 0.001
-        ), f"Orthogonal vectors should have sim 0, got {sim_ortho}"
+        assert abs(sim_ortho) < 0.001, f"Orthogonal vectors should have sim 0, got {sim_ortho}"
 
         print("✅ Embedding similarity works correctly")
     finally:

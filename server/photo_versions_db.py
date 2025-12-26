@@ -103,10 +103,7 @@ class PhotoVersionsDB:
         )
 
         # Lightweight migrations for older databases.
-        cols = {
-            row[1]
-            for row in conn.execute("PRAGMA table_info(photo_versions)").fetchall()
-        }
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(photo_versions)").fetchall()}
         if "edit_instructions" not in cols:
             conn.execute("ALTER TABLE photo_versions ADD COLUMN edit_instructions TEXT")
             cols.add("edit_instructions")
@@ -125,18 +122,12 @@ class PhotoVersionsDB:
             )
 
         # Indexes must be created separately in SQLite.
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_photo_versions_original_path ON photo_versions(original_path)"
-        )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_photo_versions_version_path ON photo_versions(version_path)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_versions_original_path ON photo_versions(original_path)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_versions_version_path ON photo_versions(version_path)")
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_photo_versions_parent_version ON photo_versions(parent_version_id)"
         )
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_version_stacks_created_at ON version_stacks(created_at)"
-        )
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_version_stacks_created_at ON version_stacks(created_at)")
 
     def __init__(self, db_path: Path):
         """
@@ -180,12 +171,8 @@ class PhotoVersionsDB:
             ID of the created version record
         """
         version_id = str(uuid.uuid4())
-        effective_instructions = (
-            edit_instructions if edit_instructions is not None else editing_instructions
-        )
-        instructions_json = (
-            json.dumps(effective_instructions) if effective_instructions else None
-        )
+        effective_instructions = edit_instructions if edit_instructions is not None else editing_instructions
+        instructions_json = json.dumps(effective_instructions) if effective_instructions else None
 
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -267,11 +254,7 @@ class PhotoVersionsDB:
                 versions: List[Dict[str, Any]] = []
                 for row in rows:
                     d = dict(row)
-                    d["edit_instructions"] = (
-                        json.loads(d["edit_instructions"])
-                        if d.get("edit_instructions")
-                        else {}
-                    )
+                    d["edit_instructions"] = json.loads(d["edit_instructions"]) if d.get("edit_instructions") else {}
                     versions.append(d)
                 return versions
         except Exception:
@@ -302,9 +285,7 @@ class PhotoVersionsDB:
 
         return self.get_version_stack_for_photo(photo_path)
 
-    def get_version_stack_for_original(
-        self, original_path: str
-    ) -> Optional[VersionStack]:
+    def get_version_stack_for_original(self, original_path: str) -> Optional[VersionStack]:
         """Return the complete version stack for an original photo (as a VersionStack)."""
         try:
             with sqlite3.connect(self.db_path) as conn:
@@ -334,9 +315,7 @@ class PhotoVersionsDB:
                         version_type=row["version_type"],
                         version_name=row["version_name"],
                         version_description=row["version_description"],
-                        edit_instructions=json.loads(row["edit_instructions"])
-                        if row["edit_instructions"]
-                        else {},
+                        edit_instructions=json.loads(row["edit_instructions"]) if row["edit_instructions"] else {},
                         parent_version_id=row["parent_version_id"],
                         created_at=row["created_at"],
                         updated_at=row["updated_at"],
@@ -346,9 +325,7 @@ class PhotoVersionsDB:
 
                 # If the database has derived versions but no explicit original row,
                 # synthesize an implicit original entry for stack-oriented views.
-                if versions and not any(
-                    v.version_path == original_path for v in versions
-                ):
+                if versions and not any(v.version_path == original_path for v in versions):
                     versions.insert(
                         0,
                         PhotoVersion(
@@ -442,9 +419,7 @@ class PhotoVersionsDB:
                         version_type=row["version_type"],
                         version_name=row["version_name"],
                         version_description=row["version_description"],
-                        edit_instructions=json.loads(row["edit_instructions"])
-                        if row["edit_instructions"]
-                        else {},
+                        edit_instructions=json.loads(row["edit_instructions"]) if row["edit_instructions"] else {},
                         parent_version_id=row["parent_version_id"],
                         created_at=row["created_at"],
                         updated_at=row["updated_at"],
@@ -558,9 +533,7 @@ class PhotoVersionsDB:
                     if result and result["version_type"] == "original":
                         return False  # Can't delete the only version
 
-                cursor = conn.execute(
-                    "DELETE FROM photo_versions WHERE id = ?", (version_id,)
-                )
+                cursor = conn.execute("DELETE FROM photo_versions WHERE id = ?", (version_id,))
 
                 if cursor.rowcount > 0:
                     # Update version count
@@ -630,9 +603,7 @@ class PhotoVersionsDB:
                             version_type=row["version_type"],
                             version_name=row["version_name"],
                             version_description=row["version_description"],
-                            edit_instructions=json.loads(row["edit_instructions"])
-                            if row["edit_instructions"]
-                            else {},
+                            edit_instructions=json.loads(row["edit_instructions"]) if row["edit_instructions"] else {},
                             parent_version_id=row["parent_version_id"],
                             created_at=row["created_at"],
                             updated_at=row["updated_at"],
@@ -665,23 +636,19 @@ class PhotoVersionsDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Total number of versions
-                total_versions = conn.execute(
-                    "SELECT COUNT(*) FROM photo_versions"
-                ).fetchone()[0]
+                total_versions = conn.execute("SELECT COUNT(*) FROM photo_versions").fetchone()[0]
 
                 # Total number of version stacks (original photos with versions)
-                total_stacks = conn.execute(
-                    "SELECT COUNT(*) FROM version_stacks"
-                ).fetchone()[0]
+                total_stacks = conn.execute("SELECT COUNT(*) FROM version_stacks").fetchone()[0]
 
                 # Count of originals vs edits
                 original_count = conn.execute(
                     "SELECT COUNT(*) FROM photo_versions WHERE version_type = 'original'"
                 ).fetchone()[0]
 
-                edit_count = conn.execute(
-                    "SELECT COUNT(*) FROM photo_versions WHERE version_type = 'edit'"
-                ).fetchone()[0]
+                edit_count = conn.execute("SELECT COUNT(*) FROM photo_versions WHERE version_type = 'edit'").fetchone()[
+                    0
+                ]
 
                 variant_count = conn.execute(
                     "SELECT COUNT(*) FROM photo_versions WHERE version_type = 'variant'"
@@ -693,9 +660,7 @@ class PhotoVersionsDB:
                     "original_count": original_count,
                     "edit_count": edit_count,
                     "variant_count": variant_count,
-                    "average_versions_per_stack": total_versions / total_stacks
-                    if total_stacks > 0
-                    else 0,
+                    "average_versions_per_stack": total_versions / total_stacks if total_stacks > 0 else 0,
                 }
         except Exception:
             return {
@@ -760,9 +725,7 @@ class PhotoVersionsDB:
                 )
 
                 # Remove the old stack
-                conn.execute(
-                    "DELETE FROM version_stacks WHERE original_path = ?", (stack2_path,)
-                )
+                conn.execute("DELETE FROM version_stacks WHERE original_path = ?", (stack2_path,))
 
                 return True
         except Exception:

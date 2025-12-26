@@ -4,11 +4,11 @@
  * Provides notifications with optional undo actions for bulk operations.
  */
 import React, { useEffect, useState } from 'react';
-import { 
-  X, 
-  RotateCcw, 
-  AlertCircle, 
-  CheckCircle, 
+import {
+  X,
+  RotateCcw,
+  AlertCircle,
+  CheckCircle,
   Info,
   Trash2,
   FolderPlus,
@@ -44,14 +44,14 @@ const toastColors = {
   undo: 'text-blue-400'
 };
 
-export function Toast({ 
-  id, 
-  type, 
-  message, 
-  actionLabel, 
-  onAction, 
-  onClose, 
-  duration = 5000 
+export function Toast({
+  id,
+  type,
+  message,
+  actionLabel,
+  onAction,
+  onClose,
+  duration = 5000
 }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
   const Icon = toastIcons[type];
@@ -86,10 +86,10 @@ export function Toast({
       ${glass.surfaceStrong} border border-white/10 rounded-xl p-4 mb-3 shadow-lg
       transform transition-all duration-300
       translate-y-0 opacity-100
-      ${type === 'error' ? 'bg-red-500/10' : 
-        type === 'success' ? 'bg-green-500/10' : 
-        type === 'warning' ? 'bg-yellow-500/10' : 
-        type === 'info' ? 'bg-blue-500/10' : 
+      ${type === 'error' ? 'bg-red-500/10' :
+        type === 'success' ? 'bg-green-500/10' :
+        type === 'warning' ? 'bg-yellow-500/10' :
+        type === 'info' ? 'bg-blue-500/10' :
         'bg-purple-500/10'}
     `}>
       <div className="flex items-start gap-3">

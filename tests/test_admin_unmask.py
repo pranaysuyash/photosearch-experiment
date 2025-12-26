@@ -24,6 +24,7 @@ def test_admin_unmask(monkeypatch):
 
         # compute hash (use same salt default 'dev_salt' unless overridden)
         from server.security_utils import hash_for_logs
+
         h = hash_for_logs(str(p))
 
         # Create admin JWT

@@ -54,7 +54,6 @@ async def get_album(album_id: str, include_photos: bool = True, state: AppState 
     result: dict[str, Any] = {"album": album}
 
     if include_photos:
-
         photo_paths = albums_db.get_album_photos(album_id)
         # Get metadata for photos
         photos = []

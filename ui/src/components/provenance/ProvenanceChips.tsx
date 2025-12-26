@@ -4,13 +4,13 @@
  * Displays source and availability status for photos (Local/Cloud/Offline).
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  HardDrive, 
-  Cloud, 
-  Wifi, 
-  WifiOff, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  HardDrive,
+  Cloud,
+  Wifi,
+  WifiOff,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   Globe,
   Lock,
@@ -47,12 +47,12 @@ interface ProvenanceChipsProps {
   showSyncStatus?: boolean;
 }
 
-export function ProvenanceChips({ 
-  photoPath, 
-  size = 'md', 
-  showSource = true, 
-  showAvailability = true, 
-  showSyncStatus = true 
+export function ProvenanceChips({
+  photoPath,
+  size = 'md',
+  showSource = true,
+  showAvailability = true,
+  showSyncStatus = true
 }: ProvenanceChipsProps) {
   const [provenance, setProvenance] = useState<ProvenanceData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,41 +66,41 @@ export function ProvenanceChips({
     try {
       setLoading(true);
       setError(null);
-      
+
       // In a real implementation, this would fetch from the API
       // For now, derive from photo path
-      const isCloudPath = photoPath.startsWith('http://') || 
-                         photoPath.startsWith('https://') || 
+      const isCloudPath = photoPath.startsWith('http://') ||
+                         photoPath.startsWith('https://') ||
                          photoPath.startsWith('s3://') ||
                          photoPath.includes('cloud') ||
                          photoPath.includes('drive');
-      
-      const isNetworkPath = photoPath.startsWith('//') || 
+
+      const isNetworkPath = photoPath.startsWith('//') ||
                            photoPath.includes('network') ||
                            photoPath.includes('nas');
-      
-      const sourceType: 'local' | 'cloud' | 'network' | 'external' = isCloudPath 
+
+      const sourceType: 'local' | 'cloud' | 'network' | 'external' = isCloudPath
         ? 'cloud' : isNetworkPath ? 'network' : 'local';
-      
-      const status: 'online' | 'offline' | 'syncing' | 'degraded' = 
+
+      const status: 'online' | 'offline' | 'syncing' | 'degraded' =
         sourceType === 'cloud' ? 'online' : 'online';
-      
-      const availability: 'local' | 'cached' | 'cloud_only' | 'offline' = isCloudPath 
+
+      const availability: 'local' | 'cached' | 'cloud_only' | 'offline' = isCloudPath
         ? 'cloud_only' : 'local';
-      
-      const syncStatus: 'up_to_date' | 'syncing' | 'out_of_sync' | 'error' = 
+
+      const syncStatus: 'up_to_date' | 'syncing' | 'out_of_sync' | 'error' =
         isCloudPath ? 'up_to_date' : 'up_to_date';
-      
+
       const mockSource: SourceInfo = {
         id: sourceType,
-        name: sourceType === 'cloud' ? 'Cloud Storage' : 
+        name: sourceType === 'cloud' ? 'Cloud Storage' :
               sourceType === 'network' ? 'Network Drive' : 'Local Device',
         type: sourceType,
         status,
         is_available: true,
         last_sync: new Date().toISOString()
       };
-      
+
       const mockProvenance: ProvenanceData = {
         source: mockSource,
         availability,
@@ -108,7 +108,7 @@ export function ProvenanceChips({
         last_accessed: new Date().toISOString(),
         file_size: 2457600 // 2.4MB
       };
-      
+
       setProvenance(mockProvenance);
     } catch (err) {
       console.error('Failed to load provenance data:', err);
@@ -137,16 +137,16 @@ export function ProvenanceChips({
   }
 
   const { source, availability, sync_status } = provenance;
-  
+
   const sizeClasses = {
     sm: 'text-xs px-1.5 py-0.5 gap-1',
     md: 'text-sm px-2 py-1 gap-1.5',
     lg: 'text-base px-2.5 py-1.5 gap-2'
   };
-  
+
   const sizePadding = {
     sm: 'gap-1',
-    md: 'gap-1.5', 
+    md: 'gap-1.5',
     lg: 'gap-2'
   };
 
@@ -210,8 +210,8 @@ export function ProvenanceChips({
 
       {showSyncStatus && (
         <div className={`${glass.surfaceStrong} rounded-full px-2 py-1 flex items-center gap-1.5 ${
-          sync_status === 'error' ? 'text-destructive' : 
-          sync_status === 'out_of_sync' ? 'text-warning' : 
+          sync_status === 'error' ? 'text-destructive' :
+          sync_status === 'out_of_sync' ? 'text-warning' :
           sync_status === 'syncing' ? 'text-primary' : 'text-success'
         }`}>
           {sync_status === 'syncing' && (

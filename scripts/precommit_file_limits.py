@@ -4,6 +4,7 @@ Pre-commit hook: Enforce file size/line limits.
 
 Prevents another monolithic main.py.
 """
+
 from __future__ import annotations
 
 import sys
@@ -52,7 +53,7 @@ def main(argv: list[str]) -> int:
     for f in files:
         if not f.exists():
             continue
-        
+
         limit = applicable_limit(f)
         if limit is None:
             continue

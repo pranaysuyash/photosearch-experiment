@@ -9,7 +9,7 @@
 
 A **media management app** supporting both **local and cloud** storage with AI-powered semantic search and unique 3D globe visualization.
 
-**Target Users**: Photographers, power users, self-hosters, privacy-conscious users  
+**Target Users**: Photographers, power users, self-hosters, privacy-conscious users
 **Deployment**: Web app (React + FastAPI), future desktop (Tauri), future mobile (PWA/Native)
 
 ---

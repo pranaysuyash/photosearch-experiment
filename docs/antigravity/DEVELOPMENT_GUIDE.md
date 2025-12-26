@@ -1,7 +1,7 @@
 # Development Guide
 
-**Created by:** Antigravity (AI Assistant)  
-**Date:** 2025-12-06  
+**Created by:** Antigravity (AI Assistant)
+**Date:** 2025-12-06
 **Purpose:** Guide for development workflow, coding standards, and best practices
 
 ---
@@ -57,7 +57,7 @@ Can be used standalone or imported by other modules.
 
 Usage:
     python module_name.py [arguments]
-    
+
     Or import:
     from module_name import function_name
 
@@ -89,13 +89,13 @@ class ClassName:
 def function_name(param: type) -> return_type:
     """
     Function docstring.
-    
+
     Args:
         param: Description of parameter
-        
+
     Returns:
         Description of return value
-        
+
     Raises:
         ExceptionType: When this exception is raised
     """
@@ -137,21 +137,21 @@ def search_similar(
 ) -> list[dict]:
     """
     Search for similar images using text query.
-    
+
     Args:
         query: Text description to search for
         top_k: Number of results to return (default: 10)
-        
+
     Returns:
         List of dictionaries containing:
             - path: Image file path
             - score: Similarity score (0-1)
             - metadata: Additional image metadata
-            
+
     Raises:
         ValueError: If query is empty
         RuntimeError: If search index is not initialized
-        
+
     Example:
         >>> results = search_similar("sunset beach", top_k=5)
         >>> print(results[0]['path'])
@@ -179,13 +179,13 @@ logger = logging.getLogger(__name__)
 def risky_operation(param: str) -> dict:
     """
     Perform operation that might fail.
-    
+
     Args:
         param: Input parameter
-        
+
     Returns:
         Result dictionary
-        
+
     Raises:
         ValueError: If param is invalid
         RuntimeError: If operation fails
@@ -194,13 +194,13 @@ def risky_operation(param: str) -> dict:
     if not param:
         logger.error("Parameter cannot be empty")
         raise ValueError("Parameter cannot be empty")
-    
+
     try:
         # Attempt operation
         result = perform_operation(param)
         logger.info(f"Operation successful for {param}")
         return result
-        
+
     except ExternalAPIError as e:
         # Handle specific errors
         logger.error(f"API error: {e}")
@@ -212,7 +212,7 @@ def risky_operation(param: str) -> dict:
         except Exception as fallback_error:
             logger.error(f"Fallback also failed: {fallback_error}")
             raise RuntimeError(f"Operation failed: {e}") from e
-            
+
     except Exception as e:
         # Catch-all for unexpected errors
         logger.exception(f"Unexpected error: {e}")
@@ -231,7 +231,7 @@ from pathlib import Path
 def setup_logging(log_file: str = "app.log", level: int = logging.INFO):
     """
     Configure logging for the application.
-    
+
     Args:
         log_file: Path to log file
         level: Logging level (default: INFO)
@@ -239,7 +239,7 @@ def setup_logging(log_file: str = "app.log", level: int = logging.INFO):
     # Create logs directory if needed
     log_path = Path(log_file)
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Configure logging
     logging.basicConfig(
         level=level,
@@ -280,13 +280,13 @@ Each module should have a `main()` function for CLI testing:
 def main():
     """CLI interface for testing."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Module description")
     parser.add_argument("input", help="Input file or parameter")
     parser.add_argument("--option", default="default", help="Optional parameter")
-    
+
     args = parser.parse_args()
-    
+
     # Test the module
     result = main_function(args.input, option=args.option)
     print(f"Result: {result}")
@@ -482,7 +482,7 @@ After each task, update README with:
 1. **Task Summary**
    - What was implemented
    - What file was created/modified
-   
+
 2. **Usage Example**
    - How to use the module
    - CLI commands
@@ -556,16 +556,16 @@ def load_image(path: str) -> Image:
     # Validate path
     if not path:
         raise ValueError("Path cannot be empty")
-    
+
     # Check file exists
     if not Path(path).exists():
         raise FileNotFoundError(f"Image not found: {path}")
-    
+
     # Validate extension
     ext = Path(path).suffix.lower()
     if ext not in SUPPORTED_FORMATS:
         raise ValueError(f"Unsupported format: {ext}")
-    
+
     # Load safely
     try:
         return Image.open(path)
@@ -588,12 +588,12 @@ def load_config():
     # Load .env file
     env_path = Path(__file__).parent / ".env"
     load_dotenv(env_path)
-    
+
     # Get required keys
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY not found in environment")
-    
+
     return {
         "api_key": api_key,
         "max_size": int(os.getenv("MAX_IMAGE_SIZE", "1024"))
@@ -607,7 +607,7 @@ from tqdm import tqdm
 def process_batch(image_paths: list[str]) -> list[dict]:
     """Process multiple images with progress bar."""
     results = []
-    
+
     for path in tqdm(image_paths, desc="Processing images"):
         try:
             result = process_image(path)
@@ -615,7 +615,7 @@ def process_batch(image_paths: list[str]) -> list[dict]:
         except Exception as e:
             logger.error(f"Failed to process {path}: {e}")
             continue
-    
+
     return results
 ```
 
@@ -668,5 +668,5 @@ Before marking a task as complete:
 
 ---
 
-**Document Status:** Living Document - Updated as development practices evolve  
+**Document Status:** Living Document - Updated as development practices evolve
 **Next Review:** After Task 3 completion

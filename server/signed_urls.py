@@ -3,7 +3,6 @@ import hashlib
 import hmac
 import json
 import time
-from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 from server.config import settings
@@ -22,7 +21,12 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode((data + pad).encode("utf-8"))
 
 
-def issue_token(path: str, uid: Optional[str] = None, ttl: Optional[int] = None, scope: str = "thumbnail") -> str:
+def issue_token(
+    path: str,
+    uid: Optional[str] = None,
+    ttl: Optional[int] = None,
+    scope: str = "thumbnail",
+) -> str:
     """
     Issue a signed token for accessing a file path via endpoints like `/image/thumbnail?token=...`.
 
@@ -95,4 +99,3 @@ def verify_token(token: str, expected_scope: Optional[str] = None) -> Dict[str, 
         raise TokenError("missing path")
 
     return payload
-

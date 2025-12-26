@@ -50,14 +50,14 @@ interface StoryNarrative {
   timeline_entries: TimelineEntry[];
 }
 
-export function StoryCreator({ 
-  isOpen, 
-  onClose, 
+export function StoryCreator({
+  isOpen,
+  onClose,
   photoPaths,
-  onStoryCreated 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+  onStoryCreated
+}: {
+  isOpen: boolean;
+  onClose: () => void;
   photoPaths: string[];
   onStoryCreated?: (storyId: string) => void;
 }) {
@@ -99,11 +99,11 @@ export function StoryCreator({
       }
 
       setStoryId(storyId);
-      
+
       if (onStoryCreated) {
         onStoryCreated(storyId);
       }
-      
+
       // Close the dialog after a short delay to show success
       setTimeout(() => {
         resetForm();
@@ -133,11 +133,11 @@ export function StoryCreator({
 
   return (
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm" 
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}>
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export function StoryCreator({
             <X size={20} />
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {success ? (
             <div className="text-center py-8">
@@ -192,7 +192,7 @@ export function StoryCreator({
                   className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Description
@@ -205,7 +205,7 @@ export function StoryCreator({
                   className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
                   Privacy Level
@@ -235,7 +235,7 @@ export function StoryCreator({
                   ))}
                 </div>
               </div>
-              
+
               {/* Preview of photos to be included */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -247,7 +247,7 @@ export function StoryCreator({
                     {photoPaths.length} photos
                   </span>
                 </div>
-                
+
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                   {photoPaths.slice(0, 12).map((path, index) => (
                     <div key={index} className="relative group">
@@ -265,7 +265,7 @@ export function StoryCreator({
                   ))}
                 </div>
               </div>
-              
+
               {error && (
                 <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
                   {error}
@@ -274,7 +274,7 @@ export function StoryCreator({
             </div>
           )}
         </div>
-        
+
         <div className="flex justify-end gap-3 p-6 border-t border-white/10">
           <button
             onClick={handleCancel}
@@ -320,11 +320,11 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Get story details
       const storyData = await api.getStory(storyId);
       setStory(storyData);
-      
+
       // Get story timeline
       const timelineData = await api.getStoryTimeline(storyId);
       setTimeline(timelineData.timeline || []);
@@ -339,12 +339,12 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
   const updateCaption = async (entryId: string, caption: string) => {
     try {
       await api.updateTimelineEntry(entryId, { caption });
-      
+
       // Update local state
-      setTimeline(timeline.map(entry => 
+      setTimeline(timeline.map(entry =>
         entry.id === entryId ? { ...entry, caption } : entry
       ));
-      
+
       setEditingCaption(null);
       setEditingEntryId(null);
     } catch (err) {
@@ -355,10 +355,10 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
 
   const removePhotoFromTimeline = async (entryId: string) => {
     if (!window.confirm('Are you sure you want to remove this photo from the story?')) return;
-    
+
     try {
       await api.removePhotoFromTimeline(entryId);
-      
+
       // Update local state
       setTimeline(timeline.filter(entry => entry.id !== entryId));
     } catch (err) {
@@ -399,8 +399,8 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
             </div>
             <div className="flex items-center gap-2">
               <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                story.is_published 
-                  ? 'bg-green-500/20 text-green-400' 
+                story.is_published
+                  ? 'bg-green-500/20 text-green-400'
                   : 'bg-yellow-500/20 text-yellow-400'
               }`}>
                 {story.is_published ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -408,7 +408,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">
               <Calendar size={14} />
@@ -437,7 +437,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
             {timeline.length} {timeline.length === 1 ? 'photo' : 'photos'}
           </div>
         </div>
-        
+
         {timeline.length === 0 ? (
           <div className={`${glass.surface} rounded-xl border border-white/10 p-8 text-center`}>
             <Image size={48} className="mx-auto text-muted-foreground mb-4" />
@@ -449,8 +449,8 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
         ) : (
           <div className="space-y-4">
             {timeline.map((entry, index) => (
-              <div 
-                key={entry.id} 
+              <div
+                key={entry.id}
                 className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden`}
               >
                 <div className="flex">
@@ -462,7 +462,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                       loading="lazy"
                     />
                   </div>
-                  
+
                   <div className="flex-1 p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
@@ -482,7 +482,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                             </div>
                           )}
                         </div>
-                        
+
                         {editingCaption === entry.id ? (
                           <div className="flex gap-2">
                             <input
@@ -510,7 +510,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                             </button>
                           </div>
                         ) : (
-                          <div 
+                          <div
                             className="text-sm text-foreground min-h-6 cursor-text"
                             onClick={() => {
                               setEditingCaption(entry.id);
@@ -526,7 +526,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-1 ml-4">
                         <button
                           onClick={() => {
@@ -539,7 +539,7 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                         >
                           <Edit3 size={14} />
                         </button>
-                        
+
                         <button
                           onClick={() => removePhotoFromTimeline(entry.id)}
                           className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"

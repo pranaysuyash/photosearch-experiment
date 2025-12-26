@@ -84,15 +84,9 @@ def migration_v1_base_schema(conn: sqlite3.Connection):
     """)
 
     # Base indexes
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_face_detections_photo ON face_detections(photo_path)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_photo_person_photo ON photo_person_associations(photo_path)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_photo_person_cluster ON photo_person_associations(cluster_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_photo ON face_detections(photo_path)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_photo ON photo_person_associations(photo_path)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_cluster ON photo_person_associations(cluster_id)")
 
 
 def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
@@ -107,10 +101,7 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
     """
 
     # === Add columns to photo_person_associations ===
-    existing_cols = {
-        r[1]
-        for r in conn.execute("PRAGMA table_info(photo_person_associations)").fetchall()
-    }
+    existing_cols = {r[1] for r in conn.execute("PRAGMA table_info(photo_person_associations)").fetchall()}
 
     if "assignment_state" not in existing_cols:
         conn.execute("""
@@ -120,9 +111,7 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
         logger.info("Added assignment_state column to photo_person_associations")
 
     # === Add columns to face_clusters ===
-    cluster_cols = {
-        r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
-    }
+    cluster_cols = {r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()}
 
     if "hidden" not in cluster_cols:
         conn.execute("ALTER TABLE face_clusters ADD COLUMN hidden INTEGER DEFAULT 0")
@@ -133,15 +122,11 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
         logger.info("Added prototype_embedding column to face_clusters")
 
     if "prototype_updated_at" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN prototype_updated_at TIMESTAMP"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN prototype_updated_at TIMESTAMP")
         logger.info("Added prototype_updated_at column to face_clusters")
 
     if "prototype_count" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN prototype_count INTEGER DEFAULT 0"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN prototype_count INTEGER DEFAULT 0")
         logger.info("Added prototype_count column to face_clusters")
 
     # === Create face_rejections table ===
@@ -156,12 +141,8 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
             FOREIGN KEY (cluster_id) REFERENCES face_clusters(cluster_id)
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_rejections_detection ON face_rejections(detection_id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_rejections_cluster ON face_rejections(cluster_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rejections_detection ON face_rejections(detection_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_rejections_cluster ON face_rejections(cluster_id)")
     logger.info("Created face_rejections table")
 
     # === Create person_operations_log table ===
@@ -176,12 +157,8 @@ def migration_v2_reversibility_and_trust(conn: sqlite3.Connection):
             undone_at TIMESTAMP
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operations_performed ON person_operations_log(performed_at)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_operations_undone ON person_operations_log(undone)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_operations_performed ON person_operations_log(performed_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_operations_undone ON person_operations_log(undone)")
     logger.info("Created person_operations_log table")
 
 
@@ -209,29 +186,19 @@ def migration_v3_review_queue_and_representative(conn: sqlite3.Connection):
             FOREIGN KEY (candidate_cluster_id) REFERENCES face_clusters(cluster_id)
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_review_queue_status ON face_review_queue(status)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_review_queue_detection ON face_review_queue(detection_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_review_queue_status ON face_review_queue(status)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_review_queue_detection ON face_review_queue(detection_id)")
     logger.info("Created face_review_queue table")
 
     # === Add representative_detection_id to face_clusters ===
-    cluster_cols = {
-        r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
-    }
+    cluster_cols = {r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()}
 
     if "representative_detection_id" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN representative_detection_id TEXT"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN representative_detection_id TEXT")
         logger.info("Added representative_detection_id column to face_clusters")
 
     if "representative_updated_at" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN representative_updated_at TIMESTAMP"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN representative_updated_at TIMESTAMP")
         logger.info("Added representative_updated_at column to face_clusters")
 
 
@@ -247,26 +214,18 @@ def migration_v4_privacy_controls(conn: sqlite3.Connection):
     """
 
     # === Add columns to face_clusters for per-person indexing toggle ===
-    cluster_cols = {
-        r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()
-    }
+    cluster_cols = {r[1] for r in conn.execute("PRAGMA table_info(face_clusters)").fetchall()}
 
     if "indexing_disabled" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled INTEGER DEFAULT 0"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN indexing_disabled INTEGER DEFAULT 0")
         logger.info("Added indexing_disabled column to face_clusters")
 
     if "indexing_disabled_at" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled_at TIMESTAMP"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN indexing_disabled_at TIMESTAMP")
         logger.info("Added indexing_disabled_at column to face_clusters")
 
     if "indexing_disabled_reason" not in cluster_cols:
-        conn.execute(
-            "ALTER TABLE face_clusters ADD COLUMN indexing_disabled_reason TEXT"
-        )
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN indexing_disabled_reason TEXT")
         logger.info("Added indexing_disabled_reason column to face_clusters")
 
     # === Create app_settings table for global settings ===
@@ -301,9 +260,7 @@ def migration_v5_video_support(conn: sqlite3.Connection):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_video_assets_path ON video_assets(file_path)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_video_assets_path ON video_assets(file_path)")
     logger.info("Created video_assets table")
 
     # Face tracks table (tracklets within a video)
@@ -325,12 +282,8 @@ def migration_v5_video_support(conn: sqlite3.Connection):
             FOREIGN KEY (cluster_id) REFERENCES face_clusters(cluster_id)
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_face_tracks_video ON face_tracks(video_id)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_face_tracks_cluster ON face_tracks(cluster_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_tracks_video ON face_tracks(video_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_tracks_cluster ON face_tracks(cluster_id)")
     logger.info("Created face_tracks table")
 
     # Track detections (link detections to tracks)
@@ -345,9 +298,7 @@ def migration_v5_video_support(conn: sqlite3.Connection):
             FOREIGN KEY (track_id) REFERENCES face_tracks(track_id)
         )
     """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_track_detections_track ON track_detections(track_id)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_track_detections_track ON track_detections(track_id)")
     logger.info("Created track_detections table")
 
     # Extend face_detections with video-specific columns
@@ -355,9 +306,7 @@ def migration_v5_video_support(conn: sqlite3.Connection):
     columns = {row[1] for row in cursor.fetchall()}
 
     if "source_type" not in columns:
-        conn.execute(
-            "ALTER TABLE face_detections ADD COLUMN source_type TEXT DEFAULT 'photo'"
-        )
+        conn.execute("ALTER TABLE face_detections ADD COLUMN source_type TEXT DEFAULT 'photo'")
         logger.info("Added source_type column to face_detections")
 
     if "video_id" not in columns:
@@ -373,9 +322,7 @@ def migration_v5_video_support(conn: sqlite3.Connection):
         logger.info("Added timestamp_ms column to face_detections")
 
     if "is_best_frame" not in columns:
-        conn.execute(
-            "ALTER TABLE face_detections ADD COLUMN is_best_frame INTEGER DEFAULT 0"
-        )
+        conn.execute("ALTER TABLE face_detections ADD COLUMN is_best_frame INTEGER DEFAULT 0")
         logger.info("Added is_best_frame column to face_detections")
 
 
@@ -396,15 +343,9 @@ def migration_v6_performance_indexes(conn: sqlite3.Connection):
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_photo_person_assignment_state ON photo_person_associations(assignment_state)"
     )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)"
-    )
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)"
-    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)")
     logger.info("Added performance indexes for face clustering")
 
 
@@ -454,14 +395,10 @@ def run_migrations(db_path: Path, target_version: Optional[int] = None) -> int:
         current_version = get_schema_version(conn)
 
         if current_version >= target_version:
-            logger.info(
-                f"Schema already at version {current_version}, no migrations needed"
-            )
+            logger.info(f"Schema already at version {current_version}, no migrations needed")
             return 0
 
-        logger.info(
-            f"Migrating schema from version {current_version} to {target_version}"
-        )
+        logger.info(f"Migrating schema from version {current_version} to {target_version}")
 
         for version in range(current_version + 1, target_version + 1):
             if version not in MIGRATIONS:
@@ -488,9 +425,7 @@ def run_migrations(db_path: Path, target_version: Optional[int] = None) -> int:
 
         conn.commit()
 
-    logger.info(
-        f"Applied {migrations_applied} migration(s), now at version {target_version}"
-    )
+    logger.info(f"Applied {migrations_applied} migration(s), now at version {target_version}")
     return migrations_applied
 
 

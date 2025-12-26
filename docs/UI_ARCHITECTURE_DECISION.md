@@ -1,6 +1,6 @@
 # UI Architecture Discussion & Decision
 
-**Date:** 2025-12-07  
+**Date:** 2025-12-07
 **Topic:** Desktop & Web UI Strategy
 
 ---
@@ -204,22 +204,22 @@ Possible to have **both**:
 
 ## Questions Answered
 
-**Q: Should we build UI before AI features?**  
+**Q: Should we build UI before AI features?**
 A: Yes. Visual verification is essential.
 
-**Q: Electron?**  
+**Q: Electron?**
 A: No. Too heavy.
 
-**Q: Tauri vs Swift?**  
+**Q: Tauri vs Swift?**
 A: Start with Tauri (faster), consider Swift later (premium).
 
-**Q: Will Tauri be as beautiful as React/Swift apps?**  
+**Q: Will Tauri be as beautiful as React/Swift apps?**
 A: Yes. Tauri *uses* React for UI. We control every pixel.
 
-**Q: One codebase or separate?**  
+**Q: One codebase or separate?**
 A: One codebase (Tauri + React) for Desktop + Web.
 
 ---
 
-**Status:** ✅ Decision Made - Proceed with Tauri + React  
+**Status:** ✅ Decision Made - Proceed with Tauri + React
 **Next:** Begin Task 6 implementation

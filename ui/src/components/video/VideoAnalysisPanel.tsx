@@ -91,7 +91,7 @@ interface VideoAnalysisPanelProps {
 }
 
 export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onClose }) => {
-  
+
   // State management
   const [selectedVideoPath, setSelectedVideoPath] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<VideoAnalysisResult | null>(null);
@@ -128,7 +128,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
     setIsAnalyzing(true);
     setError(null);
-    
+
     try {
       // Start analysis
       await api.post('/video/analyze', {
@@ -139,7 +139,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
       // Poll for results (in a real app, you might use WebSockets)
       let attempts = 0;
       const maxAttempts = 30; // 30 seconds timeout
-      
+
       const pollResults = async (): Promise<void> => {
         try {
           const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
@@ -159,7 +159,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
       // Start polling after a short delay
       setTimeout(pollResults, 2000);
-      
+
     } catch (error: any) {
       setError(error.response?.data?.detail || 'Failed to start video analysis');
       setIsAnalyzing(false);
@@ -214,7 +214,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    
+
     if (hours > 0) {
       return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
@@ -225,12 +225,12 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
     const units = ['B', 'KB', 'MB', 'GB'];
     let size = bytes;
     let unitIndex = 0;
-    
+
     while (size >= 1024 && unitIndex < units.length - 1) {
       size /= 1024;
       unitIndex++;
     }
-    
+
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
@@ -242,7 +242,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
           <Video className="w-5 h-5" />
           Video Analysis
         </h3>
-        
+
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Video Path</label>
@@ -255,7 +255,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               disabled={isAnalyzing}
             />
           </div>
-          
+
           <div className="flex gap-3">
             <button
               onClick={() => analyzeVideo(selectedVideoPath, false)}
@@ -274,7 +274,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 </>
               )}
             </button>
-            
+
             <button
               onClick={() => analyzeVideo(selectedVideoPath, true)}
               disabled={isAnalyzing || !selectedVideoPath.trim()}
@@ -305,7 +305,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 Delete Analysis
               </button>
             </div>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="text-sm text-gray-400">Duration</div>
@@ -313,21 +313,21 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   {formatDuration(analysisResult.metadata.duration)}
                 </div>
               </div>
-              
+
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="text-sm text-gray-400">Resolution</div>
                 <div className="text-lg font-semibold">
                   {analysisResult.metadata.width}×{analysisResult.metadata.height}
                 </div>
               </div>
-              
+
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="text-sm text-gray-400">Frame Rate</div>
                 <div className="text-lg font-semibold">
                   {analysisResult.metadata.fps.toFixed(1)} fps
                 </div>
               </div>
-              
+
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="text-sm text-gray-400">File Size</div>
                 <div className="text-lg font-semibold">
@@ -343,7 +343,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               <Target className="w-5 h-5" />
               Analysis Summary
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="flex items-center gap-3">
@@ -354,7 +354,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   </div>
                 </div>
               </div>
-              
+
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="flex items-center gap-3">
                   <Scissors className="w-8 h-8 text-green-400" />
@@ -364,7 +364,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   </div>
                 </div>
               </div>
-              
+
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="flex items-center gap-3">
                   <Type className="w-8 h-8 text-purple-400" />
@@ -384,7 +384,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 <Film className="w-5 h-5" />
                 Detected Scenes
               </h3>
-              
+
               <div className="space-y-2">
                 {analysisResult.scenes.map((scene) => (
                   <div
@@ -426,7 +426,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   </span>
                 )}
               </h3>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {analysisResult.keyframes
                   .filter(kf => selectedScene === null || kf.scene_id === selectedScene)
@@ -485,7 +485,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   </button>
                 </div>
               </div>
-              
+
               {showOCRResults && (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {analysisResult.ocr_results
@@ -522,7 +522,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
           <Search className="w-5 h-5" />
           Search Video Content
         </h3>
-        
+
         <div className="flex gap-3">
           <input
             type="text"
@@ -548,7 +548,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
           <h3 className="text-lg font-semibold mb-4">
             Search Results ({searchResults.length})
           </h3>
-          
+
           <div className="space-y-3">
             {searchResults.map((result, index) => (
               <div key={index} className={`${glass.card} p-4 rounded-md`}>
@@ -562,8 +562,8 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                       "{result.matched_text}"
                     </div>
                     <div className="text-xs text-gray-400 mt-2">
-                      At {formatDuration(result.timestamp)} • 
-                      Confidence: {(result.confidence * 100).toFixed(1)}% • 
+                      At {formatDuration(result.timestamp)} •
+                      Confidence: {(result.confidence * 100).toFixed(1)}% •
                       {result.resolution}
                     </div>
                   </div>
@@ -593,7 +593,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             <BarChart3 className="w-5 h-5" />
             Video Analysis Statistics
           </h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="flex items-center gap-3">
@@ -604,7 +604,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 </div>
               </div>
             </div>
-            
+
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="flex items-center gap-3">
                 <ImageIcon className="w-8 h-8 text-green-400" />
@@ -614,7 +614,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 </div>
               </div>
             </div>
-            
+
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="flex items-center gap-3">
                 <Scissors className="w-8 h-8 text-purple-400" />
@@ -624,7 +624,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 </div>
               </div>
             </div>
-            
+
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="flex items-center gap-3">
                 <FileText className="w-8 h-8 text-yellow-400" />
@@ -635,18 +635,18 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               </div>
             </div>
           </div>
-          
+
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="text-sm text-gray-400">Total Duration Processed</div>
               <div className="text-xl font-semibold">{videoStats.total_duration_hours}h</div>
             </div>
-            
+
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="text-sm text-gray-400">Avg Keyframes/Video</div>
               <div className="text-xl font-semibold">{videoStats.average_keyframes_per_video}</div>
             </div>
-            
+
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="text-sm text-gray-400">Avg Scenes/Video</div>
               <div className="text-xl font-semibold">{videoStats.average_scenes_per_video}</div>
@@ -671,7 +671,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             <Video className="w-6 h-6 text-blue-400" />
             <h2 className="text-xl font-semibold">Video Content Analysis</h2>
           </div>
-          
+
           <div className="flex items-center gap-4">
             {/* Tab Navigation */}
             <div className="flex bg-white/5 rounded-lg p-1">
@@ -706,7 +706,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 Statistics
               </button>
             </div>
-            
+
             {onClose && (
               <button
                 onClick={onClose}

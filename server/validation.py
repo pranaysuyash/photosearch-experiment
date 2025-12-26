@@ -7,26 +7,42 @@ validate data formats, and ensure data integrity.
 
 import re
 import html
-import urllib.parse
-from typing import Any, Dict, List, Optional, Union, Callable
+from typing import Any, Dict, List, Optional, Callable
 from pathlib import Path
 from datetime import datetime
 from functools import wraps
-from fastapi import Request, HTTPException, Query, Form
-from pydantic import BaseModel, ValidationError, validator
-import json
+from fastapi import Request, HTTPException
+from pydantic import BaseModel, validator
 
 # Common validation patterns
-SAFE_FILENAME_REGEX = re.compile(r'^[a-zA-Z0-9._-]+$')
+SAFE_FILENAME_REGEX = re.compile(r"^[a-zA-Z0-9._-]+$")
 SAFE_TEXT_REGEX = re.compile(r'^[a-zA-Z0-9\s\-_.,!?@#%&()\'"/\\]+$')
-DATE_REGEX = re.compile(r'^\d{4}-\d{2}(-\d{2})?(\s+[T]\d{2}:\d{2}(:\d{2})?)?(\.\d{3})?(Z|[+-]\d{2}:?\d{2})?$')
-UUID_REGEX = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
+DATE_REGEX = re.compile(r"^\d{4}-\d{2}(-\d{2})?(\s+[T]\d{2}:\d{2}(:\d{2})?)?(\.\d{3})?(Z|[+-]\d{2}:?\d{2})?$")
+UUID_REGEX = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 # Allowed file extensions for different categories
-ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff', '.webp', '.avif'}
-ALLOWED_VIDEO_EXTENSIONS = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.3gp', '.flv'}
-ALLOWED_DOCUMENT_EXTENSIONS = {'.pdf', '.txt', '.md', '.doc', '.docx', '.xls', '.xlsx'}
-ALLOWED_AUDIO_EXTENSIONS = {'.mp3', '.wav', '.flac', '.aac', '.ogg'}
+ALLOWED_IMAGE_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".tiff",
+    ".webp",
+    ".avif",
+}
+ALLOWED_VIDEO_EXTENSIONS = {
+    ".mp4",
+    ".mov",
+    ".avi",
+    ".mkv",
+    ".webm",
+    ".m4v",
+    ".3gp",
+    ".flv",
+}
+ALLOWED_DOCUMENT_EXTENSIONS = {".pdf", ".txt", ".md", ".doc", ".docx", ".xls", ".xlsx"}
+ALLOWED_AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".aac", ".ogg"}
 
 # Maximum file sizes (bytes)
 MAX_IMAGE_SIZE = 100 * 1024 * 1024  # 100MB
@@ -37,11 +53,13 @@ MAX_AUDIO_SIZE = 100 * 1024 * 1024  # 100MB
 
 class ValidationInputError(Exception):
     """Custom exception for validation errors."""
+
     pass
 
 
 class SanitizeResult(BaseModel):
     """Result of input sanitization."""
+
     sanitized_value: Any
     is_valid: bool
     error_message: Optional[str] = None
@@ -65,7 +83,7 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="Input must be a string"
+                error_message="Input must be a string",
             )
 
         # Length validation
@@ -73,16 +91,15 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message=f"Text too long (max {max_length} characters)"
+                error_message=f"Text too long (max {max_length} characters)",
             )
 
         # Remove control characters
-        sanitized = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
+        sanitized = "".join(char for char in text if ord(char) >= 32 or char in "\n\r\t")
 
         # HTML handling
         if allow_html:
             # Allow only safe HTML tags
-            safe_tags = {'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}
             # This is a simplified implementation - in production, use a proper HTML sanitizer
             sanitized = html.escape(sanitized)
         else:
@@ -91,11 +108,11 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
 
         # Check for dangerous patterns
         dangerous_patterns = [
-            r'<script[^>]*>.*?</script>',
-            r'javascript:',
-            r'on\w+\s*=',
-            r'data:',
-            r'vbscript:',
+            r"<script[^>]*>.*?</script>",
+            r"javascript:",
+            r"on\w+\s*=",
+            r"data:",
+            r"vbscript:",
         ]
 
         for pattern in dangerous_patterns:
@@ -103,7 +120,7 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
                 return SanitizeResult(
                     sanitized_value="",
                     is_valid=False,
-                    error_message="Potentially dangerous content detected"
+                    error_message="Potentially dangerous content detected",
                 )
 
         return SanitizeResult(sanitized_value=sanitized, is_valid=True)
@@ -112,7 +129,7 @@ def sanitize_text_input(text: str, max_length: int = 1000, allow_html: bool = Fa
         return SanitizeResult(
             sanitized_value="",
             is_valid=False,
-            error_message=f"Validation error: {str(e)}"
+            error_message=f"Validation error: {str(e)}",
         )
 
 
@@ -131,14 +148,14 @@ def validate_file_path(file_path: str) -> SanitizeResult:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="File path must be a string"
+                error_message="File path must be a string",
             )
 
         # Normalize path
         normalized_path = Path(file_path).resolve()
 
         # Check for dangerous patterns
-        dangerous_patterns = ['..', '~', '$', '|', ';', '&', '>', '<', '`']
+        dangerous_patterns = ["..", "~", "$", "|", ";", "&", ">", "<", "`"]
         path_str = str(normalized_path)
 
         for pattern in dangerous_patterns:
@@ -146,33 +163,29 @@ def validate_file_path(file_path: str) -> SanitizeResult:
                 return SanitizeResult(
                     sanitized_value="",
                     is_valid=False,
-                    error_message="Invalid characters in file path"
+                    error_message="Invalid characters in file path",
                 )
 
         # Validate file extension
         file_ext = normalized_path.suffix.lower()
         all_allowed_extensions = (
-            ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS |
-            ALLOWED_DOCUMENT_EXTENSIONS | ALLOWED_AUDIO_EXTENSIONS
+            ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS | ALLOWED_DOCUMENT_EXTENSIONS | ALLOWED_AUDIO_EXTENSIONS
         )
 
         if file_ext not in all_allowed_extensions:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message=f"File type not allowed: {file_ext}"
+                error_message=f"File type not allowed: {file_ext}",
             )
 
-        return SanitizeResult(
-            sanitized_value=str(normalized_path),
-            is_valid=True
-        )
+        return SanitizeResult(sanitized_value=str(normalized_path), is_valid=True)
 
     except Exception as e:
         return SanitizeResult(
             sanitized_value="",
             is_valid=False,
-            error_message=f"Path validation error: {str(e)}"
+            error_message=f"Path validation error: {str(e)}",
         )
 
 
@@ -191,7 +204,7 @@ def validate_date_input(date_str: str) -> SanitizeResult:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="Date must be a string"
+                error_message="Date must be a string",
             )
 
         # Check basic format
@@ -199,36 +212,33 @@ def validate_date_input(date_str: str) -> SanitizeResult:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="Invalid date format. Use YYYY-MM-DD or ISO format"
+                error_message="Invalid date format. Use YYYY-MM-DD or ISO format",
             )
 
         # Try to parse the date
         try:
             # Handle different date formats
-            if 'T' in date_str:
+            if "T" in date_str:
                 # ISO datetime format
-                datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             else:
                 # Date only format
-                datetime.strptime(date_str.strip(), '%Y-%m-%d')
+                datetime.strptime(date_str.strip(), "%Y-%m-%d")
 
         except ValueError:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="Invalid date or datetime"
+                error_message="Invalid date or datetime",
             )
 
-        return SanitizeResult(
-            sanitized_value=date_str.strip(),
-            is_valid=True
-        )
+        return SanitizeResult(sanitized_value=date_str.strip(), is_valid=True)
 
     except Exception as e:
         return SanitizeResult(
             sanitized_value="",
             is_valid=False,
-            error_message=f"Date validation error: {str(e)}"
+            error_message=f"Date validation error: {str(e)}",
         )
 
 
@@ -248,7 +258,7 @@ def validate_search_query(query: str, max_length: int = 500) -> SanitizeResult:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message="Search query must be a string"
+                error_message="Search query must be a string",
             )
 
         query = query.strip()
@@ -258,16 +268,16 @@ def validate_search_query(query: str, max_length: int = 500) -> SanitizeResult:
             return SanitizeResult(
                 sanitized_value="",
                 is_valid=False,
-                error_message=f"Query too long (max {max_length} characters)"
+                error_message=f"Query too long (max {max_length} characters)",
             )
 
         # Check for dangerous SQL injection patterns
         sql_injection_patterns = [
-            r'(union|select|insert|update|delete|drop|create|alter)\s+',
-            r'--',
-            r'/\*.*\*/',
-            r';\s*(drop|delete|update)',
-            r'\'\s*(or|and)\s*\'.*\'',
+            r"(union|select|insert|update|delete|drop|create|alter)\s+",
+            r"--",
+            r"/\*.*\*/",
+            r";\s*(drop|delete|update)",
+            r"\'\s*(or|and)\s*\'.*\'",
             r'"\s*(or|and)\s*".*"',
         ]
 
@@ -276,22 +286,19 @@ def validate_search_query(query: str, max_length: int = 500) -> SanitizeResult:
                 return SanitizeResult(
                     sanitized_value="",
                     is_valid=False,
-                    error_message="Invalid query format"
+                    error_message="Invalid query format",
                 )
 
         # Sanitize by escaping HTML
         sanitized = html.escape(query)
 
-        return SanitizeResult(
-            sanitized_value=sanitized,
-            is_valid=True
-        )
+        return SanitizeResult(sanitized_value=sanitized, is_valid=True)
 
     except Exception as e:
         return SanitizeResult(
             sanitized_value="",
             is_valid=False,
-            error_message=f"Query validation error: {str(e)}"
+            error_message=f"Query validation error: {str(e)}",
         )
 
 
@@ -312,7 +319,7 @@ def validate_pagination_params(limit: int = 50, offset: int = 0) -> SanitizeResu
             return SanitizeResult(
                 sanitized_value={"limit": 50, "offset": 0},
                 is_valid=False,
-                error_message="Limit must be between 1 and 1000"
+                error_message="Limit must be between 1 and 1000",
             )
 
         # Validate offset
@@ -320,19 +327,16 @@ def validate_pagination_params(limit: int = 50, offset: int = 0) -> SanitizeResu
             return SanitizeResult(
                 sanitized_value={"limit": limit, "offset": 0},
                 is_valid=False,
-                error_message="Offset must be non-negative"
+                error_message="Offset must be non-negative",
             )
 
-        return SanitizeResult(
-            sanitized_value={"limit": limit, "offset": offset},
-            is_valid=True
-        )
+        return SanitizeResult(sanitized_value={"limit": limit, "offset": offset}, is_valid=True)
 
     except Exception as e:
         return SanitizeResult(
             sanitized_value={"limit": 50, "offset": 0},
             is_valid=False,
-            error_message=f"Pagination validation error: {str(e)}"
+            error_message=f"Pagination validation error: {str(e)}",
         )
 
 
@@ -347,6 +351,7 @@ def require_validation(validation_func: Callable, error_message: str = "Validati
     Returns:
         Decorated function
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -358,33 +363,36 @@ def require_validation(validation_func: Callable, error_message: str = "Validati
                 raise HTTPException(status_code=400, detail=str(e))
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Validation error: {str(e)}")
+
         return wrapper
+
     return decorator
 
 
 # Pydantic models for automatic validation
 class SearchQueryValidator(BaseModel):
     """Pydantic model for search query validation."""
+
     query: str
     limit: int = 50
     offset: int = 0
     mode: str = "metadata"
 
-    @validator('query')
+    @validator("query")
     def validate_search_content(cls, v):
         result = validate_search_query(v)
         if not result.is_valid:
             raise ValueError(result.error_message)
         return result.sanitized_value
 
-    @validator('limit')
+    @validator("limit")
     def validate_limit(cls, v):
         result = validate_pagination_params(v, 0)
         if not result.is_valid:
             raise ValueError(result.error_message)
         return result.sanitized_value["limit"]
 
-    @validator('offset')
+    @validator("offset")
     def validate_offset(cls, v):
         result = validate_pagination_params(50, v)
         if not result.is_valid:
@@ -394,9 +402,10 @@ class SearchQueryValidator(BaseModel):
 
 class FilePathValidator(BaseModel):
     """Pydantic model for file path validation."""
+
     path: str
 
-    @validator('path')
+    @validator("path")
     def validate_path_content(cls, v):
         result = validate_file_path(v)
         if not result.is_valid:
@@ -406,10 +415,11 @@ class FilePathValidator(BaseModel):
 
 class DateValidator(BaseModel):
     """Pydantic model for date validation."""
+
     date_from: Optional[str] = None
     date_to: Optional[str] = None
 
-    @validator('date_from', 'date_to')
+    @validator("date_from", "date_to")
     def validate_date_content(cls, v):
         if v is None:
             return v
@@ -452,7 +462,7 @@ async def validate_request_data(request: Request, validation_rules: Dict[str, Ca
                 else:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"Validation failed for {field_name}: {result.error_message}"
+                        detail=f"Validation failed for {field_name}: {result.error_message}",
                     )
             else:
                 # Optional fields

@@ -20,7 +20,6 @@ async def extract_text_from_images(request: OCRImageRequest, state: AppState = D
         Dictionary with extracted text for each image
     """
     try:
-
         results = state.ocr_search.extract_text_from_images(request.image_paths)
         return {"status": "success", "results": results}
     except Exception as e:
@@ -41,7 +40,6 @@ async def search_ocr_text(query: str, limit: int = 100, offset: int = 0, state: 
         Dictionary with search results
     """
     try:
-
         results = state.ocr_search.search_text(query, limit, offset)
         return {"status": "success", "results": results}
     except Exception as e:
@@ -57,7 +55,6 @@ async def get_ocr_stats(state: AppState = Depends(get_state)):
         Dictionary with OCR statistics
     """
     try:
-
         stats = state.ocr_search.get_ocr_summary()
         return {"status": "success", "stats": stats}
     except Exception as e:
@@ -76,7 +73,6 @@ async def get_image_ocr_stats(image_path: str, state: AppState = Depends(get_sta
         Dictionary with OCR statistics for the image
     """
     try:
-
         stats = state.ocr_search.get_ocr_stats(image_path)
         return {"status": "success", "stats": stats}
     except Exception as e:
@@ -95,7 +91,6 @@ async def delete_image_ocr_data(image_path: str, state: AppState = Depends(get_s
         Dictionary with deletion status
     """
     try:
-
         success = state.ocr_search.delete_ocr_data(image_path)
         return {"status": "success" if success else "failed", "deleted": success}
     except Exception as e:
@@ -111,7 +106,6 @@ async def clear_all_ocr_data(state: AppState = Depends(get_state)):
         Dictionary with deletion count
     """
     try:
-
         count = state.ocr_search.clear_all_ocr_data()
         return {"status": "success", "deleted_count": count}
     except Exception as e:

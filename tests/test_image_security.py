@@ -14,7 +14,7 @@ def test_thumbnail_path_outside_media_denied(monkeypatch):
 
         # Attempt to fetch a path outside of MEDIA_DIR using path param
         outside = "/etc/passwd"
-        res = client.get(f"/image/thumbnail?path={outside}")
+        client.get(f"/image/thumbnail?path={outside}")
 
         # When SANDBOX_STRICT is False by default in dev, the endpoint may allow BASE_DIR fallback.
         # Force strict mode and retry

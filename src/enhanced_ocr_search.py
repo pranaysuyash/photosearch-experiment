@@ -165,10 +165,7 @@ class EnhancedOCRSearch:
 
         # Avoid EasyOCR initialization (which may download large models) during
         # test runs unless explicitly enabled.
-        if (
-            self._is_test_mode()
-            and os.getenv("PHOTOSEARCH_ENABLE_EASYOCR_TESTS") != "1"
-        ):
+        if self._is_test_mode() and os.getenv("PHOTOSEARCH_ENABLE_EASYOCR_TESTS") != "1":
             self.enable_handwriting = False
 
         # Threading and caching
@@ -219,8 +216,7 @@ class EnhancedOCRSearch:
         if self._is_test_mode() and os.getenv(self._ENABLE_TESSERACT_TESTS_ENV) != "1":
             self.tesseract_available = False
             logger.info(
-                "Test mode: skipping Tesseract initialization. "
-                f"Set {self._ENABLE_TESSERACT_TESTS_ENV}=1 to enable."
+                "Test mode: skipping Tesseract initialization. " f"Set {self._ENABLE_TESSERACT_TESTS_ENV}=1 to enable."
             )
         elif PYTESSERACT_AVAILABLE:
             try:
@@ -252,9 +248,7 @@ class EnhancedOCRSearch:
             missing_langs = set(SUPPORTED_LANGUAGES.keys()) - set(available_langs)
 
             if missing_langs and self.progress_callback:
-                self.progress_callback(
-                    f"Note: {len(missing_langs)} OCR languages not available"
-                )
+                self.progress_callback(f"Note: {len(missing_langs)} OCR languages not available")
 
             # Note: In a real implementation, you would download missing language data
             # For now, we'll just log what's missing
@@ -285,25 +279,15 @@ class EnhancedOCRSearch:
             if lang_code in ["ru", "ja", "zh", "ko", "ar", "hi"]:
                 if lang_code == "ru" and any(ord(c) in range(1024, 1279) for c in text):
                     score += 10
-                elif lang_code == "ja" and any(
-                    ord(c) in range(0x3040, 0x309F) for c in text
-                ):
+                elif lang_code == "ja" and any(ord(c) in range(0x3040, 0x309F) for c in text):
                     score += 10
-                elif lang_code == "zh" and any(
-                    ord(c) in range(0x4E00, 0x9FFF) for c in text
-                ):
+                elif lang_code == "zh" and any(ord(c) in range(0x4E00, 0x9FFF) for c in text):
                     score += 10
-                elif lang_code == "ko" and any(
-                    ord(c) in range(0xAC00, 0xD7AF) for c in text
-                ):
+                elif lang_code == "ko" and any(ord(c) in range(0xAC00, 0xD7AF) for c in text):
                     score += 10
-                elif lang_code == "ar" and any(
-                    ord(c) in range(0x0600, 0x06FF) for c in text
-                ):
+                elif lang_code == "ar" and any(ord(c) in range(0x0600, 0x06FF) for c in text):
                     score += 10
-                elif lang_code == "hi" and any(
-                    ord(c) in range(0x0900, 0x097F) for c in text
-                ):
+                elif lang_code == "hi" and any(ord(c) in range(0x0900, 0x097F) for c in text):
                     score += 10
             else:
                 # Latin-based languages - use common words as heuristics
@@ -317,9 +301,7 @@ class EnhancedOCRSearch:
                 }
 
                 if lang_code in common_words:
-                    word_count = sum(
-                        1 for word in common_words[lang_code] if word in text_lower
-                    )
+                    word_count = sum(1 for word in common_words[lang_code] if word in text_lower)
                     score += word_count * 2
 
             language_scores[lang_code] = score
@@ -328,37 +310,23 @@ class EnhancedOCRSearch:
         detected_langs = [lang for lang, score in language_scores.items() if score > 0]
         return detected_langs if detected_langs else ["unknown"]
 
-    def _extract_text_tesseract(
-        self, image_path: str, languages: Optional[List[str]] = None
-    ) -> List[TextRegion]:
+    def _extract_text_tesseract(self, image_path: str, languages: Optional[List[str]] = None) -> List[TextRegion]:
         """Extract text using Tesseract OCR with region detection"""
-        if (
-            not self.tesseract_available
-            or not PYTESSERACT_AVAILABLE
-            or pytesseract is None
-        ):
+        if not self.tesseract_available or not PYTESSERACT_AVAILABLE or pytesseract is None:
             return []
         assert pytesseract is not None
 
         try:
             # Configure Tesseract
             lang_string = (
-                "+".join(
-                    [
-                        SUPPORTED_LANGUAGES[lang]["tesseract"]
-                        for lang in languages
-                        if lang in SUPPORTED_LANGUAGES
-                    ]
-                )
+                "+".join([SUPPORTED_LANGUAGES[lang]["tesseract"] for lang in languages if lang in SUPPORTED_LANGUAGES])
                 if languages
                 else "eng"
             )
 
             # Get detailed OCR data
             img = Image.open(image_path)
-            data = pytesseract.image_to_data(
-                img, lang=lang_string, output_type=pytesseract.Output.DICT
-            )
+            data = pytesseract.image_to_data(img, lang=lang_string, output_type=pytesseract.Output.DICT)
 
             text_regions: List[TextRegion] = []
             current_text = ""
@@ -448,9 +416,7 @@ class EnhancedOCRSearch:
             logger.error(f"Error extracting handwriting from {image_path}: {e}")
             return []
 
-    def extract_text(
-        self, image_path: str, languages: Optional[List[str]] = None
-    ) -> OCRResult:
+    def extract_text(self, image_path: str, languages: Optional[List[str]] = None) -> OCRResult:
         """
         Extract text from a single image with multiple engines.
 
@@ -486,21 +452,13 @@ class EnhancedOCRSearch:
 
             # Detect languages in extracted text
             detected_langs = list(
-                set(
-                    region.language_code
-                    for region in all_regions
-                    if region.language_code != "unknown"
-                )
+                set(region.language_code for region in all_regions if region.language_code != "unknown")
             )
             if not detected_langs:
                 detected_langs = self._detect_language(full_text)
 
             # Calculate average confidence
-            avg_confidence = (
-                float(np.mean([region.confidence_score for region in all_regions]))
-                if all_regions
-                else 0.0
-            )
+            avg_confidence = float(np.mean([region.confidence_score for region in all_regions])) if all_regions else 0.0
 
             processing_time = (time.time() - start_time) * 1000
 
@@ -573,15 +531,12 @@ class EnhancedOCRSearch:
         results["total_images"] = len(image_files)
 
         if show_progress and self.progress_callback:
-            self.progress_callback(
-                f"Processing {len(image_files)} images for text extraction..."
-            )
+            self.progress_callback(f"Processing {len(image_files)} images for text extraction...")
 
         # Process images in parallel
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             future_to_file = {
-                executor.submit(self.extract_text, str(img_path), languages): img_path
-                for img_path in image_files
+                executor.submit(self.extract_text, str(img_path), languages): img_path for img_path in image_files
             }
 
             for i, future in enumerate(as_completed(future_to_file)):
@@ -592,9 +547,7 @@ class EnhancedOCRSearch:
                         self._store_ocr_result(ocr_result)
                         results["text_regions_found"] += len(ocr_result.text_regions)
                         results["total_characters"] += len(ocr_result.full_text)
-                        results["languages_detected"].update(
-                            ocr_result.languages_detected
-                        )
+                        results["languages_detected"].update(ocr_result.languages_detected)
 
                     results["processed_images"] += 1
 
@@ -694,9 +647,7 @@ class EnhancedOCRSearch:
         """
         try:
             # Build query conditions
-            conditions: List[str] = [
-                "MATCH(text_content) AGAINST(? IN NATURAL LANGUAGE MODE)"
-            ]
+            conditions: List[str] = ["MATCH(text_content) AGAINST(? IN NATURAL LANGUAGE MODE)"]
             params: List[Any] = [query]
 
             if language:
@@ -835,9 +786,7 @@ class EnhancedOCRSearch:
             cursor = self.conn.execute("SELECT COUNT(*) FROM ocr_text_regions")
             stats["total_text_regions_in_db"] = int(cursor.fetchone()[0])
 
-            cursor = self.conn.execute(
-                "SELECT COUNT(DISTINCT photo_path) FROM ocr_text_regions"
-            )
+            cursor = self.conn.execute("SELECT COUNT(DISTINCT photo_path) FROM ocr_text_regions")
             stats["images_with_text_in_db"] = int(cursor.fetchone()[0])
 
             # Language distribution

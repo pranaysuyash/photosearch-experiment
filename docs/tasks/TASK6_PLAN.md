@@ -1,7 +1,7 @@
 # Task 6: UI Foundation - Visual Interface
 
-**Status:** 📋 Planning  
-**Priority:** High  
+**Status:** 📋 Planning
+**Priority:** High
 **Dependencies:** Tasks 1-5 (CLI foundation)
 
 ---
@@ -197,5 +197,5 @@ Merge to master when all three are working together.
 
 ---
 
-**Created:** 2025-12-07  
+**Created:** 2025-12-07
 **Next:** Begin implementation

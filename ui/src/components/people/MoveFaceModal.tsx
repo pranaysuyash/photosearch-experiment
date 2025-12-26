@@ -1,6 +1,6 @@
 /**
  * Move Face Modal - Advanced Face Management
- * 
+ *
  * Allows users to move a single face from one person to another.
  * Uses the glass design system and follows living language guidelines.
  */
@@ -52,15 +52,15 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.getFaceClusters();
       const clusters = response.clusters || [];
-      
+
       // Filter out the current cluster
       const availableClusters = clusters.filter(
         (cluster: FaceCluster) => cluster.id !== face.cluster_id
       );
-      
+
       setAvailableClusters(availableClusters);
     } catch (err) {
       console.error('Failed to fetch available clusters:', err);
@@ -130,12 +130,12 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
       // Success - close modal and refresh parent
       onMove();
       onClose();
-      
+
       // Reset state
       setTargetClusterId('');
       setCreateNewPerson(false);
       setNewPersonName('');
-      
+
     } catch (err: any) {
       console.error('Failed to move face:', err);
       setError(err.message || 'Failed to move face');
@@ -162,7 +162,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className={`${glass.surface} border border-white/20 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -347,8 +347,8 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
             onClick={handleMove}
             className="btn-glass btn-glass--primary px-4 py-2 flex items-center gap-2"
             disabled={
-              moving || 
-              (!createNewPerson && !targetClusterId) || 
+              moving ||
+              (!createNewPerson && !targetClusterId) ||
               (createNewPerson && !newPersonName.trim())
             }
           >

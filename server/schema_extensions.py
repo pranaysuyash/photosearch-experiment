@@ -11,9 +11,7 @@ This module extends the existing database schema to support:
 
 import sqlite3
 from pathlib import Path
-from typing import Dict, Any, List
 import json
-from datetime import datetime
 
 
 class SchemaExtensions:
@@ -417,84 +415,95 @@ class SchemaExtensions:
                     "template_name": "Recent Photos",
                     "description": "Photos from the last 30 days",
                     "category": "time",
-                    "rule_definition": json.dumps({
-                        "conditions": [
-                            {
-                                "field": "created_at",
-                                "operator": "greater_than",
-                                "value": "30_days_ago"
-                            }
-                        ],
-                        "sort": "created_at_desc"
-                    })
+                    "rule_definition": json.dumps(
+                        {
+                            "conditions": [
+                                {
+                                    "field": "created_at",
+                                    "operator": "greater_than",
+                                    "value": "30_days_ago",
+                                }
+                            ],
+                            "sort": "created_at_desc",
+                        }
+                    ),
                 },
                 {
                     "id": "template_favorites",
                     "template_name": "Favorites",
                     "description": "All marked as favorite",
                     "category": "content",
-                    "rule_definition": json.dumps({
-                        "conditions": [
-                            {
-                                "field": "is_favorite",
-                                "operator": "equals",
-                                "value": True
-                            }
-                        ],
-                        "sort": "created_at_desc"
-                    })
+                    "rule_definition": json.dumps(
+                        {
+                            "conditions": [
+                                {
+                                    "field": "is_favorite",
+                                    "operator": "equals",
+                                    "value": True,
+                                }
+                            ],
+                            "sort": "created_at_desc",
+                        }
+                    ),
                 },
                 {
                     "id": "template_large_files",
                     "template_name": "Large Files",
                     "description": "Photos larger than 10MB",
                     "category": "technical",
-                    "rule_definition": json.dumps({
-                        "conditions": [
-                            {
-                                "field": "file_size",
-                                "operator": "greater_than",
-                                "value": 10485760  # 10MB
-                            }
-                        ],
-                        "sort": "file_size_desc"
-                    })
+                    "rule_definition": json.dumps(
+                        {
+                            "conditions": [
+                                {
+                                    "field": "file_size",
+                                    "operator": "greater_than",
+                                    "value": 10485760,  # 10MB
+                                }
+                            ],
+                            "sort": "file_size_desc",
+                        }
+                    ),
                 },
                 {
                     "id": "template_screenshots",
                     "template_name": "Screenshots",
                     "description": "Screenshots and screen captures",
                     "category": "content",
-                    "rule_definition": json.dumps({
-                        "conditions": [
-                            {
-                                "field": "filename",
-                                "operator": "contains",
-                                "value": "screenshot",
-                                "case_sensitive": False
-                            },
-                            {
-                                "field": "dimensions",
-                                "operator": "matches_device",
-                                "value": "screen"
-                            }
-                        ],
-                        "sort": "created_at_desc"
-                    })
-                }
+                    "rule_definition": json.dumps(
+                        {
+                            "conditions": [
+                                {
+                                    "field": "filename",
+                                    "operator": "contains",
+                                    "value": "screenshot",
+                                    "case_sensitive": False,
+                                },
+                                {
+                                    "field": "dimensions",
+                                    "operator": "matches_device",
+                                    "value": "screen",
+                                },
+                            ],
+                            "sort": "created_at_desc",
+                        }
+                    ),
+                },
             ]
 
             for template in templates:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT OR REPLACE INTO smart_album_templates
                     (id, template_name, description, category, rule_definition, is_featured)
                     VALUES (?, ?, ?, ?, ?, 1)
-                """, (
-                    template["id"],
-                    template["template_name"],
-                    template["description"],
-                    template["category"],
-                    template["rule_definition"]
-                ))
+                """,
+                    (
+                        template["id"],
+                        template["template_name"],
+                        template["description"],
+                        template["category"],
+                        template["rule_definition"],
+                    ),
+                )
 
             conn.commit()

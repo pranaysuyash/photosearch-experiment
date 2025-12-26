@@ -23,8 +23,8 @@
 
 ## Task 10.1: CLIP Embeddings (Baseline)
 
-**Date:** 2025-12-07  
-**File:** `server/embedding_generator.py`  
+**Date:** 2025-12-07
+**File:** `server/embedding_generator.py`
 **Model:** `clip-ViT-B-32` via sentence-transformers
 
 ### Metrics
@@ -44,8 +44,8 @@
 
 ## Task 10.2: Numpy Vector Store (Baseline)
 
-**Date:** 2025-12-07  
-**File:** `server/vector_store.py`  
+**Date:** 2025-12-07
+**File:** `server/vector_store.py`
 **Algorithm:** Brute-force cosine similarity via normalized dot product
 
 ### Metrics
@@ -65,7 +65,7 @@
 
 ## Task 10.3: Integration Prototype
 
-**Date:** 2025-12-07  
+**Date:** 2025-12-07
 **File:** `experiment_semantic_search.py`
 
 ### What We Learned
@@ -144,7 +144,7 @@
 
 ### Findings
 - **Speed**: Ingest is nearly as fast as FAISS (25ms vs 13ms) and much faster than Chroma (160ms).
-- **Architecture**: Native disk-based (columnar). fast append. 
+- **Architecture**: Native disk-based (columnar). fast append.
 - **Tradeoff**: Search is slightly slower (4ms) than in-memory FAISS (0.1ms), but negligible for UI.
 
 ### Verdict
@@ -177,20 +177,20 @@ QUERIES = 10
 for n in N_VECTORS:
     # Generate random vectors
     vectors = np.random.rand(n, DIMENSION).astype('float32')
-    
+
     # Time ingestion
     start = time.time()
     for i, vec in enumerate(vectors):
         store.add(f"id_{i}", vec.tolist(), {})
     ingest_time = time.time() - start
-    
+
     # Time search
     query = np.random.rand(DIMENSION).astype('float32')
     start = time.time()
     for _ in range(QUERIES):
         store.search(query.tolist(), limit=5)
     search_time = (time.time() - start) / QUERIES
-    
+
     print(f"N={n}: Ingest={ingest_time:.2f}s, Search={search_time*1000:.2f}ms")
 ```
 

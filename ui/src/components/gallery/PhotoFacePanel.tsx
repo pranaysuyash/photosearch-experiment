@@ -65,13 +65,13 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
     cluster: FaceCluster | null;
   }>({ isOpen: false, cluster: null });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  
+
   const { showToast } = useToast();
 
   const handleContextMenu = useCallback((e: React.MouseEvent, cluster: FaceCluster) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     setContextMenu({
       isOpen: true,
       x: e.clientX,
@@ -86,7 +86,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
 
   const handleFindSimilar = useCallback(async (cluster: FaceCluster) => {
     if (!cluster.face_ids?.[0]) return;
-    
+
     setSimilarFacesModal({ isOpen: true, cluster });
     closeContextMenu();
   }, [closeContextMenu]);
@@ -108,7 +108,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
   const handleRenamePerson = useCallback(async (cluster: FaceCluster) => {
     const newName = prompt('Enter new name:', cluster.label || '');
     if (!newName) return;
-    
+
     setActionLoading(`rename-${cluster.id}`);
     try {
       await api.renameCluster(cluster.id, newName);
@@ -192,7 +192,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
             const faceImageUrl = getFaceImageUrl(cluster);
             const displayName = cluster.label || cluster.cluster_label || `Person ${cluster.id || idx + 1}`;
             const isLoading = actionLoading?.includes(cluster.id);
-            
+
             return (
               <motion.div
                 key={cluster.id || idx}
@@ -218,11 +218,11 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
                       <UserCircle2 size={16} className='text-white/40' />
                     </div>
                   )}
-                  
+
                   {/* Quality indicator */}
                   {cluster.confidence && (
                     <div className='absolute -top-1 -right-1 w-3 h-3 rounded-full bg-black/50 flex items-center justify-center'>
-                      <div 
+                      <div
                         className={`w-1.5 h-1.5 rounded-full ${getQualityColor(cluster.confidence)}`}
                         title={`Confidence: ${Math.round(cluster.confidence * 100)}%`}
                       />
@@ -293,7 +293,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
               <Eye size={14} />
               View all photos
             </button>
-            
+
             <button
               className='w-full px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10 flex items-center gap-2'
               onClick={() => handleFindSimilar(contextMenu.cluster!)}
@@ -301,9 +301,9 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
               <Search size={14} />
               Find similar faces
             </button>
-            
+
             <div className='h-px bg-white/10 my-1' />
-            
+
             <button
               className='w-full px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10 flex items-center gap-2'
               onClick={() => handleRenamePerson(contextMenu.cluster!)}
@@ -311,7 +311,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
               <Edit3 size={14} />
               Rename person
             </button>
-            
+
             <button
               className='w-full px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10 flex items-center gap-2'
               onClick={() => handleHidePerson(contextMenu.cluster!)}
@@ -345,12 +345,12 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
   const [similarFaces, setSimilarFaces] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [threshold, setThreshold] = useState(0.7);
-  
+
   const { showToast } = useToast();
 
   const loadSimilarFaces = useCallback(async () => {
     if (!cluster.face_ids?.[0]) return;
-    
+
     setLoading(true);
     try {
       const response = await api.findSimilarFaces(

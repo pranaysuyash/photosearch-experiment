@@ -109,9 +109,11 @@ export default function PersonDetail() {
 
   // Move faces to another person
   const [clustersForMove, setClustersForMove] = useState<ClusterInfo[]>([]);
-  const [moveModal, setMoveModal] = useState<{ open: boolean; faceIds: string[]; targetClusterId: string }>(
-    { open: false, faceIds: [], targetClusterId: '' }
-  );
+  const [moveModal, setMoveModal] = useState<{
+    open: boolean;
+    faceIds: string[];
+    targetClusterId: string;
+  }>({ open: false, faceIds: [], targetClusterId: '' });
   const [moveLoading, setMoveLoading] = useState(false);
 
   // Similar face search
@@ -161,7 +163,8 @@ export default function PersonDetail() {
     setError(null);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${
+          import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}/photos`
       );
       const data = await response.json();
@@ -169,7 +172,8 @@ export default function PersonDetail() {
 
       // Also fetch cluster info
       const clustersRes = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${
+          import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters`
       );
       const clustersData = await clustersRes.json();
@@ -378,7 +382,11 @@ export default function PersonDetail() {
   const openMoveModalForFaces = (faceIds: string[]) => {
     if (!faceIds.length) return;
     const defaultTarget = clustersForMove.find((c) => c.id !== clusterId);
-    setMoveModal({ open: true, faceIds, targetClusterId: defaultTarget?.id || '' });
+    setMoveModal({
+      open: true,
+      faceIds,
+      targetClusterId: defaultTarget?.id || '',
+    });
   };
 
   const handleMoveFaces = async () => {
@@ -386,7 +394,9 @@ export default function PersonDetail() {
     setMoveLoading(true);
     try {
       await Promise.all(
-        moveModal.faceIds.map((fid) => api.moveFace(fid, moveModal.targetClusterId))
+        moveModal.faceIds.map((fid) =>
+          api.moveFace(fid, moveModal.targetClusterId)
+        )
       );
       setSuccessMessage(
         moveModal.faceIds.length === 1
@@ -407,7 +417,13 @@ export default function PersonDetail() {
   };
 
   const openSimilarModal = async (detectionId: string) => {
-    setSimilarModal({ open: true, loading: true, detectionId, results: [], error: null });
+    setSimilarModal({
+      open: true,
+      loading: true,
+      detectionId,
+      results: [],
+      error: null,
+    });
     try {
       const data = await api.getSimilarFaces(detectionId, 12);
       setSimilarModal({
@@ -545,10 +561,11 @@ export default function PersonDetail() {
               <button
                 onClick={handleToggleIndexing}
                 disabled={indexingLoading}
-                className={`btn-glass px-3 py-2 flex items-center gap-1 ${indexingEnabled
-                  ? 'btn-glass--muted'
-                  : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
-                  }`}
+                className={`btn-glass px-3 py-2 flex items-center gap-1 ${
+                  indexingEnabled
+                    ? 'btn-glass--muted'
+                    : 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400'
+                }`}
                 title={
                   indexingEnabled
                     ? 'Auto-assignment enabled'
@@ -619,8 +636,9 @@ export default function PersonDetail() {
                     setSelectedFaces(new Set());
                   }
                 }}
-                className={`btn-glass px-3 py-2 flex items-center gap-1 ${selectionMode ? 'btn-glass--primary' : 'btn-glass--muted'
-                  }`}
+                className={`btn-glass px-3 py-2 flex items-center gap-1 ${
+                  selectionMode ? 'btn-glass--primary' : 'btn-glass--muted'
+                }`}
               >
                 <Move size={16} />
                 <span>
@@ -641,7 +659,9 @@ export default function PersonDetail() {
 
               {selectionMode && selectedFaces.size > 0 && (
                 <button
-                  onClick={() => openMoveModalForFaces(Array.from(selectedFaces))}
+                  onClick={() =>
+                    openMoveModalForFaces(Array.from(selectedFaces))
+                  }
                   className='btn-glass btn-glass--muted px-3 py-2 flex items-center gap-1'
                 >
                   <Move size={16} />
@@ -829,17 +849,18 @@ export default function PersonDetail() {
           )}
 
           {/* Developer Mode: Raw JSON */}
-          {analytics && isLocalStorageAvailable() && localGetItem('lm:developerMode') === '1' && (
-            <details className='mt-4 bg-black/20 rounded-lg border border-white/10'>
-              <summary className='px-4 py-2 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground'>
-                Raw JSON (Developer Mode)
-              </summary>
-              <pre className='px-4 py-3 text-xs text-muted-foreground overflow-x-auto'>
-                {JSON.stringify(analytics, null, 2)}
-              </pre>
-            </details>
-          )}
-
+          {analytics &&
+            isLocalStorageAvailable() &&
+            localGetItem('lm:developerMode') === '1' && (
+              <details className='mt-4 bg-black/20 rounded-lg border border-white/10'>
+                <summary className='px-4 py-2 text-sm font-medium text-muted-foreground cursor-pointer hover:text-foreground'>
+                  Raw JSON (Developer Mode)
+                </summary>
+                <pre className='px-4 py-3 text-xs text-muted-foreground overflow-x-auto'>
+                  {JSON.stringify(analytics, null, 2)}
+                </pre>
+              </details>
+            )}
         </div>
 
         {/* Loading */}
@@ -879,11 +900,13 @@ export default function PersonDetail() {
               return (
                 <div
                   key={`${photo.path}-${index}`}
-                  className={`${glass.surface
-                    } rounded-xl overflow-hidden border transition-all relative group ${isSelected
+                  className={`${
+                    glass.surface
+                  } rounded-xl overflow-hidden border transition-all relative group ${
+                    isSelected
                       ? 'border-blue-400 ring-2 ring-blue-400/50'
                       : 'border-white/10 hover:border-white/20'
-                    } ${selectionMode ? 'cursor-pointer' : ''}`}
+                  } ${selectionMode ? 'cursor-pointer' : ''}`}
                   onClick={() => {
                     if (selectionMode) {
                       toggleFaceSelection(photo);
@@ -920,10 +943,11 @@ export default function PersonDetail() {
                     {/* Selection checkbox */}
                     {selectionMode && (
                       <div
-                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isSelected
-                          ? 'bg-blue-500 border-blue-500'
-                          : 'bg-black/40 border-white/50'
-                          }`}
+                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                          isSelected
+                            ? 'bg-blue-500 border-blue-500'
+                            : 'bg-black/40 border-white/50'
+                        }`}
                       >
                         {isSelected && (
                           <Check size={14} className='text-white' />
@@ -1062,17 +1086,27 @@ export default function PersonDetail() {
             className={`${glass.surfaceStrong} rounded-xl p-6 max-w-md w-full mx-4 border border-white/10`}
           >
             <h2 className='text-lg font-semibold text-foreground mb-4'>
-              Move {moveModal.faceIds.length} face{moveModal.faceIds.length === 1 ? '' : 's'} to another person
+              Move {moveModal.faceIds.length} face
+              {moveModal.faceIds.length === 1 ? '' : 's'} to another person
             </h2>
 
             <div className='mb-4'>
-              <label className='block text-sm text-muted-foreground mb-2'>Destination person</label>
+              <label className='block text-sm text-muted-foreground mb-2'>
+                Destination person
+              </label>
               <select
                 className='w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-blue-400'
                 value={moveModal.targetClusterId}
-                onChange={(e) => setMoveModal((prev) => ({ ...prev, targetClusterId: e.target.value }))}
+                onChange={(e) =>
+                  setMoveModal((prev) => ({
+                    ...prev,
+                    targetClusterId: e.target.value,
+                  }))
+                }
               >
-                {clustersForMove.length === 0 && <option value=''>No other people available</option>}
+                {clustersForMove.length === 0 && (
+                  <option value=''>No other people available</option>
+                )}
                 {clustersForMove.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}
@@ -1083,7 +1117,13 @@ export default function PersonDetail() {
 
             <div className='flex gap-3'>
               <button
-                onClick={() => setMoveModal({ open: false, faceIds: [], targetClusterId: '' })}
+                onClick={() =>
+                  setMoveModal({
+                    open: false,
+                    faceIds: [],
+                    targetClusterId: '',
+                  })
+                }
                 className='btn-glass btn-glass--muted flex-1'
                 disabled={moveLoading}
               >
@@ -1094,7 +1134,11 @@ export default function PersonDetail() {
                 disabled={moveLoading || !moveModal.targetClusterId}
                 className='btn-glass btn-glass--primary flex-1 flex items-center justify-center gap-2'
               >
-                {moveLoading ? <Loader2 className='animate-spin' size={16} /> : <Move size={16} />}
+                {moveLoading ? (
+                  <Loader2 className='animate-spin' size={16} />
+                ) : (
+                  <Move size={16} />
+                )}
                 <span>Move</span>
               </button>
             </div>
@@ -1105,11 +1149,22 @@ export default function PersonDetail() {
       {/* Similar Faces Modal */}
       {similarModal.open && (
         <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50'>
-          <div className={`${glass.surfaceStrong} rounded-xl p-6 max-w-3xl w-full mx-4 border border-white/10`}>
+          <div
+            className={`${glass.surfaceStrong} rounded-xl p-6 max-w-3xl w-full mx-4 border border-white/10`}
+          >
             <div className='flex justify-between items-center mb-4'>
-              <h2 className='text-lg font-semibold text-foreground'>Similar faces</h2>
+              <h2 className='text-lg font-semibold text-foreground'>
+                Similar faces
+              </h2>
               <button
-                onClick={() => setSimilarModal({ open: false, loading: false, results: [], error: null })}
+                onClick={() =>
+                  setSimilarModal({
+                    open: false,
+                    loading: false,
+                    results: [],
+                    error: null,
+                  })
+                }
                 className='btn-glass btn-glass--muted px-3 py-1'
               >
                 Close
@@ -1124,42 +1179,58 @@ export default function PersonDetail() {
             )}
 
             {similarModal.error && (
-              <div className='text-red-400 text-sm mb-2'>{similarModal.error}</div>
-            )}
-
-            {!similarModal.loading && !similarModal.error && (similarModal.results?.length || 0) === 0 && (
-              <div className='text-sm text-muted-foreground'>No similar faces found.</div>
-            )}
-
-            {!similarModal.loading && (similarModal.results?.length || 0) > 0 && (
-              <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'>
-                {similarModal.results?.map((sim) => (
-                  <div key={sim.detection_id} className='p-2 bg-white/5 rounded-lg border border-white/10'>
-                    <img
-                      src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${sim.detection_id}?size=200`}
-                      alt='Similar face'
-                      className='w-full h-32 object-cover rounded'
-                    />
-                    <div className='mt-2 text-xs text-muted-foreground flex items-center justify-between gap-2'>
-                      <span>{Math.round(sim.similarity * 100)}% match</span>
-                      {sim.person_label && (
-                        <span className='px-2 py-0.5 bg-white/10 rounded text-foreground truncate' title={sim.person_label}>
-                          {sim.person_label}
-                        </span>
-                      )}
-                    </div>
-                    {sim.person_id && (
-                      <button
-                        onClick={() => navigate(`/people/${sim.person_id}`)}
-                        className='mt-2 w-full btn-glass btn-glass--muted text-xs'
-                      >
-                        Open person
-                      </button>
-                    )}
-                  </div>
-                ))}
+              <div className='text-red-400 text-sm mb-2'>
+                {similarModal.error}
               </div>
             )}
+
+            {!similarModal.loading &&
+              !similarModal.error &&
+              (similarModal.results?.length || 0) === 0 && (
+                <div className='text-sm text-muted-foreground'>
+                  No similar faces found.
+                </div>
+              )}
+
+            {!similarModal.loading &&
+              (similarModal.results?.length || 0) > 0 && (
+                <div className='grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3'>
+                  {similarModal.results?.map((sim) => (
+                    <div
+                      key={sim.detection_id}
+                      className='p-2 bg-white/5 rounded-lg border border-white/10'
+                    >
+                      <img
+                        src={`${
+                          import.meta.env.VITE_API_URL ||
+                          'http://localhost:8000'
+                        }/api/faces/crop/${sim.detection_id}?size=200`}
+                        alt='Similar face'
+                        className='w-full h-32 object-cover rounded'
+                      />
+                      <div className='mt-2 text-xs text-muted-foreground flex items-center justify-between gap-2'>
+                        <span>{Math.round(sim.similarity * 100)}% match</span>
+                        {sim.person_label && (
+                          <span
+                            className='px-2 py-0.5 bg-white/10 rounded text-foreground truncate'
+                            title={sim.person_label}
+                          >
+                            {sim.person_label}
+                          </span>
+                        )}
+                      </div>
+                      {sim.person_id && (
+                        <button
+                          onClick={() => navigate(`/people/${sim.person_id}`)}
+                          className='mt-2 w-full btn-glass btn-glass--muted text-xs'
+                        >
+                          Open person
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
           </div>
         </div>
       )}

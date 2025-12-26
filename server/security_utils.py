@@ -14,4 +14,3 @@ def hash_for_logs(value: str) -> str:
     salt = getattr(settings, "ACCESS_LOG_HASH_SALT", "dev_salt")
     raw = f"{salt}|{value}".encode("utf-8", errors="replace")
     return hashlib.sha256(raw).hexdigest()
-

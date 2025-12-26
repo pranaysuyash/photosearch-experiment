@@ -24,7 +24,7 @@ export class ActionService {
 
     // Start app detection in background
     this.appDetectionPromise = this.detectInstalledApps();
-    
+
     // Wait for app detection to complete
     const apps = await this.appDetectionPromise;
     contextAnalyzer.setInstalledApps(apps);
@@ -41,7 +41,7 @@ export class ActionService {
     actionsByCategory: Record<string, import('../types/actions').PhotoAction[]>;
   }> {
     await this.ensureInitialized();
-    
+
     const context = contextAnalyzer.analyzePhoto(photo);
     const actions = actionRegistry.getActionsForContext(context);
     const actionsByCategory = actionRegistry.getActionsByCategory(context);
@@ -57,12 +57,12 @@ export class ActionService {
    * Execute an action on a photo
    */
   async executeAction(
-    actionId: string, 
-    photo: Photo, 
+    actionId: string,
+    photo: Photo,
     options?: import('../types/actions').ActionOptions
   ): Promise<ActionResult> {
     await this.ensureInitialized();
-    
+
     const context = contextAnalyzer.analyzePhoto(photo);
     return actionRegistry.executeAction(actionId, photo, context, options);
   }
@@ -72,7 +72,7 @@ export class ActionService {
    */
   async getCompatibleApps(photo: Photo): Promise<InstalledApp[]> {
     await this.ensureInitialized();
-    
+
     const context = contextAnalyzer.analyzePhoto(photo);
     return context.availableApps;
   }

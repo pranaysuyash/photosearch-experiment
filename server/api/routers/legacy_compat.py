@@ -216,9 +216,7 @@ async def legacy_set_location(photo_path: str, payload: dict[str, Any]):
         lat = payload.get("latitude")
         lng = payload.get("longitude")
         if not isinstance(lat, (int, float)) or not isinstance(lng, (int, float)):
-            raise HTTPException(
-                status_code=400, detail="latitude and longitude are required"
-            )
+            raise HTTPException(status_code=400, detail="latitude and longitude are required")
 
         location_id = locations_db.add_photo_location(
             photo_path=photo_path,
@@ -260,9 +258,7 @@ async def legacy_create_smart_collection(payload: dict[str, Any]):
 
         rule_definition = payload.get("rule_definition")
         if not isinstance(rule_definition, dict):
-            raise HTTPException(
-                status_code=400, detail="rule_definition must be an object"
-            )
+            raise HTTPException(status_code=400, detail="rule_definition must be an object")
 
         description = payload.get("description")
         if description is None:
@@ -279,9 +275,7 @@ async def legacy_create_smart_collection(payload: dict[str, Any]):
         )
 
         if not collection_id:
-            raise HTTPException(
-                status_code=400, detail="Collection name already exists"
-            )
+            raise HTTPException(status_code=400, detail="Collection name already exists")
 
         return {"collection_id": collection_id}
     except HTTPException:

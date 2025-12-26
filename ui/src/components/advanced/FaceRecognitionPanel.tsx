@@ -60,13 +60,17 @@ interface ProcessingJob {
   progress: number;
   created_at: string;
   updated_at?: string;
-  results?: any;
+  results?: Record<string, unknown>;
 }
 
+type TabId = 'clusters' | 'scan' | 'settings' | 'privacy';
+type FaceClustersResponse = { clusters: FaceCluster[] };
+type FaceSearchResponse = { matches?: string[] };
+type JobStartResponse = { job_id: string; message?: string };
+type JobStatusResponse = ProcessingJob | { job_status: ProcessingJob };
+
 export function FaceRecognitionPanel() {
-  const [activeTab, setActiveTab] = useState<
-    'clusters' | 'scan' | 'settings' | 'privacy'
-  >('clusters');
+  const [activeTab, setActiveTab] = useState<TabId>('clusters');
   const [clusters, setClusters] = useState<FaceCluster[]>([]);
   const [selectedCluster, setSelectedCluster] = useState<FaceCluster | null>(
     null
@@ -81,27 +85,41 @@ export function FaceRecognitionPanel() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [newPersonName, setNewPersonName] = useState('');
 
-  // Load face clusters on mount
-  useEffect(() => {
-    loadFaceClusters();
-    const interval = setInterval(loadFaceClusters, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
   const loadFaceClusters = useCallback(async () => {
     try {
-      const response: any = await api.get('/api/face/clusters?min_faces=2');
-      setClusters(response?.clusters || []);
+      const response = await api.get<FaceClustersResponse>(
+        '/api/face/clusters?min_faces=2'
+      );
+      setClusters(response?.clusters ?? []);
     } catch (error) {
       console.error('Failed to load face clusters:', error);
     }
   }, []);
 
+  // Load face clusters on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    const rafId = window.requestAnimationFrame(() => {
+      if (!cancelled) void loadFaceClusters();
+    });
+
+    const interval = window.setInterval(() => {
+      if (!cancelled) void loadFaceClusters();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(rafId);
+      clearInterval(interval);
+    };
+  }, [loadFaceClusters]);
+
   const startDirectoryProcessing = useCallback(
     async (directoryPath: string) => {
       try {
         setLoading(true);
-        const response = await api.post(
+        const response = await api.post<JobStartResponse>(
           '/api/face/process-directory',
           {
             directory_path: directoryPath,
@@ -111,38 +129,50 @@ export function FaceRecognitionPanel() {
           }
         );
 
-        const jobId = (response as any)?.job_id;
+        const jobId = response?.job_id;
+        if (!jobId) {
+          setLoading(false);
+          return;
+        }
         setProcessingJobs((prev) => ({
           ...prev,
           [jobId]: {
             job_id: jobId,
             status: 'queued',
-            message: (response as any)?.message,
+            message: response?.message ?? '',
             progress: 0,
             created_at: new Date().toISOString(),
           },
         }));
 
         // Start polling for job status
-        const pollInterval = setInterval(async () => {
+        const pollInterval = window.setInterval(async () => {
           try {
-            const jobResponse: any = await api.get(`/api/jobs/${jobId}`);
-            const jobStatus = jobResponse?.job_status ?? jobResponse;
+            const jobResponse = await api.get<JobStatusResponse>(
+              `/api/jobs/${jobId}`
+            );
+            const jobStatus =
+              'job_status' in jobResponse
+                ? jobResponse.job_status
+                : jobResponse;
 
-            setProcessingJobs((prev) => ({
-              ...prev,
-              [jobId]: jobStatus,
-            }));
+            if (jobStatus?.job_id) {
+              setProcessingJobs((prev) => ({
+                ...prev,
+                [jobId]: jobStatus,
+              }));
+            }
 
-            if (jobStatus.status === 'completed') {
+            if (jobStatus?.status === 'completed') {
               clearInterval(pollInterval);
               setLoading(false);
               loadFaceClusters(); // Refresh clusters
-            } else if (jobStatus.status === 'failed') {
+            } else if (jobStatus?.status === 'failed') {
               clearInterval(pollInterval);
               setLoading(false);
             }
-          } catch (error) {
+          } catch (pollError) {
+            console.error('Failed to poll job status:', pollError);
             clearInterval(pollInterval);
             setLoading(false);
           }
@@ -191,10 +221,10 @@ export function FaceRecognitionPanel() {
 
   const searchByPerson = useCallback(async (personName: string) => {
     try {
-      const response = await api.get(
+      const response = await api.get<FaceSearchResponse>(
         `/api/face/search/${encodeURIComponent(personName)}`
       );
-      setSearchResults((response as any)?.matches || []);
+      setSearchResults(response?.matches ?? []);
     } catch (error) {
       console.error('Failed to search by person:', error);
       setSearchResults([]);
@@ -254,6 +284,8 @@ export function FaceRecognitionPanel() {
         return 'text-green-500';
     }
   };
+
+  const tabs: TabId[] = ['clusters', 'scan', 'settings', 'privacy'];
 
   return (
     <div className='p-6 space-y-6'>
@@ -323,10 +355,10 @@ export function FaceRecognitionPanel() {
 
       {/* Tabs */}
       <div className='flex space-x-1 p-1 bg-black/20 rounded-lg'>
-        {['clusters', 'scan', 'settings', 'privacy'].map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab as any)}
+            onClick={() => setActiveTab(tab)}
             className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
               activeTab === tab
                 ? 'bg-blue-600 text-white'

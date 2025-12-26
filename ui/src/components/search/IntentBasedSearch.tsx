@@ -5,15 +5,15 @@
  * and provides contextual search capabilities.
  */
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Search, 
-  Sparkles, 
+import {
+  Search,
+  Sparkles,
   Filter,
   Clock,
-  MapPin, 
-  Users, 
-  Camera, 
-  Image, 
+  MapPin,
+  Users,
+  Camera,
+  Image,
   Calendar,
   Lightbulb,
   X,
@@ -58,7 +58,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
   const [error, setError] = useState<string | null>(null);
   const [refinement, setRefinement] = useState('');
   const [previousResults, setPreviousResults] = useState<any[]>([]);
-  
+
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Detect intent as user types
@@ -77,7 +77,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
         params: { query }
       });
       setIntent(result);
-      
+
       // Convert string suggestions to SearchSuggestion objects
       const suggestionObjects: SearchSuggestion[] = result.suggestions.map(s => ({
         text: s,
@@ -91,10 +91,10 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
 
   const handleSearch = async (searchQuery: string = query) => {
     if (!searchQuery.trim()) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const params = {
         query: searchQuery,
@@ -103,7 +103,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
         limit: 50,
         offset: 0
       };
-      
+
       const response = await api.post('/search/intent', params);
       setPreviousResults(response.results);
       onResults(response.results);
@@ -117,17 +117,17 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
 
   const handleRefine = async () => {
     if (!refinement.trim() || previousResults.length === 0) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await api.post('/search/refine', {
         query,
         previous_results: previousResults,
         refinement
       });
-      
+
       setPreviousResults(response.results);
       onResults(response.results);
       setRefinement('');
@@ -161,7 +161,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
       activity: Lightbulb,
       generic: Search
     };
-    
+
     return intentIcons[intentType] || Search;
   };
 
@@ -209,15 +209,15 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
               )}
             </button>
           </div>
-          
+
           {/* Intent Badges */}
           {intent && intent.badges.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {intent.badges.map((badge, index) => {
                 const Icon = getIntentIcon(badge.intent);
                 return (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm"
                   >
                     <Icon size={14} />
@@ -227,7 +227,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
               })}
             </div>
           )}
-          
+
           {/* Suggestions Dropdown */}
           {showSuggestions && suggestions.length > 0 && (
             <div className={`${glass.surfaceStrong} absolute z-10 mt-1 w-full border border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto`}>
@@ -244,7 +244,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
             </div>
           )}
         </div>
-        
+
         {/* Advanced Filters Toggle */}
         <div className="flex items-center justify-between">
           <button
@@ -255,12 +255,12 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
             Advanced Filters
             {showAdvancedFilters ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
-          
+
           <div className="text-xs text-muted-foreground">
             {intent ? `Confidence: ${(intent.confidence * 100).toFixed(0)}%` : ''}
           </div>
         </div>
-        
+
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
           <div className={`${glass.surfaceStrong} rounded-lg p-4 border border-white/10`}>
@@ -268,26 +268,26 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Date Range</label>
                 <div className="grid grid-cols-2 gap-2">
-                  <input 
-                    type="date" 
-                    className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary" 
+                  <input
+                    type="date"
+                    className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
-                  <input 
-                    type="date" 
-                    className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary" 
+                  <input
+                    type="date"
+                    className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Location</label>
-                <input 
-                  type="text" 
-                  placeholder="City, country..." 
-                  className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary" 
+                <input
+                  type="text"
+                  placeholder="City, country..."
+                  className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Camera Type</label>
                 <select className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
@@ -301,7 +301,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
             </div>
           </div>
         )}
-        
+
         {/* Refinement Panel */}
         {previousResults.length > 0 && (
           <div className={`${glass.surfaceStrong} rounded-lg p-4 border border-white/10`}>
@@ -339,7 +339,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
             </div>
           </div>
         )}
-        
+
         {/* Error Message */}
         {error && (
           <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">

@@ -96,27 +96,15 @@ class TimelineDB:
             """)
 
             # Indexes must be created separately in SQLite.
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_stories_owner_id ON stories(owner_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_stories_is_published ON stories(is_published)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_stories_created_at ON stories(created_at)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_timeline_entries_story_id ON timeline_entries(story_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_timeline_entries_date ON timeline_entries(date)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_stories_owner_id ON stories(owner_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_stories_is_published ON stories(is_published)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_stories_created_at ON stories(created_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_timeline_entries_story_id ON timeline_entries(story_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_timeline_entries_date ON timeline_entries(date)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_timeline_entries_narrative_order ON timeline_entries(narrative_order)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_story_tags_story_id_tag ON story_tags(story_id, tag)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_story_tags_story_id_tag ON story_tags(story_id, tag)")
 
     def create_story(
         self,
@@ -176,9 +164,7 @@ class TimelineDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                story_row = conn.execute(
-                    "SELECT * FROM stories WHERE id = ?", (story_id,)
-                ).fetchone()
+                story_row = conn.execute("SELECT * FROM stories WHERE id = ?", (story_id,)).fetchone()
 
                 if not story_row:
                     return None
@@ -217,9 +203,7 @@ class TimelineDB:
                     created_at=story_row["created_at"],
                     updated_at=story_row["updated_at"],
                     is_published=bool(story_row["is_published"]),
-                    metadata=json.loads(story_row["metadata"])
-                    if story_row["metadata"]
-                    else {},
+                    metadata=json.loads(story_row["metadata"]) if story_row["metadata"] else {},
                     timeline_entries=timeline_entries,
                 )
         except Exception:
@@ -313,9 +297,7 @@ class TimelineDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM timeline_entries WHERE id = ?", (entry_id,)
-                )
+                cursor = conn.execute("DELETE FROM timeline_entries WHERE id = ?", (entry_id,))
                 return cursor.rowcount > 0
         except Exception:
             return False
@@ -465,18 +447,14 @@ class TimelineDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "SELECT tag FROM story_tags WHERE story_id = ?", (story_id,)
-                )
+                cursor = conn.execute("SELECT tag FROM story_tags WHERE story_id = ?", (story_id,))
                 rows = cursor.fetchall()
 
                 return [row[0] for row in rows]
         except Exception:
             return []
 
-    def get_stories_by_tag(
-        self, tag: str, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_stories_by_tag(self, tag: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get stories with a specific tag.
 
@@ -545,9 +523,9 @@ class TimelineDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Total stories
-                total_stories = conn.execute(
-                    "SELECT COUNT(*) FROM stories WHERE owner_id = ?", (owner_id,)
-                ).fetchone()[0]
+                total_stories = conn.execute("SELECT COUNT(*) FROM stories WHERE owner_id = ?", (owner_id,)).fetchone()[
+                    0
+                ]
 
                 # Published stories
                 published_stories = conn.execute(

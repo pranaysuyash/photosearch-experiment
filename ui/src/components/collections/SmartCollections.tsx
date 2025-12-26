@@ -5,14 +5,14 @@
  * with automatic photo inclusion based on rules.
  */
 import React, { useState, useEffect } from 'react';
-import { 
-  FolderPlus, 
-  Edit3, 
-  Eye, 
-  Trash2, 
-  Clock, 
-  Users, 
-  MapPin, 
+import {
+  FolderPlus,
+  Edit3,
+  Eye,
+  Trash2,
+  Clock,
+  Users,
+  MapPin,
   Calendar,
   Sparkles,
   X,
@@ -62,7 +62,7 @@ export function SmartCollections() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await api.get('/collections/smart');
       setCollections(response.collections || []);
     } catch (err) {
@@ -75,7 +75,7 @@ export function SmartCollections() {
 
   const createCollection = async () => {
     if (!newCollection.name.trim()) return;
-    
+
     try {
       const ruleDefinition: RuleDefinition = {
         type: newCollection.ruleType as any,
@@ -89,7 +89,7 @@ export function SmartCollections() {
         auto_update: true,
         privacy_level: 'private'
       });
-      
+
       setShowCreateModal(false);
       setNewCollection({
         name: '',
@@ -97,7 +97,7 @@ export function SmartCollections() {
         ruleType: 'date',
         ruleParams: {}
       });
-      
+
       // Reload collections
       loadCollections();
     } catch (err) {
@@ -108,7 +108,7 @@ export function SmartCollections() {
 
   const deleteCollection = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this smart collection?')) return;
-    
+
     try {
       await api.delete(`/collections/smart/${id}`);
       loadCollections();
@@ -147,7 +147,7 @@ export function SmartCollections() {
       tag: '🏷️',
       custom: Filter
     };
-    
+
     const Icon = icons[type];
     return typeof Icon === 'string' ? (
       <span>{Icon}</span>
@@ -183,8 +183,8 @@ export function SmartCollections() {
       {/* Collections List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {collections.map(collection => (
-          <div 
-            key={collection.id} 
+          <div
+            key={collection.id}
             className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4 hover:border-white/20 transition-colors`}
           >
             <div className="flex items-start justify-between mb-2">
@@ -209,11 +209,11 @@ export function SmartCollections() {
                 </button>
               </div>
             </div>
-            
+
             <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
               {collection.description}
             </p>
-            
+
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
               <div className="flex items-center gap-1">
                 {getRuleIcon(collection.rule_definition.type)}
@@ -224,15 +224,15 @@ export function SmartCollections() {
                 <span>{collection.photo_count}</span>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Clock size={10} />
                 <span>{new Date(collection.last_updated).toLocaleDateString()}</span>
               </div>
               <span className={`px-2 py-0.5 rounded-full text-xs ${
-                collection.auto_update 
-                  ? 'bg-green-500/20 text-green-400' 
+                collection.auto_update
+                  ? 'bg-green-500/20 text-green-400'
                   : 'bg-yellow-500/20 text-yellow-400'
               }`}>
                 {collection.auto_update ? 'Auto' : 'Manual'}
@@ -240,7 +240,7 @@ export function SmartCollections() {
             </div>
           </div>
         ))}
-        
+
         {collections.length === 0 && (
           <div className="col-span-full text-center py-12">
             <FolderPlus size={48} className="mx-auto text-muted-foreground mb-4" />
@@ -258,12 +258,12 @@ export function SmartCollections() {
           </div>
         )}
       </div>
-      
+
       {/* Create Collection Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -275,7 +275,7 @@ export function SmartCollections() {
                   <X size={18} />
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Collection Name</label>
@@ -287,7 +287,7 @@ export function SmartCollections() {
                     placeholder="e.g., Summer Vacation 2023"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Description</label>
                   <textarea
@@ -298,7 +298,7 @@ export function SmartCollections() {
                     rows={3}
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Rule Type</label>
                   <select
@@ -315,7 +315,7 @@ export function SmartCollections() {
                     <option value="custom">Custom Rule</option>
                   </select>
                 </div>
-                
+
                 {/* Rule-specific parameters would go here */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Rule Parameters</label>
@@ -324,7 +324,7 @@ export function SmartCollections() {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => setShowCreateModal(false)}
@@ -344,12 +344,12 @@ export function SmartCollections() {
           </div>
         </div>
       )}
-      
+
       {/* View Collection Modal */}
       {selectedCollection && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCollection(null)} />
-          
+
           <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}>
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center justify-between">
@@ -368,26 +368,26 @@ export function SmartCollections() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-150px)]">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className={`${glass.surfaceStrong} rounded-lg p-4`}>
                   <div className="text-2xl font-bold text-foreground">{selectedCollection.photo_count}</div>
                   <div className="text-xs text-muted-foreground">Photos</div>
                 </div>
-                
+
                 <div className={`${glass.surfaceStrong} rounded-lg p-4`}>
                   <div className="text-sm text-foreground capitalize">{selectedCollection.privacy_level}</div>
                   <div className="text-xs text-muted-foreground">Privacy</div>
                 </div>
-                
+
                 <div className={`${glass.surfaceStrong} rounded-lg p-4`}>
                   <div className="text-sm text-foreground">
                     {selectedCollection.auto_update ? 'Automatic' : 'Manual'}
                   </div>
                   <div className="text-xs text-muted-foreground">Update Mode</div>
                 </div>
-                
+
                 <div className={`${glass.surfaceStrong} rounded-lg p-4`}>
                   <div className="text-sm text-foreground">
                     {new Date(selectedCollection.last_updated).toLocaleDateString()}
@@ -395,7 +395,7 @@ export function SmartCollections() {
                   <div className="text-xs text-muted-foreground">Last Updated</div>
                 </div>
               </div>
-              
+
               <div className="mb-6">
                 <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
                   <Filter size={16} />
@@ -411,7 +411,7 @@ export function SmartCollections() {
                   </div>
                 </div>
               </div>
-              
+
               <div>
                 <h4 className="font-medium text-foreground mb-2">Photos in Collection</h4>
                 <div className="text-sm text-muted-foreground">
@@ -422,12 +422,12 @@ export function SmartCollections() {
           </div>
         </div>
       )}
-      
+
       {error && (
         <div className="fixed bottom-4 right-4 bg-destructive/20 border border-destructive/30 text-destructive px-4 py-3 rounded-lg z-[2000]">
           {error}
-          <button 
-            className="ml-2" 
+          <button
+            className="ml-2"
             onClick={() => setError(null)}
           >
             <X size={16} />

@@ -98,24 +98,6 @@ async def get_notes_stats(state: AppState = Depends(get_state)):
         notes_db = get_notes_db(settings.BASE_DIR / "notes.db")
         stats = notes_db.get_notes_stats()
         return {"stats": stats}
-    except Exception as e:
-
-        photos = []
-        for row in results:
-            path = row.get("photo_path")
-            metadata = state.photo_search_engine.db.get_metadata(path)
-            if metadata:
-                photos.append(
-                    {
-                        "path": path,
-                        "metadata": metadata,
-                        "note": row.get("note"),
-                        "created_at": row.get("created_at"),
-                        "updated_at": row.get("updated_at"),
-                    }
-                )
-
-        return {"count": len(photos), "results": photos}
     except HTTPException:
         raise
     except Exception as e:

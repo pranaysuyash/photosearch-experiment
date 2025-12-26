@@ -1,7 +1,7 @@
 # Task 2: Format Analysis Extension
 
-**File:** `format_analyzer.py`  
-**Status:** ✅ Complete  
+**File:** `format_analyzer.py`
+**Status:** ✅ Complete
 **Dependencies:** file_discovery (Task 1)
 
 ## Quick Links

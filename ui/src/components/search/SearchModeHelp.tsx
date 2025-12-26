@@ -79,4 +79,3 @@ export function SearchModeHelp({ variant = 'icon' }: { variant?: 'icon' | 'link'
     </div>
   );
 }
-

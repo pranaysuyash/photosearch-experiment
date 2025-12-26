@@ -1,11 +1,11 @@
 # Task 8: Story Mode (2D Default Interface)
 
-**Files:** 
+**Files:**
 - `ui/src/components/StoryMode.tsx`
 - `ui/src/components/HeroCarousel.tsx`
 
-**Status:** ✅ Complete  
-**Date:** 2025-12-07  
+**Status:** ✅ Complete
+**Date:** 2025-12-07
 **Dependencies:** Task 6 (UI Foundation), Task 7 (Spotlight)
 
 ---

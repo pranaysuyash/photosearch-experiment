@@ -4,15 +4,15 @@
  * Provides safe bulk operations with undo capability for photo management operations.
  */
 import React, { useState, useCallback } from 'react';
-import { 
-  Trash2, 
-  Star, 
-  Tag, 
-  Copy, 
-  X, 
-  Check, 
-  RotateCcw, 
-  AlertTriangle, 
+import {
+  Trash2,
+  Star,
+  Tag,
+  Copy,
+  X,
+  Check,
+  RotateCcw,
+  AlertTriangle,
   Clock,
   Undo2
 } from 'lucide-react';
@@ -215,21 +215,21 @@ export function BulkActions({
 
   const performBulkMove = () => {
     if (selectedPhotos.length === 0 || !destination.trim()) return;
-    
+
     setOperationType('move');
     executeBulkOperation('move', { destination: destination.trim() });
   };
 
   const performBulkCopy = () => {
     if (selectedPhotos.length === 0 || !destination.trim()) return;
-    
+
     setOperationType('copy');
     executeBulkOperation('copy', { destination: destination.trim() });
   };
 
   const performBulkArchive = () => {
     if (selectedPhotos.length === 0) return;
-    
+
     setOperationType('archive');
     executeBulkOperation('archive');
   };
@@ -359,12 +359,12 @@ export function BulkActions({
               <AlertTriangle size={24} className="text-warning" />
               <h3 className="text-lg font-semibold text-foreground">Confirm Delete</h3>
             </div>
-            
+
             <p className="text-sm text-muted-foreground mb-6">
-              Are you sure you want to delete {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''}? 
+              Are you sure you want to delete {selectedPhotos.length} photo{selectedPhotos.length !== 1 ? 's' : ''}?
               This action can be undone.
             </p>
-            
+
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowConfirmation(false)}
@@ -406,7 +406,7 @@ export function BulkActions({
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -436,14 +436,14 @@ export function BulkActions({
               Recent Actions
             </h4>
           </div>
-          
+
           <div className="space-y-2 max-h-40 overflow-y-auto">
             {recentOperations.slice(0, 5).map((op) => (
-              <div 
-                key={op.id} 
+              <div
+                key={op.id}
                 className={`flex items-center justify-between p-2 rounded-lg ${
-                  op.status === 'completed' ? glass.surface : 
-                  op.status === 'failed' ? 'bg-destructive/20' : 
+                  op.status === 'completed' ? glass.surface :
+                  op.status === 'failed' ? 'bg-destructive/20' :
                   'bg-primary/10'
                 }`}
               >
@@ -462,7 +462,7 @@ export function BulkActions({
                     {op.targetPaths.length} photo{op.targetPaths.length !== 1 ? 's' : ''}
                   </span>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">
                     {new Date(op.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -486,8 +486,8 @@ export function BulkActions({
       {error && (
         <div className="mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3">
           {error}
-          <button 
-            className="ml-2" 
+          <button
+            className="ml-2"
             onClick={() => setError(null)}
           >
             <X size={16} />

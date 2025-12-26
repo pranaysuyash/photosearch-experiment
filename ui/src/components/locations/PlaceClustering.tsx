@@ -107,10 +107,10 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
       ) : (
         <div className="p-3 space-y-3 max-h-80 overflow-y-auto">
           {clusters.map((cluster, index) => (
-            <div 
-              key={index} 
+            <div
+              key={index}
               className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                activeCluster?.avg_latitude === cluster.avg_latitude && 
+                activeCluster?.avg_latitude === cluster.avg_latitude &&
                 activeCluster?.avg_longitude === cluster.avg_longitude
                   ? 'border-primary bg-primary/10'
                   : 'border-white/10 hover:border-white/20'

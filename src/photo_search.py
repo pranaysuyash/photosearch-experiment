@@ -10,13 +10,13 @@ This module provides:
 Usage:
     # Scan and index a directory
     python photo_search.py --scan ~/Photos
-    
+
     # Interactive search
     python photo_search.py --search
-    
+
     # Quick search
     python photo_search.py --quick-search "camera=Canon"
-    
+
     # Show statistics
     python photo_search.py --stats
 
@@ -25,34 +25,27 @@ Date: 2025-12-06
 """
 
 import os
-import sys
-import json
 import logging
-from pathlib import Path
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 # Import from previous tasks
-from src.file_discovery import scan_directories, save_catalog, load_catalog
-from src.metadata_extractor import extract_all_metadata
+from src.file_discovery import scan_directories, save_catalog
 from src.metadata_search import MetadataDatabase, BatchExtractor, QueryEngine
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 def create_catalog(files_by_dir: Dict[str, List], scan_root: str) -> Dict[str, Any]:
     """
     Create comprehensive catalog from scan results.
-    
+
     Args:
         files_by_dir: Dictionary of {directory: [file_info_dicts]}
         scan_root: Root directory that was scanned
-        
+
     Returns:
         Comprehensive catalog with metadata and statistics
     """
@@ -61,49 +54,43 @@ def create_catalog(files_by_dir: Dict[str, List], scan_root: str) -> Dict[str, A
     total_images = 0
     total_videos = 0
     total_animated = 0
-    
+
     for directory, files in files_by_dir.items():
         for file_info in files:
             total_files += 1
-            file_type = file_info.get('type', '')
-            if file_type == 'image':
+            file_type = file_info.get("type", "")
+            if file_type == "image":
                 total_images += 1
-            elif file_type == 'video':
+            elif file_type == "video":
                 total_videos += 1
-            elif file_type == 'animated':
+            elif file_type == "animated":
                 total_animated += 1
-    
+
     # Build catalog structure
     catalog = {
-        'metadata': {
-            'first_scan_date': datetime.now().isoformat(),
-            'last_update_date': datetime.now().isoformat(),
-            'scan_root': scan_root,
-            'total_files': total_files,
-            'total_images': total_images,
-            'total_videos': total_videos,
-            'total_animated': total_animated,
-            'last_changes': {
-                'files_added': 0,
-                'files_removed': 0,
-                'folders_added': 0,
-                'folders_removed': 0
-            }
+        "metadata": {
+            "first_scan_date": datetime.now().isoformat(),
+            "last_update_date": datetime.now().isoformat(),
+            "scan_root": scan_root,
+            "total_files": total_files,
+            "total_images": total_images,
+            "total_videos": total_videos,
+            "total_animated": total_animated,
+            "last_changes": {"files_added": 0, "files_removed": 0, "folders_added": 0, "folders_removed": 0},
         },
-        'catalog': files_by_dir
+        "catalog": files_by_dir,
     }
-    
-    return catalog
 
+    return catalog
 
 
 class PhotoSearch:
     """Unified photo search system."""
-    
+
     def __init__(self, catalog_path: str = "photo_catalog.json", db_path: str = "photo_metadata.db"):
         """
         Initialize photo search system.
-        
+
         Args:
             catalog_path: Path to file catalog
             db_path: Path to metadata database
@@ -113,16 +100,16 @@ class PhotoSearch:
         self.db = MetadataDatabase(db_path)
         self.extractor = BatchExtractor(self.db)
         self.query_engine = QueryEngine(self.db)
-    
+
     def scan(self, path: str, force: bool = False, job_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Scan directory and index all files.
-        
+
         Args:
             path: Directory path to scan
             force: Force re-extraction of metadata
             job_id: Optional Job ID for progress tracking
-            
+
         Returns:
             Summary statistics
         """
@@ -131,45 +118,45 @@ class PhotoSearch:
         if job_id:
             try:
                 from server.jobs import job_store as server_job_store
+
                 job_store_ref = server_job_store
                 server_job_store.update_job(job_id, status="processing", message="Discovering files...", progress=10)
             except ImportError:
                 logger.warning("Could not import job_store")
 
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print(f"Scanning: {path}")
-        print("="*60 + "\n")
-        
+        print("=" * 60 + "\n")
+
         # Stage 1: Discover files
         print("Stage 1/3: Discovering files...")
-        
+
         # Scan directories - returns dict of {directory: [file_info_dicts]}
         files_by_dir = scan_directories(path)
-        
+
         if not files_by_dir:
             msg = "No files found"
             logger.error(msg)
             if job_store_ref and job_id:
                 job_store_ref.update_job(job_id, status="failed", message=msg)
             return {}
-        
+
         if job_store_ref and job_id:
             job_store_ref.update_job(job_id, message="Creating catalog...", progress=30)
 
-        
         # Create comprehensive catalog
         catalog = create_catalog(files_by_dir, path)
-        
+
         # Save catalog
         save_catalog(catalog, self.catalog_path)
-        
+
         # Get file count from metadata
-        file_count = catalog['metadata']['total_files']
+        file_count = catalog["metadata"]["total_files"]
         print(f"  ✓ Found {file_count} files")
         print(f"    - Images: {catalog['metadata']['total_images']}")
         print(f"    - Videos: {catalog['metadata']['total_videos']}")
         print(f"    - Animated: {catalog['metadata']['total_animated']}\n")
-        
+
         if job_store_ref and job_id:
             job_store_ref.update_job(job_id, message=f"Found {file_count} files. Extracting metadata...", progress=40)
 
@@ -180,50 +167,50 @@ class PhotoSearch:
         print(f"  ✓ Updated: {stats.get('updated', 0)}")
         print(f"  ✓ Skipped: {stats.get('skipped', 0)}")
         print(f"  ✓ Errors: {stats.get('errors', 0)}\n")
-        
+
         if job_store_ref and job_id:
             job_store_ref.update_job(job_id, message="Building index...", progress=90)
 
         # Stage 3: Build search index (already done by extractor)
         print("Stage 3/3: Building search index...")
         print("  ✓ Index ready\n")
-        
+
         # Summary
         db_stats = self.db.get_stats()
-        print("="*60)
+        print("=" * 60)
         print("SCAN COMPLETE")
-        print("="*60)
+        print("=" * 60)
         print(f"Total files: {file_count}")
         print(f"Indexed: {db_stats['active_files']}")
-        print(f"Ready to search!")
-        print("="*60 + "\n")
-        
+        print("Ready to search!")
+        print("=" * 60 + "\n")
+
         # Collect all files for semantic indexing
         all_files = []
-        for folder, files in catalog['catalog'].items():
+        for folder, files in catalog["catalog"].items():
             for f in files:
-                all_files.append(os.path.join(folder, f['name']))
+                all_files.append(os.path.join(folder, f["name"]))
 
         result = {
-            'files_found': file_count,
-            'files_indexed': db_stats['active_files'],
-            'catalog': catalog['catalog'], 
-            'metadata': catalog['metadata'],
-            'all_files': all_files,
-            **stats
+            "files_found": file_count,
+            "files_indexed": db_stats["active_files"],
+            "catalog": catalog["catalog"],
+            "metadata": catalog["metadata"],
+            "all_files": all_files,
+            **stats,
         }
 
         if job_store_ref and job_id:
             job_store_ref.update_job(job_id, status="completed", message="Scan complete", progress=100, result=result)
-            
+
         return result
-    
+
     def interactive_search(self):
         """Interactive search menu."""
         while True:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("PHOTO SEARCH")
-            print("="*60)
+            print("=" * 60)
             print("\nSearch by Metadata:")
             print("  1. Camera (make/model)")
             print("  2. Date range (created/modified)")
@@ -241,93 +228,93 @@ class PhotoSearch:
             print(" 12. View recent results")
             print(" 13. Export results")
             print("\n  0. Exit")
-            print("="*60)
-            
+            print("=" * 60)
+
             try:
                 choice = input("\nEnter choice: ").strip()
-                
-                if choice == '0':
+
+                if choice == "0":
                     print("Goodbye!")
                     break
-                elif choice == '1':
+                elif choice == "1":
                     self._search_by_camera()
-                elif choice == '2':
+                elif choice == "2":
                     self._search_by_date()
-                elif choice == '3':
+                elif choice == "3":
                     self._search_by_resolution()
-                elif choice == '4':
+                elif choice == "4":
                     self._search_by_size()
-                elif choice == '5':
+                elif choice == "5":
                     self._search_by_gps()
-                elif choice == '6':
+                elif choice == "6":
                     self._search_by_exif()
-                elif choice == '7':
+                elif choice == "7":
                     self._search_by_video()
-                elif choice == '8':
+                elif choice == "8":
                     self._search_by_filename()
-                elif choice == '9':
+                elif choice == "9":
                     self._search_by_format()
-                elif choice == '10':
+                elif choice == "10":
                     self._search_by_directory()
-                elif choice == '11':
+                elif choice == "11":
                     self._custom_query()
-                elif choice == '13':
+                elif choice == "13":
                     self._export_results()
                 else:
                     print("Invalid choice. Please try again.")
-            
+
             except KeyboardInterrupt:
                 print("\n\nGoodbye!")
                 break
             except Exception as e:
                 logger.error(f"Error: {e}")
-    
+
     def _search_by_camera(self):
         """Search by camera make/model."""
         camera = input("Camera make/model: ").strip()
         if camera:
             results = self.query_engine.search(f"exif.image.Make LIKE {camera}")
             self._display_results(results, f"Camera: {camera}")
-    
+
     def _search_by_date(self):
         """Search by date range."""
         print("Date format: YYYY-MM-DD")
         start_date = input("Start date (or press Enter to skip): ").strip()
         end_date = input("End date (or press Enter to skip): ").strip()
-        
+
         conditions = []
         if start_date:
             conditions.append(f"filesystem.created>={start_date}")
         if end_date:
             conditions.append(f"filesystem.created<={end_date}")
-        
+
         if conditions:
             query = " AND ".join(conditions)
             results = self.query_engine.search(query)
             self._display_results(results, f"Date range: {start_date or 'any'} to {end_date or 'any'}")
-    
+
     def _search_by_resolution(self):
         """Search by resolution."""
         min_width = input("Minimum width (or press Enter to skip): ").strip()
         min_height = input("Minimum height (or press Enter to skip): ").strip()
-        
+
         conditions = []
         if min_width:
             conditions.append(f"image.width>={min_width}")
         if min_height:
             conditions.append(f"image.height>={min_height}")
-        
+
         if conditions:
             query = " AND ".join(conditions)
             results = self.query_engine.search(query)
             self._display_results(results, f"Resolution: {min_width or 'any'}x{min_height or 'any'}+")
-    
+
     def _search_by_size(self):
         """Search by file size."""
         print("Size in MB (e.g., 5 for 5MB)")
         min_size = input("Minimum size (or press Enter to skip): ").strip()
         max_size = input("Maximum size (or press Enter to skip): ").strip()
-        
+
         conditions = []
         if min_size:
             size_bytes = int(float(min_size) * 1024 * 1024)
@@ -335,29 +322,29 @@ class PhotoSearch:
         if max_size:
             size_bytes = int(float(max_size) * 1024 * 1024)
             conditions.append(f"filesystem.size_bytes<={size_bytes}")
-        
+
         if conditions:
             query = " AND ".join(conditions)
             results = self.query_engine.search(query)
             self._display_results(results, f"Size: {min_size or '0'}MB - {max_size or '∞'}MB")
-    
+
     def _search_by_gps(self):
         """Search by GPS location."""
         print("GPS coordinates (decimal degrees)")
         lat = input("Latitude (or press Enter to skip): ").strip()
         lon = input("Longitude (or press Enter to skip): ").strip()
-        
+
         conditions = []
         if lat:
             conditions.append(f"gps.latitude={lat}")
         if lon:
             conditions.append(f"gps.longitude={lon}")
-        
+
         if conditions:
             query = " AND ".join(conditions)
             results = self.query_engine.search(query)
             self._display_results(results, f"GPS: {lat}, {lon}")
-    
+
     def _search_by_exif(self):
         """Search by EXIF data."""
         print("\nCommon EXIF fields:")
@@ -365,43 +352,43 @@ class PhotoSearch:
         print("  - exif.exif.FNumber (aperture)")
         print("  - exif.exif.ExposureTime")
         print("  - exif.exif.FocalLength")
-        
+
         field = input("\nEXIF field: ").strip()
         value = input("Value: ").strip()
-        
+
         if field and value:
             query = f"{field}={value}"
             results = self.query_engine.search(query)
             self._display_results(results, f"EXIF: {field}={value}")
-    
+
     def _search_by_video(self):
         """Search by video properties."""
         print("\nVideo properties:")
         print("  1. Duration")
         print("  2. Codec")
         print("  3. Frame rate")
-        
+
         choice = input("Choose property: ").strip()
-        
-        if choice == '1':
+
+        if choice == "1":
             min_duration = input("Minimum duration (seconds): ").strip()
             if min_duration:
                 query = f"video.format.duration>={min_duration}"
                 results = self.query_engine.search(query)
                 self._display_results(results, f"Duration >= {min_duration}s")
-        elif choice == '2':
+        elif choice == "2":
             codec = input("Codec (e.g., h264): ").strip()
             if codec:
                 query = f"video.streams.codec_name LIKE {codec}"
                 results = self.query_engine.search(query)
                 self._display_results(results, f"Codec: {codec}")
-        elif choice == '3':
+        elif choice == "3":
             min_fps = input("Minimum FPS: ").strip()
             if min_fps:
                 query = f"video.streams.r_frame_rate>={min_fps}"
                 results = self.query_engine.search(query)
                 self._display_results(results, f"FPS >= {min_fps}")
-    
+
     def _search_by_filename(self):
         """Search by filename."""
         filename = input("Filename (partial match): ").strip()
@@ -409,7 +396,7 @@ class PhotoSearch:
             query = f"file.path LIKE {filename}"
             results = self.query_engine.search(query)
             self._display_results(results, f"Filename: {filename}")
-    
+
     def _search_by_format(self):
         """Search by file format."""
         file_format = input("Format (e.g., jpg, png, mp4): ").strip()
@@ -417,7 +404,7 @@ class PhotoSearch:
             query = f"image.format={file_format.upper()}"
             results = self.query_engine.search(query)
             self._display_results(results, f"Format: {file_format}")
-    
+
     def _search_by_directory(self):
         """Search by directory."""
         directory = input("Directory path (partial match): ").strip()
@@ -425,151 +412,151 @@ class PhotoSearch:
             query = f"file.path LIKE {directory}"
             results = self.query_engine.search(query)
             self._display_results(results, f"Directory: {directory}")
-    
+
     def _custom_query(self):
         """Custom query."""
         print("\nQuery examples:")
         print("  camera=Canon AND resolution>1920")
         print("  size>5000000")
         print("  filesystem.created>2024-01-01")
-        
+
         query = input("\nEnter query: ").strip()
         if query:
             results = self.query_engine.search(query)
             self._display_results(results, f"Custom: {query}")
-    
+
     def _display_results(self, results: List[Dict], search_desc: str = ""):
         """Display search results."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         if search_desc:
             print(f"Search: {search_desc}")
         print(f"Found {len(results)} results")
-        print("="*60 + "\n")
-        
+        print("=" * 60 + "\n")
+
         if not results:
             print("No results found.")
             return
-        
+
         # Store for export
         self.last_results = results
-        
+
         # Display first 10
         for i, result in enumerate(results[:10], 1):
             print(f"{i}. {result['file_path']}")
-            metadata = result['metadata']
-            
+            metadata = result["metadata"]
+
             # Show key info
-            if 'image' in metadata and metadata['image']:
-                img = metadata['image']
+            if "image" in metadata and metadata["image"]:
+                img = metadata["image"]
                 print(f"   Resolution: {img.get('width')}x{img.get('height')}")
-            if 'filesystem' in metadata:
-                fs = metadata['filesystem']
+            if "filesystem" in metadata:
+                fs = metadata["filesystem"]
                 print(f"   Size: {fs.get('size_human')}")
                 print(f"   Created: {fs.get('created', 'N/A')[:10]}")
             print()
-        
+
         if len(results) > 10:
             print(f"... and {len(results) - 10} more results")
             print("(Use option 13 to export all results)\n")
-    
+
     def _export_results(self):
         """Export last search results."""
-        if not hasattr(self, 'last_results') or not self.last_results:
+        if not hasattr(self, "last_results") or not self.last_results:
             print("No results to export. Run a search first.")
             return
-        
+
         filename = input("Export filename (e.g., results.json): ").strip()
         if not filename:
             filename = f"search_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        
-        format_choice = input("Format (json/csv) [json]: ").strip().lower() or 'json'
-        
+
+        format_choice = input("Format (json/csv) [json]: ").strip().lower() or "json"
+
         self.query_engine.export_results(self.last_results, filename, format_choice)
         print(f"\n✓ Exported {len(self.last_results)} results to {filename}")
-    
+
     def show_stats(self):
         """Show system statistics."""
         stats = self.db.get_stats()
-        
-        print("\n" + "="*60)
+
+        print("\n" + "=" * 60)
         print("PHOTO SEARCH STATISTICS")
-        print("="*60)
+        print("=" * 60)
         print(f"Active files:    {stats['active_files']}")
         print(f"Deleted files:   {stats['deleted_files']}")
         print(f"Total versions:  {stats['total_versions']}")
         print(f"Database:        {self.db_path}")
         print(f"Catalog:         {self.catalog_path}")
-        print("="*60 + "\n")
-    
+        print("=" * 60 + "\n")
+
     def quick_search(self, query: str, limit: int = 10):
         """Quick command-line search."""
         results = self.query_engine.search(query, limit=limit)
         self._display_results(results, query)
-    
+
     # Favorites management methods
     def add_favorite(self, file_path: str, notes: str = "") -> bool:
         """
         Add a file to favorites.
-        
+
         Args:
             file_path: Path to the file
             notes: Optional notes
-            
+
         Returns:
             Success status
         """
         return self.query_engine.add_favorite(file_path, notes)
-    
+
     def remove_favorite(self, file_path: str) -> bool:
         """
         Remove a file from favorites.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             Success status
         """
         return self.query_engine.remove_favorite(file_path)
-    
+
     def is_favorite(self, file_path: str) -> bool:
         """
         Check if a file is favorited.
-        
+
         Args:
             file_path: Path to the file
-            
+
         Returns:
             True if favorited
         """
         return self.query_engine.is_favorite(file_path)
-    
+
     def get_favorites(self, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get all favorited files.
-        
+
         Args:
             limit: Maximum results
             offset: Pagination offset
-            
+
         Returns:
             List of favorites with metadata
         """
         return self.query_engine.get_favorites(limit, offset)
-    
+
     def toggle_favorite(self, file_path: str, notes: str = "") -> bool:
         """
         Toggle favorite status.
-        
+
         Args:
             file_path: Path to the file
             notes: Optional notes (when adding)
-            
+
         Returns:
             True if now favorited, False if removed
         """
         return self.query_engine.toggle_favorite(file_path, notes)
-    
+
     def close(self):
         """Close database connection."""
         self.db.close()
@@ -578,40 +565,40 @@ class PhotoSearch:
 def main():
     """Main CLI interface."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
-        description='Photo Search - Unified photo discovery and search',
+        description="Photo Search - Unified photo discovery and search",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Scan and index a directory
   python photo_search.py --scan ~/Photos
-  
+
   # Interactive search
   python photo_search.py --search
-  
+
   # Quick search
   python photo_search.py --quick-search "camera=Canon"
-  
+
   # Show statistics
   python photo_search.py --stats
-        """
+        """,
     )
-    
-    parser.add_argument('--scan', metavar='PATH', help='Scan and index directory')
-    parser.add_argument('--rescan', action='store_true', help='Force re-scan (re-extract metadata)')
-    parser.add_argument('--search', action='store_true', help='Interactive search mode')
-    parser.add_argument('--quick-search', metavar='QUERY', help='Quick command-line search')
-    parser.add_argument('--stats', action='store_true', help='Show statistics')
-    parser.add_argument('--catalog', default='photo_catalog.json', help='Catalog file path')
-    parser.add_argument('--db', default='photo_metadata.db', help='Database file path')
-    parser.add_argument('--limit', type=int, default=10, help='Result limit for quick search')
-    
+
+    parser.add_argument("--scan", metavar="PATH", help="Scan and index directory")
+    parser.add_argument("--rescan", action="store_true", help="Force re-scan (re-extract metadata)")
+    parser.add_argument("--search", action="store_true", help="Interactive search mode")
+    parser.add_argument("--quick-search", metavar="QUERY", help="Quick command-line search")
+    parser.add_argument("--stats", action="store_true", help="Show statistics")
+    parser.add_argument("--catalog", default="photo_catalog.json", help="Catalog file path")
+    parser.add_argument("--db", default="photo_metadata.db", help="Database file path")
+    parser.add_argument("--limit", type=int, default=10, help="Result limit for quick search")
+
     args = parser.parse_args()
-    
+
     # Initialize system
     ps = PhotoSearch(catalog_path=args.catalog, db_path=args.db)
-    
+
     try:
         if args.scan:
             ps.scan(args.scan, force=args.rescan)
@@ -623,7 +610,7 @@ Examples:
             ps.show_stats()
         else:
             parser.print_help()
-    
+
     finally:
         ps.close()
 

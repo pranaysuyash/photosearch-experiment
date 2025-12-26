@@ -26,8 +26,7 @@ from server.core.state import AppState
 router = APIRouter()
 
 
-def _source_to_out(source_id: str) -> SourceOut:
-
+def _source_to_out(state: AppState, source_id: str) -> SourceOut:
     s = state.source_store.get_source(source_id, redact=True)
     return SourceOut(
         id=s.id,
@@ -44,7 +43,6 @@ def _source_to_out(source_id: str) -> SourceOut:
 
 @router.get("/sources")
 async def list_sources(state: AppState = Depends(get_state)):
-
     sources = state.source_store.list_sources(redact=True)
     return {
         "sources": [
@@ -66,7 +64,6 @@ async def list_sources(state: AppState = Depends(get_state)):
 
 @router.delete("/sources/{source_id}")
 async def delete_source(source_id: str, state: AppState = Depends(get_state)):
-
     try:
         state.source_store.get_source(source_id, redact=False)
     except KeyError:
@@ -80,8 +77,8 @@ async def rescan_source(
     background_tasks: BackgroundTasks,
     source_id: str,
     payload: dict = Body(default={}),
+    state: AppState = Depends(get_state),
 ):
-
     try:
         src = state.source_store.get_source(source_id, redact=False)
     except KeyError:
@@ -100,7 +97,7 @@ async def rescan_source(
 
     job_id = state.job_store.create_job(type="scan")
 
-    def run_scan(job_id: str, path: str, force: bool, state: AppState = Depends(get_state)):
+    def run_scan(job_id: str, path: str, force: bool, state: AppState):
         try:
             scan_results = state.photo_search_engine.scan(
                 path,
@@ -129,7 +126,7 @@ async def rescan_source(
                 last_error=str(e),
             )
 
-    background_tasks.add_task(run_scan, job_id, path, force)
+    background_tasks.add_task(run_scan, job_id, path, force, state)
     return {"ok": True, "job_id": job_id}
 
 
@@ -156,10 +153,7 @@ def _aws_sigv4_headers(
     q = parse_qsl(u.query, keep_blank_values=True)
     q.sort(key=lambda kv: (kv[0], kv[1]))
     canonical_qs = "&".join(
-        [
-            f"{requests.utils.quote(str(k), safe='~')}={requests.utils.quote(str(v), safe='~')}"
-            for k, v in q
-        ]
+        [f"{requests.utils.quote(str(k), safe='~')}={requests.utils.quote(str(v), safe='~')}" for k, v in q]
     )
 
     canonical_headers = f"host:{host}\n" + f"x-amz-date:{amz_date}\n"
@@ -290,9 +284,7 @@ def _s3_list_objects(cfg: Dict[str, object]) -> List[Dict[str, object]]:
                     }
                 )
 
-        is_truncated = (
-            (root.findtext(f"{ns}IsTruncated") or "").strip().lower() == "true"
-        )
+        is_truncated = (root.findtext(f"{ns}IsTruncated") or "").strip().lower() == "true"
         token = (root.findtext(f"{ns}NextContinuationToken") or "").strip() or None
         if not is_truncated or not token:
             break
@@ -357,8 +349,7 @@ def _test_s3_connection(cfg: Dict[str, object]) -> None:
         raise RuntimeError(f"S3 connection failed ({resp.status_code}): {resp.text[:200]}")
 
 
-def _sync_s3_source(source_id: str, job_id: str) -> None:
-
+def _sync_s3_source(state: AppState, source_id: str, job_id: str) -> None:
     state.job_store.update_job(
         job_id,
         status="processing",
@@ -488,8 +479,8 @@ def _sync_s3_source(source_id: str, job_id: str) -> None:
 async def add_local_folder_source(
     background_tasks: BackgroundTasks,
     payload: LocalFolderSourceCreate,
+    state: AppState = Depends(get_state),
 ):
-
     path = payload.path
     if not path:
         raise HTTPException(status_code=400, detail="Path is required")
@@ -509,7 +500,7 @@ async def add_local_folder_source(
     job_id = state.job_store.create_job(type="scan")
     force = bool(payload.force)
 
-    def run_scan(job_id: str, path: str, force: bool, state: AppState = Depends(get_state)):
+    def run_scan(job_id: str, path: str, force: bool, state: AppState):
         try:
             scan_results = state.photo_search_engine.scan(
                 path,
@@ -537,13 +528,14 @@ async def add_local_folder_source(
                 last_error=str(e),
             )
 
-    background_tasks.add_task(run_scan, job_id, path, force)
-    return {"source": _source_to_out(src.id), "job_id": job_id}
+    background_tasks.add_task(run_scan, job_id, path, force, state)
+    return {"source": _source_to_out(state, src.id), "job_id": job_id}
 
 
 @router.post("/sources/s3")
-async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCreate, state: AppState = Depends(get_state)):
-
+async def add_s3_source(
+    background_tasks: BackgroundTasks, payload: S3SourceCreate, state: AppState = Depends(get_state)
+):
     cfg = payload.model_dump()
     # Store secrets server-side; return only redacted config.
     src = state.source_store.create_source(
@@ -559,7 +551,7 @@ async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCrea
 
         def run_sync(state: AppState = Depends(get_state)):
             try:
-                _sync_s3_source(src.id, job_id)
+                _sync_s3_source(state, src.id, job_id)
             except Exception as e:
                 state.job_store.update_job(job_id, status="failed", message=str(e))
                 state.source_store.update_source(
@@ -571,8 +563,8 @@ async def add_s3_source(background_tasks: BackgroundTasks, payload: S3SourceCrea
         background_tasks.add_task(run_sync)
     except Exception as e:
         state.source_store.update_source(src.id, status="error", last_error=str(e))
-        return {"source": _source_to_out(src.id)}
-    return {"source": _source_to_out(src.id), "job_id": job_id}
+        return {"source": _source_to_out(state, src.id)}
+    return {"source": _source_to_out(state, src.id), "job_id": job_id}
 
 
 def _google_redirect_uri() -> str:
@@ -625,8 +617,7 @@ def _safe_filename(name: str) -> str:
     return out[:180] if out else "file"
 
 
-def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
-
+def _refresh_google_access_token(state: AppState, source_id: str) -> Dict[str, object]:
     src = state.source_store.get_source(source_id, redact=False)
     cfg = src.config or {}
     refresh_token = cfg.get("refresh_token")
@@ -660,33 +651,29 @@ def _refresh_google_access_token(source_id: str) -> Dict[str, object]:
     return patch
 
 
-def _get_google_access_token(source_id: str) -> str:
-
+def _get_google_access_token(state: AppState, source_id: str) -> str:
     src = state.source_store.get_source(source_id, redact=False)
     cfg = src.config or {}
     access_token = cfg.get("access_token")
     expires_at = cfg.get("expires_at")
     if isinstance(access_token, str) and access_token:
-        if isinstance(expires_at, (int, float)) and (
-            datetime.utcnow().timestamp() + 60
-        ) < float(expires_at):
+        if isinstance(expires_at, (int, float)) and (datetime.utcnow().timestamp() + 60) < float(expires_at):
             return access_token
         # Token nearing expiry; refresh.
-        patch = _refresh_google_access_token(source_id)
+        patch = _refresh_google_access_token(state, source_id)
         return str(patch.get("access_token", ""))
-    patch = _refresh_google_access_token(source_id)
+    patch = _refresh_google_access_token(state, source_id)
     return str(patch.get("access_token", ""))
 
 
-def _sync_google_drive_source(source_id: str, job_id: str) -> None:
-
+def _sync_google_drive_source(state: AppState, source_id: str, job_id: str) -> None:
     state.job_store.update_job(
         job_id,
         status="processing",
         message="Enumerating Google Drive…",
         progress=5,
     )
-    token = _get_google_access_token(source_id)
+    token = _get_google_access_token(state, source_id)
     headers = {"Authorization": f"Bearer {token}"}
     page_token = None
     seen_marker = datetime.now(timezone.utc).isoformat()
@@ -709,7 +696,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
         )
         if resp.status_code == 401:
             # Refresh and retry once.
-            token = _get_google_access_token(source_id)
+            token = _get_google_access_token(state, source_id)
             headers = {"Authorization": f"Bearer {token}"}
             resp = requests.get(
                 "https://www.googleapis.com/drive/v3/files",
@@ -755,11 +742,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
         md5 = f.get("md5Checksum")
         modified = f.get("modifiedTime")
         size = f.get("size")
-        size_int = (
-            int(size)
-            if isinstance(size, (int, float, str)) and str(size).isdigit()
-            else None
-        )
+        size_int = int(size) if isinstance(size, (int, float, str)) and str(size).isdigit() else None
 
         try:
             prev = state.source_item_store.get(source_id, file_id)
@@ -803,7 +786,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
                 timeout=120,
             ) as r:
                 if r.status_code == 401:
-                    token = _get_google_access_token(source_id)
+                    token = _get_google_access_token(state, source_id)
                     headers = {"Authorization": f"Bearer {token}"}
                     r = requests.get(
                         url,
@@ -813,9 +796,7 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
                         timeout=120,
                     )
                 if r.status_code != 200:
-                    raise RuntimeError(
-                        f"Drive download failed ({r.status_code}): {r.text[:200]}"
-                    )
+                    raise RuntimeError(f"Drive download failed ({r.status_code}): {r.text[:200]}")
                 local_path.parent.mkdir(parents=True, exist_ok=True)
                 tmp = local_path.with_suffix(local_path.suffix + ".part")
                 with open(tmp, "wb") as out:
@@ -880,16 +861,13 @@ def _sync_google_drive_source(source_id: str, job_id: str) -> None:
         job_id,
         status="completed",
         progress=100,
-        message=(
-            f"Drive sync complete ({downloaded} downloaded, {len(missing)} removed)."
-        ),
+        message=(f"Drive sync complete ({downloaded} downloaded, {len(missing)} removed)."),
         result={"downloaded": downloaded, "removed": len(missing)},
     )
 
 
 @router.post("/sources/google-drive")
 async def add_google_drive_source(payload: GoogleDriveSourceCreate, state: AppState = Depends(get_state)):
-
     cfg = {"client_id": payload.client_id, "client_secret": payload.client_secret}
     src = state.source_store.create_source(
         "google_drive",
@@ -911,7 +889,7 @@ async def add_google_drive_source(payload: GoogleDriveSourceCreate, state: AppSt
         "state": f"{src.id}:{state_nonce}",
     }
     auth_url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
-    return {"source": _source_to_out(src.id), "auth_url": auth_url}
+    return {"source": _source_to_out(state, src.id), "auth_url": auth_url}
 
 
 @router.get("/oauth/google/callback")
@@ -921,7 +899,6 @@ async def google_oauth_callback(
     state: Optional[str] = None,
     error: Optional[str] = None,
 ):
-
     if error:
         return {
             "ok": False,
@@ -984,7 +961,7 @@ async def google_oauth_callback(
 
     def run_sync(state: AppState = Depends(get_state)):
         try:
-            _sync_google_drive_source(source_id, job_id)
+            _sync_google_drive_source(state, source_id, job_id)
         except Exception as e:
             state.job_store.update_job(job_id, status="failed", message=str(e))
             state.source_store.update_source(
@@ -1019,7 +996,6 @@ async def google_oauth_callback(
 
 @router.post("/sources/{source_id}/sync")
 async def sync_source(background_tasks: BackgroundTasks, source_id: str, state: AppState = Depends(get_state)):
-
     try:
         src = state.source_store.get_source(source_id, redact=False)
     except KeyError:
@@ -1030,9 +1006,9 @@ async def sync_source(background_tasks: BackgroundTasks, source_id: str, state: 
     def run_sync(state: AppState = Depends(get_state)):
         try:
             if src.type == "s3":
-                _sync_s3_source(source_id, job_id)
+                _sync_s3_source(state, source_id, job_id)
             elif src.type == "google_drive":
-                _sync_google_drive_source(source_id, job_id)
+                _sync_google_drive_source(state, source_id, job_id)
             elif src.type == "local_folder":
                 # Mirror of existing rescan behavior
                 path = (src.config or {}).get("path")

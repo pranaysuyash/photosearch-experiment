@@ -4,7 +4,7 @@
  * A responsive navigation that adapts to mobile screens with touch-friendly controls.
  */
 import React, { useState } from 'react';
-import { 
+import {
   Home,
   Search,
   Images,
@@ -78,13 +78,13 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
     <div className="relative">
       {/* Mobile sidebar - slides in from left */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[2000] bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={closeSidebar}
         />
       )}
-      
-      <div 
+
+      <div
         className={`fixed top-0 left-0 h-full w-64 bg-background z-[2001] transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-auto lg:flex ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
@@ -95,15 +95,15 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                  <img 
-                    src="/logo.svg" 
-                    alt="Logo" 
+                  <img
+                    src="/logo.svg"
+                    alt="Logo"
                     className="w-5 h-5 text-white"
                   />
                 </div>
                 <h2 className="font-bold text-foreground">Living Museum</h2>
               </div>
-              <button 
+              <button
                 onClick={closeSidebar}
                 className="btn-glass btn-glass--muted p-2 rounded-lg lg:hidden"
               >
@@ -111,7 +111,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
               </button>
             </div>
           </div>
-          
+
           {/* Navigation sections */}
           <div className="flex-1 p-2 overflow-y-auto">
             <div className="mb-4">
@@ -147,7 +147,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
                 ))}
               </div>
             </div>
-            
+
             <div className="mb-4">
               <h3 className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Organization
@@ -176,7 +176,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
                 ))}
               </div>
             </div>
-            
+
             <div className="mb-4">
               <h3 className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Management
@@ -206,7 +206,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
               </div>
             </div>
           </div>
-          
+
           {/* Action section */}
           <div className="p-2 border-t border-white/10">
             <div className="space-y-1">
@@ -235,7 +235,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
           </div>
         </div>
       </div>
-      
+
       {/* Mobile bottom navigation bar */}
       <div className="fixed bottom-0 left-0 right-0 z-[1000] lg:hidden">
         <div className={`${glass.surface} border-t border-white/10`}>
@@ -256,7 +256,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
                 <span className="text-xs">{item.label}</span>
               </button>
             ))}
-            
+
             <button
               onClick={toggleSidebar}
               className="flex flex-col items-center gap-1 p-2 rounded-lg flex-1 text-foreground/70"
@@ -269,7 +269,7 @@ export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationPr
           </div>
         </div>
       </div>
-      
+
       {/* Toggle button for sidebar on desktop */}
       <div className="hidden lg:block absolute top-4 left-4 z-[1001]">
         <button

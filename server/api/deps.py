@@ -42,9 +42,7 @@ def get_state(request: Request) -> AppState:
         # To keep the API usable in those contexts, lazily build a minimal state.
         from server.core.bootstrap import build_state
 
-        test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or (
-            "PYTEST_CURRENT_TEST" in os.environ
-        )
+        test_mode = os.environ.get("PHOTOSEARCH_TEST_MODE") == "1" or ("PYTEST_CURRENT_TEST" in os.environ)
 
         st = build_state(skip_heavy_components=test_mode)
 
@@ -71,27 +69,21 @@ def get_state(request: Request) -> AppState:
 def get_face_clusterer(state: AppState = Depends(get_state)):
     """Get face clusterer, raising 503 if not available."""
     if state.face_clusterer is None:
-        raise HTTPException(
-            status_code=503, detail="Face clusterer not configured or still loading"
-        )
+        raise HTTPException(status_code=503, detail="Face clusterer not configured or still loading")
     return state.face_clusterer
 
 
 def get_photo_search_engine(state: AppState = Depends(get_state)):
     """Get photo search engine, raising 503 if not initialized."""
     if state.photo_search_engine is None:
-        raise HTTPException(
-            status_code=503, detail="Photo search engine not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Photo search engine not initialized")
     return state.photo_search_engine
 
 
 def get_embedding_generator(state: AppState = Depends(get_state)):
     """Get embedding generator, raising 503 if not initialized."""
     if state.embedding_generator is None:
-        raise HTTPException(
-            status_code=503, detail="Embedding generator not initialized"
-        )
+        raise HTTPException(status_code=503, detail="Embedding generator not initialized")
     return state.embedding_generator
 
 

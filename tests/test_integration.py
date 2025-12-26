@@ -129,9 +129,7 @@ class TestFeatureIntegration:
                 tags_db.add_tag_to_photo(data["path"], tag)
 
         # Find photos within paris area (using the same coordinates)
-        paris_photos = locations_db.get_photos_near_location(
-            48.8566, 2.3522, 5.0
-        )  # 5km radius
+        paris_photos = locations_db.get_photos_near_location(48.8566, 2.3522, 5.0)  # 5km radius
         assert len(paris_photos) >= 2  # At least 2 Paris photos
 
         # Get photos with vacation tag
@@ -172,9 +170,7 @@ class TestFeatureIntegration:
             "/family/mountain1.jpg",
         ]
         for path in test_photos:
-            added = spaces_db.add_photo_to_space(
-                space_id=space_id, photo_path=path, added_by_user_id="user123"
-            )
+            added = spaces_db.add_photo_to_space(space_id=space_id, photo_path=path, added_by_user_id="user123")
             assert added is True
 
         # Set privacy controls on one of the photos
@@ -343,14 +339,10 @@ class TestFeatureIntegration:
             env["tags_db"].add_tag_to_photo(photo_path, tag)
 
         # Add note
-        env["notes_db"].set_note(
-            photo_path, "Beautiful shot from Central Park with lots of trees"
-        )
+        env["notes_db"].set_note(photo_path, "Beautiful shot from Central Park with lots of trees")
 
         # Set privacy
-        env["privacy_db"].set_photo_privacy(
-            photo_path=photo_path, owner_id="user123", visibility="private"
-        )
+        env["privacy_db"].set_photo_privacy(photo_path=photo_path, owner_id="user123", visibility="private")
 
         # In a real implementation, we would verify that searching with multiple
         # criteria (location "Central Park", tag "nature", note "trees")

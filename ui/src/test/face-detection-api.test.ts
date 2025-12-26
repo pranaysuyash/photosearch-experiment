@@ -32,7 +32,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'detectFaces').mockResolvedValue(mockResponse);
 
       const result = await api.detectFaces('/test/photo.jpg');
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.success).toBe(true);
       expect(result.faces.length).toBe(1);
@@ -58,7 +58,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'getFacesInPhoto').mockResolvedValue(mockResponse);
 
       const result = await api.getFacesInPhoto('/test/photo.jpg');
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.faces[0].person_id).toBe('cluster_456');
     });
@@ -74,7 +74,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'getFaceThumbnail').mockResolvedValue(mockResponse);
 
       const result = await api.getFaceThumbnail('face_123');
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.thumbnail).toContain('data:image/jpeg;base64,');
     });
@@ -110,7 +110,7 @@ describe('Face Detection API Integration', () => {
         '/test/photo2.jpg',
         '/test/photo3.jpg'
       ]);
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.processed_photos).toBe(3);
       expect(result.total_faces_detected).toBe(7);
@@ -151,7 +151,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'clusterFaces').mockResolvedValue(mockResponse);
 
       const result = await api.clusterFaces(0.6, 2);
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.clusters_created).toBe(3);
       expect(result.total_faces_clustered).toBe(15);
@@ -183,7 +183,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'findSimilarFaces').mockResolvedValue(mockResponse);
 
       const result = await api.findSimilarFaces('face_123', 0.7);
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.similar_faces.length).toBe(2);
       expect(result.similar_faces[0].similarity).toBe(0.98);
@@ -209,7 +209,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'getClusterQuality').mockResolvedValue(mockResponse);
 
       const result = await api.getClusterQuality('cluster_123');
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.quality_analysis.quality_rating).toBe('Excellent');
     });
@@ -225,7 +225,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'mergeClusters').mockResolvedValue(mockResponse);
 
       const result = await api.mergeClusters('cluster_123', 'cluster_456');
-      
+
       expect(result).toEqual(mockResponse);
       expect(result.faces_moved).toBe(5);
     });
@@ -266,7 +266,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'detectFaces').mockResolvedValue(mockResponse);
 
       const result = await api.detectFaces('/test/empty.jpg');
-      
+
       expect(result).toBeDefined();
       expect(result.faces).toHaveLength(0);
       expect(result.face_count).toBe(0);
@@ -274,7 +274,7 @@ describe('Face Detection API Integration', () => {
 
     test('should handle large batch requests', async () => {
       const largeBatch = Array(100).fill(0).map((_, i) => `/test/photo_${i}.jpg`);
-      
+
       const mockResponse = {
         processed_photos: 100,
         total_faces_detected: 250,
@@ -289,7 +289,7 @@ describe('Face Detection API Integration', () => {
       vi.spyOn(api, 'detectFacesBatch').mockResolvedValue(mockResponse);
 
       const result = await api.detectFacesBatch(largeBatch);
-      
+
       expect(result).toBeDefined();
       expect(result.processed_photos).toBe(100);
       expect(result.results).toHaveLength(100);

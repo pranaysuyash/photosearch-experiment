@@ -83,7 +83,7 @@ export function Duplicates() {
       setScanning(true);
       setError(null);
       const response = await api.scanDuplicates('exact', 1000);
-      console.log('Duplicate scan completed:', response);
+      // Scan completed successfully
 
       // Refresh data after scan
       await fetchDuplicateGroups();

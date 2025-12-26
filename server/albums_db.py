@@ -7,10 +7,8 @@ Separate from vector store for clean separation of concerns.
 
 import sqlite3
 import json
-from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Optional, Any
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 
 
 @dataclass
@@ -91,17 +89,26 @@ class AlbumsDB:
 
         self.conn.commit()
 
-    def create_album(self, album_id: str, name: str, description: Optional[str] = None,
-                     is_smart: bool = False, smart_rules: Optional[Dict] = None) -> Album:
+    def create_album(
+        self,
+        album_id: str,
+        name: str,
+        description: Optional[str] = None,
+        is_smart: bool = False,
+        smart_rules: Optional[Dict] = None,
+    ) -> Album:
         """Create a new album."""
         cursor = self.conn.cursor()
 
         smart_rules_json = json.dumps(smart_rules) if smart_rules else None
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO albums (id, name, description, is_smart, smart_rules)
             VALUES (?, ?, ?, ?, ?)
-        """, (album_id, name, description, is_smart, smart_rules_json))
+        """,
+            (album_id, name, description, is_smart, smart_rules_json),
+        )
 
         self.conn.commit()
         return self.get_album(album_id)
@@ -116,21 +123,24 @@ class AlbumsDB:
             return None
 
         # Get photo count
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT COUNT(*) as count FROM album_photos WHERE album_id = ?
-        """, (album_id,))
-        photo_count = cursor.fetchone()['count']
+        """,
+            (album_id,),
+        )
+        photo_count = cursor.fetchone()["count"]
 
         return Album(
-            id=row['id'],
-            name=row['name'],
-            description=row['description'],
-            cover_photo_path=row['cover_photo_path'],
-            created_at=row['created_at'],
-            updated_at=row['updated_at'],
-            is_smart=bool(row['is_smart']),
-            smart_rules=json.loads(row['smart_rules']) if row['smart_rules'] else None,
-            photo_count=photo_count
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            cover_photo_path=row["cover_photo_path"],
+            created_at=row["created_at"],
+            updated_at=row["updated_at"],
+            is_smart=bool(row["is_smart"]),
+            smart_rules=json.loads(row["smart_rules"]) if row["smart_rules"] else None,
+            photo_count=photo_count,
         )
 
     def list_albums(self, include_smart: bool = True) -> List[Album]:
@@ -147,31 +157,40 @@ class AlbumsDB:
 
         albums = []
         for row in cursor.fetchall():
-            album_id = row['id']
+            album_id = row["id"]
 
             # Get photo count
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT COUNT(*) as count FROM album_photos WHERE album_id = ?
-            """, (album_id,))
-            photo_count = cursor.fetchone()['count']
+            """,
+                (album_id,),
+            )
+            photo_count = cursor.fetchone()["count"]
 
-            albums.append(Album(
-                id=row['id'],
-                name=row['name'],
-                description=row['description'],
-                cover_photo_path=row['cover_photo_path'],
-                created_at=row['created_at'],
-                updated_at=row['updated_at'],
-                is_smart=bool(row['is_smart']),
-                smart_rules=json.loads(row['smart_rules']) if row['smart_rules'] else None,
-                photo_count=photo_count
-            ))
+            albums.append(
+                Album(
+                    id=row["id"],
+                    name=row["name"],
+                    description=row["description"],
+                    cover_photo_path=row["cover_photo_path"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    is_smart=bool(row["is_smart"]),
+                    smart_rules=json.loads(row["smart_rules"]) if row["smart_rules"] else None,
+                    photo_count=photo_count,
+                )
+            )
 
         return albums
 
-    def update_album(self, album_id: str, name: Optional[str] = None,
-                     description: Optional[str] = None,
-                     cover_photo_path: Optional[str] = None) -> Optional[Album]:
+    def update_album(
+        self,
+        album_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        cover_photo_path: Optional[str] = None,
+    ) -> Optional[Album]:
         """Update album details."""
         cursor = self.conn.cursor()
 
@@ -216,19 +235,25 @@ class AlbumsDB:
 
         for photo_path in photo_paths:
             try:
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO album_photos (album_id, photo_path)
                     VALUES (?, ?)
-                """, (album_id, photo_path))
+                """,
+                    (album_id, photo_path),
+                )
                 added += 1
             except sqlite3.IntegrityError:
                 # Photo already in album
                 pass
 
         # Update album timestamp
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE albums SET updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        """, (album_id,))
+        """,
+            (album_id,),
+        )
 
         self.conn.commit()
         return added
@@ -237,58 +262,71 @@ class AlbumsDB:
         """Remove photos from album. Returns count of removed photos."""
         cursor = self.conn.cursor()
 
-        placeholders = ','.join('?' * len(photo_paths))
-        cursor.execute(f"""
+        placeholders = ",".join("?" * len(photo_paths))
+        cursor.execute(
+            f"""
             DELETE FROM album_photos
             WHERE album_id = ? AND photo_path IN ({placeholders})
-        """, [album_id] + photo_paths)
+        """,
+            [album_id] + photo_paths,
+        )
 
         removed = cursor.rowcount
 
         # Update album timestamp
-        cursor.execute("""
+        cursor.execute(
+            """
             UPDATE albums SET updated_at = CURRENT_TIMESTAMP WHERE id = ?
-        """, (album_id,))
+        """,
+            (album_id,),
+        )
 
         self.conn.commit()
         return removed
 
-    def get_album_photos(self, album_id: str, limit: int = 1000,
-                        offset: int = 0) -> List[str]:
+    def get_album_photos(self, album_id: str, limit: int = 1000, offset: int = 0) -> List[str]:
         """Get photo paths in album."""
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT photo_path FROM album_photos
             WHERE album_id = ?
             ORDER BY sort_order, added_at DESC
             LIMIT ? OFFSET ?
-        """, (album_id, limit, offset))
+        """,
+            (album_id, limit, offset),
+        )
 
-        return [row['photo_path'] for row in cursor.fetchall()]
+        return [row["photo_path"] for row in cursor.fetchall()]
 
     def get_photo_albums(self, photo_path: str) -> List[Album]:
         """Get all albums containing a specific photo."""
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT a.* FROM albums a
             JOIN album_photos ap ON a.id = ap.album_id
             WHERE ap.photo_path = ?
             ORDER BY a.name
-        """, (photo_path,))
+        """,
+            (photo_path,),
+        )
 
         albums = []
         for row in cursor.fetchall():
-            albums.append(Album(
-                id=row['id'],
-                name=row['name'],
-                description=row['description'],
-                cover_photo_path=row['cover_photo_path'],
-                created_at=row['created_at'],
-                updated_at=row['updated_at'],
-                is_smart=bool(row['is_smart']),
-                smart_rules=json.loads(row['smart_rules']) if row['smart_rules'] else None,
-                photo_count=0  # Not needed for this query
-            ))
+            albums.append(
+                Album(
+                    id=row["id"],
+                    name=row["name"],
+                    description=row["description"],
+                    cover_photo_path=row["cover_photo_path"],
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                    is_smart=bool(row["is_smart"]),
+                    smart_rules=json.loads(row["smart_rules"]) if row["smart_rules"] else None,
+                    photo_count=0,  # Not needed for this query
+                )
+            )
 
         return albums
 

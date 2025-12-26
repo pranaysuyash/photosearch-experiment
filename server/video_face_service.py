@@ -135,9 +135,7 @@ class VideoFaceService:
             logger.error(f"Failed to get video info for {file_path}: {e}")
             return None
 
-    def extract_frames(
-        self, file_path: str, sample_fps: Optional[float] = None
-    ) -> List[Tuple[int, int, np.ndarray]]:
+    def extract_frames(self, file_path: str, sample_fps: Optional[float] = None) -> List[Tuple[int, int, np.ndarray]]:
         """
         Extract frames from video at specified sample rate.
 
@@ -179,23 +177,17 @@ class VideoFaceService:
                 frame_num += 1
 
             cap.release()
-            logger.info(
-                f"Extracted {len(frames)} frames from {file_path} at {sample_rate} fps"
-            )
+            logger.info(f"Extracted {len(frames)} frames from {file_path} at {sample_rate} fps")
             return frames
 
         except ImportError:
-            logger.error(
-                "OpenCV not available. Install with: pip install opencv-python"
-            )
+            logger.error("OpenCV not available. Install with: pip install opencv-python")
             return []
         except Exception as e:
             logger.error(f"Failed to extract frames from {file_path}: {e}")
             return []
 
-    def detect_faces_in_frames(
-        self, frames: List[Tuple[int, int, np.ndarray]], video_id: str
-    ) -> List[FrameFace]:
+    def detect_faces_in_frames(self, frames: List[Tuple[int, int, np.ndarray]], video_id: str) -> List[FrameFace]:
         """
         Detect faces in extracted frames using InsightFace.
 
@@ -266,9 +258,7 @@ class VideoFaceService:
             return 0.0
         return float(np.dot(emb1, emb2) / (norm1 * norm2))
 
-    def build_tracklets(
-        self, detections: List[FrameFace], video_id: str
-    ) -> List[FaceTrack]:
+    def build_tracklets(self, detections: List[FrameFace], video_id: str) -> List[FaceTrack]:
         """
         Build face tracklets from detections using IOU + embedding similarity.
 
@@ -319,9 +309,7 @@ class VideoFaceService:
                         continue
 
                     iou = self._calculate_iou(last_face.bounding_box, face.bounding_box)
-                    sim = self._embedding_similarity(
-                        last_face.embedding, face.embedding
-                    )
+                    sim = self._embedding_similarity(last_face.embedding, face.embedding)
 
                     # Combined score
                     if iou >= self.iou_threshold and sim >= self.embedding_threshold:
@@ -393,9 +381,7 @@ class VideoFaceService:
 
         return tracks
 
-    def store_video_results(
-        self, video_info: VideoInfo, tracks: List[FaceTrack]
-    ) -> bool:
+    def store_video_results(self, video_info: VideoInfo, tracks: List[FaceTrack]) -> bool:
         """
         Store video processing results to database.
 
@@ -445,18 +431,14 @@ class VideoFaceService:
                                 video_info.video_id,
                                 detection.frame_number,
                                 detection.timestamp_ms,
-                                1
-                                if detection.detection_id == track.best_detection_id
-                                else 0,
+                                1 if detection.detection_id == track.best_detection_id else 0,
                             ),
                         )
 
                     # Calculate timestamps
                     start_ts = track.detections[0].timestamp_ms
                     end_ts = track.detections[-1].timestamp_ms
-                    avg_quality = sum(d.quality_score for d in track.detections) / len(
-                        track.detections
-                    )
+                    avg_quality = sum(d.quality_score for d in track.detections) / len(track.detections)
 
                     # Store track
                     conn.execute(
@@ -496,9 +478,7 @@ class VideoFaceService:
                         )
 
                 conn.commit()
-                logger.info(
-                    f"Stored {len(tracks)} tracks for video {video_info.video_id}"
-                )
+                logger.info(f"Stored {len(tracks)} tracks for video {video_info.video_id}")
                 return True
 
         except Exception as e:

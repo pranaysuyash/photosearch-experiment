@@ -17,12 +17,12 @@ async function averageColorFromImageUrl(url: string): Promise<RGB> {
   return await new Promise((resolve, reject) => {
     const img = new Image();
     img.decoding = 'async';
-    
+
     // For cross-origin requests, always use CORS mode
     if (url.includes('localhost:8000') || url.includes('127.0.0.1:8000')) {
       img.crossOrigin = 'anonymous';
     }
-    
+
     img.src = url;
 
     img.onload = () => {
@@ -96,4 +96,3 @@ export function useAmbientTheme(accentImageUrl: string | null | undefined) {
     };
   }, [accentImageUrl]);
 }
-

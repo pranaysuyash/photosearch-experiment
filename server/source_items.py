@@ -2,7 +2,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 
 def _utc_now_iso() -> str:
@@ -59,12 +59,8 @@ class SourceItemStore:
                 )
                 """
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_source_items_status ON source_items(status)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_source_items_source ON source_items(source_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_source_items_status ON source_items(status)")
 
     def upsert_seen(
         self,

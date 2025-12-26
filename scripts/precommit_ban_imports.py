@@ -9,6 +9,7 @@ Prevents patterns like:
 
 Routers should use: from server.api.deps import get_state
 """
+
 from __future__ import annotations
 
 import ast
@@ -71,7 +72,7 @@ def main(argv: list[str]) -> int:
         print("❌ Banned lazy imports detected:\n")
         for e in errors:
             print(f"  {e}")
-        print(f"\nFix: Use 'from server.api.deps import get_state' with Depends().")
+        print("\nFix: Use 'from server.api.deps import get_state' with Depends().")
         print(f"Escape hatch: Add '{ALLOW_MARKER}' comment if truly unavoidable.")
         return 1
     return 0

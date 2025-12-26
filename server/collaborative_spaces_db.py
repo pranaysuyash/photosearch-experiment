@@ -119,21 +119,13 @@ class CollaborativeSpacesDB:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_collaborative_spaces_created_at ON collaborative_spaces(created_at)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_space_members_space_id ON space_members(space_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_space_members_user_id ON space_members(user_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_space_photos_space_id ON space_photos(space_id)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_space_members_space_id ON space_members(space_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_space_members_user_id ON space_members(user_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_space_photos_space_id ON space_photos(space_id)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_space_comments_space_photo ON space_comments(space_id, photo_path)"
             )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_space_comments_created_at ON space_comments(created_at)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_space_comments_created_at ON space_comments(created_at)")
 
     def create_collaborative_space(
         self,
@@ -206,16 +198,12 @@ class CollaborativeSpacesDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                result = conn.execute(
-                    "SELECT * FROM collaborative_spaces WHERE id = ?", (space_id,)
-                ).fetchone()
+                result = conn.execute("SELECT * FROM collaborative_spaces WHERE id = ?", (space_id,)).fetchone()
                 return CollaborativeSpace(**dict(result)) if result else None
         except Exception:
             return None
 
-    def get_user_spaces(
-        self, user_id: str, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_user_spaces(self, user_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get all collaborative spaces a user belongs to.
 
@@ -247,9 +235,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return []
 
-    def add_member_to_space(
-        self, space_id: str, user_id: str, role: str = "contributor"
-    ) -> bool:
+    def add_member_to_space(self, space_id: str, user_id: str, role: str = "contributor") -> bool:
         """
         Add a member to a collaborative space.
 
@@ -345,9 +331,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return False
 
-    def add_photo_to_space(
-        self, space_id: str, photo_path: str, added_by_user_id: str, caption: str = ""
-    ) -> bool:
+    def add_photo_to_space(self, space_id: str, photo_path: str, added_by_user_id: str, caption: str = "") -> bool:
         """
         Add a photo to a collaborative space.
 
@@ -398,9 +382,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return False
 
-    def add_comment_to_space_photo(
-        self, space_id: str, photo_path: str, user_id: str, comment: str
-    ) -> str:
+    def add_comment_to_space_photo(self, space_id: str, photo_path: str, user_id: str, comment: str) -> str:
         """
         Add a comment to a photo in a collaborative space.
 
@@ -429,9 +411,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return ""
 
-    def get_space_photos(
-        self, space_id: str, limit: int = 50, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_space_photos(self, space_id: str, limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get all photos in a collaborative space.
 
@@ -495,9 +475,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return []
 
-    def update_space_permissions(
-        self, space_id: str, user_id: str, permissions: Dict[str, bool]
-    ) -> bool:
+    def update_space_permissions(self, space_id: str, user_id: str, permissions: Dict[str, bool]) -> bool:
         """
         Update permissions for a user in a collaborative space.
 
@@ -523,9 +501,7 @@ class CollaborativeSpacesDB:
         except Exception:
             return False
 
-    def get_space_members(
-        self, space_id: str, include_inactive: bool = False
-    ) -> List[SpaceMember]:
+    def get_space_members(self, space_id: str, include_inactive: bool = False) -> List[SpaceMember]:
         """
         Get all members of a collaborative space.
 
@@ -539,11 +515,7 @@ class CollaborativeSpacesDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                where_clause = (
-                    "WHERE space_id = ?"
-                    if include_inactive
-                    else "WHERE space_id = ? AND is_active = 1"
-                )
+                where_clause = "WHERE space_id = ?" if include_inactive else "WHERE space_id = ? AND is_active = 1"
 
                 cursor = conn.execute(
                     f"""
@@ -557,9 +529,7 @@ class CollaborativeSpacesDB:
                 rows = cursor.fetchall()
                 members: List[SpaceMember] = []
                 for row in rows:
-                    permissions = (
-                        json.loads(row["permissions"]) if row["permissions"] else {}
-                    )
+                    permissions = json.loads(row["permissions"]) if row["permissions"] else {}
                     members.append(
                         SpaceMember(
                             space_id=row["space_id"],
@@ -611,9 +581,7 @@ class CollaborativeSpacesDB:
                     "max_members": space_info[1] if space_info else 0,
                     "total_photos": total_photos,
                     "total_comments": total_comments,
-                    "member_utilization": space_info[0] / space_info[1]
-                    if space_info and space_info[1] > 0
-                    else 0,
+                    "member_utilization": space_info[0] / space_info[1] if space_info and space_info[1] > 0 else 0,
                 }
         except Exception:
             return {

@@ -17,10 +17,8 @@ import asyncio
 import tempfile
 import shutil
 from pathlib import Path
-import json
 import time
-from PIL import Image, ImageDraw, ImageFont
-import numpy as np
+from PIL import Image, ImageDraw
 
 # Import our advanced features
 from src.enhanced_face_clustering import EnhancedFaceClusterer
@@ -28,6 +26,7 @@ from src.enhanced_duplicate_detection import EnhancedDuplicateDetector
 from src.enhanced_ocr_search import EnhancedOCRSearch
 from server.schema_extensions import SchemaExtensions
 from server.advanced_features_api import AdvancedFeaturesManager
+
 
 class TestAdvancedFeaturesIntegration:
     """Integration tests for advanced features"""
@@ -50,7 +49,7 @@ class TestAdvancedFeaturesIntegration:
 
         # 1. Create some similar images (for duplicate testing)
         for i in range(3):
-            img = Image.new('RGB', (800, 600), color=(100 + i*20, 150, 200))
+            img = Image.new("RGB", (800, 600), color=(100 + i * 20, 150, 200))
             draw = ImageDraw.Draw(img)
             draw.rectangle([100, 100, 300, 300], fill=(255, 255, 255))
             draw.text((150, 150), f"Test Image {i}", fill=(0, 0, 0))
@@ -60,18 +59,18 @@ class TestAdvancedFeaturesIntegration:
             test_images.append(str(img_path))
 
         # 2. Create an image with text (for OCR testing)
-        img = Image.new('RGB', (800, 600), color='white')
+        img = Image.new("RGB", (800, 600), color="white")
         draw = ImageDraw.Draw(img)
-        draw.text((100, 100), "Hello World", fill='black')
-        draw.text((100, 200), "This is a test image", fill='black')
-        draw.text((100, 300), "OCR should detect this text", fill='black')
+        draw.text((100, 100), "Hello World", fill="black")
+        draw.text((100, 200), "This is a test image", fill="black")
+        draw.text((100, 300), "OCR should detect this text", fill="black")
 
         ocr_path = images_dir / "with_text.jpg"
         img.save(ocr_path)
         test_images.append(str(ocr_path))
 
         # 3. Create a face-like image (for face detection testing)
-        img = Image.new('RGB', (800, 600), color=(240, 220, 200))
+        img = Image.new("RGB", (800, 600), color=(240, 220, 200))
         draw = ImageDraw.Draw(img)
         # Draw simple face features
         draw.ellipse([300, 200, 500, 400], fill=(255, 220, 177), outline=(0, 0, 0), width=2)
@@ -107,6 +106,7 @@ class TestAdvancedFeaturesIntegration:
 
         # Verify tables were created
         import sqlite3
+
         conn = sqlite3.connect(str(schema_path))
         cursor = conn.cursor()
 
@@ -126,10 +126,7 @@ class TestAdvancedFeaturesIntegration:
 
     def test_enhanced_face_clustering(self, test_images):
         """Test enhanced face clustering system"""
-        clusterer = EnhancedFaceClusterer(
-            db_path="test_face.db",
-            progress_callback=lambda msg: print(f"Face: {msg}")
-        )
+        clusterer = EnhancedFaceClusterer(db_path="test_face.db", progress_callback=lambda msg: print(f"Face: {msg}"))
 
         # Test face detection
         face_path = None
@@ -148,7 +145,7 @@ class TestAdvancedFeaturesIntegration:
         """Test enhanced duplicate detection system"""
         detector = EnhancedDuplicateDetector(
             db_path="test_duplicates.db",
-            progress_callback=lambda msg: print(f"Duplicate: {msg}")
+            progress_callback=lambda msg: print(f"Duplicate: {msg}"),
         )
 
         # Test individual image processing
@@ -161,10 +158,7 @@ class TestAdvancedFeaturesIntegration:
 
     def test_enhanced_ocr_search(self, test_images):
         """Test enhanced OCR search system"""
-        ocr_search = EnhancedOCRSearch(
-            db_path="test_ocr.db",
-            progress_callback=lambda msg: print(f"OCR: {msg}")
-        )
+        ocr_search = EnhancedOCRSearch(db_path="test_ocr.db", progress_callback=lambda msg: print(f"OCR: {msg}"))
 
         # Test text extraction
         text_path = None
@@ -174,7 +168,7 @@ class TestAdvancedFeaturesIntegration:
                 break
 
         if text_path:
-            result = ocr_search.extract_text(text_path, ['en'])
+            result = ocr_search.extract_text(text_path, ["en"])
             assert result is not None
             assert result.photo_path == text_path
             assert isinstance(result.text_regions, list)
@@ -192,9 +186,9 @@ class TestAdvancedFeaturesIntegration:
         features_manager.update_job_status(job_id, "processing", "Test message", 50)
         status = features_manager.get_job_status(job_id)
         assert status is not None
-        assert status['status'] == 'processing'
-        assert status['message'] == 'Test message'
-        assert status['progress'] == 50
+        assert status["status"] == "processing"
+        assert status["message"] == "Test message"
+        assert status["progress"] == 50
 
     def test_feature_integration_pipeline(self, test_images):
         """Test that all features work together in a pipeline"""
@@ -224,7 +218,7 @@ class TestAdvancedFeaturesIntegration:
 
             # OCR extraction
             try:
-                ocr_result = ocr_search.extract_text(img_path, ['en'])
+                ocr_result = ocr_search.extract_text(img_path, ["en"])
                 print(f"  Text regions: {len(ocr_result.text_regions)}")
                 print(f"  Full text length: {len(ocr_result.full_text)}")
             except Exception as e:
@@ -235,14 +229,14 @@ class TestAdvancedFeaturesIntegration:
 
         # Face recognition benchmark
         start_time = time.time()
-        clusterer = EnhancedFaceClusterer(db_path="perf_face.db")
+        EnhancedFaceClusterer(db_path="perf_face.db")
         init_time = time.time() - start_time
         print(f"Face clusterer initialization: {init_time:.3f}s")
 
         # Process a few images and measure
         for i, img_path in enumerate(test_images[:2]):
             start_time = time.time()
-            photo_info = EnhancedDuplicateDetector()._process_image(img_path)
+            EnhancedDuplicateDetector()._process_image(img_path)
             processing_time = time.time() - start_time
             print(f"Image {i+1} processing: {processing_time:.3f}s")
 
@@ -259,7 +253,7 @@ class TestAdvancedFeaturesIntegration:
 
         # Test with corrupted image
         corrupted_path = Path(test_images[0]).parent / "corrupted.jpg"
-        with open(corrupted_path, 'wb') as f:
+        with open(corrupted_path, "wb") as f:
             f.write(b"This is not an image file")
 
         result = detector._process_image(str(corrupted_path))
@@ -299,7 +293,7 @@ class TestAdvancedFeaturesIntegration:
                 return detector._process_image(img_path)
             elif feature_type == "ocr":
                 ocr_search = EnhancedOCRSearch(db_path=f"concurrent_{feature_type}.db")
-                return ocr_search.extract_text(img_path, ['en'])
+                return ocr_search.extract_text(img_path, ["en"])
             return None
 
         # Run concurrent operations
@@ -344,9 +338,9 @@ class TestAdvancedFeaturesIntegration:
         # Memory increase should be reasonable (less than 100MB for test images)
         assert memory_increase < 100
 
+
 if __name__ == "__main__":
     # Run a quick integration test
-    import sys
 
     print("Running Advanced Features Integration Tests...")
 
@@ -397,6 +391,7 @@ if __name__ == "__main__":
 
         # Test API features
         print("Testing API endpoints...")
+
         async def test_api():
             manager = AdvancedFeaturesManager(temp_path)
             await manager.initialize()

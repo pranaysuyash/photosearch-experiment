@@ -81,7 +81,6 @@ async def get_search_suggestions(query: str, limit: int = 3, state: AppState = D
         List of suggested search queries
     """
     try:
-
         suggestions = state.intent_detector.get_search_suggestions(query)
         return {"suggestions": suggestions[:limit]}
     except Exception as e:
@@ -100,7 +99,6 @@ async def get_search_badges(query: str, state: AppState = Depends(get_state)):
         List of intent badges with labels and icons
     """
     try:
-
         badges = state.intent_detector.get_search_badges(query)
         return {"badges": badges}
     except Exception as e:
@@ -116,7 +114,6 @@ async def get_all_intents(state: AppState = Depends(get_state)):
         Dictionary of all supported intents
     """
     try:
-
         return state.intent_detector.get_all_intents()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -79,18 +79,10 @@ class AIInsightsDB:
             )
 
             # Indexes must be created separately in SQLite.
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ai_insights_photo_path ON ai_insights(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ai_insights_insight_type ON ai_insights(insight_type)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ai_insights_confidence ON ai_insights(confidence)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_ai_insights_generated_at ON ai_insights(generated_at)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ai_insights_photo_path ON ai_insights(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ai_insights_insight_type ON ai_insights(insight_type)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ai_insights_confidence ON ai_insights(confidence)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_ai_insights_generated_at ON ai_insights(generated_at)")
 
     def create_insight(
         self,
@@ -165,9 +157,7 @@ class AIInsightsDB:
                     id=row["id"],
                     photo_path=row["photo_path"],
                     insight_type=row["insight_type"],
-                    insight_data=json.loads(row["insight_data"])
-                    if row["insight_data"]
-                    else {},
+                    insight_data=json.loads(row["insight_data"]) if row["insight_data"] else {},
                     confidence=row["confidence"],
                     generated_at=row["generated_at"],
                     is_applied=bool(row["is_applied"]),
@@ -202,9 +192,7 @@ class AIInsightsDB:
                         id=row["id"],
                         photo_path=row["photo_path"],
                         insight_type=row["insight_type"],
-                        insight_data=json.loads(row["insight_data"])
-                        if row["insight_data"]
-                        else {},
+                        insight_data=json.loads(row["insight_data"]) if row["insight_data"] else {},
                         confidence=row["confidence"],
                         generated_at=row["generated_at"],
                         is_applied=bool(row["is_applied"]),
@@ -214,9 +202,7 @@ class AIInsightsDB:
         except Exception:
             return []
 
-    def get_insights_by_type(
-        self, insight_type: str, limit: int = 50
-    ) -> List[PhotoInsight]:
+    def get_insights_by_type(self, insight_type: str, limit: int = 50) -> List[PhotoInsight]:
         """
         Get insights of a specific type.
 
@@ -245,9 +231,7 @@ class AIInsightsDB:
                         id=row["id"],
                         photo_path=row["photo_path"],
                         insight_type=row["insight_type"],
-                        insight_data=json.loads(row["insight_data"])
-                        if row["insight_data"]
-                        else {},
+                        insight_data=json.loads(row["insight_data"]) if row["insight_data"] else {},
                         confidence=row["confidence"],
                         generated_at=row["generated_at"],
                         is_applied=bool(row["is_applied"]),
@@ -285,9 +269,7 @@ class AIInsightsDB:
                         id=row["id"],
                         photo_path=row["photo_path"],
                         insight_type=row["insight_type"],
-                        insight_data=json.loads(row["insight_data"])
-                        if row["insight_data"]
-                        else {},
+                        insight_data=json.loads(row["insight_data"]) if row["insight_data"] else {},
                         confidence=row["confidence"],
                         generated_at=row["generated_at"],
                         is_applied=bool(row["is_applied"]),
@@ -334,9 +316,7 @@ class AIInsightsDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM ai_insights WHERE id = ?", (insight_id,)
-                )
+                cursor = conn.execute("DELETE FROM ai_insights WHERE id = ?", (insight_id,))
                 return cursor.rowcount > 0
         except Exception:
             return False
@@ -350,14 +330,10 @@ class AIInsightsDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute(
-                    "SELECT COUNT(*) as total FROM photo_insights"
-                ).fetchone()
+                result = conn.execute("SELECT COUNT(*) as total FROM photo_insights").fetchone()
                 total_insights = result["total"] if result else 0
 
-                result = conn.execute(
-                    "SELECT COUNT(*) as applied FROM photo_insights WHERE is_applied = 1"
-                ).fetchone()
+                result = conn.execute("SELECT COUNT(*) as applied FROM photo_insights WHERE is_applied = 1").fetchone()
                 applied_insights = result["applied"] if result else 0
 
                 # Count by type

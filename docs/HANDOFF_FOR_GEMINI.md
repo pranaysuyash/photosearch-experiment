@@ -1,7 +1,7 @@
 # Handoff for Gemini Review
 
-**From:** Claude  
-**Date:** 2025-12-08  
+**From:** Claude
+**Date:** 2025-12-08
 **Project:** PhotoSearch Experiment
 
 ---

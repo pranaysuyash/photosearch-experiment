@@ -23,7 +23,6 @@ async def analyze_image(request: ImageAnalysisRequest, state: AppState = Depends
         Dictionary with analysis results including caption, tags, objects, etc.
     """
     try:
-
         photo_search_engine = state.photo_search_engine
         ps_logger = state.ps_logger
 
@@ -67,7 +66,6 @@ async def analyze_image(request: ImageAnalysisRequest, state: AppState = Depends
     except HTTPException:
         raise
     except Exception as e:
-
         ps_logger = state.ps_logger
         ps_logger.error(f"Image analysis failed for {request.path}: {str(e)}")
         raise HTTPException(status_code=500, detail="Analysis failed")
@@ -100,7 +98,6 @@ async def get_image_analysis(path: str, state: AppState = Depends(get_state)):
     except HTTPException:
         raise
     except Exception as e:
-
         ps_logger = state.ps_logger
         ps_logger.error(f"Failed to retrieve analysis for {path}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve analysis")

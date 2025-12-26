@@ -101,9 +101,7 @@ class GeminiVLMProvider(VLMProvider):
             mime_type = mime_types.get(ext, "image/jpeg")
 
             # Generate caption
-            response = model.generate_content(
-                [CAPTION_PROMPT, {"mime_type": mime_type, "data": image_data}]
-            )
+            response = model.generate_content([CAPTION_PROMPT, {"mime_type": mime_type, "data": image_data}])
 
             return {
                 "caption": response.text,
@@ -131,26 +129,41 @@ class OpenAIVLMProvider(VLMProvider):
         if not self.is_available():
             return {"error": "OPENAI_API_KEY not set", "caption": None}
 
-        # TODO: Implement OpenAI Vision API call
-        # from openai import OpenAI
-        # client = OpenAI(api_key=self.api_key)
-        #
-        # with open(image_path, "rb") as f:
-        #     base64_image = base64.b64encode(f.read()).decode("utf-8")
-        #
-        # response = client.chat.completions.create(
-        #     model=self.model,
-        #     messages=[{
-        #         "role": "user",
-        #         "content": [
-        #             {"type": "text", "text": CAPTION_PROMPT},
-        #             {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
-        #         ]
-        #     }]
-        # )
-        # return {"caption": response.choices[0].message.content, ...}
+        try:
+            import base64
+            from openai import OpenAI
 
-        return {"error": "OpenAI provider not yet implemented", "caption": None}
+            client = OpenAI(api_key=self.api_key)
+
+            with open(image_path, "rb") as f:
+                base64_image = base64.b64encode(f.read()).decode("utf-8")
+
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": CAPTION_PROMPT},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
+                        ],
+                    }
+                ],
+                max_tokens=300,
+            )
+
+            caption = response.choices[0].message.content
+            return {
+                "caption": caption,
+                "model": self.model,
+                "provider": "openai",
+                "confidence": 0.9,  # OpenAI doesn't provide confidence scores
+            }
+
+        except ImportError:
+            return {"error": "OpenAI library not installed. Install with: pip install openai", "caption": None}
+        except Exception as e:
+            return {"error": f"OpenAI API error: {str(e)}", "caption": None}
 
 
 class OllamaVLMProvider(VLMProvider):
@@ -172,12 +185,35 @@ class OllamaVLMProvider(VLMProvider):
 
     def generate_caption(self, image_path: str) -> Dict[str, Any]:
         """Generate caption using local Ollama."""
-        # TODO: Implement Ollama API call
-        # import requests
-        #
-        # with open(image_path, "rb") as f:
-        #     base64_image = base64.b64encode(f.read()).decode("utf-8")
-        #
+        if not self.is_available():
+            return {"error": "Ollama not available", "caption": None}
+
+        try:
+            import requests
+            import base64
+
+            with open(image_path, "rb") as f:
+                base64_image = base64.b64encode(f.read()).decode("utf-8")
+
+            payload = {"model": self.model, "prompt": CAPTION_PROMPT, "images": [base64_image], "stream": False}
+
+            response = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=30)
+
+            if response.status_code == 200:
+                result = response.json()
+                return {
+                    "caption": result.get("response", "").strip(),
+                    "model": self.model,
+                    "provider": "ollama",
+                    "confidence": 0.8,  # Ollama doesn't provide confidence scores
+                }
+            else:
+                return {"error": f"Ollama API error: {response.status_code}", "caption": None}
+
+        except ImportError:
+            return {"error": "Requests library not available", "caption": None}
+        except Exception as e:
+            return {"error": f"Ollama error: {str(e)}", "caption": None}
         # response = requests.post(
         #     f"{self.base_url}/api/generate",
         #     json={
@@ -340,9 +376,7 @@ class VLMCaptionService:
 
         return None
 
-    def _store_caption(
-        self, photo_path: str, caption: str, model_version: str, provider: str
-    ):
+    def _store_caption(self, photo_path: str, caption: str, model_version: str, provider: str):
         """Store a caption in the database."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()

@@ -102,30 +102,14 @@ class LocationClustersDB:
                     FOREIGN KEY (photo_path) REFERENCES photo_locations(photo_path)
                 )
             """)
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_coords ON photo_locations(latitude, longitude)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_corrected_place ON photo_locations(corrected_place_name)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_path ON photo_locations(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_center_coords ON location_clusters(center_lat, center_lng)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_name ON location_clusters(name)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_count ON location_clusters(photo_count)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_cluster_id ON cluster_photos(cluster_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_cluster_photo_path ON cluster_photos(photo_path)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_coords ON photo_locations(latitude, longitude)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_corrected_place ON photo_locations(corrected_place_name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_path ON photo_locations(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_center_coords ON location_clusters(center_lat, center_lng)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_name ON location_clusters(name)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_count ON location_clusters(photo_count)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_cluster_id ON cluster_photos(cluster_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_cluster_photo_path ON cluster_photos(photo_path)")
 
     def add_photo_location(
         self,
@@ -197,9 +181,7 @@ class LocationClustersDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                result = conn.execute(
-                    "SELECT * FROM photo_locations WHERE photo_path = ?", (photo_path,)
-                ).fetchone()
+                result = conn.execute("SELECT * FROM photo_locations WHERE photo_path = ?", (photo_path,)).fetchone()
 
                 if result:
                     return PhotoLocation(
@@ -219,9 +201,7 @@ class LocationClustersDB:
         except Exception:
             return None
 
-    def get_photos_by_location(
-        self, latitude: float, longitude: float, radius_km: float = 1.0
-    ) -> List[PhotoLocation]:
+    def get_photos_by_location(self, latitude: float, longitude: float, radius_km: float = 1.0) -> List[PhotoLocation]:
         """
         Get photos within a certain radius of a location.
 
@@ -238,12 +218,8 @@ class LocationClustersDB:
                 conn.row_factory = sqlite3.Row
 
                 # Calculate bounds using a simplified approach
-                lat_delta = (
-                    radius_km / 111.0
-                )  # Rough conversion: 1 deg latitude ~ 111 km
-                lng_delta = radius_km / (
-                    111.0 * abs(math.cos(math.radians(latitude)))
-                )  # Adjust for longitude
+                lat_delta = radius_km / 111.0  # Rough conversion: 1 deg latitude ~ 111 km
+                lng_delta = radius_km / (111.0 * abs(math.cos(math.radians(latitude))))  # Adjust for longitude
 
                 cursor = conn.execute(
                     """
@@ -263,9 +239,7 @@ class LocationClustersDB:
                 # Filter by actual distance
                 photos = []
                 for row in rows:
-                    dist = self._calculate_distance(
-                        latitude, longitude, row["latitude"], row["longitude"]
-                    )
+                    dist = self._calculate_distance(latitude, longitude, row["latitude"], row["longitude"])
                     if dist <= radius_km * 1000:  # Convert km to meters
                         photos.append(
                             PhotoLocation(
@@ -295,9 +269,7 @@ class LocationClustersDB:
         Some legacy callers/tests expect a list of dictionaries with a `path` key.
         """
 
-        photos = self.get_photos_by_location(
-            latitude=latitude, longitude=longitude, radius_km=radius_km
-        )
+        photos = self.get_photos_by_location(latitude=latitude, longitude=longitude, radius_km=radius_km)
         return [
             {
                 "path": p.photo_path,
@@ -433,9 +405,7 @@ class LocationClustersDB:
         except Exception:
             return []
 
-    def cluster_locations(
-        self, min_photos: int = 2, max_distance_meters: float = 100.0
-    ) -> List[LocationCluster]:
+    def cluster_locations(self, min_photos: int = 2, max_distance_meters: float = 100.0) -> List[LocationCluster]:
         """
         Cluster nearby locations into named places.
 
@@ -449,9 +419,7 @@ class LocationClustersDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                cursor = conn.execute(
-                    "SELECT photo_path, latitude, longitude FROM photo_locations"
-                )
+                cursor = conn.execute("SELECT photo_path, latitude, longitude FROM photo_locations")
                 all_locations = cursor.fetchall()
 
                 # Group locations that are near each other
@@ -481,12 +449,8 @@ class LocationClustersDB:
                     # Only create cluster if we have enough photos
                     if len(nearby) >= min_photos:
                         # Calculate cluster center
-                        center_lat = sum(loc["latitude"] for loc in nearby) / len(
-                            nearby
-                        )
-                        center_lng = sum(loc["longitude"] for loc in nearby) / len(
-                            nearby
-                        )
+                        center_lat = sum(loc["latitude"] for loc in nearby) / len(nearby)
+                        center_lng = sum(loc["longitude"] for loc in nearby) / len(nearby)
 
                         # Calculate bounding box
                         min_lat = min(loc["latitude"] for loc in nearby)
@@ -507,9 +471,7 @@ class LocationClustersDB:
                                 cluster_id,
                                 center_lat,
                                 center_lng,
-                                self._generate_cluster_name(
-                                    center_lat, center_lng, nearby[:5]
-                                ),
+                                self._generate_cluster_name(center_lat, center_lng, nearby[:5]),
                                 f"Cluster of {len(nearby)} photos",
                                 len(nearby),
                                 min_lat,
@@ -545,9 +507,7 @@ class LocationClustersDB:
                                 id=cluster_id,
                                 center_lat=center_lat,
                                 center_lng=center_lng,
-                                name=self._generate_cluster_name(
-                                    center_lat, center_lng, nearby[:5]
-                                ),
+                                name=self._generate_cluster_name(center_lat, center_lng, nearby[:5]),
                                 description=f"Cluster of {len(nearby)} photos",
                                 photo_count=len(nearby),
                                 min_lat=min_lat,
@@ -696,9 +656,7 @@ class LocationClustersDB:
         except Exception:
             return None
 
-    def _calculate_distance(
-        self, lat1: float, lng1: float, lat2: float, lng2: float
-    ) -> float:
+    def _calculate_distance(self, lat1: float, lng1: float, lat2: float, lng2: float) -> float:
         """
         Calculate distance between two points in meters using Haversine formula.
 
@@ -716,17 +674,12 @@ class LocationClustersDB:
         delta_lat = math.radians(lat2 - lat1)
         delta_lng = math.radians(lng2 - lng1)
 
-        a = (
-            math.sin(delta_lat / 2) ** 2
-            + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2
-        )
+        a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(delta_lng / 2) ** 2
         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
         return R * c
 
-    def _update_cluster_associations(
-        self, conn: sqlite3.Connection, photo_path: str, lat: float, lng: float
-    ):
+    def _update_cluster_associations(self, conn: sqlite3.Connection, photo_path: str, lat: float, lng: float):
         """Update cluster associations for a new photo."""
         # Find existing clusters this photo should belong to
         cursor = conn.execute(
@@ -769,16 +722,10 @@ class LocationClustersDB:
                     (cluster_id, cluster_id),
                 )
 
-    def _generate_cluster_name(
-        self, center_lat: float, center_lng: float, sample_photos: List[sqlite3.Row]
-    ) -> str:
+    def _generate_cluster_name(self, center_lat: float, center_lng: float, sample_photos: List[sqlite3.Row]) -> str:
         """Generate a name for a location cluster based on common place names in the cluster."""
         # Get place names from sample photos
-        place_names = [
-            p["corrected_place_name"] or p["original_place_name"]
-            for p in sample_photos
-            if p
-        ]
+        place_names = [p["corrected_place_name"] or p["original_place_name"] for p in sample_photos if p]
         place_names = [name for name in place_names if name]  # Remove None values
 
         # If we have common place names, use one
@@ -803,14 +750,10 @@ class LocationClustersDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 # Total photos with location data
-                total_with_location = conn.execute(
-                    "SELECT COUNT(*) FROM photo_locations"
-                ).fetchone()[0]
+                total_with_location = conn.execute("SELECT COUNT(*) FROM photo_locations").fetchone()[0]
 
                 # Total clusters
-                total_clusters = conn.execute(
-                    "SELECT COUNT(*) FROM location_clusters"
-                ).fetchone()[0]
+                total_clusters = conn.execute("SELECT COUNT(*) FROM location_clusters").fetchone()[0]
 
                 # Photos without corrected names
                 without_correction = conn.execute(
@@ -834,9 +777,7 @@ class LocationClustersDB:
                     "total_clusters": total_clusters,
                     "without_correction": without_correction,
                     "with_correction": total_with_location - without_correction,
-                    "top_locations": [
-                        {"name": row[0], "count": row[1]} for row in top_locations
-                    ],
+                    "top_locations": [{"name": row[0], "count": row[1]} for row in top_locations],
                 }
         except Exception:
             return {
@@ -847,9 +788,7 @@ class LocationClustersDB:
                 "top_locations": [],
             }
 
-    def correct_place_name_bulk(
-        self, photo_paths: List[str], corrected_name: str
-    ) -> bool:
+    def correct_place_name_bulk(self, photo_paths: List[str], corrected_name: str) -> bool:
         """
         Bulk correct the place name for multiple photos.
 

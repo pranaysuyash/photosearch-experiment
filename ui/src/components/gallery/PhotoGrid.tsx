@@ -269,12 +269,11 @@ export function PhotoGrid({
   }, []);
 
   const handleActionExecute = useCallback((actionId: string, result: any) => {
-    console.log('Action executed:', actionId, result);
+    // Handle action execution results
 
     // Handle specific action results
     if (result.success) {
-      // You could show a toast notification here
-      console.log('Action completed successfully:', result.message);
+      // Action completed successfully - could show toast notification here
     } else {
       console.error('Action failed:', result.error);
     }

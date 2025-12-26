@@ -12,7 +12,6 @@ async def get_stats(state: AppState = Depends(get_state)):
     Return system statistics for the dashboard/timeline.
     """
     try:
-
         # Leverage existing stats logic or db
         stats = state.photo_search_engine.db.get_stats()
         return stats
@@ -27,7 +26,6 @@ async def get_timeline(state: AppState = Depends(get_state)):
     Grouping by month for now.
     """
     try:
-
         # We need a method to get date stats.
         # photo_search_engine.db has get_stats() but that's summary.
         # We'll execute a raw query on the db for now until we extend MetadataDatabase.

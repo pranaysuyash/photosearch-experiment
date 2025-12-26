@@ -65,18 +65,10 @@ class BulkActionsDB:
             """)
 
             # Indexes must be created separately in SQLite.
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_bulk_actions_user_id ON bulk_actions(user_id)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_bulk_actions_action_type ON bulk_actions(action_type)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_bulk_actions_created_at ON bulk_actions(created_at)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_bulk_actions_status ON bulk_actions(status)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_bulk_actions_user_id ON bulk_actions(user_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_bulk_actions_action_type ON bulk_actions(action_type)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_bulk_actions_created_at ON bulk_actions(created_at)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_bulk_actions_status ON bulk_actions(status)")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_bulk_action_history_bulk_action_id ON bulk_action_history(bulk_action_id)"
             )
@@ -188,12 +180,8 @@ class BulkActionsDB:
                     id=row["id"],
                     action_type=row["action_type"],
                     user_id=row["user_id"],
-                    affected_paths=json.loads(row["affected_paths"])
-                    if row["affected_paths"]
-                    else [],
-                    operation_data=json.loads(row["operation_data"])
-                    if row["operation_data"]
-                    else {},
+                    affected_paths=json.loads(row["affected_paths"]) if row["affected_paths"] else [],
+                    operation_data=json.loads(row["operation_data"]) if row["operation_data"] else {},
                     status=row["status"],
                     created_at=row["created_at"],
                     undone_at=row["undone_at"],
@@ -214,9 +202,7 @@ class BulkActionsDB:
         try:
             with sqlite3.connect(self.db_path) as conn:
                 conn.row_factory = sqlite3.Row
-                result = conn.execute(
-                    "SELECT status FROM bulk_actions WHERE id = ?", (action_id,)
-                ).fetchone()
+                result = conn.execute("SELECT status FROM bulk_actions WHERE id = ?", (action_id,)).fetchone()
 
                 return result and result["status"] == "completed"
         except Exception:

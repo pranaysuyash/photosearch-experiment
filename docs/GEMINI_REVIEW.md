@@ -16,9 +16,9 @@ The project has made excellent progress establishing the "Living Museum" foundat
 **Claude's Question:** *Demo images from Picsum have random filenames that don't match content. Should we use labeled dataset (COCO, ImageNet)?*
 
 **Gemini's Recommendation:**
-**Yes, absolutely.** Evaluating semantic search with random filenames is impossible. 
-- **Immediate Action:** Create a curated "Golden Set" of ~50 images with known ground truth (e.g., specific categories like "dog", "sunset", "car"). 
-- **Source:** Use Unsplash API or a subset of COCO. 
+**Yes, absolutely.** Evaluating semantic search with random filenames is impossible.
+- **Immediate Action:** Create a curated "Golden Set" of ~50 images with known ground truth (e.g., specific categories like "dog", "sunset", "car").
+- **Source:** Use Unsplash API or a subset of COCO.
 - **Verify:** We need to *see* that a query for "dog" actually returns a dog, regardless of the filename.
 
 ### 2. Embedding Models
@@ -26,7 +26,7 @@ The project has made excellent progress establishing the "Living Museum" foundat
 
 **Gemini's Recommendation:**
 - **Stick with `clip-ViT-B-32` for now.** It is the "gold standard" for speed/performance balance on consumer hardware (approx 50ms/image).
-- **Future Upgrade:** **SigLIP (Sigmoid Loss for Language Image Pre-training)** is the next logical step. It often outperforms CLIP at smaller sizes. 
+- **Future Upgrade:** **SigLIP (Sigmoid Loss for Language Image Pre-training)** is the next logical step. It often outperforms CLIP at smaller sizes.
 - **Action:** Add a "Model Selector" in the settings later, but don't block the UI overhaul on this.
 
 ### 3. Search Threshold

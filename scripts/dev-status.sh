@@ -46,4 +46,3 @@ echo ""
 show_port "${BACKEND_PORT}"
 echo ""
 show_port "${FRONTEND_PORT}"
-

@@ -1,0 +1,35 @@
+# Ruff configuration
+# See https://docs.astral.sh/ruff/configuration/
+
+# Exclude patterns
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "node_modules",
+    "dist",
+    "build",
+]
+
+# Line length
+line-length = 120
+
+# Target Python version
+target-version = "py311"
+
+[lint]
+# Enable these rule categories
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+]
+
+# Ignore specific rules
+ignore = [
+    "E402",  # Module level import not at top of file (needed for test path setup)
+    "E501",  # Line too long (handled by formatter)
+    "E722",  # Do not use bare except (sometimes needed for availability checks)
+]
+
+# All lint errors must be fixed - no ignores allowed

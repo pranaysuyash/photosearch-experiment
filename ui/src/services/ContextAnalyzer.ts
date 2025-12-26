@@ -1,4 +1,9 @@
-import type { PhotoContext, FileCapabilities, SystemInfo, InstalledApp } from '../types/actions';
+import type {
+  PhotoContext,
+  FileCapabilities,
+  SystemInfo,
+  InstalledApp,
+} from '../types/actions';
 import type { Photo } from '../api';
 
 /**
@@ -20,13 +25,13 @@ export class ContextAnalyzer {
     const fileLocation = this.determineFileLocation(photo.path);
     const fileType = this.determineFileType(photo);
     const capabilities = this.getFileCapabilities(photo.path, fileType);
-    
+
     return {
       fileLocation,
       fileType,
       capabilities,
       availableApps: this.getCompatibleApps(fileType),
-      systemInfo: this.systemInfo
+      systemInfo: this.systemInfo,
     };
   }
 
@@ -43,7 +48,7 @@ export class ContextAnalyzer {
       new RegExp('^file://'), // File protocol
     ];
 
-    return localPatterns.some(pattern => pattern.test(path));
+    return localPatterns.some((pattern) => pattern.test(path));
   }
 
   /**
@@ -63,7 +68,7 @@ export class ContextAnalyzer {
       /^onedrive:/, // OneDrive
     ];
 
-    return cloudPatterns.some(pattern => pattern.test(path));
+    return cloudPatterns.some((pattern) => pattern.test(path));
   }
 
   /**
@@ -78,7 +83,7 @@ export class ContextAnalyzer {
       canExport: true, // Always allow export
       canShare: isCloud || isLocal,
       canOpenLocation: isLocal && this.systemInfo.canOpenFileManager,
-      supportedFormats: this.getSupportedFormats(fileType)
+      supportedFormats: this.getSupportedFormats(fileType),
     };
   }
 
@@ -94,9 +99,9 @@ export class ContextAnalyzer {
    */
   getCompatibleApps(fileType: string): InstalledApp[] {
     const fileExtensions = this.getFileExtensionsForType(fileType);
-    
-    return this.installedApps.filter(app => 
-      app.supportedFormats.some(format => 
+
+    return this.installedApps.filter((app) =>
+      app.supportedFormats.some((format) =>
         fileExtensions.includes(format.toLowerCase())
       )
     );
@@ -119,25 +124,47 @@ export class ContextAnalyzer {
   /**
    * Determine file type from photo metadata and filename
    */
-  private determineFileType(photo: Photo): 'image' | 'video' | 'raw' | 'document' {
+  private determineFileType(
+    photo: Photo
+  ): 'image' | 'video' | 'raw' | 'document' {
     const filename = photo.filename.toLowerCase();
     const metadata = photo.metadata;
 
     // Check for video files
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.wmv', '.flv'];
-    if (videoExtensions.some(ext => filename.endsWith(ext))) {
+    const videoExtensions = [
+      '.mp4',
+      '.mov',
+      '.avi',
+      '.mkv',
+      '.webm',
+      '.m4v',
+      '.wmv',
+      '.flv',
+    ];
+    if (videoExtensions.some((ext) => filename.endsWith(ext))) {
       return 'video';
     }
 
     // Check for RAW files
-    const rawExtensions = ['.raw', '.cr2', '.cr3', '.nef', '.arw', '.dng', '.orf', '.rw2', '.pef', '.srw'];
-    if (rawExtensions.some(ext => filename.endsWith(ext))) {
+    const rawExtensions = [
+      '.raw',
+      '.cr2',
+      '.cr3',
+      '.nef',
+      '.arw',
+      '.dng',
+      '.orf',
+      '.rw2',
+      '.pef',
+      '.srw',
+    ];
+    if (rawExtensions.some((ext) => filename.endsWith(ext))) {
       return 'raw';
     }
 
     // Check for document files
     const documentExtensions = ['.pdf', '.svg', '.txt', '.doc', '.docx'];
-    if (documentExtensions.some(ext => filename.endsWith(ext))) {
+    if (documentExtensions.some((ext) => filename.endsWith(ext))) {
       return 'document';
     }
 
@@ -172,7 +199,7 @@ export class ContextAnalyzer {
       hasClipboard: 'clipboard' in navigator,
       canOpenFileManager: true, // Assume true, will be validated at runtime
       canLaunchApps: true, // Assume true, will be validated at runtime
-      supportedProtocols: ['http', 'https', 'file']
+      supportedProtocols: ['http', 'https', 'file'],
     };
   }
 
@@ -186,7 +213,18 @@ export class ContextAnalyzer {
       case 'video':
         return ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'wmv', 'flv'];
       case 'raw':
-        return ['raw', 'cr2', 'cr3', 'nef', 'arw', 'dng', 'orf', 'rw2', 'pef', 'srw'];
+        return [
+          'raw',
+          'cr2',
+          'cr3',
+          'nef',
+          'arw',
+          'dng',
+          'orf',
+          'rw2',
+          'pef',
+          'srw',
+        ];
       case 'document':
         return ['pdf', 'svg', 'txt', 'doc', 'docx'];
       default:

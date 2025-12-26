@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Copy, 
-  FolderOpen, 
-  ExternalLink, 
-  Download, 
-  Share, 
+import {
+  Copy,
+  FolderOpen,
+  ExternalLink,
+  Download,
+  Share,
   Edit,
   ChevronRight,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import type { Photo, PhotoAction, InstalledApp } from '../../types/actions';
 import { usePhotoActions } from '../../hooks/useActionSystem';
@@ -37,9 +37,9 @@ const ActionIcon: React.FC<ActionIconProps> = ({ iconName, size = 16 }) => {
     Share,
     Edit,
     CloudDownload: Download,
-    Link: Share
+    Link: Share,
   };
-  
+
   const IconComponent = icons[iconName as keyof typeof icons] || Edit;
   return <IconComponent size={size} />;
 };
@@ -51,7 +51,12 @@ interface ActionItemProps {
   onClose: () => void;
 }
 
-const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClose }) => {
+const ActionItem: React.FC<ActionItemProps> = ({
+  action,
+  photo,
+  onExecute,
+  onClose,
+}) => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [showSubmenu, setShowSubmenu] = useState(false);
   const [compatibleApps, setCompatibleApps] = useState<InstalledApp[]>([]);
@@ -62,23 +67,41 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClo
       // This would normally come from the action service
       // For now, we'll mock some apps
       setCompatibleApps([
-        { id: 'photoshop', name: 'Adobe Photoshop', displayName: 'Photoshop', executablePath: '', supportedFormats: [], category: 'photo_editor' },
-        { id: 'lightroom', name: 'Adobe Lightroom', displayName: 'Lightroom', executablePath: '', supportedFormats: [], category: 'raw_processor' }
+        {
+          id: 'photoshop',
+          name: 'Adobe Photoshop',
+          displayName: 'Photoshop',
+          executablePath: '',
+          supportedFormats: [],
+          category: 'photo_editor',
+        },
+        {
+          id: 'lightroom',
+          name: 'Adobe Lightroom',
+          displayName: 'Lightroom',
+          executablePath: '',
+          supportedFormats: [],
+          category: 'raw_processor',
+        },
       ]);
     }
   }, [action.type]);
 
   const handleExecute = async (options?: unknown) => {
     if (isExecuting) return;
-    
+
     setIsExecuting(true);
     try {
       // Mock execution for now - in real implementation this would use ActionService
       const result = await action.execute(photo, options as any);
       onExecute(action.id, result as unknown);
-      
+
       // If result is known shape check safely
-      if (result && typeof (result as any).success !== 'undefined' && (result as any).success) {
+      if (
+        result &&
+        typeof (result as any).success !== 'undefined' &&
+        (result as any).success
+      ) {
         onClose();
       }
     } catch (error) {
@@ -94,24 +117,24 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClo
 
   if (action.type === 'open_with' && compatibleApps.length > 0) {
     return (
-      <div 
-        className="relative"
+      <div
+        className='relative'
         onMouseEnter={() => setShowSubmenu(true)}
         onMouseLeave={() => setShowSubmenu(false)}
       >
         <button
-          className="w-full flex items-center justify-between px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors"
+          className='w-full flex items-center justify-between px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors'
           disabled={isExecuting}
         >
-          <div className="flex items-center gap-3">
+          <div className='flex items-center gap-3'>
             {isExecuting ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={16} className='animate-spin' />
             ) : (
               <ActionIcon iconName={action.icon} />
             )}
             <span>{action.label}</span>
           </div>
-          <ChevronRight size={14} className="text-white/50" />
+          <ChevronRight size={14} className='text-white/50' />
         </button>
 
         <AnimatePresence>
@@ -120,15 +143,15 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClo
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="absolute left-full top-0 ml-1 min-w-48 glass-surface rounded-lg border border-white/10 py-1 z-50"
+              className='absolute left-full top-0 ml-1 min-w-48 glass-surface rounded-lg border border-white/10 py-1 z-50'
             >
               {compatibleApps.map((app) => (
                 <button
                   key={app.id}
                   onClick={() => handleAppSelect(app)}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors"
+                  className='w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors'
                 >
-                  <div className="w-4 h-4 bg-white/20 rounded flex-shrink-0" />
+                  <div className='w-4 h-4 bg-white/20 rounded flex-shrink-0' />
                   <span>{app.displayName}</span>
                 </button>
               ))}
@@ -143,16 +166,16 @@ const ActionItem: React.FC<ActionItemProps> = ({ action, photo, onExecute, onClo
     <button
       onClick={() => handleExecute()}
       disabled={isExecuting}
-      className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50"
+      className='w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50'
     >
       {isExecuting ? (
-        <Loader2 size={16} className="animate-spin" />
+        <Loader2 size={16} className='animate-spin' />
       ) : (
         <ActionIcon iconName={action.icon} />
       )}
       <span>{action.label}</span>
       {action.shortcut && (
-        <span className="ml-auto text-xs text-white/50">{action.shortcut}</span>
+        <span className='ml-auto text-xs text-white/50'>{action.shortcut}</span>
       )}
     </button>
   );
@@ -166,26 +189,27 @@ interface CategorySectionProps {
   onClose: () => void;
 }
 
-const CategorySection: React.FC<CategorySectionProps> = ({ 
-  category, 
-  actions, 
-  photo, 
-  onExecute, 
-  onClose 
+const CategorySection: React.FC<CategorySectionProps> = ({
+  category,
+  actions,
+  photo,
+  onExecute,
+  onClose,
 }) => {
   const categoryLabels = {
     [ActionCategory.FILE_SYSTEM]: 'File',
     [ActionCategory.EDITING]: 'Edit',
     [ActionCategory.SHARING]: 'Share',
     [ActionCategory.EXPORT]: 'Export',
-    [ActionCategory.NAVIGATION]: 'View'
+    [ActionCategory.NAVIGATION]: 'View',
   };
 
-  const categoryLabel = categoryLabels[category as keyof typeof categoryLabels] || category;
+  const categoryLabel =
+    categoryLabels[category as keyof typeof categoryLabels] || category;
 
   return (
-    <div className="py-1">
-      <div className="px-3 py-1 text-xs font-medium text-white/50 uppercase tracking-wider">
+    <div className='py-1'>
+      <div className='px-3 py-1 text-xs font-medium text-white/50 uppercase tracking-wider'>
         {categoryLabel}
       </div>
       {actions.map((action) => (
@@ -201,11 +225,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   );
 };
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ 
-  photo, 
-  position, 
-  onClose, 
-  onActionExecute 
+export const ContextMenu: React.FC<ContextMenuProps> = ({
+  photo,
+  position,
+  onClose,
+  onActionExecute,
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const { actions, loading, error } = usePhotoActions(photo);
@@ -217,22 +241,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       const rect = menuRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
-      
+
       let { x, y } = position;
-      
+
       // Adjust horizontal position
       if (x + rect.width > viewportWidth) {
         x = viewportWidth - rect.width - 10;
       }
-      
+
       // Adjust vertical position
       if (y + rect.height > viewportHeight) {
         y = viewportHeight - rect.height - 10;
       }
-      
+
       const nx = Math.max(10, x);
       const ny = Math.max(10, y);
-      const raf = requestAnimationFrame(() => setAdjustedPosition({ x: nx, y: ny }));
+      const raf = requestAnimationFrame(() =>
+        setAdjustedPosition({ x: nx, y: ny })
+      );
       return () => cancelAnimationFrame(raf);
     }
   }, [position, actions]);
@@ -253,7 +279,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
@@ -278,7 +304,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     ActionCategory.FILE_SYSTEM,
     ActionCategory.EDITING,
     ActionCategory.EXPORT,
-    ActionCategory.SHARING
+    ActionCategory.SHARING,
   ];
 
   return (
@@ -288,35 +314,33 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
-      className="fixed z-[200] min-w-56 glass-surface rounded-lg border border-white/10 py-1 shadow-2xl"
+      className='fixed z-[200] min-w-56 glass-surface rounded-lg border border-white/10 py-1 shadow-2xl'
       style={{
         left: adjustedPosition.x,
         top: adjustedPosition.y,
       }}
     >
       {/* Header */}
-      <div className="px-3 py-2 border-b border-white/10">
-        <div className="text-sm font-medium text-white/90 truncate">
+      <div className='px-3 py-2 border-b border-white/10'>
+        <div className='text-sm font-medium text-white/90 truncate'>
           {photo.filename}
         </div>
-        <div className="text-xs text-white/50 truncate">
-          {photo.path}
-        </div>
+        <div className='text-xs text-white/50 truncate'>{photo.path}</div>
       </div>
 
       {/* Loading State */}
       {loading && (
-        <div className="px-3 py-4 text-center">
-          <Loader2 size={20} className="animate-spin mx-auto text-white/50" />
-          <div className="text-xs text-white/50 mt-2">Loading actions...</div>
+        <div className='px-3 py-4 text-center'>
+          <Loader2 size={20} className='animate-spin mx-auto text-white/50' />
+          <div className='text-xs text-white/50 mt-2'>Loading actions...</div>
         </div>
       )}
 
       {/* Error State */}
       {error && (
-        <div className="px-3 py-4 text-center">
-          <div className="text-xs text-red-400">Failed to load actions</div>
-          <div className="text-xs text-white/50 mt-1">{error}</div>
+        <div className='px-3 py-4 text-center'>
+          <div className='text-xs text-red-400'>Failed to load actions</div>
+          <div className='text-xs text-white/50 mt-1'>{error}</div>
         </div>
       )}
 
@@ -324,7 +348,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       {!loading && !error && (
         <>
           {actions.length === 0 ? (
-            <div className="px-3 py-4 text-center text-xs text-white/50">
+            <div className='px-3 py-4 text-center text-xs text-white/50'>
               No actions available
             </div>
           ) : (
@@ -334,7 +358,9 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
 
               return (
                 <React.Fragment key={category}>
-                  {index > 0 && <div className="border-t border-white/5 my-1" />}
+                  {index > 0 && (
+                    <div className='border-t border-white/5 my-1' />
+                  )}
                   <CategorySection
                     category={category}
                     actions={categoryActions}

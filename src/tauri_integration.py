@@ -17,148 +17,140 @@ implementation would need to be created in the src-tauri directory.
 Usage:
     # Import Tauri commands in frontend
     import { invoke } from '@tauri-apps/api/tauri'
-    
+
     # Call a Tauri command
     const result = await invoke('scan_directory', { path: '/photos' })
 """
 
-import json
-import os
-from typing import Dict, List, Optional, Any
-from pathlib import Path
+from typing import Dict, List, Optional
+
 
 class TauriCommandManager:
     """Manage Tauri command definitions and integration."""
-    
+
     def __init__(self):
         """Initialize Tauri command manager."""
         self.commands = self._define_commands()
-    
+
     def _define_commands(self) -> Dict:
         """Define all Tauri commands with their specifications."""
         return {
-            'scan_directory': {
-                'description': 'Scan a directory for photos',
-                'rust_signature': 'fn scan_directory(path: String) -> Result<String, String>',
-                'parameters': {
-                    'path': 'Directory path to scan'
-                },
-                'returns': 'Scan results with file count and metadata',
-                'frontend_example': """
+            "scan_directory": {
+                "description": "Scan a directory for photos",
+                "rust_signature": "fn scan_directory(path: String) -> Result<String, String>",
+                "parameters": {"path": "Directory path to scan"},
+                "returns": "Scan results with file count and metadata",
+                "frontend_example": """
                 import { invoke } from '@tauri-apps/api/tauri'
-                
+
                 const result = await invoke('scan_directory', {
                     path: '/Users/photos'
                 })
                 console.log('Scan result:', result)
-                """
+                """,
             },
-            'search_photos': {
-                'description': 'Search photos with query',
-                'rust_signature': 'fn search_photos(query: String, mode: String) -> Result<Vec<PhotoResult>, String>',
-                'parameters': {
-                    'query': 'Search query string',
-                    'mode': 'Search mode (metadata, semantic, hybrid)'
+            "search_photos": {
+                "description": "Search photos with query",
+                "rust_signature": "fn search_photos(query: String, mode: String) -> Result<Vec<PhotoResult>, String>",
+                "parameters": {
+                    "query": "Search query string",
+                    "mode": "Search mode (metadata, semantic, hybrid)",
                 },
-                'returns': 'List of matching photos',
-                'frontend_example': """
+                "returns": "List of matching photos",
+                "frontend_example": """
                 const results = await invoke('search_photos', {
                     query: 'beach vacation',
                     mode: 'hybrid'
                 })
-                """
+                """,
             },
-            'get_thumbnail': {
-                'description': 'Get thumbnail for a photo',
-                'rust_signature': 'fn get_thumbnail(path: String, size: u32) -> Result<Vec<u8>, String>',
-                'parameters': {
-                    'path': 'Path to photo file',
-                    'size': 'Maximum dimension in pixels'
+            "get_thumbnail": {
+                "description": "Get thumbnail for a photo",
+                "rust_signature": "fn get_thumbnail(path: String, size: u32) -> Result<Vec<u8>, String>",
+                "parameters": {
+                    "path": "Path to photo file",
+                    "size": "Maximum dimension in pixels",
                 },
-                'returns': 'Thumbnail image as byte array',
-                'frontend_example': """
+                "returns": "Thumbnail image as byte array",
+                "frontend_example": """
                 const thumbnail = await invoke('get_thumbnail', {
                     path: '/photos/vacation.jpg',
                     size: 300
                 })
                 // Convert to blob and display
-                """
+                """,
             },
-            'extract_metadata': {
-                'description': 'Extract metadata from photo',
-                'rust_signature': 'fn extract_metadata(path: String) -> Result<Metadata, String>',
-                'parameters': {
-                    'path': 'Path to photo file'
-                },
-                'returns': 'Photo metadata (EXIF, GPS, etc.)',
-                'frontend_example': """
+            "extract_metadata": {
+                "description": "Extract metadata from photo",
+                "rust_signature": "fn extract_metadata(path: String) -> Result<Metadata, String>",
+                "parameters": {"path": "Path to photo file"},
+                "returns": "Photo metadata (EXIF, GPS, etc.)",
+                "frontend_example": """
                 const metadata = await invoke('extract_metadata', {
                     path: '/photos/image.jpg'
                 })
-                """
+                """,
             },
-            'create_album': {
-                'description': 'Create a new photo album',
-                'rust_signature': 'fn create_album(name: String, photo_paths: Vec<String>) -> Result<String, String>',
-                'parameters': {
-                    'name': 'Album name',
-                    'photo_paths': 'List of photo paths'
+            "create_album": {
+                "description": "Create a new photo album",
+                "rust_signature": "fn create_album(name: String, photo_paths: Vec<String>) -> Result<String, String>",
+                "parameters": {
+                    "name": "Album name",
+                    "photo_paths": "List of photo paths",
                 },
-                'returns': 'Album ID',
-                'frontend_example': """
+                "returns": "Album ID",
+                "frontend_example": """
                 const albumId = await invoke('create_album', {
                     name: 'Vacation 2023',
                     photo_paths: ['/photos/1.jpg', '/photos/2.jpg']
                 })
-                """
+                """,
             },
-            'export_photos': {
-                'description': 'Export selected photos',
-                'rust_signature': 'fn export_photos(paths: Vec<String>, format: String) -> Result<String, String>',
-                'parameters': {
-                    'paths': 'List of photo paths',
-                    'format': 'Export format (zip, pdf, etc.)'
+            "export_photos": {
+                "description": "Export selected photos",
+                "rust_signature": "fn export_photos(paths: Vec<String>, format: String) -> Result<String, String>",
+                "parameters": {
+                    "paths": "List of photo paths",
+                    "format": "Export format (zip, pdf, etc.)",
                 },
-                'returns': 'Path to exported file',
-                'frontend_example': """
+                "returns": "Path to exported file",
+                "frontend_example": """
                 const exportPath = await invoke('export_photos', {
                     paths: selectedPhotos,
                     format: 'zip'
                 })
-                """
+                """,
             },
-            'get_system_info': {
-                'description': 'Get system information',
-                'rust_signature': 'fn get_system_info() -> Result<SystemInfo, String>',
-                'parameters': None,
-                'returns': 'System information (OS, CPU, memory)',
-                'frontend_example': """
+            "get_system_info": {
+                "description": "Get system information",
+                "rust_signature": "fn get_system_info() -> Result<SystemInfo, String>",
+                "parameters": None,
+                "returns": "System information (OS, CPU, memory)",
+                "frontend_example": """
                 const systemInfo = await invoke('get_system_info')
-                """
+                """,
             },
-            'open_external': {
-                'description': 'Open external URL or file',
-                'rust_signature': 'fn open_external(url: String) -> Result<(), String>',
-                'parameters': {
-                    'url': 'URL or file path to open'
-                },
-                'returns': None,
-                'frontend_example': """
+            "open_external": {
+                "description": "Open external URL or file",
+                "rust_signature": "fn open_external(url: String) -> Result<(), String>",
+                "parameters": {"url": "URL or file path to open"},
+                "returns": None,
+                "frontend_example": """
                 await invoke('open_external', {
                     url: 'https://photosearch.com'
                 })
-                """
-            }
+                """,
+            },
         }
-    
+
     def get_command(self, command_name: str) -> Optional[Dict]:
         """Get details for a specific Tauri command."""
         return self.commands.get(command_name)
-    
+
     def get_all_commands(self) -> Dict:
         """Get all Tauri commands."""
         return self.commands
-    
+
     def generate_rust_skeleton(self) -> str:
         """Generate Rust skeleton code for Tauri commands."""
         rust_code = """
@@ -264,7 +256,7 @@ fn main() {
 }
 """
         return rust_code
-    
+
     def generate_frontend_hooks(self) -> str:
         """Generate React hooks for Tauri commands."""
         return """
@@ -275,7 +267,7 @@ import { useState, useCallback } from 'react';
 export function useTauriCommands() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    
+
     const scanDirectory = useCallback(async (path: string) => {
         try {
             setIsLoading(true);
@@ -289,7 +281,7 @@ export function useTauriCommands() {
             setIsLoading(false);
         }
     }, []);
-    
+
     const searchPhotos = useCallback(async (query: string, mode: string = 'hybrid') => {
         try {
             setIsLoading(true);
@@ -303,7 +295,7 @@ export function useTauriCommands() {
             setIsLoading(false);
         }
     }, []);
-    
+
     const getThumbnail = useCallback(async (path: string, size: number = 300) => {
         try {
             setIsLoading(true);
@@ -317,7 +309,7 @@ export function useTauriCommands() {
             setIsLoading(false);
         }
     }, []);
-    
+
     return {
         scanDirectory,
         searchPhotos,
@@ -336,11 +328,11 @@ export function useTauriFileSystem() {
             throw err;
         }
     }, []);
-    
+
     return { openExternal };
 }
 """
-    
+
     def generate_tauri_config(self) -> str:
         """Generate tauri.conf.json configuration."""
         return """
@@ -387,7 +379,7 @@ export function useTauriFileSystem() {
   }
 }
 """
-    
+
     def get_security_recommendations(self) -> List[str]:
         """Get security recommendations for Tauri apps."""
         return [
@@ -398,9 +390,9 @@ export function useTauriFileSystem() {
             "Implement proper error handling in Rust commands",
             "Consider using Tauri's dialog API for file operations",
             "Enable updater for security patches",
-            "Sign your application for distribution"
+            "Sign your application for distribution",
         ]
-    
+
     def get_performance_tips(self) -> List[str]:
         """Get performance optimization tips for Tauri apps."""
         return [
@@ -411,9 +403,9 @@ export function useTauriFileSystem() {
             "Use Tauri's event system for real-time updates",
             "Optimize image processing in Rust",
             "Consider WebAssembly for performance-critical frontend code",
-            "Profile your Rust code with cargo-flamegraph"
+            "Profile your Rust code with cargo-flamegraph",
         ]
-    
+
     def get_integration_checklist(self) -> List[str]:
         """Get checklist for Tauri integration."""
         return [
@@ -426,100 +418,93 @@ export function useTauriFileSystem() {
             "Implement error handling for Tauri commands",
             "Test all commands in development",
             "Build for production: npm run tauri build",
-            "Package for distribution"
+            "Package for distribution",
         ]
 
 
 def get_tauri_setup_guide() -> Dict:
     """Get complete setup guide for Tauri integration."""
     return {
-        'description': 'Complete Tauri Integration Guide for PhotoSearch',
-        'prerequisites': [
-            'Node.js 16+',
-            'Rust 1.56+',
-            'Tauri CLI',
-            'Frontend framework (React/Vue/Svelte)'
+        "description": "Complete Tauri Integration Guide for PhotoSearch",
+        "prerequisites": [
+            "Node.js 16+",
+            "Rust 1.56+",
+            "Tauri CLI",
+            "Frontend framework (React/Vue/Svelte)",
         ],
-        'setup_steps': [
+        "setup_steps": [
             {
-                'step': 1,
-                'title': 'Install Tauri CLI',
-                'command': 'npm install --save-dev @tauri-apps/cli'
+                "step": 1,
+                "title": "Install Tauri CLI",
+                "command": "npm install --save-dev @tauri-apps/cli",
+            },
+            {"step": 2, "title": "Initialize Tauri", "command": "npx tauri init"},
+            {
+                "step": 3,
+                "title": "Install frontend API",
+                "command": "npm install @tauri-apps/api",
             },
             {
-                'step': 2,
-                'title': 'Initialize Tauri',
-                'command': 'npx tauri init'
+                "step": 4,
+                "title": "Configure tauri.conf.json",
+                "file": "tauri.conf.json",
             },
             {
-                'step': 3,
-                'title': 'Install frontend API',
-                'command': 'npm install @tauri-apps/api'
+                "step": 5,
+                "title": "Implement Rust commands",
+                "file": "src-tauri/src/main.rs",
             },
             {
-                'step': 4,
-                'title': 'Configure tauri.conf.json',
-                'file': 'tauri.conf.json'
+                "step": 6,
+                "title": "Create frontend hooks",
+                "file": "src/hooks/useTauriCommands.ts",
             },
-            {
-                'step': 5,
-                'title': 'Implement Rust commands',
-                'file': 'src-tauri/src/main.rs'
-            },
-            {
-                'step': 6,
-                'title': 'Create frontend hooks',
-                'file': 'src/hooks/useTauriCommands.ts'
-            }
         ],
-        'development': [
+        "development": [
+            {"command": "npm run dev", "description": "Start frontend dev server"},
             {
-                'command': 'npm run dev',
-                'description': 'Start frontend dev server'
+                "command": "npm run tauri dev",
+                "description": "Start Tauri app in development mode",
+            },
+        ],
+        "production": [
+            {
+                "command": "npm run build",
+                "description": "Build frontend for production",
             },
             {
-                'command': 'npm run tauri dev',
-                'description': 'Start Tauri app in development mode'
-            }
-        ],
-        'production': [
-            {
-                'command': 'npm run build',
-                'description': 'Build frontend for production'
+                "command": "npm run tauri build",
+                "description": "Build Tauri app for production",
             },
-            {
-                'command': 'npm run tauri build',
-                'description': 'Build Tauri app for production'
-            }
         ],
-        'best_practices': [
-            'Use TypeScript for type safety',
-            'Implement proper error handling',
-            'Validate all command parameters',
+        "best_practices": [
+            "Use TypeScript for type safety",
+            "Implement proper error handling",
+            "Validate all command parameters",
             "Use Tauri's built-in dialogs",
-            'Follow Tauri security guidelines',
-            'Test on multiple platforms'
-        ]
+            "Follow Tauri security guidelines",
+            "Test on multiple platforms",
+        ],
     }
 
 
 def main():
     """CLI interface for Tauri integration."""
     import argparse
-    
-    parser = argparse.ArgumentParser(description='Tauri Integration for PhotoSearch')
-    parser.add_argument('--commands', action='store_true', help='List all Tauri commands')
-    parser.add_argument('--rust', action='store_true', help='Generate Rust skeleton code')
-    parser.add_argument('--react', action='store_true', help='Generate React hooks')
-    parser.add_argument('--config', action='store_true', help='Generate tauri.conf.json')
-    parser.add_argument('--guide', action='store_true', help='Show complete setup guide')
-    parser.add_argument('--security', action='store_true', help='Show security recommendations')
-    parser.add_argument('--performance', action='store_true', help='Show performance tips')
-    
+
+    parser = argparse.ArgumentParser(description="Tauri Integration for PhotoSearch")
+    parser.add_argument("--commands", action="store_true", help="List all Tauri commands")
+    parser.add_argument("--rust", action="store_true", help="Generate Rust skeleton code")
+    parser.add_argument("--react", action="store_true", help="Generate React hooks")
+    parser.add_argument("--config", action="store_true", help="Generate tauri.conf.json")
+    parser.add_argument("--guide", action="store_true", help="Show complete setup guide")
+    parser.add_argument("--security", action="store_true", help="Show security recommendations")
+    parser.add_argument("--performance", action="store_true", help="Show performance tips")
+
     args = parser.parse_args()
-    
+
     manager = TauriCommandManager()
-    
+
     if args.commands:
         print("Tauri Commands:")
         print("=" * 60)
@@ -528,62 +513,62 @@ def main():
             print(f"  Description: {command['description']}")
             print(f"  Parameters: {command['parameters']}")
             print(f"  Returns: {command['returns']}")
-    
+
     elif args.rust:
         print("Rust Skeleton Code:")
         print("=" * 60)
         print(manager.generate_rust_skeleton())
-    
+
     elif args.react:
         print("React Hooks:")
         print("=" * 60)
         print(manager.generate_frontend_hooks())
-    
+
     elif args.config:
         print("tauri.conf.json:")
         print("=" * 60)
         print(manager.generate_tauri_config())
-    
+
     elif args.guide:
         guide = get_tauri_setup_guide()
         print("Tauri Setup Guide:")
         print("=" * 60)
         print(f"Description: {guide['description']}")
-        
-        print(f"\nPrerequisites:")
-        for req in guide['prerequisites']:
+
+        print("\nPrerequisites:")
+        for req in guide["prerequisites"]:
             print(f"  - {req}")
-        
-        print(f"\nSetup Steps:")
-        for step in guide['setup_steps']:
+
+        print("\nSetup Steps:")
+        for step in guide["setup_steps"]:
             print(f"  {step['step']}. {step['title']}")
-            if 'command' in step:
+            if "command" in step:
                 print(f"     Command: {step['command']}")
-            if 'file' in step:
+            if "file" in step:
                 print(f"     File: {step['file']}")
-        
-        print(f"\nDevelopment Commands:")
-        for cmd in guide['development']:
+
+        print("\nDevelopment Commands:")
+        for cmd in guide["development"]:
             print(f"  {cmd['command']}")
             print(f"    {cmd['description']}")
-        
-        print(f"\nProduction Commands:")
-        for cmd in guide['production']:
+
+        print("\nProduction Commands:")
+        for cmd in guide["production"]:
             print(f"  {cmd['command']}")
             print(f"    {cmd['description']}")
-    
+
     elif args.security:
         print("Security Recommendations:")
         print("=" * 60)
         for i, rec in enumerate(manager.get_security_recommendations(), 1):
             print(f"{i}. {rec}")
-    
+
     elif args.performance:
         print("Performance Tips:")
         print("=" * 60)
         for i, tip in enumerate(manager.get_performance_tips(), 1):
             print(f"{i}. {tip}")
-    
+
     else:
         print("Tauri Integration for PhotoSearch")
         print("=" * 60)
@@ -594,6 +579,7 @@ def main():
 # Backwards-compatible wrapper expected by server/main.py
 class TauriIntegration(TauriCommandManager):
     """Thin compatibility wrapper around TauriCommandManager."""
+
     def __init__(self):
         super().__init__()
 

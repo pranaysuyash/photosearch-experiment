@@ -41,12 +41,8 @@ class NotesDB:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_photo_path ON photo_notes(photo_path)"
-            )
-            conn.execute(
-                "CREATE INDEX IF NOT EXISTS idx_updated ON photo_notes(updated_at)"
-            )
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_path ON photo_notes(photo_path)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_updated ON photo_notes(updated_at)")
 
     def set_note(self, photo_path: str, note: str) -> bool:
         """
@@ -121,16 +117,12 @@ class NotesDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute(
-                    "DELETE FROM photo_notes WHERE photo_path = ?", (photo_path,)
-                )
+                cursor = conn.execute("DELETE FROM photo_notes WHERE photo_path = ?", (photo_path,))
                 return cursor.rowcount > 0
         except Exception:
             return False
 
-    def get_photos_with_notes(
-        self, limit: int = 100, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def get_photos_with_notes(self, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Get photos with notes.
 
@@ -158,9 +150,7 @@ class NotesDB:
         except Exception:
             return []
 
-    def search_notes(
-        self, query: str, limit: int = 100, offset: int = 0
-    ) -> List[Dict[str, Any]]:
+    def search_notes(self, query: str, limit: int = 100, offset: int = 0) -> List[Dict[str, Any]]:
         """
         Search notes by content.
 
@@ -213,9 +203,7 @@ class NotesDB:
         """
         try:
             with sqlite3.connect(self.db_path) as conn:
-                result = conn.execute(
-                    "SELECT COUNT(*) as total FROM photo_notes"
-                ).fetchone()
+                result = conn.execute("SELECT COUNT(*) as total FROM photo_notes").fetchone()
                 total_notes = result["total"] if result else 0
 
                 result = conn.execute(

@@ -92,7 +92,7 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
 
   return (
     <div className="mb-4 glass-surface rounded-xl overflow-hidden">
-      <div 
+      <div
         className="flex justify-between items-center p-4 cursor-pointer hover:bg-white/5 transition-colors"
         onClick={() => setIsCollapsed(!isCollapsed)}
       >

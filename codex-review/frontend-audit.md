@@ -41,10 +41,10 @@
 - **Error/empty handling**: Globe and Hero have no loading fallback; grid error UI reloads the whole page instead of retrying the call.
 
 ## Recommendations (next steps)
-1) Fix foundations: move theme control to document root and remove forced `dark`; persist search mode in localStorage and share it across App, Spotlight, and Hero via a context.  
-2) Make command palette actionable: selecting a photo should open `PhotoDetail`; add saved/recent searches and mode indicator; expose “Scan library” with a path picker.  
-3) Improve onboarding: add a prominent “Scan your photos” CTA in empty states with path input and a progress surface; let FirstRunModal optionally start a scan.  
-4) Unify data fetching: reuse App-level photo data for Hero Carousel (or memoized slices) and respect active search mode; add cancellation in `usePhotoSearch`.  
-5) Strengthen browse UX: deterministic groupings (by date/location), video badges in grid, filters/sorts, and timeline-click to filter by month.  
-6) Add resilience/performance: globe loading/empty UI, “lite mode” toggle (disable stars/high DPR), virtualized grid or pagination for large libraries.  
+1) Fix foundations: move theme control to document root and remove forced `dark`; persist search mode in localStorage and share it across App, Spotlight, and Hero via a context.
+2) Make command palette actionable: selecting a photo should open `PhotoDetail`; add saved/recent searches and mode indicator; expose “Scan library” with a path picker.
+3) Improve onboarding: add a prominent “Scan your photos” CTA in empty states with path input and a progress surface; let FirstRunModal optionally start a scan.
+4) Unify data fetching: reuse App-level photo data for Hero Carousel (or memoized slices) and respect active search mode; add cancellation in `usePhotoSearch`.
+5) Strengthen browse UX: deterministic groupings (by date/location), video badges in grid, filters/sorts, and timeline-click to filter by month.
+6) Add resilience/performance: globe loading/empty UI, “lite mode” toggle (disable stars/high DPR), virtualized grid or pagination for large libraries.
 7) Polish presentation: update `index.html` title/meta, fix navigation button positioning in detail view, add keyboard/focus states for grid and timeline.

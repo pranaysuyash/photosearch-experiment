@@ -33,9 +33,9 @@ export function ToastProvider({ children }: ToastProviderProps) {
   const addToast = (options: ToastOptions): string => {
     const id = Math.random().toString(36).substring(2, 9);
     const newToast = { id, ...options };
-    
+
     setToasts(prev => [...prev, newToast]);
-    
+
     return id;
   };
 

@@ -1,6 +1,6 @@
 # Face Features Testing Checklist
-**Date**: December 25, 2025  
-**Purpose**: Validate implementation before deployment  
+**Date**: December 25, 2025
+**Purpose**: Validate implementation before deployment
 
 ---
 
@@ -55,7 +55,7 @@ curl -X POST http://localhost:8000/api/photos/by-people \
 
 ### Component Loading
 - [ ] **SplitClusterModal**: Loads without errors
-- [ ] **MoveFaceModal**: Loads without errors  
+- [ ] **MoveFaceModal**: Loads without errors
 - [ ] **BooleanPeopleSearch**: Loads without errors
 - [ ] **SimilarFaceSearch**: Loads without errors
 
@@ -141,7 +141,7 @@ curl -X POST http://localhost:8000/api/photos/by-people \
 
 ---
 
-**Testing Status**: Ready for validation  
-**Estimated Testing Time**: 2-3 hours  
-**Critical Path**: API endpoint validation, core workflow testing  
+**Testing Status**: Ready for validation
+**Estimated Testing Time**: 2-3 hours
+**Critical Path**: API endpoint validation, core workflow testing
 **Success Criteria**: 95% of checklist items pass

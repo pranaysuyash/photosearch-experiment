@@ -5,7 +5,7 @@
 - **Language**: Python 3.9+
 - **Database**: SQLite for metadata storage
 - **Vector Store**: LanceDB for semantic search embeddings
-- **AI/ML**: 
+- **AI/ML**:
   - Sentence Transformers for text/image embeddings
   - CLIP models for semantic search
   - Pillow for image processing

@@ -1,7 +1,7 @@
 # Handoff Instructions for Gemini
 
-**Owner:** Claude (Anthropic)  
-**Date:** 2025-12-07  
+**Owner:** Claude (Anthropic)
+**Date:** 2025-12-07
 **Purpose:** Clear instructions for Gemini to implement vector store experiments.
 
 ---
@@ -16,7 +16,7 @@ Implement and benchmark ALL vector stores listed below. Document findings in `ex
 
 ### Priority 1: Embedded (No Server Required)
 1. **10.4 FAISS** - `experiments/vector_store_faiss.py`
-2. **10.5 ChromaDB** - `experiments/vector_store_chroma.py`  
+2. **10.5 ChromaDB** - `experiments/vector_store_chroma.py`
 3. **10.6 LanceDB** - `experiments/vector_store_lance.py`
 
 ### Priority 2: Server-Based (Docker)
@@ -84,23 +84,23 @@ class VectorStore[Name]:
     """
     [Store] implementation with same interface as baseline.
     """
-    
+
     def __init__(self):
         """Initialize the store."""
         pass
-    
+
     def add(self, id: str, embedding: List[float], metadata: Dict[str, Any] = None):
         """Add a vector to the store."""
         pass
-    
+
     def search(self, query_embedding: List[float], limit: int = 10) -> List[Dict[str, Any]]:
         """Search for similar vectors. Returns list of {id, score, metadata}."""
         pass
-    
+
     def save(self, path: str):
         """Persist to disk."""
         pass
-    
+
     def load(self, path: str):
         """Load from disk."""
         pass
@@ -109,27 +109,27 @@ class VectorStore[Name]:
 def benchmark():
     """Run standard benchmark."""
     store = VectorStore[Name]()
-    
+
     N_VECTORS = [100, 1000, 10000]
     DIMENSION = 512
     QUERIES = 10
-    
+
     for n in N_VECTORS:
         vectors = np.random.rand(n, DIMENSION).astype('float32')
-        
+
         # Ingest
         start = time.time()
         for i, vec in enumerate(vectors):
             store.add(f"id_{i}", vec.tolist(), {"index": i})
         ingest_time = time.time() - start
-        
+
         # Search
         query = np.random.rand(DIMENSION).astype('float32')
         start = time.time()
         for _ in range(QUERIES):
             store.search(query.tolist(), limit=5)
         search_time = (time.time() - start) / QUERIES * 1000  # ms
-        
+
         print(f"N={n}: Ingest={ingest_time:.2f}s, Search={search_time:.2f}ms")
 
 

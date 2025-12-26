@@ -20,7 +20,6 @@ async def cluster_faces_v1(request: FaceClusterRequest, state: AppState = Depend
         Dictionary with clustering results
     """
     try:
-
         clusters = state.face_clusterer.cluster_faces(
             request.image_paths,
             eps=request.eps,
@@ -44,7 +43,6 @@ async def get_all_clusters(limit: int = 100, offset: int = 0, state: AppState = 
         Dictionary with cluster information
     """
     try:
-
         clusters = state.face_clusterer.get_all_clusters(limit, offset)
         return {"status": "success", "clusters": clusters}
     except Exception as e:
@@ -63,7 +61,6 @@ async def get_cluster_details(cluster_id: int, state: AppState = Depends(get_sta
         Dictionary with cluster details
     """
     try:
-
         details = state.face_clusterer.get_cluster_details(cluster_id)
         return {"status": "success", "details": details}
     except Exception as e:
@@ -82,7 +79,6 @@ async def get_image_clusters(image_path: str, state: AppState = Depends(get_stat
         Dictionary with face cluster information for the image
     """
     try:
-
         clusters = state.face_clusterer.get_face_clusters(image_path)
         return {"status": "success", "clusters": clusters}
     except Exception as e:
@@ -102,7 +98,6 @@ async def update_cluster_label(cluster_id: int, request: ClusterLabelRequest, st
         Dictionary with update status
     """
     try:
-
         success = state.face_clusterer.update_cluster_label(cluster_id, request.label)
         return {"status": "success" if success else "failed", "updated": success}
     except Exception as e:
@@ -121,7 +116,6 @@ async def delete_cluster(cluster_id: int, state: AppState = Depends(get_state)):
         Dictionary with deletion status
     """
     try:
-
         success = state.face_clusterer.delete_cluster(cluster_id)
         return {"status": "success" if success else "failed", "deleted": success}
     except Exception as e:
@@ -137,7 +131,6 @@ async def get_face_stats_v1(state: AppState = Depends(get_state)):
         Dictionary with face clustering statistics
     """
     try:
-
         stats = state.face_clusterer.get_cluster_statistics()
         return {"status": "success", "stats": stats}
     except Exception as e:

@@ -1,6 +1,6 @@
 /**
  * Performance Dashboard Page
- * 
+ *
  * Displays cache statistics, API schema, and performance metrics
  */
 
@@ -112,7 +112,7 @@ const PerformanceDashboard = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-8 text-center">Performance Dashboard</h1>
-      
+
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           Error: {error}
@@ -132,7 +132,7 @@ const PerformanceDashboard = () => {
               {loading.cache ? 'Clearing...' : 'Clear Cache'}
             </button>
           </div>
-          
+
           {cacheStats ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -145,7 +145,7 @@ const PerformanceDashboard = () => {
                     <p>Utilization: {cacheStats.memory.utilization_percent.toFixed(2)}%</p>
                   </div>
                 </div>
-                
+
                 <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded">
                   <h3 className="font-medium mb-2">Disk Cache</h3>
                   <div className="text-sm space-y-1">
@@ -155,7 +155,7 @@ const PerformanceDashboard = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded">
                 <h3 className="font-medium mb-2">Performance</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -175,7 +175,7 @@ const PerformanceDashboard = () => {
           ) : (
             <p className="text-gray-500 dark:text-gray-400">Loading cache statistics...</p>
           )}
-          
+
           <button
             onClick={loadCacheStats}
             disabled={loading.cache}
@@ -197,18 +197,18 @@ const PerformanceDashboard = () => {
               {loading.schema ? 'Loading...' : 'Refresh Schema'}
             </button>
           </div>
-          
+
           {apiSchema ? (
             <div>
               <div className="mb-4 p-3 bg-blue-100 dark:bg-blue-900 rounded">
                 <p className="font-medium">Version: {apiSchema.version}</p>
                 <p>Endpoints: {apiSchema.endpoints.length}</p>
               </div>
-              
+
               <div className="max-h-96 overflow-y-auto">
                 {apiSchema.endpoints.map((endpoint, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className="mb-3 p-3 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-blue-500"
                   >
                     <div className="flex items-center">
@@ -236,7 +236,7 @@ const PerformanceDashboard = () => {
         {/* Logging Test Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 lg:col-span-2">
           <h2 className="text-xl font-semibold mb-4">Logging Test</h2>
-          
+
           <div className="flex flex-col sm:flex-row gap-4">
             <button
               onClick={testLogging}
@@ -244,12 +244,12 @@ const PerformanceDashboard = () => {
             >
               Test Logging
             </button>
-            
+
             <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 sm:mt-0 sm:ml-auto">
               Send a test log message to verify logging functionality
             </p>
           </div>
-          
+
           <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded">
             <h3 className="font-medium mb-2">Logging Information</h3>
             <p className="text-sm">

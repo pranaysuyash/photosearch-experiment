@@ -64,6 +64,7 @@ async def admin_unmask(request: Request, payload: dict = Body(...)):
                     # Audit log
                     client_host = request.client.host if request and request.client else "unknown"
                     import logging
+
                     logger = logging.getLogger("photosearch")
                     logger.warning(f"UNMASK used by {client_host} for hash={h}")
                     return {"path": str(candidate)}

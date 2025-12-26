@@ -139,7 +139,7 @@ export function AddToTagDialog({
                 <Plus size={16} />
               </button>
             </div>
-            
+
             {/* New tag preview when typing */}
             {normalizedNewTag && (
               <motion.div
@@ -279,4 +279,3 @@ export function AddToTagDialog({
     document.body
   );
 }
-

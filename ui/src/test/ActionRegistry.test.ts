@@ -47,85 +47,107 @@ describe('ActionRegistry Property Tests', () => {
       canExport: fc.boolean(),
       canShare: fc.boolean(),
       canOpenLocation: fc.boolean(),
-      supportedFormats: fc.array(fc.string(), { minLength: 0, maxLength: 5 })
+      supportedFormats: fc.array(fc.string(), { minLength: 0, maxLength: 5 }),
     }),
-    availableApps: fc.array(fc.record({
-      id: fc.string(),
-      name: fc.string(),
-      displayName: fc.string(),
-      executablePath: fc.string(),
-      supportedFormats: fc.array(fc.string(), { minLength: 0, maxLength: 3 }),
-      category: fc.constantFrom('photo_editor', 'raw_processor', 'video_editor', 'viewer', 'organizer')
-    }), { minLength: 0, maxLength: 5 }),
+    availableApps: fc.array(
+      fc.record({
+        id: fc.string(),
+        name: fc.string(),
+        displayName: fc.string(),
+        executablePath: fc.string(),
+        supportedFormats: fc.array(fc.string(), { minLength: 0, maxLength: 3 }),
+        category: fc.constantFrom(
+          'photo_editor',
+          'raw_processor',
+          'video_editor',
+          'viewer',
+          'organizer'
+        ),
+      }),
+      { minLength: 0, maxLength: 5 }
+    ),
     systemInfo: fc.record({
       platform: fc.constantFrom('windows', 'macos', 'linux'),
       hasClipboard: fc.boolean(),
       canOpenFileManager: fc.boolean(),
       canLaunchApps: fc.boolean(),
-      supportedProtocols: fc.array(fc.string(), { minLength: 1, maxLength: 3 })
-    })
+      supportedProtocols: fc.array(fc.string(), { minLength: 1, maxLength: 3 }),
+    }),
   });
 
   const photoActionArb = fc.record({
-    id: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
-    label: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
-    icon: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
+    id: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
+    label: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
+    icon: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
     category: actionCategoryArb,
     type: actionTypeArb,
-	    contextRequirements: fc.array(fc.record({
-	      type: fc.constantFrom('fileLocation', 'fileType', 'capability', 'app'),
-	      value: fc.oneof(fc.string().filter(s => s.trim().length > 0), fc.array(fc.string().filter(s => s.trim().length > 0), { minLength: 1, maxLength: 3 })),
-	      operator: fc.option(fc.constantFrom('equals', 'includes', 'excludes'), { nil: undefined })
-	    }), { minLength: 0, maxLength: 3 }),
-	    priority: fc.integer({ min: 0, max: 100 }),
-	    shortcut: fc.option(fc.string(), { nil: undefined }),
-	    description: fc.option(fc.string(), { nil: undefined }),
-	    isEnabled: fc.constant(() => true),
-	    execute: fc.constant(async () => ({ success: true }))
-	  });
+    contextRequirements: fc.array(
+      fc.record({
+        type: fc.constantFrom('fileLocation', 'fileType', 'capability', 'app'),
+        value: fc.oneof(
+          fc.string().filter((s) => s.trim().length > 0),
+          fc.array(
+            fc.string().filter((s) => s.trim().length > 0),
+            { minLength: 1, maxLength: 3 }
+          )
+        ),
+        operator: fc.option(fc.constantFrom('equals', 'includes', 'excludes'), {
+          nil: undefined,
+        }),
+      }),
+      { minLength: 0, maxLength: 3 }
+    ),
+    priority: fc.integer({ min: 0, max: 100 }),
+    shortcut: fc.option(fc.string(), { nil: undefined }),
+    description: fc.option(fc.string(), { nil: undefined }),
+    isEnabled: fc.constant(() => true),
+    execute: fc.constant(async () => ({ success: true })),
+  });
 
   const photoArb = fc.record({
-    path: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
-    filename: fc.string({ minLength: 1 }).filter(s => s.trim().length > 0),
+    path: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
+    filename: fc.string({ minLength: 1 }).filter((s) => s.trim().length > 0),
     score: fc.float({ min: 0, max: 1 }),
-    metadata: fc.record({})
+    metadata: fc.record({}),
   });
 
   /**
    * Property 1: Context-aware menu behavior
-   * For any photo and system context, the context menu should display only appropriate actions 
-   * for the file location, prioritized by workflow frequency, with proper visual indicators 
+   * For any photo and system context, the context menu should display only appropriate actions
+   * for the file location, prioritized by workflow frequency, with proper visual indicators
    * distinguishing action types
    */
   it('should only return actions appropriate for the given context', () => {
     fc.assert(
       fc.property(
-        fc.array(photoActionArb, { minLength: 1, maxLength: 10 }).map(actions => {
-          // Ensure unique IDs
-          const uniqueActions = actions.map((action, index) => ({
-            ...action,
-            id: `${action.id}-${index}`
-          }));
-          return uniqueActions;
-        }),
+        fc
+          .array(photoActionArb, { minLength: 1, maxLength: 10 })
+          .map((actions) => {
+            // Ensure unique IDs
+            const uniqueActions = actions.map((action, index) => ({
+              ...action,
+              id: `${action.id}-${index}`,
+            }));
+            return uniqueActions;
+          }),
         photoContextArb,
         (actions, context) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Register all actions
-          actions.forEach(action => registry.registerAction(action));
+          actions.forEach((action) => registry.registerAction(action));
 
           // Get actions for context
           const availableActions = registry.getActionsForContext(context);
 
           // All returned actions should be from the registered actions
-          availableActions.forEach(action => {
-            expect(actions.some(a => a.id === action.id)).toBe(true);
+          availableActions.forEach((action) => {
+            expect(actions.some((a) => a.id === action.id)).toBe(true);
           });
 
           // All returned actions should be enabled for this context
-          availableActions.forEach(action => {
+          availableActions.forEach((action) => {
             expect(action.isEnabled(context)).toBe(true);
           });
 
@@ -144,35 +166,42 @@ describe('ActionRegistry Property Tests', () => {
   it('should group actions by category correctly', () => {
     fc.assert(
       fc.property(
-        fc.array(photoActionArb, { minLength: 1, maxLength: 10 }).map(actions => {
-          // Ensure unique IDs
-          const uniqueActions = actions.map((action, index) => ({
-            ...action,
-            id: `${action.id}-${index}`
-          }));
-          return uniqueActions;
-        }),
+        fc
+          .array(photoActionArb, { minLength: 1, maxLength: 10 })
+          .map((actions) => {
+            // Ensure unique IDs
+            const uniqueActions = actions.map((action, index) => ({
+              ...action,
+              id: `${action.id}-${index}`,
+            }));
+            return uniqueActions;
+          }),
         photoContextArb,
         (actions, context) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Register all actions
-          actions.forEach(action => registry.registerAction(action));
+          actions.forEach((action) => registry.registerAction(action));
 
           // Get actions grouped by category
           const actionsByCategory = registry.getActionsByCategory(context);
 
           // Verify all actions are in the correct category
-          Object.entries(actionsByCategory).forEach(([category, categoryActions]) => {
-            categoryActions.forEach(action => {
-              expect(action.category).toBe(category);
-            });
-          });
+          Object.entries(actionsByCategory).forEach(
+            ([category, categoryActions]) => {
+              categoryActions.forEach((action) => {
+                expect(action.category).toBe(category);
+              });
+            }
+          );
 
           // Verify no actions are duplicated across categories
-          const allActionsFromCategories = Object.values(actionsByCategory).flat();
-          const uniqueActionIds = new Set(allActionsFromCategories.map(a => a.id));
+          const allActionsFromCategories =
+            Object.values(actionsByCategory).flat();
+          const uniqueActionIds = new Set(
+            allActionsFromCategories.map((a) => a.id)
+          );
           expect(allActionsFromCategories.length).toBe(uniqueActionIds.size);
         }
       ),
@@ -189,20 +218,26 @@ describe('ActionRegistry Property Tests', () => {
         async (action, context, photo) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Create a mock action with no context requirements to ensure it's always available
           const mockAction: PhotoAction = {
             ...action,
             id: `test-${action.id}`,
             contextRequirements: [], // Remove context requirements to ensure action is available
             isEnabled: () => true,
-            execute: vi.fn().mockResolvedValue({ success: true, message: 'Test success' })
+            execute: vi
+              .fn()
+              .mockResolvedValue({ success: true, message: 'Test success' }),
           };
 
           registry.registerAction(mockAction);
 
           // Execute the action
-          const result = await registry.executeAction(mockAction.id, photo, context);
+          const result = await registry.executeAction(
+            mockAction.id,
+            photo,
+            context
+          );
 
           // Should succeed since isEnabled returns true and no context requirements
           expect(result.success).toBe(true);
@@ -222,23 +257,29 @@ describe('ActionRegistry Property Tests', () => {
         async (action, context, photo) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Create a mock action that is never enabled
           const mockAction: PhotoAction = {
             ...action,
             id: `test-${action.id}`,
             isEnabled: () => false,
-            execute: vi.fn().mockResolvedValue({ success: true })
+            execute: vi.fn().mockResolvedValue({ success: true }),
           };
 
           registry.registerAction(mockAction);
 
           // Execute the action
-          const result = await registry.executeAction(mockAction.id, photo, context);
+          const result = await registry.executeAction(
+            mockAction.id,
+            photo,
+            context
+          );
 
           // Should fail since isEnabled returns false
           expect(result.success).toBe(false);
-          expect(result.error).toContain('not available in the current context');
+          expect(result.error).toContain(
+            'not available in the current context'
+          );
           expect(mockAction.execute).not.toHaveBeenCalled();
         }
       ),
@@ -254,7 +295,7 @@ describe('ActionRegistry Property Tests', () => {
         (requiredLocation, context) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Create action that requires specific file location
           const action: PhotoAction = {
             id: 'test-location-action',
@@ -263,11 +304,11 @@ describe('ActionRegistry Property Tests', () => {
             category: ActionCategory.FILE_SYSTEM,
             type: ActionType.COPY_PATH,
             contextRequirements: [
-              { type: 'fileLocation', value: requiredLocation }
+              { type: 'fileLocation', value: requiredLocation },
             ],
             priority: 50,
             isEnabled: () => true,
-            execute: async () => ({ success: true })
+            execute: async () => ({ success: true }),
           };
 
           registry.registerAction(action);
@@ -277,15 +318,23 @@ describe('ActionRegistry Property Tests', () => {
           const availableActions = registry.getActionsForContext(testContext);
 
           // Action should be available when location matches
-          expect(availableActions.some(a => a.id === action.id)).toBe(true);
+          expect(availableActions.some((a) => a.id === action.id)).toBe(true);
 
           // Action should not be available when location doesn't match
-          const differentLocations = ['local', 'cloud', 'hybrid'].filter(loc => loc !== requiredLocation);
+          const differentLocations = ['local', 'cloud', 'hybrid'].filter(
+            (loc) => loc !== requiredLocation
+          );
           if (differentLocations.length > 0) {
-            const wrongLocation = differentLocations[0] as 'local' | 'cloud' | 'hybrid';
+            const wrongLocation = differentLocations[0] as
+              | 'local'
+              | 'cloud'
+              | 'hybrid';
             const wrongContext = { ...context, fileLocation: wrongLocation };
-            const wrongLocationActions = registry.getActionsForContext(wrongContext);
-            expect(wrongLocationActions.some(a => a.id === action.id)).toBe(false);
+            const wrongLocationActions =
+              registry.getActionsForContext(wrongContext);
+            expect(wrongLocationActions.some((a) => a.id === action.id)).toBe(
+              false
+            );
           }
         }
       ),
@@ -296,27 +345,29 @@ describe('ActionRegistry Property Tests', () => {
   it('should maintain action registry state correctly', () => {
     fc.assert(
       fc.property(
-        fc.array(photoActionArb, { minLength: 1, maxLength: 10 }).map(actions => {
-          // Ensure unique IDs
-          const uniqueActions = actions.map((action, index) => ({
-            ...action,
-            id: `${action.id}-${index}`
-          }));
-          return uniqueActions;
-        }),
+        fc
+          .array(photoActionArb, { minLength: 1, maxLength: 10 })
+          .map((actions) => {
+            // Ensure unique IDs
+            const uniqueActions = actions.map((action, index) => ({
+              ...action,
+              id: `${action.id}-${index}`,
+            }));
+            return uniqueActions;
+          }),
         (actions) => {
           // Clear registry before test
           registry.clearActions();
-          
+
           // Register actions
-          actions.forEach(action => registry.registerAction(action));
+          actions.forEach((action) => registry.registerAction(action));
 
           // Verify all actions are registered
           const allActions = registry.getAllActions();
           expect(allActions.length).toBe(actions.length);
 
           // Verify each action can be retrieved by ID
-          actions.forEach(action => {
+          actions.forEach((action) => {
             const retrieved = registry.getAction(action.id);
             expect(retrieved).toBeDefined();
             expect(retrieved?.id).toBe(action.id);

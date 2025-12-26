@@ -6,4 +6,3 @@ We keep that import path stable while the canonical settings live in `server/con
 """
 
 from server.config import settings  # noqa: F401
-

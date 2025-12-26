@@ -10,18 +10,15 @@ This script sets up all necessary components for the advanced features:
 5. Run initial tests
 """
 
-import os
 import sys
 import subprocess
-import shutil
-import json
-import time
 from pathlib import Path
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
 
 class AdvancedFeaturesSetup:
     def __init__(self, base_dir: Path = None):
@@ -42,7 +39,7 @@ class AdvancedFeaturesSetup:
             "python": "python3 --version",
             "pip": "pip --version",
             "node": "node --version",
-            "npm": "npm --version"
+            "npm": "npm --version",
         }
 
         missing = []
@@ -55,10 +52,7 @@ class AdvancedFeaturesSetup:
                 missing.append(name)
 
         # Check optional dependencies
-        optional = {
-            "Tesseract OCR": "tesseract --version",
-            "Git": "git --version"
-        }
+        optional = {"Tesseract OCR": "tesseract --version", "Git": "git --version"}
 
         optional_missing = []
         for name, cmd in optional.items():
@@ -92,13 +86,13 @@ class AdvancedFeaturesSetup:
             "cryptography",
             "scikit-learn",
             "imagehash",
-            "sqlalchemy"
+            "sqlalchemy",
         ]
 
         missing_packages = []
         for package in required_packages:
             try:
-                __import__(package.replace('-', '_'))
+                __import__(package.replace("-", "_"))
                 logger.info(f"✓ {package}")
             except ImportError:
                 missing_packages.append(package)
@@ -114,7 +108,7 @@ class AdvancedFeaturesSetup:
             "onnxruntime",
             "pytesseract",
             "easyocr",
-            "pywavelets"
+            "pywavelets",
         ]
 
         optional_missing = []
@@ -122,6 +116,7 @@ class AdvancedFeaturesSetup:
             try:
                 if package == "pytesseract":
                     import pytesseract
+
                     pytesseract.get_tesseract_version()
                 else:
                     __import__(package)
@@ -206,7 +201,7 @@ API_RATE_LIMIT=100
 LOG_LEVEL=INFO
 LOG_FILE=logs/app.log
 """
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, "w") as f:
                 f.write(env_content)
             logger.info("✓ Created .env configuration file")
 
@@ -270,7 +265,7 @@ if __name__ == "__main__":
     main()
 '''
 
-        with open(startup_script, 'w') as f:
+        with open(startup_script, "w") as f:
             f.write(script_content)
 
         # Make script executable
@@ -289,9 +284,12 @@ if __name__ == "__main__":
             return True
 
         try:
-            result = subprocess.run([
-                sys.executable, str(test_script)
-            ], capture_output=True, text=True, cwd=self.base_dir)
+            result = subprocess.run(
+                [sys.executable, str(test_script)],
+                capture_output=True,
+                text=True,
+                cwd=self.base_dir,
+            )
 
             if result.returncode == 0:
                 logger.info("✓ Integration tests passed")
@@ -319,14 +317,27 @@ if __name__ == "__main__":
         # Install Python dependencies
         logger.info("Installing Python dependencies...")
         try:
-            subprocess.run([
-                sys.executable, "-m", "pip", "install",
-                "fastapi", "uvicorn[standard]",
-                "pillow", "numpy", "opencv-python",
-                "requests", "cryptography",
-                "scikit-learn", "imagehash",
-                "pytesseract", "easyocr", "pywavelets"
-            ], check=True)
+            subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "fastapi",
+                    "uvicorn[standard]",
+                    "pillow",
+                    "numpy",
+                    "opencv-python",
+                    "requests",
+                    "cryptography",
+                    "scikit-learn",
+                    "imagehash",
+                    "pytesseract",
+                    "easyocr",
+                    "pywavelets",
+                ],
+                check=True,
+            )
             logger.info("✓ Python dependencies installed")
         except subprocess.CalledProcessError as e:
             logger.error(f"❌ Failed to install Python dependencies: {e}")
@@ -378,6 +389,7 @@ if __name__ == "__main__":
         logger.info("• Run tests: python tests/test_advanced_features_integration.py")
         logger.info("")
 
+
 def main():
     """Main setup function"""
     print("🔧 Photo Search Advanced Features Setup")
@@ -398,7 +410,7 @@ def main():
         print("pip install insightface onnxruntime pytesseract easyocr pywavelets")
 
         response = input("Continue anyway? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             sys.exit(1)
 
     # Step 3: Setup development environment
@@ -425,11 +437,12 @@ def main():
     if not setup.run_integration_tests():
         print("\n⚠️ Integration tests had issues, but setup completed")
         response = input("Continue anyway? (y/N): ")
-        if response.lower() != 'y':
+        if response.lower() != "y":
             sys.exit(1)
 
     # Print summary
     setup.print_setup_summary()
+
 
 if __name__ == "__main__":
     main()

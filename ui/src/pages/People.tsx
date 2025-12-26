@@ -198,16 +198,16 @@ export function People() {
     try {
       setUndoLoading(true);
       const result = await api.undoLastOperation();
-      
+
       if (result.success) {
         // Refresh all data after undo
         await Promise.all([
           fetchClusters(),
           fetchStats(),
           fetchReviewCount(),
-          checkUndoAvailability()
+          checkUndoAvailability(),
         ]);
-        
+
         // Show success message
         const operationType = result.operation_type || 'operation';
         alert(`Successfully undid ${operationType}`);
@@ -226,10 +226,12 @@ export function People() {
     try {
       setHideLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}/hide`,
+        `${
+          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        }/api/faces/clusters/${clusterId}/hide`,
         { method: 'POST' }
       );
-      
+
       if (response.ok) {
         // Mark as hidden locally and refresh stats
         setClusters((prev) =>
@@ -237,10 +239,7 @@ export function People() {
             cluster.id === clusterId ? { ...cluster, hidden: true } : cluster
           )
         );
-        await Promise.all([
-          fetchStats(),
-          checkUndoAvailability()
-        ]);
+        await Promise.all([fetchStats(), checkUndoAvailability()]);
         alert('Person hidden successfully');
       } else {
         throw new Error('Failed to hide person');
@@ -257,10 +256,12 @@ export function People() {
     try {
       setHideLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${clusterId}/unhide`,
+        `${
+          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        }/api/faces/clusters/${clusterId}/unhide`,
         { method: 'POST' }
       );
-      
+
       if (response.ok) {
         // Mark as visible locally and refresh stats
         setClusters((prev) =>
@@ -268,10 +269,7 @@ export function People() {
             cluster.id === clusterId ? { ...cluster, hidden: false } : cluster
           )
         );
-        await Promise.all([
-          fetchStats(),
-          checkUndoAvailability()
-        ]);
+        await Promise.all([fetchStats(), checkUndoAvailability()]);
         alert('Person unhidden successfully');
       } else {
         throw new Error('Failed to unhide person');
@@ -298,7 +296,7 @@ export function People() {
       fetchClusters(),
       fetchStats(),
       fetchReviewCount(),
-      checkUndoAvailability()
+      checkUndoAvailability(),
     ]);
     closeSplitModal();
   };
@@ -434,8 +432,8 @@ export function People() {
       console.error('Failed to scan single file(s) for faces:', err);
       setScanSingleError(
         err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to scan file(s) for faces'
+          err?.message ||
+          'Failed to scan file(s) for faces'
       );
     } finally {
       setScanSingleLoading(false);
@@ -459,8 +457,8 @@ export function People() {
       console.error('Failed to fetch scan job status:', err);
       setScanStatusError(
         err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to fetch scan job status'
+          err?.message ||
+          'Failed to fetch scan job status'
       );
     } finally {
       setScanStatusLoading(false);
@@ -546,7 +544,8 @@ export function People() {
     try {
       setDeleteLoading(true);
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${
+          import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}`,
         { method: 'DELETE' }
       );
@@ -555,7 +554,7 @@ export function People() {
         await Promise.all([
           fetchStats(),
           fetchReviewCount(),
-          checkUndoAvailability()
+          checkUndoAvailability(),
         ]);
         setDeleteModal({ open: false, clusterId: '', label: '' });
       } else {
@@ -610,20 +609,22 @@ export function People() {
     if (coherenceScore === undefined) return null;
 
     const getQualityInfo = (score: number) => {
-      if (score >= 0.8) return { 
-        label: 'High Quality', 
-        color: 'text-green-400 bg-green-400/10 border-green-400/20',
-        icon: Star
-      };
-      if (score >= 0.6) return { 
-        label: 'Good Quality', 
-        color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-        icon: Shield
-      };
-      return { 
-        label: 'Needs Review', 
+      if (score >= 0.8)
+        return {
+          label: 'High Quality',
+          color: 'text-green-400 bg-green-400/10 border-green-400/20',
+          icon: Star,
+        };
+      if (score >= 0.6)
+        return {
+          label: 'Good Quality',
+          color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+          icon: Shield,
+        };
+      return {
+        label: 'Needs Review',
         color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-        icon: AlertCircle
+        icon: AlertCircle,
       };
     };
 
@@ -631,12 +632,12 @@ export function People() {
     const Icon = quality.icon;
 
     return (
-      <div 
+      <div
         className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${quality.color}`}
         title={`Cluster coherence: ${(coherenceScore * 100).toFixed(0)}%`}
       >
         <Icon size={10} />
-        <span className="hidden sm:inline">{quality.label}</span>
+        <span className='hidden sm:inline'>{quality.label}</span>
       </div>
     );
   };
@@ -661,8 +662,8 @@ export function People() {
               {/* Advanced Search Button */}
               <button
                 onClick={() => setBooleanSearchOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors bg-white/5 border-white/10 hover:bg-white/10 text-foreground"
-                title="Advanced people search with AND/OR/NOT logic"
+                className='flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
+                title='Advanced people search with AND/OR/NOT logic'
               >
                 <Search size={14} />
                 <span className='hidden sm:inline'>Advanced Search</span>
@@ -697,10 +698,11 @@ export function People() {
               <button
                 onClick={handleTogglePause}
                 disabled={pauseLoading}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
+                  isIndexingPaused
                     ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
-                  }`}
+                }`}
                 title={
                   isIndexingPaused
                     ? 'Resume Face Indexing'
@@ -722,8 +724,9 @@ export function People() {
               <button
                 onClick={handleScan}
                 disabled={scanning}
-                className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                  } text-sm px-4 py-2`}
+                className={`btn-glass ${
+                  scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                } text-sm px-4 py-2`}
               >
                 {scanning ? (
                   <div className='flex items-center gap-2'>
@@ -748,20 +751,22 @@ export function People() {
           <div className='flex gap-1'>
             <button
               onClick={() => setActiveTab('people')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'people'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'people'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              }`}
             >
               <Users size={16} className='inline mr-2' />
               People
             </button>
             <button
               onClick={() => setActiveTab('hidden')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'hidden'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              }`}
             >
               <EyeOff size={16} />
               Hidden
@@ -773,10 +778,11 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('review')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'review'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              }`}
             >
               <CheckCircle size={16} />
               Needs Review
@@ -789,10 +795,11 @@ export function People() {
 
             <button
               onClick={() => setActiveTab('merge')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
+                activeTab === 'merge'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+              }`}
             >
               <Users size={16} />
               Merge Suggestions
@@ -1185,7 +1192,10 @@ export function People() {
                   {/* Mixed cluster detection */}
                   <div>
                     <div className='flex items-center gap-2 mb-2'>
-                      <AlertCircle size={14} className='text-muted-foreground' />
+                      <AlertCircle
+                        size={14}
+                        className='text-muted-foreground'
+                      />
                       <span className='text-sm text-foreground'>
                         Detect mixed clusters
                       </span>
@@ -1228,7 +1238,8 @@ export function People() {
                           >
                             <div className='min-w-0'>
                               <div className='text-sm text-foreground truncate'>
-                                {cluster.label || `Person ${cluster.cluster_id}`}
+                                {cluster.label ||
+                                  `Person ${cluster.cluster_id}`}
                               </div>
                               <div className='text-xs text-muted-foreground'>
                                 {cluster.face_count} faces •{' '}
@@ -1395,8 +1406,9 @@ export function People() {
                   <button
                     onClick={handleScan}
                     disabled={scanning}
-                    className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                      }`}
+                    className={`btn-glass ${
+                      scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                    }`}
                   >
                     {scanning ? (
                       <div className='flex items-center gap-2'>
@@ -1416,193 +1428,216 @@ export function People() {
 
             {/* Face Clusters Grid */}
             {!loading && displayedClusters.length > 0 && (
-              <div
-                id='clusters-section'
-                className='space-y-4'
-              >
+              <div id='clusters-section' className='space-y-4'>
                 {showHidden && (
                   <div className='text-sm text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3'>
                     <div className='flex items-center gap-2'>
                       <AlertCircle size={16} />
-                      <span>Showing {hiddenClusters.length} hidden people. These won't appear in search results or suggestions.</span>
+                      <span>
+                        Showing {hiddenClusters.length} hidden people. These
+                        won't appear in search results or suggestions.
+                      </span>
                     </div>
                   </div>
                 )}
-                
+
                 <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'>
                   {displayedClusters.map((cluster) => (
-                  <div
-                    key={cluster.id}
-                    className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors`}
-                  >
-                    {/* Preview Images */}
-                    <div className='grid grid-cols-3 gap-1 p-3 bg-black/20'>
-                      {(cluster.face_ids || [])
-                        .slice(0, 6)
-                        .map((faceId, index) => (
-                          <img
-                            key={index}
-                            src={`${import.meta.env.VITE_API_URL ||
-                              'http://localhost:8000'
+                    <div
+                      key={cluster.id}
+                      className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-white/20 transition-colors`}
+                    >
+                      {/* Preview Images */}
+                      <div className='grid grid-cols-3 gap-1 p-3 bg-black/20'>
+                        {(cluster.face_ids || [])
+                          .slice(0, 6)
+                          .map((faceId, index) => (
+                            <img
+                              key={index}
+                              src={`${
+                                import.meta.env.VITE_API_URL ||
+                                'http://localhost:8000'
                               }/api/faces/crop/${faceId}?size=150`}
-                            alt={`Face ${index + 1}`}
-                            className='w-full h-20 object-cover rounded'
-                            loading='lazy'
-                            onError={(e) => {
-                              // Fallback to full image if crop fails
-                              const img = e.target as HTMLImageElement;
-                              if (cluster.images[index]) {
-                                img.src = api.getImageUrl(
-                                  cluster.images[index],
-                                  150
-                                );
-                              }
-                            }}
-                          />
+                              alt={`Face ${index + 1}`}
+                              className='w-full h-20 object-cover rounded'
+                              loading='lazy'
+                              onError={(e) => {
+                                // Fallback to full image if crop fails
+                                const img = e.target as HTMLImageElement;
+                                if (cluster.images[index]) {
+                                  img.src = api.getImageUrl(
+                                    cluster.images[index],
+                                    150
+                                  );
+                                }
+                              }}
+                            />
+                          ))}
+                        {Array.from({
+                          length: Math.max(
+                            0,
+                            6 - (cluster.face_ids?.length || 0)
+                          ),
+                        }).map((_, index) => (
+                          <div
+                            key={`empty-${index}`}
+                            className='w-full h-20 bg-white/5 rounded flex items-center justify-center'
+                          >
+                            <ImageIcon size={16} className='text-white/20' />
+                          </div>
                         ))}
-                      {Array.from({
-                        length: Math.max(
-                          0,
-                          6 - (cluster.face_ids?.length || 0)
-                        ),
-                      }).map((_, index) => (
-                        <div
-                          key={`empty-${index}`}
-                          className='w-full h-20 bg-white/5 rounded flex items-center justify-center'
-                        >
-                          <ImageIcon size={16} className='text-white/20' />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Cluster Info */}
-                    <div className='p-4'>
-                      <div className='flex items-center justify-between mb-3'>
-                        <div className='flex items-center gap-2'>
-                          <h3 className='font-medium text-foreground truncate'>
-                            {cluster.label || `Person ${cluster.id}`}
-                          </h3>
-                          {cluster.indexing_disabled && (
-                            <span
-                              className='px-1.5 py-0.5 text-[10px] font-semibold bg-red-500/20 text-red-400 rounded flex items-center gap-1'
-                              title='Auto-assignment is disabled for this person'
-                            >
-                              <ToggleLeft size={10} />
-                              Manual
-                            </span>
-                          )}
-                          {cluster.is_mixed && (
-                            <span
-                              className='px-1.5 py-0.5 text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 rounded'
-                              title='This cluster may contain multiple people'
-                            >
-                              Mixed?
-                            </span>
-                          )}
-                        </div>
-                        <div className='flex items-center gap-1 text-xs text-muted-foreground'>
-                          <Camera size={12} />
-                          {cluster.face_count}
-                        </div>
                       </div>
 
-                      {/* Quality and Stats Row */}
-                      <div className='flex items-center justify-between mb-3'>
-                        <div className='flex items-center gap-2'>
-                          <CoherenceBadge coherenceScore={cluster.coherence_score} />
-                          <div className='text-xs text-muted-foreground'>
-                            {cluster.image_count} photos
+                      {/* Cluster Info */}
+                      <div className='p-4'>
+                        <div className='flex items-center justify-between mb-3'>
+                          <div className='flex items-center gap-2'>
+                            <h3 className='font-medium text-foreground truncate'>
+                              {cluster.label || `Person ${cluster.id}`}
+                            </h3>
+                            {cluster.indexing_disabled && (
+                              <span
+                                className='px-1.5 py-0.5 text-[10px] font-semibold bg-red-500/20 text-red-400 rounded flex items-center gap-1'
+                                title='Auto-assignment is disabled for this person'
+                              >
+                                <ToggleLeft size={10} />
+                                Manual
+                              </span>
+                            )}
+                            {cluster.is_mixed && (
+                              <span
+                                className='px-1.5 py-0.5 text-[10px] font-semibold bg-yellow-500/20 text-yellow-400 rounded'
+                                title='This cluster may contain multiple people'
+                              >
+                                Mixed?
+                              </span>
+                            )}
+                          </div>
+                          <div className='flex items-center gap-1 text-xs text-muted-foreground'>
+                            <Camera size={12} />
+                            {cluster.face_count}
                           </div>
                         </div>
-                        {cluster.created_at && (
-                          <div className='text-xs text-muted-foreground flex items-center gap-1'>
-                            <Clock size={10} />
-                            {new Date(cluster.created_at).toLocaleDateString()}
+
+                        {/* Quality and Stats Row */}
+                        <div className='flex items-center justify-between mb-3'>
+                          <div className='flex items-center gap-2'>
+                            <CoherenceBadge
+                              coherenceScore={cluster.coherence_score}
+                            />
+                            <div className='text-xs text-muted-foreground'>
+                              {cluster.image_count} photos
+                            </div>
                           </div>
-                        )}
-                      </div>
+                          {cluster.created_at && (
+                            <div className='text-xs text-muted-foreground flex items-center gap-1'>
+                              <Clock size={10} />
+                              {new Date(
+                                cluster.created_at
+                              ).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
 
-                      <div className='flex gap-2'>
-                        <button
-                          onClick={() =>
-                            openRenameModal(
-                              cluster.id,
-                              cluster.label || `Person ${cluster.id}`
-                            )
-                          }
-                          className='btn-glass btn-glass--muted text-xs px-2 py-1.5'
-                          title='Rename'
-                        >
-                          <Tag size={12} />
-                        </button>
-
-                        {showHidden ? (
+                        <div className='flex gap-2'>
                           <button
-                            onClick={() => handleUnhidePerson(cluster.id)}
-                            disabled={hideLoading}
-                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-green-400'
-                            title='Unhide this person'
+                            onClick={() =>
+                              openRenameModal(
+                                cluster.id,
+                                cluster.label || `Person ${cluster.id}`
+                              )
+                            }
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5'
+                            title='Rename'
                           >
-                            {hideLoading ? (
-                              <RefreshCw size={12} className='animate-spin' />
-                            ) : (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                              </svg>
-                            )}
+                            <Tag size={12} />
                           </button>
-                        ) : (
+
+                          {showHidden ? (
+                            <button
+                              onClick={() => handleUnhidePerson(cluster.id)}
+                              disabled={hideLoading}
+                              className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-green-400'
+                              title='Unhide this person'
+                            >
+                              {hideLoading ? (
+                                <RefreshCw size={12} className='animate-spin' />
+                              ) : (
+                                <svg
+                                  width='12'
+                                  height='12'
+                                  viewBox='0 0 24 24'
+                                  fill='none'
+                                  stroke='currentColor'
+                                  strokeWidth='2'
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                >
+                                  <path d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z' />
+                                  <circle cx='12' cy='12' r='3' />
+                                </svg>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleHidePerson(cluster.id)}
+                              disabled={hideLoading}
+                              className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400'
+                              title='Hide this person'
+                            >
+                              {hideLoading ? (
+                                <RefreshCw size={12} className='animate-spin' />
+                              ) : (
+                                <svg
+                                  width='12'
+                                  height='12'
+                                  viewBox='0 0 24 24'
+                                  fill='none'
+                                  stroke='currentColor'
+                                  strokeWidth='2'
+                                  strokeLinecap='round'
+                                  strokeLinejoin='round'
+                                >
+                                  <path d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24' />
+                                  <line x1='1' y1='1' x2='23' y2='23' />
+                                </svg>
+                              )}
+                            </button>
+                          )}
+
+                          {!showHidden && cluster.face_count > 1 && (
+                            <button
+                              onClick={() => openSplitModal(cluster)}
+                              className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-blue-400'
+                              title='Split this person into separate people'
+                            >
+                              <Users size={12} />
+                            </button>
+                          )}
+
                           <button
-                            onClick={() => handleHidePerson(cluster.id)}
-                            disabled={hideLoading}
-                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400'
-                            title='Hide this person'
+                            onClick={() =>
+                              openDeleteModal(
+                                cluster.id,
+                                cluster.label || `Person ${cluster.id}`
+                              )
+                            }
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-red-400'
+                            title='Delete this person group'
                           >
-                            {hideLoading ? (
-                              <RefreshCw size={12} className='animate-spin' />
-                            ) : (
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                <line x1="1" y1="1" x2="23" y2="23"/>
-                              </svg>
-                            )}
+                            <Trash2 size={12} />
                           </button>
-                        )}
 
-                        {!showHidden && cluster.face_count > 1 && (
-                          <button
-                            onClick={() => openSplitModal(cluster)}
-                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-blue-400'
-                            title='Split this person into separate people'
+                          <Link
+                            to={`/people/${cluster.id}`}
+                            className='btn-glass btn-glass--primary text-xs px-3 py-1.5 flex-1 flex items-center justify-center'
                           >
-                            <Users size={12} />
-                          </button>
-                        )}
-
-                        <button
-                          onClick={() =>
-                            openDeleteModal(
-                              cluster.id,
-                              cluster.label || `Person ${cluster.id}`
-                            )
-                          }
-                          className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-red-400'
-                          title='Delete this person group'
-                        >
-                          <Trash2 size={12} />
-                        </button>
-
-                        <Link
-                          to={`/people/${cluster.id}`}
-                          className='btn-glass btn-glass--primary text-xs px-3 py-1.5 flex-1 flex items-center justify-center'
-                        >
-                          <User size={12} className='mr-1' />
-                          View Photos
-                        </Link>
+                            <User size={12} className='mr-1' />
+                            View Photos
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
                   ))}
                 </div>
               </div>

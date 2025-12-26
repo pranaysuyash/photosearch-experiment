@@ -1,6 +1,6 @@
 # Face Features Completion Progress
-**Date**: December 25, 2025  
-**Status**: Near Complete (95%)  
+**Date**: December 25, 2025
+**Status**: Near Complete (95%)
 
 ---
 
@@ -191,6 +191,25 @@
 
 ---
 
+## Recent Work (Fallbacks & Deprecation Fixes)
+
+### ✅ Completed
+1. **InsightFace deprecation fix** - Patched alignment to use `SimilarityTransform.from_estimate`
+2. **Fallback-ready embeddings** - Added a separate embedding backend layer (InsightFace / CLIP / Remote HTTP)
+3. **Remote detection hook** - Added optional HTTP face detection backend
+4. **Config knobs** - Added env config for fallback providers and remote URLs
+5. **Docs update** - Added fallback matrix and API contracts (`docs/FACE_FALLBACKS.md`)
+
+### Findings
+- InsightFace remains the only fully local, production-grade option that provides embeddings.
+- CLIP embeddings can be used as a fallback on face crops, but are lower-precision for identity clustering.
+- Most cloud face APIs do not return raw embeddings; they require provider-specific matching logic.
+
+### TODOs Tracker
+- Remaining tasks are now captured in `FACE_TODOS.md`.
+
+---
+
 ## Quality Metrics
 
 ### Technical Implementation
@@ -246,7 +265,7 @@
 
 ### Current Progress: **95% Complete**
 - Phase 1 (Critical): ✅ 100% Complete
-- Phase 2 (Advanced): ✅ 100% Complete  
+- Phase 2 (Advanced): ✅ 100% Complete
 - Phase 3 (Search): ✅ 100% Complete
 - Phase 4 (Performance): ✅ 100% Complete
 - Phase 5 (Video): ✅ 100% Complete
@@ -264,6 +283,6 @@
 
 ---
 
-**Last Updated**: December 25, 2025  
-**Next Review**: December 26, 2025  
+**Last Updated**: December 25, 2025
+**Next Review**: December 26, 2025
 **Target Completion**: December 27, 2025

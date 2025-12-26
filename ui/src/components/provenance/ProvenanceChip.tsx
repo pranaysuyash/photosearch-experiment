@@ -4,9 +4,9 @@
  * Displays the source and availability status of a photo (Local/Cloud/Offline).
  */
 import React from 'react';
-import { 
-  HardDrive, 
-  Cloud, 
+import {
+  HardDrive,
+  Cloud,
   Wifi,
   WifiOff,
   AlertTriangle,
