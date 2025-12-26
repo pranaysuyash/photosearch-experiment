@@ -17,7 +17,6 @@ import {
   Hash,
   Trash2,
   Minus,
-  Plus,
   RotateCw,
   FlipHorizontal,
   FlipVertical,
@@ -28,7 +27,6 @@ import {
   Code,
   HelpCircle,
   Edit3,
-  UserCircle2,
   Expand,
   Shrink,
   ZoomIn,
@@ -138,6 +136,25 @@ interface PhotoMetadata {
   hashes?: { md5?: string; sha256?: string };
 }
 
+interface FaceCluster {
+  id: string;
+  label?: string;
+  cluster_label?: string;
+  face_count?: number;
+  face_ids?: string[];
+  representative_face?: {
+    detection_id: string;
+    photo_path: string;
+    quality_score?: number;
+  };
+}
+
+interface MatchReason {
+  category: string;
+  confidence: number;
+  matched?: string;
+}
+
 // Image sizing mode types
 type SizingMode = 'fit' | 'fill' | 'extend' | 'compress';
 
@@ -169,7 +186,7 @@ export function PhotoDetail({
   const [photoTags, setPhotoTags] = useState<string[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
   const viewerRef = useRef<HTMLDivElement | null>(null);
-  const [faceClusters, setFaceClusters] = useState<any[]>([]);
+  const [faceClusters, setFaceClusters] = useState<FaceCluster[]>([]);
   const [isMetadataPanelVisible, setIsMetadataPanelVisible] = useState(true);
   const [facesLoading, setFacesLoading] = useState(false);
   const [signedImageUrl, setSignedImageUrl] = useState<string | null>(null);
@@ -269,7 +286,7 @@ export function PhotoDetail({
       .catch(() => setSignedImageUrl(api.getImageUrl(photo.path, 1600)));
   }, [photo]);
 
-  const refreshFaces = async () => {
+  const refreshFaces = useCallback(async () => {
     if (!photo) return;
     setFacesLoading(true);
     try {
@@ -288,15 +305,15 @@ export function PhotoDetail({
     } finally {
       setFacesLoading(false);
     }
-  };
+  }, [photo]);
 
   useEffect(() => {
     if (!photo) {
       setFaceClusters([]);
       return;
     }
-    refreshFaces();
-  }, [photo]);
+    void refreshFaces();
+  }, [photo, refreshFaces]);
 
   // Handle panel resize - must be at component level (Rules of Hooks)
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
@@ -456,36 +473,6 @@ export function PhotoDetail({
       refresh();
     } catch {
       // ignore
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const rotateImage = async () => {
-    if (!photo || busy) return;
-    setBusy(true);
-    try {
-      await api.rotatePhoto(photo.path, 90, true);
-      setImageKey((prev) => prev + 1);
-      refresh();
-    } catch (error) {
-      console.error('Failed to rotate image:', error);
-      showToast('Failed to rotate image. Please try again.', 'error');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const flipImage = async (direction: 'horizontal' | 'vertical') => {
-    if (!photo || busy) return;
-    setBusy(true);
-    try {
-      await api.flipPhoto(photo.path, direction, true);
-      setImageKey((prev) => prev + 1);
-      refresh();
-    } catch (error) {
-      console.error('Failed to flip image:', error);
-      showToast('Failed to flip image. Please try again.', 'error');
     } finally {
       setBusy(false);
     }
@@ -1316,7 +1303,7 @@ export function PhotoDetail({
               <div className='space-y-2'>
                 {photo.matchExplanation.reasons &&
                   photo.matchExplanation.reasons.length > 0 ? (
-                  photo.matchExplanation.reasons.map((reason: any, idx: number) => {
+                  photo.matchExplanation.reasons.map((reason: MatchReason, idx: number) => {
                     const Icon =
                       reason.category.toLowerCase().includes('camera') ||
                         reason.category.toLowerCase().includes('lens')
@@ -1371,7 +1358,7 @@ export function PhotoDetail({
           imageUrl={signedImageUrl || api.getImageUrl(photo.path, 1200)}
           isOpen={showEditor}
           onClose={() => setShowEditor(false)}
-          onSave={(editedImageUrl) => {
+          onSave={() => {
             setShowEditor(false);
             setImageKey((prev) => prev + 1);
             showToast('Photo edits saved successfully!', 'success');

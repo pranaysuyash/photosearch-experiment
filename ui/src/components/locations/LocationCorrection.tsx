@@ -3,16 +3,13 @@
  *
  * Allows users to correct and enhance location information for photos.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   MapPin,
   Edit3,
   Globe,
-  Building2,
-  Search,
   Check,
   X,
-  Clock,
   Locate,
   AlertCircle,
 } from 'lucide-react';
@@ -76,11 +73,7 @@ export function LocationCorrection({
   });
 
   // Load location data for the photo
-  useEffect(() => {
-    loadLocation();
-  }, [photoPath]);
-
-  const loadLocation = async () => {
+  const loadLocation = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -105,7 +98,11 @@ export function LocationCorrection({
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    void loadLocation();
+  }, [loadLocation]);
 
   const handleSave = async () => {
     if (!location) return;
@@ -164,10 +161,13 @@ export function LocationCorrection({
     try {
       // No dedicated search endpoint yet; reuse clustered locations and filter by name on the client.
       const clusters = await api.getLocationClusters(1);
-      const filtered = (clusters || []).filter(
-        (c: any) => c.name && c.name.toLowerCase().includes(query.toLowerCase())
+      const clusterList: LocationCluster[] = Array.isArray(clusters)
+        ? clusters
+        : clusters?.clusters || [];
+      const filtered = clusterList.filter(
+        (c) => c.name && c.name.toLowerCase().includes(query.toLowerCase())
       );
-      setSuggestions(filtered.slice(0, 8).map((r: any) => r.name));
+      setSuggestions(filtered.slice(0, 8).map((r) => r.name));
       setShowSuggestions(true);
     } catch (err) {
       console.error('Failed to search locations:', err);
@@ -464,11 +464,7 @@ export function LocationClustering({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadLocationClusters();
-  }, []);
-
-  const loadLocationClusters = async () => {
+  const loadLocationClusters = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -481,7 +477,11 @@ export function LocationClustering({
     } finally {
       setLoading(false);
     }
-  };
+  }, [minPhotos]);
+
+  useEffect(() => {
+    void loadLocationClusters();
+  }, [loadLocationClusters]);
 
   const handleClusterClick = (cluster: LocationCluster) => {
     if (onClusterSelect) {
@@ -542,7 +542,7 @@ export function LocationClustering({
         {clusters.map((cluster) => (
           <div
             key={cluster.id}
-            onClick={() => onClusterSelect && onClusterSelect(cluster)}
+            onClick={() => handleClusterClick(cluster)}
             className={`p-3 rounded-lg border cursor-pointer transition-colors ${
               onClusterSelect
                 ? 'hover:border-white/20 hover:bg-white/5'

@@ -3,7 +3,7 @@
  *
  * Provides UI for creating photo stories and managing photo timelines.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   Calendar,
@@ -13,15 +13,12 @@ import {
   X,
   Edit3,
   Check,
-  Share2,
   Eye,
   EyeOff,
   Lock,
   Globe,
   UserPlus,
-  Tag,
-  TrendingUp,
-  Settings
+  Tag
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -46,7 +43,7 @@ interface StoryNarrative {
   created_at: string;
   updated_at: string;
   is_published: boolean;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   timeline_entries: TimelineEntry[];
 }
 
@@ -67,10 +64,6 @@ export function StoryCreator({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [storyId, setStoryId] = useState<string | null>(null);
-  const [currentPrivacy, setCurrentPrivacy] = useState<'private' | 'shared' | 'public'>('private');
-  const [newCaption, setNewCaption] = useState('');
-  const [editingCaption, setEditingCaption] = useState<{entryId: string, caption: string} | null>(null);
 
   if (!isOpen) return null;
 
@@ -87,21 +80,21 @@ export function StoryCreator({
       // Create the story
       const newStory = await api.createStory(title, description, privacyLevel);
 
-      const storyId = newStory.story_id;
+      const createdStoryId = newStory.story_id;
 
       // Add all selected photos to the story's timeline
       for (const photoPath of photoPaths) {
-        await api.addPhotoToStory(storyId, {
+        await api.addPhotoToStory(createdStoryId, {
           photo_path: photoPath,
           date: new Date().toISOString().split('T')[0], // Use today's date as default
           caption: '' // Empty caption initially
         });
       }
 
-      setStoryId(storyId);
+      setSuccess(true);
 
       if (onStoryCreated) {
-        onStoryCreated(storyId);
+        onStoryCreated(createdStoryId);
       }
 
       // Close the dialog after a short delay to show success
@@ -123,7 +116,7 @@ export function StoryCreator({
     setPrivacyLevel('private');
     setCreating(false);
     setError(null);
-    setStoryId(null);
+    setSuccess(false);
   };
 
   const handleCancel = () => {
@@ -308,15 +301,8 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [editingCaption, setEditingCaption] = useState<string | null>(null);
   const [newCaption, setNewCaption] = useState('');
-  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (storyId) {
-      loadStoryDetails();
-    }
-  }, [storyId]);
-
-  const loadStoryDetails = async () => {
+  const loadStoryDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -334,7 +320,12 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [storyId]);
+
+  useEffect(() => {
+    if (!storyId) return;
+    loadStoryDetails();
+  }, [loadStoryDetails, storyId]);
 
   const updateCaption = async (entryId: string, caption: string) => {
     try {
@@ -346,7 +337,6 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
       ));
 
       setEditingCaption(null);
-      setEditingEntryId(null);
     } catch (err) {
       console.error('Failed to update caption:', err);
       setError('Failed to update caption');
@@ -494,7 +484,6 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                               autoFocus
                               onBlur={() => {
                                 setEditingCaption(null);
-                                setEditingEntryId(null);
                               }}
                               onKeyPress={(e) => {
                                 if (e.key === 'Enter') {
@@ -515,7 +504,6 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                             onClick={() => {
                               setEditingCaption(entry.id);
                               setNewCaption(entry.caption || '');
-                              setEditingEntryId(entry.id);
                             }}
                           >
                             {entry.caption ? (
@@ -532,7 +520,6 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                           onClick={() => {
                             setEditingCaption(entry.id);
                             setNewCaption(entry.caption || '');
-                            setEditingEntryId(entry.id);
                           }}
                           className="btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center"
                           title="Edit caption"

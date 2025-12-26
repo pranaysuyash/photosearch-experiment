@@ -115,7 +115,8 @@ const Layout = ({ children }: LayoutProps) => {
   }, []);
 
   useEffect(() => {
-    setMobileMenuOpen(false);
+    const id = requestAnimationFrame(() => setMobileMenuOpen(false));
+    return () => cancelAnimationFrame(id);
   }, [location.pathname, searchExpanded]);
 
   useEffect(() => {

@@ -1,5 +1,4 @@
 import React from 'react';
-import { cn } from '../../../lib/utils'; // Assuming typical shadcn utility, else use template literal
 import {
     Info,
     Edit3,
@@ -15,9 +14,11 @@ interface PhotoDetailTabsProps {
     children: React.ReactNode;
 }
 
+type TabIcon = React.ComponentType<{ size?: number }>;
+
 export function PhotoDetailTabs({ activeTab, onTabChange, children }: PhotoDetailTabsProps) {
 
-    const tabs: { id: TabName; label: string; icon: any }[] = [
+    const tabs: { id: TabName; label: string; icon: TabIcon }[] = [
         { id: 'info', label: 'Info', icon: Info },
         { id: 'edit', label: 'Edit', icon: Edit3 },
         { id: 'details', label: 'Details', icon: FileText },

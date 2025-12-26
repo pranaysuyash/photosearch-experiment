@@ -12,15 +12,10 @@ import {
   Image,
   MessageSquare,
   Settings,
-  Eye,
-  EyeOff,
   Lock,
   Globe,
   Share2,
   X,
-  Check,
-  Edit3,
-  Trash2
 } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
@@ -68,7 +63,6 @@ interface SpaceComment {
 }
 
 export function CollaborativeSpaces() {
-  const [spaces, setSpaces] = useState<CollaborativeSpace[]>([]);
   const [selectedSpace, setSelectedSpace] = useState<CollaborativeSpace | null>(null);
   const [spaceMembers, setSpaceMembers] = useState<SpaceMember[]>([]);
   const [spacePhotos, setSpacePhotos] = useState<SpacePhoto[]>([]);
@@ -150,7 +144,7 @@ export function CollaborativeSpaces() {
     if (!createSpaceForm.name.trim()) return;
 
     try {
-      const response = await api.post('/collaborative/spaces', {
+      await api.post('/collaborative/spaces', {
         name: createSpaceForm.name,
         description: createSpaceForm.description,
         privacy_level: createSpaceForm.privacy_level,
@@ -219,9 +213,14 @@ export function CollaborativeSpaces() {
       });
 
       // Refresh comments for this photo
-      const commentsResponse = await api.get(`/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`);
-      // In a real implementation, we would update only the specific photo's comments
-      // For now, refresh all space details
+      const commentsResponse = await api.get(
+        `/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`
+      );
+      const latestComments = commentsResponse.comments || [];
+      setSpaceComments((prev) => [
+        ...prev.filter((comment) => comment.photo_path !== photoPath),
+        ...latestComments,
+      ]);
       loadSpaceDetails(selectedSpace.id);
       setNewComment('');
     } catch (err) {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
@@ -35,12 +35,7 @@ export function AlbumDetail({
 
   const { openForPhoto } = usePhotoViewer();
 
-  // Load album and photos on mount
-  useEffect(() => {
-    loadAlbum();
-  }, [albumId]);
-
-  const loadAlbum = async () => {
+  const loadAlbum = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -53,7 +48,12 @@ export function AlbumDetail({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [albumId]);
+
+  // Load album and photos on mount
+  useEffect(() => {
+    void loadAlbum();
+  }, [loadAlbum]);
 
   const handleRefreshSmartAlbum = async () => {
     if (!album || !album.is_smart) return;

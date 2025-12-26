@@ -4,10 +4,10 @@
  * Provides intelligent analysis of photos including objects, scenes, and descriptions
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Photo } from '../../api';
 import { api } from '../../api';
-import { Copy, RotateCcw, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, RotateCcw, Eye, ChevronDown } from 'lucide-react';
 
 interface ImageAnalysis {
   caption?: string;
@@ -31,13 +31,7 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Load image analysis when viewer opens
-  useEffect(() => {
-    if (isOpen && photo) {
-      loadAnalysis();
-    }
-  }, [isOpen, photo]);
-
-  const loadAnalysis = async () => {
+  const loadAnalysis = useCallback(async () => {
     if (!photo) return;
 
     setLoading(true);
@@ -52,13 +46,19 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
         // If no analysis exists yet, show a message prompting user to analyze
         setAnalysis(null);
       }
-    } catch (err) {
+    } catch {
       // If the analysis isn't available yet, this is expected - don't show error
       setAnalysis(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [photo]);
+
+  useEffect(() => {
+    if (isOpen && photo) {
+      void loadAnalysis();
+    }
+  }, [isOpen, photo, loadAnalysis]);
 
   const runAnalysis = async () => {
     if (!photo) return;

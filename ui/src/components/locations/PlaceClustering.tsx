@@ -3,8 +3,8 @@
  *
  * Displays clusters of photos by location.
  */
-import React, { useState, useEffect } from 'react';
-import { MapPin, Globe, Users, Eye, Filter, Grid3X3 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapPin, Globe, Users, Eye } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
 
@@ -33,11 +33,7 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
   const [activeCluster, setActiveCluster] = useState<PlaceCluster | null>(null);
 
   // Load place clusters
-  useEffect(() => {
-    loadClusters();
-  }, []);
-
-  const loadClusters = async () => {
+  const loadClusters = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -50,7 +46,11 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [minPhotos]);
+
+  useEffect(() => {
+    void loadClusters();
+  }, [loadClusters]);
 
   const handleClusterClick = (cluster: PlaceCluster) => {
     setActiveCluster(cluster);

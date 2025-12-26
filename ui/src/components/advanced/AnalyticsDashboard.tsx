@@ -109,16 +109,6 @@ function AnalyticsDashboard() {
   const [dateRange, setDateRange] = useState('30d');
   const [autoRefresh, setAutoRefresh] = useState(false);
 
-  // Load analytics data on mount
-  useEffect(() => {
-    loadAnalytics();
-
-    if (autoRefresh) {
-      const interval = setInterval(loadAnalytics, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
-    }
-  }, [dateRange, autoRefresh]);
-
   const loadAnalytics = useCallback(async () => {
     try {
       setLoading(true);
@@ -173,7 +163,13 @@ function AnalyticsDashboard() {
             0
           );
 
-          sampleResponse.photos?.forEach((photo: any) => {
+          type SamplePhoto = {
+            metadata?: {
+              file?: { extension?: string; size_bytes?: number };
+              image?: { width?: number; height?: number };
+            };
+          };
+          sampleResponse.photos?.forEach((photo: SamplePhoto) => {
             // Analyze file formats
             if (photo.metadata?.file?.extension) {
               const ext = photo.metadata.file.extension.toUpperCase();
@@ -309,7 +305,17 @@ function AnalyticsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, []);
+
+  // Load analytics data on mount
+  useEffect(() => {
+    void loadAnalytics();
+
+    if (autoRefresh) {
+      const interval = setInterval(loadAnalytics, 30000); // Refresh every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [dateRange, autoRefresh, loadAnalytics]);
 
   const getMetricIcon = (metricName: string) => {
     if (metricName.includes('face')) return Users;
@@ -457,21 +463,21 @@ function AnalyticsDashboard() {
 
       {/* Tabs */}
       <div className={`flex space-x-1 p-1 ${surfaceClass} rounded-lg`}>
-        {['overview', 'content', 'search', 'performance', 'storage'].map(
-          (tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
-                activeTab === tab
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {tab}
-            </button>
-          )
-        )}
+        {(
+          ['overview', 'content', 'search', 'performance', 'storage'] as const
+        ).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
+              activeTab === tab
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-white/10'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
       </div>
 
       <AnimatePresence mode='wait'>

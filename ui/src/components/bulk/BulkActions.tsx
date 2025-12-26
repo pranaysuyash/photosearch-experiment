@@ -3,15 +3,13 @@
  *
  * Provides safe bulk operations with undo capability for photo management operations.
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Trash2,
   Star,
   Tag,
   Copy,
   X,
-  Check,
-  RotateCcw,
   AlertTriangle,
   Clock,
   Undo2
@@ -56,26 +54,26 @@ export function BulkActions({
     setError(null);
 
     try {
-      let operationResult: any;
+      let operationResult: unknown;
 
       switch (opType) {
         case 'delete':
-          operationResult = await api.deletePhotos(selectedPhotos);
+          await api.deletePhotos(selectedPhotos);
           break;
         case 'favorite':
-          operationResult = await api.bulkFavorite(selectedPhotos, data?.favorite ? 'add' : 'remove');
+          await api.bulkFavorite(selectedPhotos, (data as { favorite?: boolean } | undefined)?.favorite ? 'add' : 'remove');
           break;
         case 'tag':
-          operationResult = await api.bulkTag(selectedPhotos, data?.tag);
+          await api.bulkTag(selectedPhotos, (data as { tag?: string } | undefined)?.tag);
           break;
         case 'move':
-          operationResult = await api.bulkMove(selectedPhotos, data?.destination);
+          await api.bulkMove(selectedPhotos, (data as { destination?: string } | undefined)?.destination);
           break;
         case 'copy':
-          operationResult = await api.bulkCopy(selectedPhotos, data?.destination);
+          await api.bulkCopy(selectedPhotos, (data as { destination?: string } | undefined)?.destination);
           break;
         case 'archive':
-          operationResult = await api.bulkArchive(selectedPhotos);
+          await api.bulkArchive(selectedPhotos);
           break;
         default:
           throw new Error('Invalid operation type');
@@ -84,9 +82,9 @@ export function BulkActions({
       // Create operation record for potential undo
       const operation: BulkOperation = {
         id: Date.now().toString(), // In a real app, this would come from the backend
-        action: opType as any,
+        action: opType as 'delete' | 'favorite' | 'tag' | 'move' | 'copy' | 'archive',
         targetPaths: selectedPhotos,
-        operationData: data || {},
+        operationData: (data as Record<string, unknown>) || {},
         timestamp: new Date().toISOString(),
         status: 'completed'
       };
@@ -129,27 +127,26 @@ export function BulkActions({
       setDestination('');
     }
   };
-
+      let undoResult: unknown;
   const handleUndo = async (operation: BulkOperation) => {
     setBusy(true);
     try {
       let undoResult: any;
-
+          undoResult = { success: true };
       switch (operation.action) {
         case 'delete':
-          // For deletes, we'd restore from trash in a full implementation
+          await api.bulkFavorite(
           // Since we don't have a specific trashRestore API function, we'll log this action
-          console.log("Undoing delete operation - restoring from trash:", operation.targetPaths);
+            (operation.operationData as { favorite?: boolean })?.favorite ? 'remove' : 'add'
           undoResult = { success: true, message: "Restore operation simulated" };
           break;
         case 'favorite':
-          // Toggle favorites back - if they were favorited, unfavorited them
+          const tagName = (operation.operationData as { tag?: string })?.tag;
           undoResult = await api.bulkFavorite(
             operation.targetPaths,
             operation.operationData.favorite ? 'remove' : 'add'
           );
           break;
-        case 'tag':
           // Remove the tag that was added
           const tagName = operation.operationData.tag;
           if (tagName) {

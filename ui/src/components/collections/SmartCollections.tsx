@@ -7,7 +7,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   FolderPlus,
-  Edit3,
   Eye,
   Trash2,
   Clock,
@@ -17,7 +16,7 @@ import {
   Sparkles,
   X,
   Plus,
-  Filter
+  Filter,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -26,7 +25,7 @@ interface SmartCollection {
   id: string;
   name: string;
   description: string;
-  rule_definition: any;
+  rule_definition: RuleDefinition;
   auto_update: boolean;
   photo_count: number;
   last_updated: string;
@@ -37,19 +36,27 @@ interface SmartCollection {
 
 interface RuleDefinition {
   type: 'date' | 'location' | 'people' | 'event' | 'camera' | 'tag' | 'custom';
-  params: Record<string, any>;
+  params: Record<string, string | number | boolean>;
 }
+
+type RuleType = RuleDefinition['type'];
+type RuleParams = RuleDefinition['params'];
 
 export function SmartCollections() {
   const [collections, setCollections] = useState<SmartCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newCollection, setNewCollection] = useState({
+  const [newCollection, setNewCollection] = useState<{
+    name: string;
+    description: string;
+    ruleType: RuleType;
+    ruleParams: RuleParams;
+  }>({
     name: '',
     description: '',
     ruleType: 'date',
-    ruleParams: {} as Record<string, any>
+    ruleParams: {},
   });
   const [selectedCollection, setSelectedCollection] = useState<SmartCollection | null>(null);
 
@@ -78,8 +85,8 @@ export function SmartCollections() {
 
     try {
       const ruleDefinition: RuleDefinition = {
-        type: newCollection.ruleType as any,
-        params: newCollection.ruleParams
+        type: newCollection.ruleType,
+        params: newCollection.ruleParams,
       };
 
       await api.post('/collections/smart', {
@@ -137,15 +144,18 @@ export function SmartCollections() {
     }
   };
 
-  const getRuleIcon = (type: string) => {
-    const icons: Record<string, any> = {
+  const getRuleIcon = (type: RuleType) => {
+    const icons: Record<
+      RuleType,
+      React.ComponentType<{ size?: number }> | string
+    > = {
       date: Calendar,
       location: MapPin,
       people: Users,
       event: Sparkles,
       camera: '📷',
       tag: '🏷️',
-      custom: Filter
+      custom: Filter,
     };
 
     const Icon = icons[type];

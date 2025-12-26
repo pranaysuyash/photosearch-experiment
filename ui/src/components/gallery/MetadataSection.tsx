@@ -77,7 +77,7 @@ export class ErrorBoundary extends React.Component<
     { children: React.ReactNode; fallback?: React.ReactNode },
     { hasError: boolean }
 > {
-    constructor(props: any) {
+    constructor(props: unknown) {
         super(props);
         this.state = { hasError: false };
     }
@@ -86,7 +86,7 @@ export class ErrorBoundary extends React.Component<
         return { hasError: true };
     }
 
-    componentDidCatch(error: any) {
+    componentDidCatch(error: unknown) {
         console.error('MetadataSection Error:', error);
     }
 

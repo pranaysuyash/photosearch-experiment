@@ -3,7 +3,7 @@
  *
  * Displays generated insights and recommendations for photos.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Sparkles,
   Lightbulb,
@@ -23,7 +23,7 @@ interface PhotoInsight {
   id: string;
   photo_path: string;
   insight_type: string;
-  insight_data: any;
+  insight_data: unknown;
   confidence: number;
   generated_at: string;
   is_applied: boolean;
@@ -45,14 +45,10 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
   const [activeTab, setActiveTab] = useState<
     'insights' | 'patterns' | 'recommendations'
   >('insights');
-  const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const [selectedPaths] = useState<string[]>([]);
 
   // Load insights for the specific photo
-  useEffect(() => {
-    loadInsights();
-  }, [photoPath]);
-
-  const loadInsights = async () => {
+  const loadInsights = useCallback(async () => {
     if (!photoPath) return;
 
     try {
@@ -69,7 +65,11 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    loadInsights();
+  }, [loadInsights]);
 
   const loadPatterns = async () => {
     try {
@@ -120,7 +120,7 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
   };
 
   const getInsightIcon = (type: string) => {
-    const icons: Record<string, any> = {
+    const icons: Record<string, React.ComponentType<{ size?: number }>> = {
       best_shot: Trophy,
       tag_suggestion: Tag,
       pattern: ChartBar,
@@ -132,19 +132,26 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
   };
 
   const getInsightDescription = (insight: PhotoInsight) => {
+    const data = insight.insight_data as Record<string, unknown> | undefined;
     switch (insight.insight_type) {
       case 'best_shot':
         return 'This photo captures excellent composition and timing';
       case 'tag_suggestion':
-        return `Suggested tag: ${insight.insight_data.suggested_tag || 'N/A'}`;
+        return `Suggested tag: ${
+          typeof data?.suggested_tag === 'string' ? data.suggested_tag : 'N/A'
+        }`;
       case 'pattern':
         return `Pattern detected: ${
-          insight.insight_data.pattern_type || 'N/A'
+          typeof data?.pattern_type === 'string' ? data.pattern_type : 'N/A'
         }`;
       case 'organization':
-        return `Suggestion: ${insight.insight_data.reason || 'N/A'}`;
+        return `Suggestion: ${
+          typeof data?.reason === 'string' ? data.reason : 'N/A'
+        }`;
       default:
-        return insight.insight_data.description || 'Generated insight';
+        return typeof data?.description === 'string'
+          ? data.description
+          : 'Generated insight';
     }
   };
 

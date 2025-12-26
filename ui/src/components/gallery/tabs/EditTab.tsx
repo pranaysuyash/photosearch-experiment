@@ -8,10 +8,8 @@ import {
     Redo,
     RefreshCw,
     Save,
-    ArrowLeft,
-    X
+    ArrowLeft
 } from 'lucide-react';
-import { cn } from '../../../lib/utils';
 
 export interface EditSettings {
     brightness: number;
@@ -201,7 +199,7 @@ function SliderControl({ label, value, min, max, onChange }: { label: string, va
     );
 }
 
-function ControlButton({ onClick, icon: Icon, label, active, disabled }: any) {
+function ControlButton({ onClick, icon: Icon, label, active, disabled }: { onClick?: () => void; icon: React.ComponentType<{ size?: number }>; label: string; active?: boolean; disabled?: boolean }) {
     return (
         <button
             onClick={onClick}

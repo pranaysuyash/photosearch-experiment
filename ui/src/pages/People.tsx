@@ -71,6 +71,34 @@ interface MixedCluster {
   is_mixed_suspected?: boolean;
 }
 
+interface PersonLookupResult {
+  total?: number;
+  photos?: unknown[];
+  [key: string]: unknown;
+}
+
+type ScanSingleResult = Record<string, unknown>;
+type ScanStatusResult = Record<string, unknown>;
+
+interface IndexStats {
+  prototype_count?: number;
+  backend?: string;
+  memory_usage_mb?: number;
+  performance_tier?: string;
+  [key: string]: unknown;
+}
+
+const getApiErrorMessage = (err: unknown, fallback: string) => {
+  if (err && typeof err === 'object') {
+    const maybe = err as {
+      response?: { data?: { detail?: string } };
+      message?: string;
+    };
+    return maybe.response?.data?.detail || maybe.message || fallback;
+  }
+  return fallback;
+};
+
 export function People() {
   const navigate = useNavigate();
   const [clusters, setClusters] = useState<FaceCluster[]>([]);
@@ -99,17 +127,20 @@ export function People() {
   const [personLookupError, setPersonLookupError] = useState<string | null>(
     null
   );
-  const [personLookupResult, setPersonLookupResult] = useState<any>(null);
+  const [personLookupResult, setPersonLookupResult] =
+    useState<PersonLookupResult | null>(null);
 
   const [scanSingleFilesText, setScanSingleFilesText] = useState('');
   const [scanSingleLoading, setScanSingleLoading] = useState(false);
   const [scanSingleError, setScanSingleError] = useState<string | null>(null);
-  const [scanSingleResult, setScanSingleResult] = useState<any>(null);
+  const [scanSingleResult, setScanSingleResult] =
+    useState<ScanSingleResult | null>(null);
 
   const [scanStatusJobId, setScanStatusJobId] = useState('');
   const [scanStatusLoading, setScanStatusLoading] = useState(false);
   const [scanStatusError, setScanStatusError] = useState<string | null>(null);
-  const [scanStatusResult, setScanStatusResult] = useState<any>(null);
+  const [scanStatusResult, setScanStatusResult] =
+    useState<ScanStatusResult | null>(null);
 
   // Modal states
   const [renameModal, setRenameModal] = useState<{
@@ -164,7 +195,7 @@ export function People() {
   const [mixedQueried, setMixedQueried] = useState(false);
 
   // Embedding index stats
-  const [indexStats, setIndexStats] = useState<any>(null);
+  const [indexStats, setIndexStats] = useState<IndexStats | null>(null);
   const [indexStatsLoading, setIndexStatsLoading] = useState(false);
   const [indexStatsError, setIndexStatsError] = useState<string | null>(null);
 
@@ -222,12 +253,34 @@ export function People() {
     }
   };
 
+  const handleTogglePause = async () => {
+    try {
+      setPauseLoading(true);
+      const newPausedState = !isIndexingPaused;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/indexing/${newPausedState ? 'pause' : 'resume'}`,
+        { method: 'POST' }
+      );
+
+      if (response.ok) {
+        setIsIndexingPaused(newPausedState);
+      } else {
+        throw new Error('Failed to toggle indexing pause state');
+      }
+    } catch (err) {
+      console.error('Failed to toggle pause:', err);
+      alert('Failed to toggle indexing pause state');
+    } finally {
+      setPauseLoading(false);
+    }
+  };
+
   const handleHidePerson = async (clusterId: string) => {
     try {
       setHideLoading(true);
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}/hide`,
         { method: 'POST' }
       );
@@ -256,8 +309,7 @@ export function People() {
     try {
       setHideLoading(true);
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}/unhide`,
         { method: 'POST' }
       );
@@ -310,7 +362,7 @@ export function People() {
     }
   }, []);
 
-  const fetchClusters = async () => {
+  const fetchClusters = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -322,16 +374,31 @@ export function People() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await api.getFaceStats();
       setStats(response);
     } catch (err) {
       console.error('Failed to fetch face stats:', err);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void Promise.all([
+      fetchClusters(),
+      fetchStats(),
+      fetchReviewCount(),
+      fetchIndexingStatus(),
+      checkUndoAvailability(),
+    ]);
+  }, [
+    fetchClusters,
+    fetchStats,
+    fetchReviewCount,
+    fetchIndexingStatus,
+  ]);
 
   const handleScan = async () => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -405,9 +472,11 @@ export function People() {
         `/api/faces/person/${encodeURIComponent(name)}`
       );
       setPersonLookupResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to lookup person by name:', err);
-      setPersonLookupError(err?.message || 'Failed to lookup person by name');
+      setPersonLookupError(
+        getApiErrorMessage(err, 'Failed to lookup person by name')
+      );
     } finally {
       setPersonLookupLoading(false);
     }
@@ -428,12 +497,10 @@ export function People() {
 
       const data = await api.post('/api/faces/scan-single', { files });
       setScanSingleResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to scan single file(s) for faces:', err);
       setScanSingleError(
-        err?.response?.data?.detail ||
-          err?.message ||
-          'Failed to scan file(s) for faces'
+        getApiErrorMessage(err, 'Failed to scan file(s) for faces')
       );
     } finally {
       setScanSingleLoading(false);
@@ -453,12 +520,10 @@ export function People() {
         `/api/faces/scan-status/${encodeURIComponent(jobId)}`
       );
       setScanStatusResult(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch scan job status:', err);
       setScanStatusError(
-        err?.response?.data?.detail ||
-          err?.message ||
-          'Failed to fetch scan job status'
+        getApiErrorMessage(err, 'Failed to fetch scan job status')
       );
     } finally {
       setScanStatusLoading(false);
@@ -474,9 +539,9 @@ export function People() {
       setMixedQueried(true);
       const data = await api.getMixedClusters(threshold);
       setMixedClusters(data?.clusters || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load mixed clusters:', err);
-      setMixedError(err?.message || 'Failed to load mixed clusters');
+      setMixedError(getApiErrorMessage(err, 'Failed to load mixed clusters'));
       setMixedClusters([]);
     } finally {
       setMixedLoading(false);
@@ -489,9 +554,9 @@ export function People() {
       setIndexStatsError(null);
       const data = await api.getEmbeddingIndexStats();
       setIndexStats(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load index stats:', err);
-      setIndexStatsError(err?.message || 'Failed to load index stats');
+      setIndexStatsError(getApiErrorMessage(err, 'Failed to load index stats'));
       setIndexStats(null);
     } finally {
       setIndexStatsLoading(false);
@@ -505,9 +570,11 @@ export function People() {
       const data = await api.recomputePrototypes();
       setRecomputeMessage(data?.message || 'Prototypes recomputed');
       await handleLoadIndexStats();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to recompute prototypes:', err);
-      setRecomputeMessage(err?.message || 'Failed to recompute prototypes');
+      setRecomputeMessage(
+        getApiErrorMessage(err, 'Failed to recompute prototypes')
+      );
     } finally {
       setRecomputeLoading(false);
     }
@@ -544,8 +611,7 @@ export function People() {
     try {
       setDeleteLoading(true);
       const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters/${clusterId}`,
         { method: 'DELETE' }
       );
@@ -673,11 +739,10 @@ export function People() {
               <button
                 onClick={handleUndo}
                 disabled={!canUndo || undoLoading}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  canUndo && !undoLoading
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${canUndo && !undoLoading
                     ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
                     : 'bg-white/5 border-white/5 text-muted-foreground cursor-not-allowed'
-                }`}
+                  }`}
                 title={
                   canUndo
                     ? `Undo ${formatUndoLabel(lastUndoOperation)}`
@@ -698,11 +763,10 @@ export function People() {
               <button
                 onClick={handleTogglePause}
                 disabled={pauseLoading}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${
-                  isIndexingPaused
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
                     ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
                     : 'bg-white/5 border-white/10 hover:bg-white/10'
-                }`}
+                  }`}
                 title={
                   isIndexingPaused
                     ? 'Resume Face Indexing'
@@ -724,9 +788,8 @@ export function People() {
               <button
                 onClick={handleScan}
                 disabled={scanning}
-                className={`btn-glass ${
-                  scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                } text-sm px-4 py-2`}
+                className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                  } text-sm px-4 py-2`}
               >
                 {scanning ? (
                   <div className='flex items-center gap-2'>
@@ -751,22 +814,20 @@ export function People() {
           <div className='flex gap-1'>
             <button
               onClick={() => setActiveTab('people')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === 'people'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'people'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Users size={16} className='inline mr-2' />
               People
             </button>
             <button
               onClick={() => setActiveTab('hidden')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
-                activeTab === 'hidden'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <EyeOff size={16} />
               Hidden
@@ -778,11 +839,10 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('review')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
-                activeTab === 'review'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <CheckCircle size={16} />
               Needs Review
@@ -795,11 +855,10 @@ export function People() {
 
             <button
               onClick={() => setActiveTab('merge')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${
-                activeTab === 'merge'
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Users size={16} />
               Merge Suggestions
@@ -1245,8 +1304,8 @@ export function People() {
                                 {cluster.face_count} faces •{' '}
                                 {cluster.coherence_score !== undefined
                                   ? `${Math.round(
-                                      cluster.coherence_score * 100
-                                    )}% coherence`
+                                    cluster.coherence_score * 100
+                                  )}% coherence`
                                   : 'coherence n/a'}
                               </div>
                             </div>
@@ -1392,23 +1451,22 @@ export function People() {
                   {showHidden
                     ? 'No Hidden People'
                     : clusters.length === 0
-                    ? 'No People Found'
-                    : 'No Matches Found'}
+                      ? 'No People Found'
+                      : 'No Matches Found'}
                 </h3>
                 <p className='text-muted-foreground mb-6'>
                   {showHidden
                     ? 'Hidden people will show up here when you hide them.'
                     : clusters.length === 0
-                    ? 'Start by scanning your photos for faces'
-                    : 'Try a different search term.'}
+                      ? 'Start by scanning your photos for faces'
+                      : 'Try a different search term.'}
                 </p>
                 {!showHidden && clusters.length === 0 && (
                   <button
                     onClick={handleScan}
                     disabled={scanning}
-                    className={`btn-glass ${
-                      scanning ? 'btn-glass--muted' : 'btn-glass--primary'
-                    }`}
+                    className={`btn-glass ${scanning ? 'btn-glass--muted' : 'btn-glass--primary'
+                      }`}
                   >
                     {scanning ? (
                       <div className='flex items-center gap-2'>
@@ -1454,10 +1512,9 @@ export function People() {
                           .map((faceId, index) => (
                             <img
                               key={index}
-                              src={`${
-                                import.meta.env.VITE_API_URL ||
+                              src={`${import.meta.env.VITE_API_URL ||
                                 'http://localhost:8000'
-                              }/api/faces/crop/${faceId}?size=150`}
+                                }/api/faces/crop/${faceId}?size=150`}
                               alt={`Face ${index + 1}`}
                               className='w-full h-20 object-cover rounded'
                               loading='lazy'

@@ -13,14 +13,11 @@ import {
   Calendar,
   Tag,
   CheckCircle,
-  AlertCircle,
   ChevronRight,
   ChevronLeft,
-  Play,
-  RefreshCw
+  Play
 } from 'lucide-react';
 import { glass } from '../../design/glass';
-import { api } from '../../api';
 
 interface ImportWizardProps {
   isOpen: boolean;
@@ -258,7 +255,13 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                   </label>
                   <select
                     value={importOptions.duplicateHandling}
-                    onChange={(e) => setImportOptions(prev => ({ ...prev, duplicateHandling: e.target.value as any }))}
+                    onChange={(e) =>
+                      setImportOptions((prev) => ({
+                        ...prev,
+                        duplicateHandling: e.target
+                          .value as ImportOptions['duplicateHandling'],
+                      }))
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground"
                   >
                     <option value="skip">Skip duplicates (recommended)</option>
@@ -489,7 +492,10 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
 
           {currentStep === STEPS.length - 2 && (
             <button
-              onClick={nextStep}
+              onClick={() => {
+                setCurrentStep(STEPS.length - 1);
+                void startImport();
+              }}
               className="btn-glass btn-glass--primary text-sm px-4 py-2"
             >
               Start Import

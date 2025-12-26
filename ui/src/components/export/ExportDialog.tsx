@@ -12,8 +12,7 @@ import {
   Calendar,
   Eye,
   Lock,
-  Unlock,
-  Check
+  Check,
 } from 'lucide-react';
 import { api, type ExportOptions } from '../api';
 import { glass } from '../design/glass';
@@ -28,7 +27,7 @@ interface ExportPreset {
   id: string;
   name: string;
   description: string;
-  options: any;
+  options: ExportOptions;
 }
 
 interface ShareLink {
@@ -79,9 +78,9 @@ export function ExportDialog({ isOpen, onClose, photoPaths }: ExportDialogProps)
             format: 'zip',
             include_metadata: true,
             include_thumbnails: false,
-            max_resolution: null
-          }
-        }
+            max_resolution: undefined,
+          },
+        },
       ]);
     }
   };
@@ -163,8 +162,6 @@ export function ExportDialog({ isOpen, onClose, photoPaths }: ExportDialogProps)
   };
 
   if (!isOpen) return null;
-
-  const selectedPresetData = presets.find(p => p.id === selectedPreset);
 
   return (
     <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">

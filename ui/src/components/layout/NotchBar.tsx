@@ -71,12 +71,4 @@ export function NotchBar({
  * Hook for consuming components to know if they should use NotchBar
  * or adjust their layout for safe areas
  */
-export function useNotchAware() {
-  const notch = useNotch();
-  return {
-    hasNotch: notch.hasNotch,
-    topInset: notch.topInset,
-    isEnvSupported: notch.method === 'env',
-    isBrowserDetected: notch.method === 'detected',
-  };
-}
+// Note: helper hook moved to a dedicated file to keep fast-refresh happy

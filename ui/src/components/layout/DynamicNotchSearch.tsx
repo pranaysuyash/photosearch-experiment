@@ -352,7 +352,7 @@ export function DynamicNotchSearch({
                           key={type}
                           type='button'
                           onClick={() => {
-                            setTypeFilter(type as any);
+                            setTypeFilter(type);
                             setActiveGroup(null);
                           }}
                           className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
@@ -421,8 +421,8 @@ export function DynamicNotchSearch({
                         { id: 'semantic', label: 'Semantic', icon: Sparkles },
                         { id: 'metadata', label: 'Metadata', icon: FileText },
                         {
-                          id: 'visual',
-                          label: 'Visual Match',
+                          id: 'hybrid',
+                          label: 'Hybrid',
                           icon: ImageIcon,
                         },
                       ].map((item) => (
@@ -430,7 +430,7 @@ export function DynamicNotchSearch({
                           key={item.id}
                           type='button'
                           onClick={() => {
-                            setSearchMode(item.id as any, { source: 'manual' });
+                            setSearchMode(item.id, { source: 'manual' });
                             setActiveGroup(null);
                           }}
                           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${

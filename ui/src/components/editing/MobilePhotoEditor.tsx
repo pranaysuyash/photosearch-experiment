@@ -26,10 +26,6 @@ import {
   Undo,
   ZoomIn,
   ZoomOut,
-  Move,
-  Maximize2,
-  Minimize2,
-  Settings,
   ChevronUp,
   ChevronDown,
   Smartphone,
@@ -119,28 +115,18 @@ export function MobilePhotoEditor({
     ...DEFAULT_SETTINGS,
   });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoadingEdits, setIsLoadingEdits] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [editMode, setEditMode] = useState<
     'view' | 'adjust' | 'transform' | 'crop'
   >('view');
-  const [activeAdjustment, setActiveAdjustment] = useState<
-    'brightness' | 'contrast' | 'saturation' | null
-  >(null);
   const [showControls, setShowControls] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
-  const [deviceOrientation, setDeviceOrientation] = useState<
-    'portrait' | 'landscape'
-  >('portrait');
 
   // Detect mobile device and orientation
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 768 || 'ontouchstart' in window;
       setIsMobile(mobile);
-      setDeviceOrientation(
-        window.innerWidth < window.innerHeight ? 'portrait' : 'landscape'
-      );
     };
 
     checkMobile();
@@ -160,7 +146,6 @@ export function MobilePhotoEditor({
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         setOriginalImage(img);
-        applyEdits(img, settings);
       };
       img.src = imageUrl;
     }
@@ -170,7 +155,6 @@ export function MobilePhotoEditor({
   useEffect(() => {
     const loadEdits = async () => {
       if (!isOpen || !photoPath) return;
-      setIsLoadingEdits(true);
       try {
         const res = await api.getPhotoEdit(photoPath);
         const loaded =
@@ -188,7 +172,7 @@ export function MobilePhotoEditor({
         console.error('Failed to load saved edits', error);
         setSettings({ ...DEFAULT_SETTINGS });
       } finally {
-        setIsLoadingEdits(false);
+        // No-op: keep edit settings as-is on completion.
       }
     };
 
@@ -273,35 +257,24 @@ export function MobilePhotoEditor({
     ctx.restore();
   };
 
-  const updateSetting = (key: keyof EditSettings, value: any) => {
+  const updateSetting = (
+    key: keyof EditSettings,
+    value: EditSettings[keyof EditSettings]
+  ) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
     hapticFeedback('light');
   };
 
   // Touch gesture handlers
-  const getTouchDistance = (touches: any) => {
-    // Accept React.TouchList or native TouchList
+  const getTouchDistance = (touches: TouchList) => {
     if (!touches || touches.length < 2) return 0;
-    const touch1 = touches[0] as any;
-    const touch2 = touches[1] as any;
+    const touch1 = touches[0];
+    const touch2 = touches[1];
     return Math.sqrt(
       Math.pow(touch2.clientX - touch1.clientX, 2) +
         Math.pow(touch2.clientY - touch1.clientY, 2)
     );
-  };
-
-  const getTouchCenter = (touches: any) => {
-    if (!touches || touches.length === 0) return { x: 0, y: 0 };
-    if (touches.length === 1)
-      return { x: (touches[0] as any).clientX, y: (touches[0] as any).clientY };
-
-    const touch1 = touches[0] as any;
-    const touch2 = touches[1] as any;
-    return {
-      x: (touch1.clientX + touch2.clientX) / 2,
-      y: (touch1.clientY + touch2.clientY) / 2,
-    };
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {

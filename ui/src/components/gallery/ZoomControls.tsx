@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { usePhotoSearchContext, type GridZoomLevel } from '../../contexts/PhotoSearchContext';
 
@@ -21,15 +21,15 @@ export function ZoomControls() {
 
   const currentIndex = ZOOM_LEVELS.indexOf(gridZoom);
 
-  const zoomIn = () => {
+  const zoomIn = useCallback(() => {
     const nextIndex = Math.min(currentIndex + 1, ZOOM_LEVELS.length - 1);
     setGridZoom(ZOOM_LEVELS[nextIndex]);
-  };
+  }, [currentIndex, setGridZoom]);
 
-  const zoomOut = () => {
+  const zoomOut = useCallback(() => {
     const prevIndex = Math.max(currentIndex - 1, 0);
     setGridZoom(ZOOM_LEVELS[prevIndex]);
-  };
+  }, [currentIndex, setGridZoom]);
 
   const cycleZoom = () => {
     const nextIndex = (currentIndex + 1) % ZOOM_LEVELS.length;
@@ -58,7 +58,7 @@ export function ZoomControls() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex]);
+  }, [zoomIn, zoomOut]);
 
   const Icon = ZOOM_ICONS[gridZoom];
 

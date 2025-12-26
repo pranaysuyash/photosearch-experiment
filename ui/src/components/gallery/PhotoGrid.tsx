@@ -268,14 +268,15 @@ export function PhotoGrid({
     setContextMenu(null);
   }, []);
 
-  const handleActionExecute = useCallback((actionId: string, result: any) => {
+  const handleActionExecute = useCallback((actionId: string, result: unknown) => {
     // Handle action execution results
 
     // Handle specific action results
-    if (result.success) {
+    const res = result as { success?: boolean; error?: unknown };
+    if (res.success) {
       // Action completed successfully - could show toast notification here
     } else {
-      console.error('Action failed:', result.error);
+      console.error('Action failed:', res.error);
     }
   }, []);
 
@@ -286,7 +287,10 @@ export function PhotoGrid({
         // Fetch all favorites in a single call and compute which visible photos are favorited
         const res = await api.getFavorites(Math.max(1000, photos.length));
         const favoriteSet = new Set<string>(
-          (res.results || []).map((f: any) => f.file_path || f.path || f)
+          (res.results || []).map((f: unknown) => {
+            const item = f as { file_path?: string; path?: string };
+            return item.file_path || item.path || (typeof f === 'string' ? f : '');
+          })
         );
         const newFavorites = new Set<string>();
         for (const p of photos) {

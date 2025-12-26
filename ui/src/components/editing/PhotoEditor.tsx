@@ -4,7 +4,7 @@
  * Basic photo editing with crop, brightness, contrast, and saturation adjustments.
  * Non-destructive editing that can be saved as new files.
  */
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Crop,
   Sun,
@@ -18,7 +18,6 @@ import {
   Undo,
   Redo,
 } from 'lucide-react';
-import { glass } from '../../design/glass';
 import { api, type PhotoEdit } from '../../api';
 import { useToast } from '../ui/Toast';
 import { TrafficLightButtons } from '../ui/TrafficLightButtons';
@@ -72,7 +71,6 @@ export function PhotoEditor({
     ...DEFAULT_SETTINGS,
   });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoadingEdits, setIsLoadingEdits] = useState(false);
   const [cropMode, setCropMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
@@ -88,27 +86,21 @@ export function PhotoEditor({
   const [history, setHistory] = useState<EditSettings[]>([DEFAULT_SETTINGS]);
   const [historyIndex, setHistoryIndex] = useState(0);
   const { showToast, ToastContainer } = useToast();
-  const [imageLoadError, setImageLoadError] = useState(false);
 
   // Load image when component opens
   useEffect(() => {
     if (isOpen && imageUrl) {
-      setImageLoadError(false);
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
         setOriginalImage(img);
-        applyEdits(img, settings);
       };
       img.onerror = () => {
         console.error('Failed to load image:', imageUrl);
-        setImageLoadError(true);
         // Try loading without crossOrigin attribute as fallback
         const fallbackImg = new Image();
         fallbackImg.onload = () => {
           setOriginalImage(fallbackImg);
-          applyEdits(fallbackImg, settings);
-          setImageLoadError(false);
         };
         fallbackImg.onerror = () => {
           console.error('Fallback image load also failed');
@@ -118,13 +110,12 @@ export function PhotoEditor({
       };
       img.src = imageUrl;
     }
-  }, [isOpen, imageUrl]);
+  }, [isOpen, imageUrl, showToast]);
 
   // Fetch saved edits when opening
   useEffect(() => {
     const loadEdits = async () => {
       if (!isOpen || !photoPath) return;
-      setIsLoadingEdits(true);
       try {
         const res = await api.getPhotoEdit(photoPath);
         const loaded =
@@ -141,8 +132,6 @@ export function PhotoEditor({
       } catch (error) {
         console.error('Failed to load saved edits', error);
         setSettings({ ...DEFAULT_SETTINGS });
-      } finally {
-        setIsLoadingEdits(false);
       }
     };
 
@@ -200,14 +189,20 @@ export function PhotoEditor({
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, historyIndex, history, cropMode]);
-  useEffect(() => {
-    if (originalImage) {
-      applyEdits(originalImage, settings);
-    }
-  }, [originalImage, settings]);
-
-  const applyEdits = (img: HTMLImageElement, currentSettings: EditSettings) => {
+  }, [
+    isOpen,
+    historyIndex,
+    history,
+    cropMode,
+    undo,
+    redo,
+    rotateLeft,
+    rotateRight,
+    flipHorizontal,
+    flipVertical,
+  ]);
+  const applyEdits = useCallback(
+    (img: HTMLImageElement, currentSettings: EditSettings) => {
     if (!canvasRef.current) return;
 
     const canvas = canvasRef.current;
@@ -258,41 +253,53 @@ export function PhotoEditor({
     }
 
     ctx.restore();
-  };
+  }, []);
+
+  useEffect(() => {
+    if (originalImage) {
+      applyEdits(originalImage, settings);
+    }
+  }, [originalImage, settings, applyEdits]);
 
   // Preview-only update (for slider dragging) - doesn't add to history
-  const previewSetting = (key: keyof EditSettings, value: any) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    if (originalImage) {
-      applyEdits(originalImage, newSettings);
-    }
-  };
+  const previewSetting = useCallback(
+    (key: keyof EditSettings, value: EditSettings[keyof EditSettings]) => {
+      const newSettings = { ...settings, [key]: value };
+      setSettings(newSettings);
+      if (originalImage) {
+        applyEdits(originalImage, newSettings);
+      }
+    },
+    [settings, originalImage, applyEdits]
+  );
 
   // Commit update to history (for slider release, button clicks)
-  const updateSetting = (key: keyof EditSettings, value: any) => {
-    const newSettings = { ...settings, [key]: value };
+  const updateSetting = useCallback(
+    (key: keyof EditSettings, value: EditSettings[keyof EditSettings]) => {
+      const newSettings = { ...settings, [key]: value };
 
-    // Add to history (remove any future history if we're not at the end)
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newSettings);
+      // Add to history (remove any future history if we're not at the end)
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newSettings);
 
-    // Limit history to 20 steps
-    if (newHistory.length > 20) {
-      newHistory.shift();
-    } else {
-      setHistoryIndex(historyIndex + 1);
-    }
+      // Limit history to 20 steps
+      if (newHistory.length > 20) {
+        newHistory.shift();
+      } else {
+        setHistoryIndex(historyIndex + 1);
+      }
 
-    setHistory(newHistory);
-    setSettings(newSettings);
+      setHistory(newHistory);
+      setSettings(newSettings);
 
-    if (originalImage) {
-      applyEdits(originalImage, newSettings);
-    }
-  };
+      if (originalImage) {
+        applyEdits(originalImage, newSettings);
+      }
+    },
+    [settings, history, historyIndex, originalImage, applyEdits]
+  );
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (historyIndex > 0) {
       const newIndex = historyIndex - 1;
       const previousSettings = history[newIndex];
@@ -304,9 +311,9 @@ export function PhotoEditor({
         applyEdits(originalImage, previousSettings);
       }
     }
-  };
+  }, [historyIndex, history, showToast, originalImage, applyEdits]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (historyIndex < history.length - 1) {
       const newIndex = historyIndex + 1;
       const nextSettings = history[newIndex];
@@ -318,9 +325,9 @@ export function PhotoEditor({
         applyEdits(originalImage, nextSettings);
       }
     }
-  };
+  }, [historyIndex, history, showToast, originalImage, applyEdits]);
 
-  const resetSettings = () => {
+  const resetSettings = useCallback(() => {
     const resetSettings = { ...DEFAULT_SETTINGS };
     setSettings(resetSettings);
     setCropMode(false);
@@ -335,28 +342,28 @@ export function PhotoEditor({
     if (originalImage) {
       applyEdits(originalImage, resetSettings);
     }
-  };
+  }, [history, historyIndex, showToast, originalImage, applyEdits]);
 
-  const rotateLeft = () => {
+  const rotateLeft = useCallback(() => {
     updateSetting('rotation', (settings.rotation - 90) % 360);
-  };
+  }, [settings.rotation, updateSetting]);
 
-  const rotateRight = () => {
+  const rotateRight = useCallback(() => {
     updateSetting('rotation', (settings.rotation + 90) % 360);
-  };
+  }, [settings.rotation, updateSetting]);
 
-  const flipHorizontal = () => {
+  const flipHorizontal = useCallback(() => {
     updateSetting('flipH', !settings.flipH);
-  };
+  }, [settings.flipH, updateSetting]);
 
-  const flipVertical = () => {
+  const flipVertical = useCallback(() => {
     updateSetting('flipV', !settings.flipV);
-  };
+  }, [settings.flipV, updateSetting]);
 
-  const startCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!cropMode || !canvasRef.current) return;
+  const startCrop = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!cropMode || !imageRef.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -365,10 +372,10 @@ export function PhotoEditor({
     setIsDragging(true);
   };
 
-  const updateCrop = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!cropMode || !isDragging || !canvasRef.current) return;
+  const updateCrop = (e: React.MouseEvent<HTMLImageElement>) => {
+    if (!cropMode || !isDragging || !imageRef.current) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
+    const rect = imageRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
@@ -376,8 +383,7 @@ export function PhotoEditor({
   };
 
   const endCrop = () => {
-    if (!cropMode || !isDragging || !originalImage || !canvasRef.current)
-      return;
+    if (!cropMode || !isDragging || !originalImage || !imageRef.current) return;
 
     setIsDragging(false);
 
@@ -388,8 +394,9 @@ export function PhotoEditor({
 
     if (width > 10 && height > 10) {
       // Convert canvas coordinates to image coordinates
-      const scaleX = originalImage.width / canvasRef.current.width;
-      const scaleY = originalImage.height / canvasRef.current.height;
+      const rect = imageRef.current.getBoundingClientRect();
+      const scaleX = originalImage.width / rect.width;
+      const scaleY = originalImage.height / rect.height;
 
       updateSetting('crop', {
         x: minX * scaleX,
@@ -465,6 +472,7 @@ export function PhotoEditor({
             <div className='flex-1 flex items-center justify-center p-4 bg-black/30 overflow-hidden'>
               {/* CSS-based live preview (no canvas needed for display) */}
               <img
+                ref={imageRef}
                 src={imageUrl}
                 alt='Photo being edited'
                 className='max-w-full max-h-full object-contain rounded-lg'
@@ -473,6 +481,10 @@ export function PhotoEditor({
                   transform: `rotate(${settings.rotation}deg) scaleX(${settings.flipH ? -1 : 1}) scaleY(${settings.flipV ? -1 : 1})`,
                   transition: 'filter 0.15s ease, transform 0.15s ease',
                 }}
+                onMouseDown={startCrop}
+                onMouseMove={updateCrop}
+                onMouseUp={endCrop}
+                onMouseLeave={endCrop}
               />
               {/* Hidden canvas for save operations */}
               <canvas ref={canvasRef} className='hidden' />
@@ -616,7 +628,10 @@ export function PhotoEditor({
                         // Set crop mode and ratio constraint
                         setCropMode(true);
                         // Store the ratio for use during cropping
-                        (window as any).cropRatio = preset.ratio;
+                        const cropWindow = window as Window & {
+                          cropRatio?: number | null;
+                        };
+                        cropWindow.cropRatio = preset.ratio;
                       }}
                       className='btn-glass btn-glass--muted text-xs px-2 py-1'
                     >
