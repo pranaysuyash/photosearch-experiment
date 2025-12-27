@@ -11,7 +11,6 @@ import {
   Video,
   Heart,
   Bookmark,
-  User,
   Users,
   Map,
   Settings,
@@ -41,7 +40,6 @@ interface MobileNavigationProps {
 
 export function MobileNavigation({ currentPath, onNavigate }: MobileNavigationProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('main');
 
   const navItems: NavItem[] = [
     { id: 'home', label: 'Home', icon: <Home size={20} />, path: '/' },

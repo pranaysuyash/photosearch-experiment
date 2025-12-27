@@ -86,6 +86,32 @@ interface VideoAnalysisResult {
   };
 }
 
+interface VideoSearchResult {
+  video_path: string;
+  matched_text: string;
+  timestamp: number;
+  confidence: number;
+  resolution: string;
+}
+
+interface VideoStats {
+  total_videos: number;
+  total_keyframes: number;
+  total_scenes: number;
+  total_ocr_detections: number;
+  total_duration_hours: number;
+  average_keyframes_per_video: number;
+  average_scenes_per_video: number;
+}
+
+type ApiError = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
 interface VideoAnalysisPanelProps {
   onClose?: () => void;
 }
@@ -97,19 +123,18 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
   const [analysisResult, setAnalysisResult] = useState<VideoAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<VideoSearchResult[]>([]);
   const [selectedScene, setSelectedScene] = useState<number | null>(null);
   const [selectedKeyframe, setSelectedKeyframe] = useState<VideoKeyframe | null>(null);
   const [showOCRResults, setShowOCRResults] = useState(false);
   const [minConfidence, setMinConfidence] = useState(0.5);
-  const [videoStats, setVideoStats] = useState<any>(null);
+  const [videoStats, setVideoStats] = useState<VideoStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'analyze' | 'search' | 'stats'>('analyze');
 
-  // Load video statistics on mount
-  useEffect(() => {
-    loadVideoStats();
-  }, []);
+  const getApiErrorMessage = (err: unknown, fallback: string) => {
+    return (err as ApiError)?.response?.data?.detail ?? fallback;
+  };
 
   const loadVideoStats = useCallback(async () => {
     try {
@@ -119,6 +144,11 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
       console.error('Failed to load video stats:', error);
     }
   }, []);
+
+  // Load video statistics on mount
+  useEffect(() => {
+    loadVideoStats();
+  }, [loadVideoStats]);
 
   const analyzeVideo = useCallback(async (videoPath: string, forceReprocess = false) => {
     if (!videoPath.trim()) {
@@ -146,12 +176,12 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
           setAnalysisResult(response.data);
           setIsAnalyzing(false);
           await loadVideoStats(); // Refresh stats
-        } catch (error: any) {
+        } catch (err: unknown) {
           attempts++;
           if (attempts < maxAttempts) {
             setTimeout(pollResults, 1000); // Poll every second
           } else {
-            setError('Analysis timeout - please check the video file and try again');
+            setError(getApiErrorMessage(err, 'Analysis timeout - please check the video file and try again'));
             setIsAnalyzing(false);
           }
         }
@@ -160,8 +190,8 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
       // Start polling after a short delay
       setTimeout(pollResults, 2000);
 
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to start video analysis');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to start video analysis'));
       setIsAnalyzing(false);
     }
   }, [loadVideoStats]);
@@ -179,8 +209,8 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
         offset: 0
       });
       setSearchResults(response.data.results);
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to search video content');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to search video content'));
     }
   }, []);
 
@@ -189,8 +219,8 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
       const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
       setAnalysisResult(response.data);
       setSelectedVideoPath(videoPath);
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to load video analysis');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to load video analysis'));
     }
   }, []);
 
@@ -205,8 +235,8 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
         setAnalysisResult(null);
       }
       await loadVideoStats();
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Failed to delete video analysis');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to delete video analysis'));
     }
   }, [analysisResult, loadVideoStats]);
 

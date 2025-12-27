@@ -3,25 +3,9 @@
  *
  * Manages global toast notifications with undo functionality.
  */
-import React, { createContext, useContext, useState, type ReactNode } from 'react';
+import React, { useState, type ReactNode } from 'react';
 import { Toast } from './Toast';
-
-type ToastType = 'info' | 'success' | 'warning' | 'error' | 'undo';
-
-interface ToastOptions {
-  type: ToastType;
-  message: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  duration?: number; // in milliseconds, 0 for persistent
-}
-
-interface ToastContextType {
-  addToast: (options: ToastOptions) => string;
-  removeToast: (id: string) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
+import { ToastContext, type ToastOptions } from './ToastContext';
 
 interface ToastProviderProps {
   children: ReactNode;
@@ -67,12 +51,4 @@ export function ToastProvider({ children }: ToastProviderProps) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (context === undefined) {
-    throw new Error('useToast must be used within a ToastProvider');
-  }
-  return context;
 }

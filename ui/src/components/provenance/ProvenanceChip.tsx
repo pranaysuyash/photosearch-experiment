@@ -7,10 +7,8 @@ import React from 'react';
 import {
   HardDrive,
   Cloud,
-  Wifi,
   WifiOff,
   AlertTriangle,
-  CheckCircle,
   Clock,
   Loader
 } from 'lucide-react';

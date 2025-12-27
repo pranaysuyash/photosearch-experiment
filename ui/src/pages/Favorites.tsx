@@ -19,8 +19,9 @@ export default function FavoritesPage() {
   const previousFilterRef = useRef(favoritesFilter);
 
   useEffect(() => {
+    const previousFilter = previousFilterRef.current;
     setFavoritesFilter('favorites_only');
-    return () => setFavoritesFilter(previousFilterRef.current);
+    return () => setFavoritesFilter(previousFilter);
   }, [setFavoritesFilter]);
 
   return (

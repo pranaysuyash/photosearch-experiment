@@ -66,7 +66,7 @@ export function AddToTagDialog({
       );
       onSuccess();
       onClose();
-    } catch (e) {
+    } catch {
       setError('Failed to add tags. Please try again.');
     } finally {
       setIsSubmitting(false);

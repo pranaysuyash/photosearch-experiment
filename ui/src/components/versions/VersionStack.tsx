@@ -3,17 +3,13 @@
  *
  * Displays a stack of related photo versions (original + edited copies).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Image,
   Layers,
-  Plus,
   X,
-  Edit3,
   Eye,
   FileText,
   MoreHorizontal,
-  History
 } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
@@ -42,11 +38,7 @@ export function VersionStack({ photoPath, onVersionSelect }: VersionStackProps) 
   const [expanded, setExpanded] = useState(false);
 
   // Load version stack
-  useEffect(() => {
-    loadVersionStack();
-  }, [photoPath]);
-
-  const loadVersionStack = async () => {
+  const loadVersionStack = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -59,7 +51,11 @@ export function VersionStack({ photoPath, onVersionSelect }: VersionStackProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    loadVersionStack();
+  }, [loadVersionStack]);
 
   const handleSelectVersion = (versionPath: string) => {
     if (onVersionSelect) {

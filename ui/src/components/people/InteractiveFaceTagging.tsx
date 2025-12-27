@@ -6,10 +6,17 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, User, Search, Check, Loader2, AlertTriangle } from 'lucide-react';
+import { X, User, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
-import { type FaceDetection, type FaceDetectionResult, type SimilarFacesResult } from '../../api';
+import {
+  type FaceDetection,
+  type FaceDetectionResult,
+  type SimilarFace,
+  type SimilarFacesResult,
+  type PersonSearchResult,
+  type ClusteringResult,
+} from '../../api';
 
 interface InteractiveFaceTaggingProps {
   photoPath: string;
@@ -18,6 +25,11 @@ interface InteractiveFaceTaggingProps {
   onFaceTagged?: (detectionId: string, personId: string) => void;
   showControls?: boolean;
 }
+
+type TaggedFaceDetection = FaceDetection & {
+  person_id?: string;
+  person_label?: string;
+};
 
 export function InteractiveFaceTagging({
   photoPath,
@@ -30,10 +42,11 @@ export function InteractiveFaceTagging({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFace, setSelectedFace] = useState<FaceDetection | null>(null);
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [similarFaces, setSimilarFaces] = useState<any[]>([]);
+  const [suggestions, setSuggestions] = useState<PersonSearchResult['people']>([]);
+  const [similarFaces, setSimilarFaces] = useState<SimilarFace[]>([]);
   const [tagging, setTagging] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [newPersonName, setNewPersonName] = useState('');
 
   // Detect faces when component mounts
   useEffect(() => {
@@ -99,7 +112,7 @@ export function InteractiveFaceTagging({
     if (!searchQuery.trim()) return;
 
     try {
-      const result = await api.searchPeople(searchQuery);
+      const result: PersonSearchResult = await api.searchPeople(searchQuery);
       setSuggestions(result.people || []);
     } catch (err) {
       console.error('Search failed:', err);
@@ -146,9 +159,14 @@ export function InteractiveFaceTagging({
 
       // Create new person cluster (currently using clustering - manual cluster creation not available)
       // Note: Manual cluster creation API would be ideal for this workflow
-      const clusterResult = await api.clusterFaces(0.6, 2);
-      const newCluster = clusterResult.clusters.find((c: any) => c.label === name);
+      const clusterResult: ClusteringResult = await api.clusterFaces(0.6, 2);
+      const newCluster = clusterResult.clusters.find((c) => c.label === name);
       const clusterId = newCluster?.cluster_id;
+
+      if (!clusterId) {
+        setError('Failed to create person');
+        return;
+      }
 
       // Tag the face with the new person
       await tagFace(clusterId);
@@ -199,22 +217,25 @@ export function InteractiveFaceTagging({
         )}
 
         {/* Face bounding boxes */}
-        {faces.map((face) => (
-          <div
-            key={face.detection_id}
-            className="absolute border-2 border-blue-500 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
-            style={getFaceBoxStyle(face)}
-            onClick={() => setSelectedFace(face)}
-          >
-            {/* Show person label if available */}
-            {(face as any).person_id && (
-              <div className="absolute -top-3 -left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                <User size={12} />
-                <span>{(face as any).person_label || 'Person'}</span>
-              </div>
-            )}
-          </div>
-        ))}
+        {faces.map((face) => {
+          const taggedFace = face as TaggedFaceDetection;
+          return (
+            <div
+              key={face.detection_id}
+              className="absolute border-2 border-blue-500 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
+              style={getFaceBoxStyle(face)}
+              onClick={() => setSelectedFace(face)}
+            >
+              {/* Show person label if available */}
+              {taggedFace.person_id && (
+                <div className="absolute -top-3 -left-1 bg-blue-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                  <User size={12} />
+                  <span>{taggedFace.person_label || 'Person'}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* No faces detected */}
         {!loading && faces.length === 0 && (
@@ -336,9 +357,15 @@ export function InteractiveFaceTagging({
               <input
                 type="text"
                 placeholder="Person name"
+                value={newPersonName}
+                onChange={(e) => setNewPersonName(e.target.value)}
                 className="flex-1 px-3 py-2 bg-white/10 rounded text-sm outline-none"
               />
               <button
+                onClick={() => {
+                  createAndTagPerson(newPersonName);
+                  setNewPersonName('');
+                }}
                 className="btn-glass btn-glass--primary px-3 py-2"
                 disabled={tagging}
               >
@@ -360,13 +387,3 @@ export function InteractiveFaceTagging({
     </div>
   );
 };
-
-// Helper function to calculate face bounding box style
-function faceBoundingBoxStyle(bbox: { x: number; y: number; width: number; height: number }) {
-  return {
-    left: `${bbox.x * 100}%`,
-    top: `${bbox.y * 100}%`,
-    width: `${bbox.width * 100}%`,
-    height: `${bbox.height * 100}%`,
-  };
-}

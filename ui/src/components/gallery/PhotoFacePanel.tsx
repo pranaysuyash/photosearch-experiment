@@ -8,15 +8,11 @@ import {
   Eye,
   EyeOff,
   Users,
-  ArrowRight,
-  Shuffle,
   Edit3,
-  Trash2,
-  Copy,
-  Star
 } from 'lucide-react';
 import { api } from '../../api';
-import { useToast } from '../ui/Toast';
+import type { SimilarFace, SimilarFacesResult } from '../../api';
+import { useToast } from '../ui/useToast';
 
 interface FaceCluster {
   id: string;
@@ -33,7 +29,6 @@ interface FaceCluster {
 }
 
 interface PhotoFacePanelProps {
-  photoPath: string;
   faceClusters: FaceCluster[];
   onRefresh: () => void;
   isLoading: boolean;
@@ -48,7 +43,6 @@ interface ContextMenuState {
 }
 
 export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
-  photoPath,
   faceClusters,
   onRefresh,
   isLoading,
@@ -97,7 +91,8 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
       await api.hideCluster(cluster.id);
       showToast('Person hidden successfully', 'success');
       onRefresh();
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to hide person:', err);
       showToast('Failed to hide person', 'error');
     } finally {
       setActionLoading(null);
@@ -114,7 +109,8 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
       await api.renameCluster(cluster.id, newName);
       showToast('Person renamed successfully', 'success');
       onRefresh();
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to rename person:', err);
       showToast('Failed to rename person', 'error');
     } finally {
       setActionLoading(null);
@@ -122,7 +118,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
     closeContextMenu();
   }, [closeContextMenu, onRefresh, showToast]);
 
-  const handleViewAllPhotos = useCallback((cluster: FaceCluster) => {
+  const handleViewAllPhotos = useCallback(() => {
     // Navigate to people page with this person selected
     if (onNavigateToPeople) {
       onNavigateToPeople();
@@ -288,7 +284,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
           >
             <button
               className='w-full px-3 py-2 text-left text-sm text-white/90 hover:bg-white/10 flex items-center gap-2'
-              onClick={() => handleViewAllPhotos(contextMenu.cluster!)}
+              onClick={handleViewAllPhotos}
             >
               <Eye size={14} />
               View all photos
@@ -342,7 +338,7 @@ interface SimilarFacesModalProps {
 }
 
 const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose }) => {
-  const [similarFaces, setSimilarFaces] = useState<any[]>([]);
+  const [similarFaces, setSimilarFaces] = useState<SimilarFace[]>([]);
   const [loading, setLoading] = useState(true);
   const [threshold, setThreshold] = useState(0.7);
 
@@ -353,14 +349,15 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
 
     setLoading(true);
     try {
-      const response = await api.findSimilarFaces(
+      const response: SimilarFacesResult = await api.findSimilarFaces(
         cluster.face_ids[0],
         threshold,
         20,
         false
       );
       setSimilarFaces(response.similar_faces || []);
-    } catch (error) {
+    } catch (err) {
+      console.error('Failed to find similar faces:', err);
       showToast('Failed to find similar faces', 'error');
       setSimilarFaces([]);
     } finally {

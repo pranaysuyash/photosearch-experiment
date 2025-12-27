@@ -41,7 +41,8 @@ export default function TagsPage() {
   }, []);
 
   useEffect(() => {
-    return () => setTag(previousTagRef.current ?? null);
+    const previousTag = previousTagRef.current;
+    return () => setTag(previousTag ?? null);
   }, [setTag]);
 
   const sorted = useMemo(() => {

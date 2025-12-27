@@ -10,9 +10,6 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
-  Trash2,
-  FolderPlus,
-  Tag
 } from 'lucide-react';
 import { glass } from '../../design/glass';
 
@@ -45,7 +42,6 @@ const toastColors = {
 };
 
 export function Toast({
-  id,
   type,
   message,
   actionLabel,

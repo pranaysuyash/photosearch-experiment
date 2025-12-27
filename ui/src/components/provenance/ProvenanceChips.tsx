@@ -3,7 +3,7 @@
  *
  * Displays source and availability status for photos (Local/Cloud/Offline).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   HardDrive,
   Cloud,
@@ -13,10 +13,8 @@ import {
   CheckCircle,
   Clock,
   Globe,
-  Lock,
   MapPin
 } from 'lucide-react';
-import { api } from '../api';
 import { glass } from '../design/glass';
 
 interface SourceInfo {
@@ -58,11 +56,7 @@ export function ProvenanceChips({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadProvenanceData();
-  }, [photoPath]);
-
-  const loadProvenanceData = async () => {
+  const loadProvenanceData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -116,7 +110,11 @@ export function ProvenanceChips({
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    loadProvenanceData();
+  }, [loadProvenanceData]);
 
   if (loading) {
     return (
@@ -137,12 +135,6 @@ export function ProvenanceChips({
   }
 
   const { source, availability, sync_status } = provenance;
-
-  const sizeClasses = {
-    sm: 'text-xs px-1.5 py-0.5 gap-1',
-    md: 'text-sm px-2 py-1 gap-1.5',
-    lg: 'text-base px-2.5 py-1.5 gap-2'
-  };
 
   const sizePadding = {
     sm: 'gap-1',

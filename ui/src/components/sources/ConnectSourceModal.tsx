@@ -7,6 +7,11 @@ import { isLocalStorageAvailable, localGetItem, localSetItem } from '../../utils
 
 type Tab = 'local' | 'google_drive' | 's3';
 
+type SourceConnectedMessage = {
+  type: 'lm:sourceConnected';
+  jobId?: string;
+};
+
 export function ConnectSourceModal({
   open,
   onClose,
@@ -67,8 +72,9 @@ export function ConnectSourceModal({
     if (!open) return;
     const onMsg = (ev: MessageEvent) => {
       if (!ev?.data || typeof ev.data !== 'object') return;
-      if ((ev.data as any).type === 'lm:sourceConnected') {
-        const jobId = (ev.data as any).jobId as string | undefined;
+      const data = ev.data as SourceConnectedMessage;
+      if (data.type === 'lm:sourceConnected') {
+        const jobId = data.jobId;
         if (jobId) recordRecentJob(jobId);
         try {
           popupRef.current?.close?.();

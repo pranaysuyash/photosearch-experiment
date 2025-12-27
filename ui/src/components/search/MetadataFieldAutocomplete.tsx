@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, MapPin, FileText, Settings, Hash } from 'lucide-react';
 
@@ -12,6 +12,8 @@ interface MetadataField {
     description: string;
   }>;
 }
+
+type MetadataFieldDefinition = MetadataField['fields'][number];
 
 const METADATA_FIELDS: MetadataField[] = [
   {
@@ -147,30 +149,20 @@ export const MetadataFieldAutocomplete = ({
   onFieldSelected,
   isVisible,
 }: MetadataFieldAutocompleteProps) => {
-  const [suggestions, setSuggestions] = useState<
-    Array<{
-      field: any;
-      category: string;
-      icon: React.ComponentType<{ size?: number }>;
-    }>
-  >([]);
-
-  useEffect(() => {
+  const suggestions = useMemo(() => {
     if (!isVisible || !query) {
-      const id = requestAnimationFrame(() => setSuggestions([]));
-      return () => cancelAnimationFrame(id);
+      return [];
     }
 
     // Detect if user is typing a field name
     const lastWord = query.split(' ').pop() || '';
 
     if (lastWord.length < 2) {
-      setSuggestions([]);
-      return;
+      return [];
     }
 
     let matches: Array<{
-      field: any;
+      field: MetadataFieldDefinition;
       category: string;
       icon: React.ComponentType<{ size?: number }>;
     }> = [];
@@ -201,7 +193,7 @@ export const MetadataFieldAutocomplete = ({
     }
 
     // Limit to top 8 suggestions
-    setSuggestions(matches.slice(0, 8));
+    return matches.slice(0, 8);
   }, [query, isVisible]);
 
   const handleFieldClick = (fieldName: string) => {

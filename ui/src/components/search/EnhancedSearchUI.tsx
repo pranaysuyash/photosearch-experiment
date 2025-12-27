@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
@@ -22,6 +22,8 @@ import { useLiveMatchCount } from '../../hooks/useLiveMatchCount';
 import { api, type TagSummary } from '../../api';
 import { glass } from '../../design/glass';
 
+type SourceFilter = 'all' | 'local' | 'cloud' | 'hybrid';
+
 interface EnhancedSearchUIProps {
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -38,8 +40,8 @@ interface EnhancedSearchUIProps {
   setFavoritesFilter?: (filter: string) => void;
   tag?: string | null;
   setTag?: (tag: string | null) => void;
-  sourceFilter?: 'all' | 'local' | 'cloud' | 'hybrid';
-  setSourceFilter?: (filter: 'all' | 'local' | 'cloud' | 'hybrid') => void;
+  sourceFilter?: SourceFilter;
+  setSourceFilter?: (filter: SourceFilter) => void;
   onSearch: () => void;
   isCompact?: boolean;
   heroTitle?: ReactNode;
@@ -64,7 +66,7 @@ const FAVORITES_FILTERS = [
   { value: 'favorites_only', label: 'Favorites', icon: Star },
 ];
 
-const SOURCE_FILTERS = [
+const SOURCE_FILTERS: Array<{ value: SourceFilter; label: string }> = [
   { value: 'all', label: 'All Sources' },
   { value: 'local', label: 'Local' },
   { value: 'cloud', label: 'Cloud' },
@@ -138,9 +140,8 @@ export function EnhancedSearchUI({
   }, [searchQuery]);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // filteredSuggestions is computed with useMemo to avoid setState inside effects
-  useEffect(() => {
-    if (!showFilters || !setTag) return;
+  const loadTags = useCallback(() => {
+    if (!setTag) return;
     if (tags.length > 0 || tagsLoading) return;
     setTagsLoading(true);
     setTagsError(null);
@@ -149,7 +150,7 @@ export function EnhancedSearchUI({
       .then((res) => setTags(res.tags || []))
       .catch(() => setTagsError('Failed to load tags'))
       .finally(() => setTagsLoading(false));
-  }, [setTag, showFilters, tags.length, tagsLoading]);
+  }, [setTag, tags.length, tagsLoading]);
 
   const filteredTags = useMemo(() => {
     const q = tagQuery.trim().toLowerCase();
@@ -185,6 +186,18 @@ export function EnhancedSearchUI({
     setSearchQuery(newQuery);
     setShowFieldAutocomplete(false);
     inputRef.current?.focus();
+  };
+
+  const handleToggleFilters = () => {
+    const next = !showFilters;
+    setShowFilters(next);
+    if (next) {
+      loadTags();
+    }
+  };
+
+  const handleCloseFilters = () => {
+    setShowFilters(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -265,7 +278,7 @@ export function EnhancedSearchUI({
             </button>
           )}
           <button
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={handleToggleFilters}
             className={`p-2 mr-1 rounded-full transition-colors ${
               showFilters
                 ? 'bg-primary text-primary-foreground'
@@ -493,7 +506,7 @@ export function EnhancedSearchUI({
                       <Link
                         to='/tags'
                         className='text-xs text-muted-foreground hover:text-foreground transition-colors'
-                        onClick={() => setShowFilters(false)}
+                        onClick={handleCloseFilters}
                       >
                         Browse
                       </Link>
@@ -563,7 +576,7 @@ export function EnhancedSearchUI({
                         return (
                           <button
                             key={filter.value}
-                            onClick={() => setSourceFilter(filter.value as any)}
+                            onClick={() => setSourceFilter(filter.value)}
                             aria-label={`Filter by ${filter.label}`}
                             className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
                               filter.value === (sourceFilter || 'all')
@@ -716,7 +729,7 @@ export function EnhancedSearchUI({
               </button>
             )}
             <button
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={handleToggleFilters}
               className={`p-3 mr-2 rounded-full transition-colors ${
                 showFilters
                   ? 'bg-primary text-primary-foreground'
@@ -914,7 +927,7 @@ export function EnhancedSearchUI({
                         <Link
                           to='/tags'
                           className='text-xs text-muted-foreground hover:text-foreground transition-colors'
-                          onClick={() => setShowFilters(false)}
+                          onClick={handleCloseFilters}
                         >
                           Browse
                         </Link>

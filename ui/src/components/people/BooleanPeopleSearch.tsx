@@ -6,7 +6,7 @@
  * Uses the glass design system and follows living language guidelines.
  */
 import { useState, useEffect } from 'react';
-import { Search, Plus, X, User, Users, Camera, RefreshCw } from 'lucide-react';
+import { Search, Plus, X, User, Camera, RefreshCw } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
 
@@ -27,6 +27,15 @@ interface SearchResult {
   photo_path: string;
   people_in_photo: string[];
   match_reason: string;
+}
+
+interface ClusterListItem {
+  id?: string;
+  cluster_id?: string;
+  label?: string;
+  face_count?: number;
+  image_count?: number;
+  photo_count?: number;
 }
 
 interface BooleanPeopleSearchProps {
@@ -62,16 +71,16 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
       const clusters = response.clusters || [];
 
       // Convert clusters to people format
-      const peopleList: Person[] = clusters
-        .filter((cluster: any) => cluster.label) // Only include named people
-        .map((cluster: any) => ({
-          id: cluster.id,
-          label: cluster.label,
+      const peopleList: Person[] = (clusters as ClusterListItem[])
+        .filter((cluster) => cluster.label) // Only include named people
+        .map((cluster) => ({
+          id: cluster.id ?? cluster.cluster_id ?? '',
+          label: cluster.label || 'Unknown',
           face_count: cluster.face_count || 0,
-          image_count: cluster.image_count || 0
+          image_count: cluster.image_count || cluster.photo_count || 0
         }));
 
-      setPeople(peopleList);
+      setPeople(peopleList.filter((person) => person.id));
     } catch (err) {
       console.error('Failed to fetch people:', err);
       setError('Failed to load people');
@@ -146,9 +155,9 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
       const data = await response.json();
       setResults(data.photos || []);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Search failed:', err);
-      setError(err.message || 'Search failed');
+      setError(err instanceof Error ? err.message : 'Search failed');
     } finally {
       setSearching(false);
     }

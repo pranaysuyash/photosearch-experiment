@@ -68,7 +68,7 @@ export function useActionSystem() {
     async (
       actionId: string,
       photo: Photo,
-      options?: any
+      options?: Record<string, unknown>
     ): Promise<ActionResult> => {
       if (!initialized) {
         throw new Error('Action system not initialized');

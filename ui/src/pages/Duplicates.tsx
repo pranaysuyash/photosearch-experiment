@@ -56,9 +56,9 @@ export function Duplicates() {
       setError(null);
       const response = await api.getDuplicates({ limit: 200 });
       setGroups(response.groups || []);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch duplicate groups:', err);
-      setError(err?.message || 'Failed to load duplicate groups');
+      setError(err instanceof Error ? err.message : 'Failed to load duplicate groups');
     } finally {
       setLoading(false);
     }
@@ -82,7 +82,7 @@ export function Duplicates() {
     try {
       setScanning(true);
       setError(null);
-      const response = await api.scanDuplicates('exact', 1000);
+      await api.scanDuplicates('exact', 1000);
       // Scan completed successfully
 
       // Refresh data after scan
@@ -107,9 +107,9 @@ export function Duplicates() {
 
       await fetchDuplicateGroups();
       await fetchStats();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to resolve duplicate group:', err);
-      setError(err?.message || 'Failed to resolve duplicate group');
+      setError(err instanceof Error ? err.message : 'Failed to resolve duplicate group');
     } finally {
       setResolvingGroup(null);
     }

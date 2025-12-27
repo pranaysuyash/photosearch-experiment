@@ -3,7 +3,7 @@
  *
  * Handles bulk operations with undo functionality for photos.
  */
-import { useToast } from '../components/toast/ToastProvider';
+import { useToast } from '../components/toast/useToast';
 
 type BulkActionState = Record<string, unknown>;
 

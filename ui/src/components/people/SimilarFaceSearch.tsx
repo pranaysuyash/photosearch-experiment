@@ -47,9 +47,9 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
       const data = await response.json();
       setSimilarFaces(data.similar_faces || []);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to find similar faces:', err);
-      setError(err.message || 'Failed to find similar faces');
+      setError(err instanceof Error ? err.message : 'Failed to find similar faces');
     } finally {
       setLoading(false);
     }

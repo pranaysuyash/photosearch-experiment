@@ -41,10 +41,9 @@ export function NotchBar({
   const paddingRight = rightInset > 0 ? `${rightInset}px` : '1rem';
 
   // Show a subtle indicator of which detection method is active (dev only)
-  const methodIndicator =
-    import.meta.env.DEV
-      ? ({ '--notch-method': method } as React.CSSProperties)
-      : {};
+  const methodIndicator = import.meta.env.DEV
+    ? ({ '--notch-method': method } as React.CSSProperties)
+    : {};
 
   return (
     <motion.div

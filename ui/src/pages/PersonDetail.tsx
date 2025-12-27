@@ -38,7 +38,7 @@ import { isLocalStorageAvailable, localGetItem } from '../utils/storage';
 import { glass } from '../design/glass';
 import SecureLazyImage from '../components/gallery/SecureLazyImage';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
-import type { Photo } from '../api';
+import type { Photo, SimilarFacesResult } from '../api';
 
 interface PersonPhoto {
   path: string;
@@ -55,6 +55,11 @@ interface ClusterInfo {
   face_count: number;
 }
 
+interface ClusterSummary {
+  id: string;
+  label: string;
+}
+
 type AssignmentState = 'auto' | 'user_confirmed' | 'user_rejected';
 
 type PersonAnalytics = {
@@ -66,6 +71,21 @@ type PersonAnalytics = {
   last_seen?: string;
   cluster_ids?: string[];
   [key: string]: unknown;
+};
+
+type ApiError = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
+type RawCluster = {
+  id?: string;
+  cluster_id?: string;
+  label?: string;
+  face_count?: number;
 };
 
 export default function PersonDetail() {
@@ -107,8 +127,12 @@ export default function PersonDetail() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
+  const getApiErrorMessage = (err: unknown, fallback: string) => {
+    return (err as ApiError)?.response?.data?.detail ?? fallback;
+  };
+
   // Move faces to another person
-  const [clustersForMove, setClustersForMove] = useState<ClusterInfo[]>([]);
+  const [clustersForMove, setClustersForMove] = useState<ClusterSummary[]>([]);
   const [moveModal, setMoveModal] = useState<{
     open: boolean;
     faceIds: string[];
@@ -145,12 +169,19 @@ export default function PersonDetail() {
     try {
       const data = await api.getFaceClusters();
       const clusters = (data?.clusters || [])
-        .map((c: any) => ({ id: c.id, label: c.label || `Person ${c.id}` }))
-        .filter((c: ClusterInfo) => c.id !== clusterId);
+        .map((c: RawCluster) => {
+          const id = c.id ?? c.cluster_id;
+          if (!id) return null;
+          return { id, label: c.label || `Person ${id}` };
+        })
+        .filter((c): c is ClusterSummary => c !== null)
+        .filter((c) => c.id !== clusterId);
       setClustersForMove(clusters);
-      if (!moveModal.targetClusterId && clusters.length > 0) {
-        setMoveModal((prev) => ({ ...prev, targetClusterId: clusters[0].id }));
-      }
+      setMoveModal((prev) =>
+        prev.targetClusterId || clusters.length === 0
+          ? prev
+          : { ...prev, targetClusterId: clusters[0].id }
+      );
     } catch (err) {
       console.error('Failed to load clusters for move:', err);
     }
@@ -176,15 +207,17 @@ export default function PersonDetail() {
           import.meta.env.VITE_API_URL || 'http://localhost:8000'
         }/api/faces/clusters`
       );
-      const clustersData = await clustersRes.json();
+      const clustersData: { clusters?: RawCluster[] } = await clustersRes.json();
       const cluster = clustersData.clusters?.find(
-        (c: any) => c.id === clusterId
+        (c) => (c.id ?? c.cluster_id) === clusterId
       );
       if (cluster) {
         setClusterInfo({
-          id: cluster.id,
-          label: cluster.label || `Person ${cluster.id}`,
-          face_count: cluster.face_count,
+          id: (cluster.id ?? cluster.cluster_id) || clusterId,
+          label:
+            cluster.label ||
+            `Person ${(cluster.id ?? cluster.cluster_id ?? clusterId)}`,
+          face_count: cluster.face_count ?? 0,
         });
       }
     } catch (err) {
@@ -200,14 +233,14 @@ export default function PersonDetail() {
     try {
       setAnalyticsLoading(true);
       setAnalyticsError(null);
-      const data = await api.get(
+      const data: PersonAnalytics = await api.get(
         `/api/people/${encodeURIComponent(clusterId)}/analytics`
       );
       setAnalytics(data || null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch analytics:', err);
       setAnalytics(null);
-      setAnalyticsError(err?.message || 'Failed to load analytics');
+      setAnalyticsError(getApiErrorMessage(err, 'Failed to load analytics'));
     } finally {
       setAnalyticsLoading(false);
     }
@@ -425,7 +458,10 @@ export default function PersonDetail() {
       error: null,
     });
     try {
-      const data = await api.getSimilarFaces(detectionId, 12);
+      const data: SimilarFacesResult = await api.getSimilarFaces(
+        detectionId,
+        12
+      );
       setSimilarModal({
         open: true,
         loading: false,
@@ -433,13 +469,13 @@ export default function PersonDetail() {
         results: data?.similar_faces || [],
         error: null,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSimilarModal({
         open: true,
         loading: false,
         detectionId,
         results: [],
-        error: err?.message || 'Failed to load similar faces',
+        error: getApiErrorMessage(err, 'Failed to load similar faces'),
       });
     }
   };
@@ -456,6 +492,7 @@ export default function PersonDetail() {
         await api.deletePerson(clusterId);
         navigate('/people');
       } catch (err) {
+        console.error('Failed to delete person:', err);
         setError('Failed to delete person');
         setActionLoading(null);
       }

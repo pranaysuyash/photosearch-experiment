@@ -9,14 +9,10 @@ import {
   Plus,
   X,
   Search,
-  Filter,
   CircleEllipsis,
   CircleCheck,
-  CircleX,
   ArrowRightLeft,
   Hash,
-  CheckCircle,
-  MinusCircle,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -36,11 +32,13 @@ interface TagFilter {
   updated_at: string;
 }
 
+type TagSearchResult = Record<string, unknown>;
+
 interface MultiTagFilterProps {
   initialOperator?: 'AND' | 'OR';
   initialExpressions?: TagExpression[];
   onFilterChange: (tags: string[], operator: 'AND' | 'OR') => void;
-  onSearch: (results: any[]) => void;
+  onSearch: (results: TagSearchResult[]) => void;
 }
 
 export function MultiTagFilter({
@@ -297,9 +295,9 @@ export function MultiTagFilter({
               <div
                 className={`${glass.surfaceStrong} absolute z-10 mt-1 w-full border border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto`}
               >
-                {suggestions.map((suggestion, index) => (
+                {suggestions.map((suggestion) => (
                   <button
-                    key={index}
+                    key={suggestion}
                     onClick={() => {
                       setNewTag(suggestion);
                       setShowSuggestions(false);
@@ -326,7 +324,7 @@ export function MultiTagFilter({
         {/* Current Expressions */}
         {expressions.length > 0 && (
           <div className='space-y-2'>
-            {expressions.map((expr, index) => (
+            {expressions.map((expr) => (
               <div
                 key={expr.id}
                 className='flex items-center gap-2 p-2 bg-white/5 rounded-lg'
@@ -335,7 +333,7 @@ export function MultiTagFilter({
                   value={expr.operator}
                   onChange={(e) =>
                     updateTagExpression(expr.id, {
-                      operator: e.target.value as any,
+                      operator: e.target.value as TagExpression['operator'],
                     })
                   }
                   className='px-2 py-1 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm'

@@ -9,7 +9,6 @@ import {
   Search,
   Sparkles,
   Filter,
-  Clock,
   MapPin,
   Users,
   Camera,
@@ -44,9 +43,11 @@ interface SearchIntentResult {
 }
 
 interface IntentBasedSearchProps {
-  onResults: (results: any[]) => void;
+  onResults: (results: SearchResult[]) => void;
   initialQuery?: string;
 }
+
+type SearchResult = Record<string, unknown>;
 
 export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedSearchProps) {
   const [query, setQuery] = useState(initialQuery);
@@ -57,21 +58,12 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refinement, setRefinement] = useState('');
-  const [previousResults, setPreviousResults] = useState<any[]>([]);
+  const [previousResults, setPreviousResults] = useState<SearchResult[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Detect intent as user types
-  useEffect(() => {
-    if (query.trim().length > 2) {
-      detectIntent();
-    } else {
-      setIntent(null);
-      setSuggestions([]);
-    }
-  }, [query]);
-
-  const detectIntent = async () => {
+  const detectIntent = React.useCallback(async () => {
     try {
       const result: SearchIntentResult = await api.get(`/intent/detect`, {
         params: { query }
@@ -87,7 +79,16 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
     } catch (err) {
       console.error('Failed to detect intent:', err);
     }
-  };
+  }, [query]);
+
+  useEffect(() => {
+    if (query.trim().length > 2) {
+      detectIntent();
+    } else {
+      setIntent(null);
+      setSuggestions([]);
+    }
+  }, [detectIntent, query]);
 
   const handleSearch = async (searchQuery: string = query) => {
     if (!searchQuery.trim()) return;
@@ -147,7 +148,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
   };
 
   const getIntentIcon = (intentType: string) => {
-    const intentIcons: Record<string, any> = {
+    const intentIcons: Record<string, React.ComponentType<{ size?: number }>> = {
       camera: Camera,
       date: Calendar,
       location: MapPin,

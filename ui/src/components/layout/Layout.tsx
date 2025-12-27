@@ -34,7 +34,6 @@ import { api } from '../../api';
 import './Layout.css';
 // import { NotchBar, useNotchAware } from './NotchBar';
 
-
 interface LayoutProps {
   children?: React.ReactNode;
 }
@@ -48,8 +47,6 @@ const Layout = ({ children }: LayoutProps) => {
 
   const { photos, resultCount } = usePhotoSearchContext();
   const resultsNumber = resultCount ?? photos.length;
-
-
 
   const [minimalMode, setMinimalMode] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
@@ -210,7 +207,7 @@ const Layout = ({ children }: LayoutProps) => {
             </motion.div>
 
             {/* Right rail: actions */}
-            <div className="lm-header-right relative z-20 h-11 flex items-center justify-end">
+            <div className='lm-header-right relative z-20 h-11 flex items-center justify-end'>
               <AnimatePresence>
                 {!searchExpanded && (
                   <>
@@ -328,22 +325,20 @@ const Layout = ({ children }: LayoutProps) => {
         >
           {children}
         </motion.div>
-      </main >
+      </main>
 
       {/* Back to Top */}
-      {
-        !minimalMode && showBackToTop && (
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className='fixed bottom-6 right-6 z-[1000] btn-glass btn-glass--muted w-11 h-11 p-0 justify-center'
-            title='Back to top'
-            aria-label='Back to top'
-          >
-            <ArrowUp size={18} />
-          </button>
-        )
-      }
-    </div >
+      {!minimalMode && showBackToTop && (
+        <button
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          className='fixed bottom-6 right-6 z-[1000] btn-glass btn-glass--muted w-11 h-11 p-0 justify-center'
+          title='Back to top'
+          aria-label='Back to top'
+        >
+          <ArrowUp size={18} />
+        </button>
+      )}
+    </div>
   );
 };
 

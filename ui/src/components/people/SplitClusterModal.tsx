@@ -4,7 +4,7 @@
  * Allows users to select faces from a mixed cluster and create a new person.
  * Uses the glass design system and follows living language guidelines.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, User, Users, CheckCircle, RefreshCw } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
@@ -29,6 +29,19 @@ interface FaceCluster {
   faces?: Face[];
 }
 
+interface ClusterPhotoFace {
+  detection_id?: string;
+  id?: string;
+  quality_score?: number;
+  bounding_box?: Face['bounding_box'];
+}
+
+interface ClusterPhoto {
+  photo_path?: string;
+  path?: string;
+  faces?: ClusterPhotoFace[];
+}
+
 interface SplitClusterModalProps {
   cluster: FaceCluster;
   isOpen: boolean;
@@ -44,13 +57,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
   const [splitting, setSplitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && cluster.id) {
-      fetchClusterFaces();
-    }
-  }, [isOpen, cluster.id]);
-
-  const fetchClusterFaces = async () => {
+  const fetchClusterFaces = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -64,17 +71,19 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
         throw new Error('Failed to fetch cluster faces');
       }
 
-      const data = await response.json();
+      const data: { photos?: ClusterPhoto[] } = await response.json();
 
       // Extract faces from the response
       const clusterFaces: Face[] = [];
       if (data.photos) {
-        data.photos.forEach((photo: any) => {
+        data.photos.forEach((photo) => {
           if (photo.faces) {
-            photo.faces.forEach((face: any) => {
+            photo.faces.forEach((face) => {
+              const detectionId = face.detection_id || face.id;
+              if (!detectionId) return;
               clusterFaces.push({
-                id: face.detection_id || face.id,
-                detection_id: face.detection_id || face.id,
+                id: detectionId,
+                detection_id: detectionId,
                 photo_path: photo.photo_path || photo.path,
                 quality_score: face.quality_score,
                 bounding_box: face.bounding_box
@@ -91,7 +100,13 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
     } finally {
       setLoading(false);
     }
-  };
+  }, [cluster.id]);
+
+  useEffect(() => {
+    if (isOpen && cluster.id) {
+      fetchClusterFaces();
+    }
+  }, [fetchClusterFaces, isOpen, cluster.id]);
 
   const toggleFaceSelection = (faceId: string) => {
     const newSelection = new Set(selectedFaces);
@@ -133,7 +148,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
         throw new Error(errorData.detail || 'Failed to split cluster');
       }
 
-      const result = await response.json();
+      await response.json();
 
       // Success - close modal and refresh parent
       onSplit();
@@ -143,9 +158,9 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
       setSelectedFaces(new Set());
       setNewPersonName('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to split cluster:', err);
-      setError(err.message || 'Failed to split cluster');
+      setError(err instanceof Error ? err.message : 'Failed to split cluster');
     } finally {
       setSplitting(false);
     }

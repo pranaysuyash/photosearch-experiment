@@ -3,21 +3,18 @@
  *
  * Provides granular privacy controls for photos, including encryption and sharing permissions.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Shield,
   Globe,
   Users,
   Lock,
   Eye,
-  EyeOff,
   Key,
   Settings,
   UserPlus,
   UserX,
   Share2,
-  Copy,
-  Check,
   X,
   AlertTriangle
 } from 'lucide-react';
@@ -38,8 +35,18 @@ interface PrivacyControl {
   updated_at: string;
 }
 
+type SharePermissionKey = 'view' | 'download' | 'share' | 'edit';
+
+interface PrivacySettings {
+  visibility: PrivacyControl['visibility'];
+  sharePermissions: Record<SharePermissionKey, boolean>;
+  encryptionEnabled: boolean;
+  encryptionKey: string;
+  allowedUsers: string[];
+  allowedGroups: string[];
+}
+
 export function PrivacyControls({ photoPath }: { photoPath: string }) {
-  const [privacy, setPrivacy] = useState<PrivacyControl | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -47,7 +54,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
   const [newAllowedUser, setNewAllowedUser] = useState('');
 
   // Default privacy settings
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<PrivacySettings>({
     visibility: 'private',
     sharePermissions: {
       view: true,
@@ -62,17 +69,12 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
   });
 
   // Load current privacy settings
-  useEffect(() => {
-    loadPrivacySettings();
-  }, [photoPath]);
-
-  const loadPrivacySettings = async () => {
+  const loadPrivacySettings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const privacyData = await api.getPhotoPrivacy(photoPath);
-      setPrivacy(privacyData);
+      const privacyData: PrivacyControl = await api.getPhotoPrivacy(photoPath);
 
       setSettings({
         visibility: privacyData.visibility,
@@ -93,7 +95,11 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    loadPrivacySettings();
+  }, [loadPrivacySettings]);
 
   const savePrivacySettings = async () => {
     try {
@@ -138,12 +144,12 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
     }));
   };
 
-  const toggleSharePermission = (permission: string) => {
+  const toggleSharePermission = (permission: SharePermissionKey) => {
     setSettings(prev => ({
       ...prev,
       sharePermissions: {
         ...prev.sharePermissions,
-        [permission]: !(prev.sharePermissions as Record<string, boolean>)[permission]
+        [permission]: !prev.sharePermissions[permission]
       }
     }));
   };
@@ -250,7 +256,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                     checked={settings.visibility === option.value}
                     onChange={(e) => setSettings(prev => ({
                       ...prev,
-                      visibility: e.target.value as any
+                      visibility: e.target.value as PrivacyControl['visibility']
                     }))}
                     className="mt-0.5"
                   />

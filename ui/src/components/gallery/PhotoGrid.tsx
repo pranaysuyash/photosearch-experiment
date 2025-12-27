@@ -88,9 +88,11 @@ export function PhotoGrid({
 
   // Calculate optimal thumbnail size based on grid zoom and device pixel ratio
   const getThumbnailSize = () => {
-    const baseSize = gridZoom === 'compact' ? 120 : gridZoom === 'comfortable' ? 180 : 240;
+    const baseSize =
+      gridZoom === 'compact' ? 120 : gridZoom === 'comfortable' ? 180 : 240;
     // Account for high-DPI displays
-    const pixelRatio = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+    const pixelRatio =
+      typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
     return Math.round(baseSize * Math.min(pixelRatio, 2)); // Cap at 2x for performance
   };
 
@@ -183,7 +185,8 @@ export function PhotoGrid({
     if (selectedPaths.size === 0) return;
 
     const confirmed = window.confirm(
-      `Move ${selectedPaths.size} item${selectedPaths.size > 1 ? 's' : ''
+      `Move ${selectedPaths.size} item${
+        selectedPaths.size > 1 ? 's' : ''
       } to Trash? You can restore from Trash.`
     );
 
@@ -268,17 +271,20 @@ export function PhotoGrid({
     setContextMenu(null);
   }, []);
 
-  const handleActionExecute = useCallback((actionId: string, result: unknown) => {
-    // Handle action execution results
+  const handleActionExecute = useCallback(
+    (actionId: string, result: unknown) => {
+      // Handle action execution results
 
-    // Handle specific action results
-    const res = result as { success?: boolean; error?: unknown };
-    if (res.success) {
-      // Action completed successfully - could show toast notification here
-    } else {
-      console.error('Action failed:', res.error);
-    }
-  }, []);
+      // Handle specific action results
+      const res = result as { success?: boolean; error?: unknown };
+      if (res.success) {
+        // Action completed successfully - could show toast notification here
+      } else {
+        console.error('Action failed:', res.error);
+      }
+    },
+    []
+  );
 
   // Load favorites status for visible photos
   useEffect(() => {
@@ -289,7 +295,9 @@ export function PhotoGrid({
         const favoriteSet = new Set<string>(
           (res.results || []).map((f: unknown) => {
             const item = f as { file_path?: string; path?: string };
-            return item.file_path || item.path || (typeof f === 'string' ? f : '');
+            return (
+              item.file_path || item.path || (typeof f === 'string' ? f : '')
+            );
           })
         );
         const newFavorites = new Set<string>();
@@ -406,20 +414,31 @@ export function PhotoGrid({
                 setSelectMode(true);
               }
             }}
-            className={`btn-glass ${selectMode ? 'btn-glass--primary' : 'btn-glass--muted'} text-sm px-3 py-1.5 flex items-center gap-2`}
+            className={`btn-glass ${
+              selectMode ? 'btn-glass--primary' : 'btn-glass--muted'
+            } text-sm px-3 py-1.5 flex items-center gap-2`}
           >
-            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${selectedPaths.size > 0
-              ? 'bg-white border-white'
-              : 'border-current'
-              }`}>
-              {selectedPaths.size > 0 && (
-                selectedPaths.size === photos.length
-                  ? <Check size={10} className='text-primary' />
-                  : <div className='w-1.5 h-0.5 bg-primary' />
-              )}
+            <div
+              className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                selectedPaths.size > 0
+                  ? 'bg-white border-white'
+                  : 'border-current'
+              }`}
+            >
+              {selectedPaths.size > 0 &&
+                (selectedPaths.size === photos.length ? (
+                  <Check size={10} className='text-primary' />
+                ) : (
+                  <div className='w-1.5 h-0.5 bg-primary' />
+                ))}
             </div>
             {selectMode ? `${selectedPaths.size} selected` : 'Select'}
-            <ChevronDown size={14} className={`transition-transform ${selectMode ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              size={14}
+              className={`transition-transform ${
+                selectMode ? 'rotate-180' : ''
+              }`}
+            />
           </button>
 
           {/* Dropdown Menu */}
@@ -591,8 +610,9 @@ export function PhotoGrid({
             <motion.div
               key={photo.path}
               layoutId={`photo-${photo.path}`}
-              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${isSelected ? 'selected' : ''
-                }`}
+              className={`gallery-item mb-4 break-inside-avoid relative group cursor-pointer ${
+                isSelected ? 'selected' : ''
+              }`}
               style={
                 {
                   '--item-index': i,
@@ -656,7 +676,9 @@ export function PhotoGrid({
 
               {/* Gmail-style Selection Checkbox - visible on hover, clickable to select */}
               <div
-                className={`gallery-select ${isSelected ? 'selected' : ''} ${!selectMode ? 'group-hover:opacity-100' : ''}`}
+                className={`gallery-select ${isSelected ? 'selected' : ''} ${
+                  !selectMode ? 'group-hover:opacity-100' : ''
+                }`}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!selectMode) setSelectMode(true);

@@ -19,11 +19,8 @@ import {
   BarChart3,
   FolderOpen,
   Sparkles,
-  Shield,
   Zap,
   TrendingUp,
-  Eye,
-  Lock,
   Play,
   RefreshCw,
   Check,
@@ -31,7 +28,6 @@ import {
   Info,
 } from 'lucide-react';
 import { glass } from '../design/glass';
-import { useAmbientThemeContext } from '../contexts/AmbientThemeContext';
 import { api } from '../api';
 import { useNavigate } from 'react-router-dom';
 
@@ -61,8 +57,24 @@ interface Feature {
   capabilities: string[];
 }
 
+interface ComprehensiveStats {
+  library_stats?: {
+    total_photos?: number;
+    total_size_gb?: number;
+  };
+  active_jobs?: number;
+  [key: string]: unknown;
+}
+
+type ApiError = {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+};
+
 export function AdvancedFeaturesPage() {
-  const { isDark } = useAmbientThemeContext();
   const navigate = useNavigate();
   const [selectedFeature, setSelectedFeature] =
     useState<FeatureType>('face-recognition');
@@ -86,7 +98,12 @@ export function AdvancedFeaturesPage() {
   // Hidden Genius: expose /api/advanced/comprehensive-stats
   const [statsLoading, setStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState<string | null>(null);
-  const [comprehensiveStats, setComprehensiveStats] = useState<any>(null);
+  const [comprehensiveStats, setComprehensiveStats] =
+    useState<ComprehensiveStats | null>(null);
+
+  const getApiErrorMessage = (err: unknown, fallback: string) => {
+    return (err as ApiError)?.response?.data?.detail ?? fallback;
+  };
 
   // Load system status and feature availability
   useEffect(() => {
@@ -215,9 +232,8 @@ export function AdvancedFeaturesPage() {
         job_ids: Array.isArray(res?.job_ids) ? res.job_ids : [],
         message: res?.message,
       });
-    } catch (err: any) {
-      const detail =
-        err?.response?.data?.detail || err?.message || 'Failed to start scan';
+    } catch (err: unknown) {
+      const detail = getApiErrorMessage(err, 'Failed to start scan');
       setScanError(String(detail));
     } finally {
       setScanSubmitting(false);
@@ -231,11 +247,11 @@ export function AdvancedFeaturesPage() {
     try {
       const data = await api.get('/api/advanced/comprehensive-stats');
       setComprehensiveStats(data);
-    } catch (err: any) {
-      const detail =
-        err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to load comprehensive stats';
+    } catch (err: unknown) {
+      const detail = getApiErrorMessage(
+        err,
+        'Failed to load comprehensive stats'
+      );
       setStatsError(String(detail));
     } finally {
       setStatsLoading(false);

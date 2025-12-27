@@ -14,7 +14,7 @@ function setAccent(rgb: RGB) {
 }
 
 async function averageColorFromImageUrl(url: string): Promise<RGB> {
-  return await new Promise((resolve, reject) => {
+  return await new Promise((resolve) => {
     const img = new Image();
     img.decoding = 'async';
 

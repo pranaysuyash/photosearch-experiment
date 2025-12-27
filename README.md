@@ -801,6 +801,54 @@ See [AI_PROVIDERS.md](docs/antigravity/AI_PROVIDERS.md) for detailed information
 
 ---
 
+## 🧑‍🤝‍🧑 Face Recognition System
+
+The application includes a comprehensive face recognition and people management system.
+
+### Features
+
+| Feature | Status | Description |
+|---------|--------|-------------|
+| **Face Detection** | ✅ | InsightFace with RetinaFace backend |
+| **Face Recognition** | ✅ | ArcFace 512-dim embeddings |
+| **Auto-Clustering** | ✅ | DBSCAN clustering of similar faces |
+| **Person Management** | ✅ | Rename, hide, merge, split clusters |
+| **Undo Operations** | ✅ | Full undo support for all operations |
+| **Unknown Bucket** | ✅ | View and assign unidentified faces |
+| **Co-occurrence Search** | ✅ | Find photos with multiple people |
+| **Similar Face Search** | ✅ | "Find more like this" feature |
+
+### Key API Endpoints
+
+```bash
+# Get all face clusters (people)
+GET /api/faces/clusters
+
+# Get face statistics
+GET /api/faces/stats
+
+# Scan photos for faces
+POST /api/faces/scan
+
+# Find similar faces
+GET /api/faces/{face_id}/similar
+
+# Search photos by people
+POST /api/photos/by-people
+```
+
+### Hardware Support
+
+- **Apple Silicon (M1/M2/M3)**: CoreML acceleration ✅
+- **NVIDIA GPU**: CUDA acceleration ✅
+- **CPU Fallback**: Works on any system ✅
+
+### Documentation
+
+See [FACE_INTELLIGENCE.md](FACE_INTELLIGENCE.md) for full API reference and architecture.
+
+---
+
 ## 🧪 Testing
 
 ### Test Results - Task 1

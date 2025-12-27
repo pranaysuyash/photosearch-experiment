@@ -4,8 +4,8 @@
  * Allows users to move a single face from one person to another.
  * Uses the glass design system and follows living language guidelines.
  */
-import { useState, useEffect } from 'react';
-import { X, User, ArrowRight, RefreshCw, Search } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, ArrowRight, RefreshCw, Search } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
 
@@ -42,13 +42,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    if (isOpen) {
-      fetchAvailableClusters();
-    }
-  }, [isOpen]);
-
-  const fetchAvailableClusters = async () => {
+  const fetchAvailableClusters = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -68,7 +62,13 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
     } finally {
       setLoading(false);
     }
-  };
+  }, [face.cluster_id]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchAvailableClusters();
+    }
+  }, [fetchAvailableClusters, isOpen]);
 
   const handleMove = async () => {
     if (!createNewPerson && !targetClusterId) {
@@ -136,9 +136,9 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
       setCreateNewPerson(false);
       setNewPersonName('');
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to move face:', err);
-      setError(err.message || 'Failed to move face');
+      setError(err instanceof Error ? err.message : 'Failed to move face');
     } finally {
       setMoving(false);
     }

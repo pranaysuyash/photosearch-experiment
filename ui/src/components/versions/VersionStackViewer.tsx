@@ -3,16 +3,11 @@
  *
  * Provides a UI for managing photo version stacks (originals and edited copies).
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layers,
   Edit3,
-  Copy,
-  RotateCcw,
-  History,
   Trash2,
-  X,
-  Save,
   Eye,
   Download,
   MoreVertical,
@@ -28,7 +23,7 @@ interface PhotoVersion {
   version_description: string | null;
   created_at: string;
   updated_at: string;
-  edit_instructions: any; // Contains edit operations applied to reach this version
+  edit_instructions: Record<string, unknown> | null; // Contains edit operations applied to reach this version
   parent_version_id: string | null; // ID of parent version in the chain
   size_bytes: number;
   dimensions: { width: number; height: number };
@@ -47,14 +42,12 @@ interface VersionStackProps {
   photoPath: string;
   currentVersionPath?: string;
   onVersionChange?: (versionPath: string) => void;
-  size?: 'sm' | 'md' | 'lg';
 }
 
 export function VersionStackViewer({
   photoPath,
   currentVersionPath,
   onVersionChange,
-  size = 'md',
 }: VersionStackProps) {
   const [versionStack, setVersionStack] = useState<VersionStack | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,11 +56,7 @@ export function VersionStackViewer({
   const [showActions, setShowActions] = useState<string | null>(null);
 
   // Load the version stack for this photo
-  useEffect(() => {
-    loadVersionStack();
-  }, [photoPath]);
-
-  const loadVersionStack = async () => {
+  const loadVersionStack = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -80,32 +69,14 @@ export function VersionStackViewer({
     } finally {
       setLoading(false);
     }
-  };
+  }, [photoPath]);
+
+  useEffect(() => {
+    loadVersionStack();
+  }, [loadVersionStack]);
 
   const handleVersionSelect = (versionPath: string) => {
     onVersionChange?.(versionPath);
-  };
-
-  const createNewVersion = async (editInstructions: any) => {
-    if (!versionStack) return;
-
-    try {
-      // In a real implementation, this would apply edits to create a new version
-      // For now, we'll simulate creating a new version
-      const newVersion = await api.createPhotoVersion(
-        versionStack.original_path,
-        `/temp/new_version_${Date.now()}.jpg`, // This would be the actual edited file path
-        'edit',
-        'Edited Version',
-        'Version created from edits',
-        editInstructions
-      );
-
-      loadVersionStack(); // Refresh the stack
-    } catch (err) {
-      console.error('Failed to create new version:', err);
-      setError('Failed to create new version');
-    }
   };
 
   const deleteVersion = async (versionId: string) => {

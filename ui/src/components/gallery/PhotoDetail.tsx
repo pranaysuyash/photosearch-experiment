@@ -44,7 +44,7 @@ import { AddToTagDialog } from '../tags/AddToTagDialog';
 import { StarRating } from '../rating/StarRating';
 import { PhotoEditor as EnhancedPhotoEditor } from '../editing/PhotoEditor';
 import { NotesEditor } from '../notes/NotesEditor';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/useToast';
 import ImageAnalysis from './AIAnalysis';
 import { PhotoDetailTabs, type TabName } from './tabs/PhotoDetailTabs';
 import { VideoFacesPanel } from '../video/VideoFacesPanel';
@@ -701,7 +701,6 @@ export function PhotoDetail({
             {/* People/Faces section - only show when there are faces */}
             {faceClusters.length > 0 && (
               <PhotoFacePanel
-                photoPath={photo.path}
                 faceClusters={faceClusters}
                 onRefresh={refreshFaces}
                 isLoading={facesLoading}

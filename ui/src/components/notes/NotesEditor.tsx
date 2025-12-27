@@ -144,7 +144,11 @@ export function NotesEditor({
           <div className="flex items-center justify-between gap-2">
             <div className={`flex items-center gap-2 text-white/60 ${textSizeClass}`}>
               <Edit3 size={size === 'sm' ? 12 : 14} />
-              <span className="uppercase tracking-wider font-medium">Notes</span>
+              {showLabel && (
+                <span className="uppercase tracking-wider font-medium">
+                  Notes
+                </span>
+              )}
             </div>
 
             {hasNote ? (
@@ -189,7 +193,11 @@ export function NotesEditor({
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className={`flex items-center gap-2 text-white/60 ${textSizeClass}`}>
               <Edit3 size={size === 'sm' ? 12 : 14} />
-              <span className="uppercase tracking-wider font-medium">Notes</span>
+              {showLabel && (
+                <span className="uppercase tracking-wider font-medium">
+                  Notes
+                </span>
+              )}
             </div>
 
             <div className="flex items-center gap-1">

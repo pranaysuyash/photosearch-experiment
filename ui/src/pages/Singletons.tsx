@@ -4,7 +4,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, ArrowLeft } from 'lucide-react';
-import { api } from '../api';
 import { glass } from '../design/glass';
 
 interface SingletonCluster {

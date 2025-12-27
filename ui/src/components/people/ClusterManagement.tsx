@@ -15,8 +15,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   User,
   Search,
-  Edit,
-  Trash2,
   Loader2,
   AlertTriangle,
   Check,
@@ -33,9 +31,8 @@ import { glass } from '../../design/glass';
 import {
   type FaceCluster,
   type ClusteringResult,
-  type ClusterQuality,
   type ClusterQualityResult,
-  type MergeClustersResult,
+  type PersonSearchResult,
 } from '../../api';
 
 interface ClusterManagementProps {
@@ -48,6 +45,11 @@ type ViewMode = 'people' | 'unknown';
 interface UndoState {
   canUndo: boolean;
   lastOperation?: string;
+}
+
+interface UnassignedFace {
+  detection_id: string;
+  photo_path?: string;
 }
 
 export function ClusterManagement({
@@ -72,7 +74,7 @@ export function ClusterManagement({
   const [showHidden, setShowHidden] = useState(false);
   const [undoState, setUndoState] = useState<UndoState>({ canUndo: false });
   const [undoing, setUndoing] = useState(false);
-  const [unknownFaces, setUnknownFaces] = useState<any[]>([]);
+  const [unknownFaces, setUnknownFaces] = useState<UnassignedFace[]>([]);
   const [unknownCount, setUnknownCount] = useState(0);
   const [hidingCluster, setHidingCluster] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -155,8 +157,8 @@ export function ClusterManagement({
 
     const search = async () => {
       try {
-        const result: any = await api.searchPeople(searchQuery);
-        const foundClusters = result.people.map((person: any) => ({
+        const result: PersonSearchResult = await api.searchPeople(searchQuery);
+        const foundClusters = result.people.map((person) => ({
           cluster_id: person.cluster_id,
           label: person.label,
           face_count: person.face_count,

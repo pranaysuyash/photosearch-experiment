@@ -29,8 +29,11 @@ export function PrivacyPanel() {
                 setSuccess('All face data deleted successfully.');
             }
             setConfirmInput('');
-        } catch (err: any) {
-            setError(err.response?.data?.detail || 'Failed to delete data');
+        } catch (err: unknown) {
+            const message =
+                (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+                (err instanceof Error ? err.message : 'Failed to delete data');
+            setError(message);
         } finally {
             setLoading(false);
         }

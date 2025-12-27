@@ -19,7 +19,7 @@ import {
   Redo,
 } from 'lucide-react';
 import { api, type PhotoEdit } from '../../api';
-import { useToast } from '../ui/Toast';
+import { useToast } from '../ui/useToast';
 import { TrafficLightButtons } from '../ui/TrafficLightButtons';
 
 interface PhotoEditorProps {

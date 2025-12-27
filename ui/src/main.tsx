@@ -7,8 +7,10 @@ import App from './App.tsx';
 // Enable why-did-you-render in development for tracing unwanted re-renders
 if (import.meta.env.DEV) {
   // Initialize after app mounts to avoid hook order issues during hot reload
-  if (typeof window !== 'undefined' && !(window as any).__WDYR_INIT__) {
-    (window as any).__WDYR_INIT__ = true;
+  type WindowWithWdyr = Window & { __WDYR_INIT__?: boolean };
+
+  if (typeof window !== 'undefined' && !(window as WindowWithWdyr).__WDYR_INIT__) {
+    (window as WindowWithWdyr).__WDYR_INIT__ = true;
 
     // Delay initialization to ensure app is fully mounted
     setTimeout(async () => {

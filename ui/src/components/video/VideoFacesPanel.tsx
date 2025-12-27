@@ -23,6 +23,16 @@ interface VideoFacesPanelProps {
     isCollapsed?: boolean;
 }
 
+type ApiError = {
+    response?: {
+        status?: number;
+        data?: {
+            detail?: string;
+        };
+    };
+    message?: string;
+};
+
 function formatTime(ms: number): string {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
@@ -60,6 +70,10 @@ export function VideoFacesPanel({
     const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
     const [processingStatus, setProcessingStatus] = useState<string | null>(null);
 
+    const getApiErrorMessage = (err: unknown, fallback: string) => {
+        return (err as ApiError)?.response?.data?.detail || (err as ApiError)?.message || fallback;
+    };
+
     // Generate video ID from path if not provided
     const effectiveVideoId = videoId || `video_${btoa(videoPath).slice(0, 16)}`;
 
@@ -84,13 +98,14 @@ export function VideoFacesPanel({
                     setPeople(response.people || []);
                     setProcessingStatus('completed');
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 // 404 means video hasn't been processed
-                if (err.response?.status === 404 || err.response?.data?.detail?.includes('not found')) {
+                const apiError = err as ApiError;
+                if (apiError.response?.status === 404 || apiError.response?.data?.detail?.includes('not found')) {
                     setProcessingStatus('not_processed');
                     setPeople([]);
                 } else {
-                    setError(err.message || 'Failed to load video faces');
+                    setError(getApiErrorMessage(err, 'Failed to load video faces'));
                 }
             } finally {
                 setLoading(false);
@@ -125,8 +140,8 @@ export function VideoFacesPanel({
 
             // Stop polling after 5 minutes
             setTimeout(() => clearInterval(pollInterval), 300000);
-        } catch (err: any) {
-            setError(err.message || 'Failed to process video');
+        } catch (err: unknown) {
+            setError(getApiErrorMessage(err, 'Failed to process video'));
             setProcessingStatus('not_processed');
         }
     };

@@ -395,7 +395,15 @@ export function PhotoSearchProvider({
         }
       }
     },
-    [CACHE_DURATION, LIMIT, endSearch, recordApiCall, recordCacheHit, startSearch]
+    [
+      CACHE_DURATION,
+      LIMIT,
+      endSearch,
+      recordApiCall,
+      recordCacheHit,
+      sourceFilter,
+      startSearch,
+    ]
   );
 
   const loadMore = useCallback(() => {
@@ -468,7 +476,14 @@ export function PhotoSearchProvider({
       // Only re-search if we've done the initial fetch
       doSearch(debouncedSearchQuery);
     }
-  }, [debouncedSearchQuery, searchMode, sortBy, typeFilter, sourceFilter]);
+  }, [
+    debouncedSearchQuery,
+    doSearch,
+    searchMode,
+    sortBy,
+    typeFilter,
+    sourceFilter,
+  ]);
 
   const value: PhotoSearchContextType = {
     photos,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 /**
  * State representing the detected platform capabilities.
@@ -21,17 +21,18 @@ interface PlatformState {
  * Useful for adaptive layouts that need to switch between Floating/Notch/Mobile modes.
  */
 export function usePlatformDetect(): PlatformState {
-  const [state, setState] = useState<PlatformState>({
-    isDesktopApp: false,
-    isMobile: false,
-    hasNotch: false,
-  });
+  const [state] = useState<PlatformState>(() => {
+    if (typeof window === 'undefined') {
+      return {
+        isDesktopApp: false,
+        isMobile: false,
+        hasNotch: false,
+      };
+    }
 
-  useEffect(() => {
     // 1. Detect Tauri (Desktop App)
-    // Tauri injects `__TAURI__` or similar into window, but standard check is:
-    // @ts-ignore
-    const isTauri = !!window.__TAURI__;
+    // Tauri injects `__TAURI__` or similar into window.
+    const isTauri = !!(window as Window & { __TAURI__?: unknown }).__TAURI__;
 
     // 2. Detect Mobile
     // Simple check for touch capability or width
@@ -41,20 +42,14 @@ export function usePlatformDetect(): PlatformState {
       ) || window.innerWidth < 768;
 
     // 3. Detect Notch (Simplified initial check)
-    // We can refine this if we have the useNotch hook's logic,
-    // but typically "hasNotch" is true if it's a desktop app on macOS (we'll assume for now)
-    // or if specific CSS environment variables are present.
-    // For now, if it's the desktop app, we assume it *might* have a notch
-    // until we get the specific `useNotch` data.
-    // Ideally, this boolean should check actual notch existence.
     const hasNotchCandidate = isTauri;
 
-    setState({
+    return {
       isDesktopApp: isTauri,
       isMobile: isMobileDevice,
       hasNotch: hasNotchCandidate,
-    });
-  }, []);
+    };
+  });
 
   return state;
 }
