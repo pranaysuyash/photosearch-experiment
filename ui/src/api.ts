@@ -9,10 +9,7 @@ let serverConfigCache: {
   promise: Promise<unknown> | null;
 } = { value: null, timestamp: 0, promise: null };
 
-// Module-level caches to avoid mutating the exported api object with `any`
-let signedUrlEnabledCache: boolean | null = null;
-let signedUrlEnabledCacheExpires = 0;
-const tokenCache = new Map<string, { token: string; expiresAt: number }>();
+type SignedUrlCacheEntry = { token: string; expiresAt: number };
 const favoriteCache = new Map<
   string,
   { is_favorited: boolean; expiresAt: number }
@@ -332,6 +329,62 @@ export interface SimilarFacesResult {
   success: boolean;
 }
 
+export interface FaceAttributeSearchRequest {
+  min_age?: number;
+  max_age?: number;
+  emotions?: string[];
+  emotion?: string;
+  gender?: string;
+  pose_type?: string;
+  min_quality?: number;
+  min_confidence?: number;
+  min_age_confidence?: number;
+  min_emotion_confidence?: number;
+  min_pose_confidence?: number;
+  min_gender_confidence?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface FaceAttributeMatch {
+  detection_id: string;
+  photo_path: string;
+  bounding_box: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null;
+  cluster_id?: string | null;
+  label?: string | null;
+  confidence?: number | null;
+  quality_score?: number | null;
+  overall_quality?: number | null;
+  age_estimate?: number | null;
+  age_confidence?: number | null;
+  emotion?: string | null;
+  emotion_confidence?: number | null;
+  pose_type?: string | null;
+  pose_confidence?: number | null;
+  gender?: string | null;
+  gender_confidence?: number | null;
+  lighting_score?: number | null;
+  occlusion_score?: number | null;
+  resolution_score?: number | null;
+}
+
+export interface FaceAttributeSearchResult {
+  photos: Array<{
+    photo_path: string;
+    match_count: number;
+    faces: FaceAttributeMatch[];
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  success: boolean;
+}
+
 export interface ClusterQuality {
   cluster_id: string;
   label: string;
@@ -395,6 +448,10 @@ export const api = {
    * headers/status/etc.
    */
   http: apiClient,
+  // Cache for signed URL support (used by tests to reset state).
+  _tokenCache: new Map<string, SignedUrlCacheEntry>(),
+  _signedUrlEnabledCache: null as boolean | null,
+  _signedUrlEnabledCacheExpires: 0,
 
   // Low-level helpers that resolve to `response.data` (payload-first ergonomics).
   get: async <T = unknown>(url: string, config?: AxiosRequestConfig) => {
@@ -652,34 +709,34 @@ export const api = {
     }
 
     // Resolve whether server supports signed URLs (cache for 30s)
-    if (signedUrlEnabledCache === null) {
+    if (api._signedUrlEnabledCache === null) {
       try {
         const cfg = await api.getServerConfig();
-        signedUrlEnabledCache = Boolean(
+        api._signedUrlEnabledCache = Boolean(
           (cfg as Record<string, unknown>)?.signed_url_enabled
         );
-        signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        api._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
       } catch {
-        signedUrlEnabledCache = false;
-        signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+        api._signedUrlEnabledCache = false;
+        api._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
       }
-    } else if (Date.now() > signedUrlEnabledCacheExpires) {
+    } else if (Date.now() > api._signedUrlEnabledCacheExpires) {
       // Refresh cache asynchronously (don't block); start refresh but proceed with current value
       (async () => {
         try {
           const cfg = await api.getServerConfig();
-          signedUrlEnabledCache = Boolean(
+          api._signedUrlEnabledCache = Boolean(
             (cfg as Record<string, unknown>)?.signed_url_enabled
           );
-          signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+          api._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
         } catch {
-          signedUrlEnabledCache = signedUrlEnabledCache || false;
-          signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
+          api._signedUrlEnabledCache = api._signedUrlEnabledCache || false;
+          api._signedUrlEnabledCacheExpires = Date.now() + 30 * 1000;
         }
       })();
     }
 
-    const signedEnabled = Boolean(signedUrlEnabledCache);
+    const signedEnabled = Boolean(api._signedUrlEnabledCache);
     if (!signedEnabled) {
       // Signed URLs are disabled, fall back to direct path
       return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
@@ -688,7 +745,7 @@ export const api = {
     }
 
     // If we already have a cached token that is still valid, return it
-    const existing = tokenCache.get(path);
+    const existing = api._tokenCache.get(path);
     if (existing && existing.expiresAt > Date.now()) {
       return `${API_BASE}/image/thumbnail?token=${encodeURIComponent(
         existing.token
@@ -706,7 +763,7 @@ export const api = {
 
       if (token) {
         const expireMs = expiresIn ? expiresIn * 1000 : 60 * 60 * 1000;
-        tokenCache.set(path, {
+        api._tokenCache.set(path, {
           token,
           expiresAt: Date.now() + expireMs,
         });
@@ -1761,6 +1818,14 @@ export const api = {
   getFacesInPhoto: async (path: string) => {
     const res = await apiClient.get(
       `/api/photos/${encodeURIComponent(path)}/faces`
+    );
+    return res.data;
+  },
+
+  searchPhotosByFaceAttributes: async (payload: FaceAttributeSearchRequest) => {
+    const res = await apiClient.post(
+      '/api/photos/by-face-attributes',
+      payload
     );
     return res.data;
   },

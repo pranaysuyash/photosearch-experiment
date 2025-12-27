@@ -29,6 +29,18 @@ class FaceDetection:
     bounding_box: Dict[str, float]  # {x, y, width, height}
     embedding: Optional[List[float]] = None  # Face embedding vector
     quality_score: Optional[float] = None  # 0-1 quality score
+    age_estimate: Optional[float] = None
+    age_confidence: Optional[float] = None
+    emotion: Optional[str] = None
+    emotion_confidence: Optional[float] = None
+    pose_type: Optional[str] = None
+    pose_confidence: Optional[float] = None
+    gender: Optional[str] = None
+    gender_confidence: Optional[float] = None
+    lighting_score: Optional[float] = None
+    occlusion_score: Optional[float] = None
+    resolution_score: Optional[float] = None
+    overall_quality: Optional[float] = None
     created_at: Optional[str] = None
 
 
@@ -242,6 +254,18 @@ class FaceClusteringDB:
         bounding_box: Dict[str, float],
         embedding: Optional[List[float]] = None,
         quality_score: Optional[float] = None,
+        age_estimate: Optional[float] = None,
+        age_confidence: Optional[float] = None,
+        emotion: Optional[str] = None,
+        emotion_confidence: Optional[float] = None,
+        pose_type: Optional[str] = None,
+        pose_confidence: Optional[float] = None,
+        gender: Optional[str] = None,
+        gender_confidence: Optional[float] = None,
+        lighting_score: Optional[float] = None,
+        occlusion_score: Optional[float] = None,
+        resolution_score: Optional[float] = None,
+        overall_quality: Optional[float] = None,
     ) -> str:
         """Add a face detection to the database."""
         detection_id = f"face_{hashlib.md5(f'{photo_path}_{json.dumps(bounding_box)}'.encode()).hexdigest()}"
@@ -249,8 +273,26 @@ class FaceClusteringDB:
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.execute(
                 """
-                INSERT INTO face_detections (detection_id, photo_path, bounding_box, embedding, quality_score)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO face_detections (
+                    detection_id,
+                    photo_path,
+                    bounding_box,
+                    embedding,
+                    quality_score,
+                    age_estimate,
+                    age_confidence,
+                    emotion,
+                    emotion_confidence,
+                    pose_type,
+                    pose_confidence,
+                    gender,
+                    gender_confidence,
+                    lighting_score,
+                    occlusion_score,
+                    resolution_score,
+                    overall_quality
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
                 (
                     detection_id,
@@ -258,6 +300,18 @@ class FaceClusteringDB:
                     json.dumps(bounding_box),
                     json.dumps(embedding) if embedding else None,
                     quality_score,
+                    age_estimate,
+                    age_confidence,
+                    emotion,
+                    emotion_confidence,
+                    pose_type,
+                    pose_confidence,
+                    gender,
+                    gender_confidence,
+                    lighting_score,
+                    occlusion_score,
+                    resolution_score,
+                    overall_quality if overall_quality is not None else quality_score,
                 ),
             )
 
@@ -589,6 +643,18 @@ class FaceClusteringDB:
                     bounding_box=face.bounding_box,
                     embedding=face.embedding,
                     quality_score=face.quality_score,
+                    age_estimate=face.age_estimate,
+                    age_confidence=face.age_confidence,
+                    emotion=face.emotion,
+                    emotion_confidence=face.emotion_confidence,
+                    pose_type=face.pose_type,
+                    pose_confidence=face.pose_confidence,
+                    gender=face.gender,
+                    gender_confidence=face.gender_confidence,
+                    lighting_score=face.lighting_score,
+                    occlusion_score=face.occlusion_score,
+                    resolution_score=face.resolution_score,
+                    overall_quality=face.overall_quality,
                 )
                 detection_ids.append(detection_id)
 
@@ -2911,6 +2977,167 @@ class FaceClusteringDB:
                 for row in rows
             ]
 
+    def search_photos_by_face_attributes(
+        self,
+        min_age: Optional[int] = None,
+        max_age: Optional[int] = None,
+        emotions: Optional[List[str]] = None,
+        gender: Optional[str] = None,
+        pose_type: Optional[str] = None,
+        min_quality: Optional[float] = None,
+        min_confidence: Optional[float] = None,
+        min_age_confidence: Optional[float] = None,
+        min_emotion_confidence: Optional[float] = None,
+        min_pose_confidence: Optional[float] = None,
+        min_gender_confidence: Optional[float] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Search photos by face attributes (age, emotion, pose, gender, quality).
+
+        Returns photos with matching face detections and the matched faces.
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            conditions: List[str] = []
+            params: List[Any] = []
+
+            if min_age is not None:
+                conditions.append("fd.age_estimate >= ?")
+                params.append(min_age)
+            if max_age is not None:
+                conditions.append("fd.age_estimate <= ?")
+                params.append(max_age)
+            if emotions:
+                placeholders = ",".join("?" * len(emotions))
+                conditions.append(f"fd.emotion IN ({placeholders})")
+                params.extend(emotions)
+            if gender:
+                conditions.append("fd.gender = ?")
+                params.append(gender)
+            if pose_type:
+                conditions.append("fd.pose_type = ?")
+                params.append(pose_type)
+            if min_quality is not None:
+                conditions.append("COALESCE(fd.overall_quality, fd.quality_score, 0) >= ?")
+                params.append(min_quality)
+            if min_confidence is not None:
+                conditions.append("COALESCE(ppa.confidence, 1.0) >= ?")
+                params.append(min_confidence)
+            if min_age_confidence is not None:
+                conditions.append("fd.age_confidence >= ?")
+                params.append(min_age_confidence)
+            if min_emotion_confidence is not None:
+                conditions.append("fd.emotion_confidence >= ?")
+                params.append(min_emotion_confidence)
+            if min_pose_confidence is not None:
+                conditions.append("fd.pose_confidence >= ?")
+                params.append(min_pose_confidence)
+            if min_gender_confidence is not None:
+                conditions.append("fd.gender_confidence >= ?")
+                params.append(min_gender_confidence)
+
+            conditions.append("(fc.hidden = 0 OR ppa.cluster_id IS NULL)")
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+            total_row = conn.execute(
+                f"""
+                SELECT COUNT(DISTINCT fd.photo_path) AS total
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE {where_clause}
+            """,
+                params,
+            ).fetchone()
+
+            total = total_row["total"] if total_row else 0
+
+            photo_rows = conn.execute(
+                f"""
+                SELECT DISTINCT fd.photo_path
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE {where_clause}
+                ORDER BY fd.photo_path
+                LIMIT ? OFFSET ?
+            """,
+                params + [limit, offset],
+            ).fetchall()
+
+            photo_paths = [row["photo_path"] for row in photo_rows]
+            if not photo_paths:
+                return {"photos": [], "total": total, "limit": limit, "offset": offset}
+
+            placeholders = ",".join("?" * len(photo_paths))
+            detail_rows = conn.execute(
+                f"""
+                SELECT
+                    fd.detection_id,
+                    fd.photo_path,
+                    fd.bounding_box,
+                    ppa.cluster_id,
+                    ppa.confidence,
+                    fd.quality_score,
+                    fd.overall_quality,
+                    fd.age_estimate,
+                    fd.age_confidence,
+                    fd.emotion,
+                    fd.emotion_confidence,
+                    fd.pose_type,
+                    fd.pose_confidence,
+                    fd.gender,
+                    fd.gender_confidence,
+                    fd.lighting_score,
+                    fd.occlusion_score,
+                    fd.resolution_score,
+                    fc.label
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE {where_clause}
+                AND fd.photo_path IN ({placeholders})
+                ORDER BY fd.photo_path
+            """,
+                params + photo_paths,
+            ).fetchall()
+
+            grouped: Dict[str, List[Dict[str, Any]]] = {}
+            for row in detail_rows:
+                grouped.setdefault(row["photo_path"], []).append(
+                    {
+                        "detection_id": row["detection_id"],
+                        "photo_path": row["photo_path"],
+                        "bounding_box": json.loads(row["bounding_box"]) if row["bounding_box"] else None,
+                        "cluster_id": row["cluster_id"],
+                        "label": row["label"],
+                        "confidence": row["confidence"],
+                        "quality_score": row["quality_score"],
+                        "overall_quality": row["overall_quality"],
+                        "age_estimate": row["age_estimate"],
+                        "age_confidence": row["age_confidence"],
+                        "emotion": row["emotion"],
+                        "emotion_confidence": row["emotion_confidence"],
+                        "pose_type": row["pose_type"],
+                        "pose_confidence": row["pose_confidence"],
+                        "gender": row["gender"],
+                        "gender_confidence": row["gender_confidence"],
+                        "lighting_score": row["lighting_score"],
+                        "occlusion_score": row["occlusion_score"],
+                        "resolution_score": row["resolution_score"],
+                    }
+                )
+
+            photos = [
+                {"photo_path": path, "faces": grouped.get(path, []), "match_count": len(grouped.get(path, []))}
+                for path in photo_paths
+            ]
+
+            return {"photos": photos, "total": total, "limit": limit, "offset": offset}
+
     def search_photos_by_people(
         self, query: str, mode: str = "and", limit: int = 100, offset: int = 0
     ) -> Dict[str, Any]:
@@ -3426,6 +3653,205 @@ class FaceClusteringDB:
 
             logger.warning(f"Deleted ALL face data: {stats}")
             return stats
+
+    # ===================================================================
+    # Phase 1: Performance-Optimized Face Service Support Methods
+    # ===================================================================
+
+    def get_all_cluster_prototypes(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Get all cluster prototypes with embeddings for FAISS index initialization.
+
+        Returns:
+            Dict mapping cluster_id to {"embedding": np.ndarray, "label": str}
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Check if using legacy schema
+            if self._is_legacy_schema(conn):
+                # Legacy schema doesn't have prototypes, return empty
+                logger.warning("Legacy schema detected, no prototypes available")
+                return {}
+
+            rows = conn.execute(
+                """
+                SELECT cluster_id, label, prototype_embedding
+                FROM face_clusters
+                WHERE (hidden = 0 OR hidden IS NULL)
+                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                AND prototype_embedding IS NOT NULL
+                """
+            ).fetchall()
+
+            prototypes = {}
+            for row in rows:
+                try:
+                    # Convert BLOB to numpy array
+                    embedding = np.frombuffer(row["prototype_embedding"], dtype=np.float32)
+                    prototypes[row["cluster_id"]] = {
+                        "embedding": embedding,
+                        "label": row["label"],
+                    }
+                except Exception as e:
+                    logger.warning(f"Failed to load prototype for {row['cluster_id']}: {e}")
+
+            return prototypes
+
+    def get_face_detection(self, detection_id: str) -> Optional[FaceDetection]:
+        """
+        Get face detection by ID.
+
+        Args:
+            detection_id: Face detection ID
+
+        Returns:
+            FaceDetection object or None if not found
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Check if using legacy schema
+            if self._is_legacy_schema(conn):
+                logger.warning("Legacy schema detected, face detection retrieval not supported")
+                return None
+
+            row = conn.execute(
+                """
+                SELECT detection_id, photo_path, bounding_box, embedding, quality_score, created_at
+                FROM face_detections
+                WHERE detection_id = ?
+                """,
+                (detection_id,),
+            ).fetchone()
+
+            if not row:
+                return None
+
+            # Parse embedding if present
+            embedding = None
+            if row["embedding"]:
+                try:
+                    if isinstance(row["embedding"], bytes):
+                        embedding = np.frombuffer(row["embedding"], dtype=np.float32).tolist()
+                    elif isinstance(row["embedding"], str):
+                        embedding = json.loads(row["embedding"])
+                    else:
+                        embedding = list(row["embedding"])
+                except Exception as e:
+                    logger.warning(f"Failed to parse embedding for {detection_id}: {e}")
+
+            # Parse bounding box
+            bounding_box = {}
+            if row["bounding_box"]:
+                try:
+                    bounding_box = (
+                        json.loads(row["bounding_box"]) if isinstance(row["bounding_box"], str) else row["bounding_box"]
+                    )
+                except Exception:
+                    bounding_box = {}
+
+            return FaceDetection(
+                detection_id=row["detection_id"],
+                photo_path=row["photo_path"],
+                bounding_box=bounding_box,
+                embedding=embedding,
+                quality_score=row["quality_score"],
+                created_at=row["created_at"],
+            )
+
+    def get_faces_for_cluster(self, cluster_id: str) -> List[FaceDetection]:
+        """
+        Get all face detections for a cluster.
+
+        Args:
+            cluster_id: Cluster ID
+
+        Returns:
+            List of FaceDetection objects
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            # Check if using legacy schema
+            if self._is_legacy_schema(conn):
+                logger.warning("Legacy schema detected, face retrieval not supported")
+                return []
+
+            rows = conn.execute(
+                """
+                SELECT fd.detection_id, fd.photo_path, fd.bounding_box, fd.embedding, fd.quality_score, fd.created_at
+                FROM face_detections fd
+                JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                WHERE ppa.cluster_id = ?
+                """,
+                (cluster_id,),
+            ).fetchall()
+
+            faces = []
+            for row in rows:
+                # Parse embedding if present
+                embedding = None
+                if row["embedding"]:
+                    try:
+                        if isinstance(row["embedding"], bytes):
+                            embedding = np.frombuffer(row["embedding"], dtype=np.float32).tolist()
+                        elif isinstance(row["embedding"], str):
+                            embedding = json.loads(row["embedding"])
+                        else:
+                            embedding = list(row["embedding"])
+                    except Exception as e:
+                        logger.warning(f"Failed to parse embedding for {row['detection_id']}: {e}")
+
+                # Parse bounding box
+                bounding_box = {}
+                if row["bounding_box"]:
+                    try:
+                        bounding_box = (
+                            json.loads(row["bounding_box"])
+                            if isinstance(row["bounding_box"], str)
+                            else row["bounding_box"]
+                        )
+                    except Exception:
+                        bounding_box = {}
+
+                faces.append(
+                    FaceDetection(
+                        detection_id=row["detection_id"],
+                        photo_path=row["photo_path"],
+                        bounding_box=bounding_box,
+                        embedding=embedding,
+                        quality_score=row["quality_score"],
+                        created_at=row["created_at"],
+                    )
+                )
+
+            return faces
+
+    def get_cluster_count(self) -> int:
+        """
+        Get total number of clusters.
+
+        Returns:
+            Number of clusters (excluding hidden ones)
+        """
+        with sqlite3.connect(str(self.db_path)) as conn:
+            # Check if using legacy schema
+            if self._is_legacy_schema(conn):
+                # Use legacy clusters table
+                result = conn.execute("SELECT COUNT(*) as count FROM clusters").fetchone()
+                return result[0] if result else 0
+
+            result = conn.execute(
+                """
+                SELECT COUNT(*) as count
+                FROM face_clusters
+                WHERE (hidden = 0 OR hidden IS NULL)
+                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                """
+            ).fetchone()
+
+            return result[0] if result else 0
 
 
 def get_face_clustering_db(db_path: Path) -> FaceClusteringDB:

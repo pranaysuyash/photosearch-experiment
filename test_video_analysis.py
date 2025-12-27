@@ -21,13 +21,13 @@ def test_video_analyzer_database():
     """Test the VideoAnalyzer database initialization and basic operations."""
     print("🎬 Testing Video Analysis Database...")
 
+    from src.video_analysis import VideoAnalyzer
+
+    # Create temporary database
+    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
+        db_path = tmp_db.name
+
     try:
-        from src.video_analysis import VideoAnalyzer
-
-        # Create temporary database
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp_db:
-            db_path = tmp_db.name
-
         with tempfile.TemporaryDirectory() as cache_dir:
             # Initialize analyzer
             analyzer = VideoAnalyzer(db_path=db_path, cache_dir=cache_dir)
@@ -37,10 +37,12 @@ def test_video_analyzer_database():
             conn.row_factory = sqlite3.Row
 
             # Check if tables exist
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 SELECT name FROM sqlite_master
                 WHERE type='table' AND name IN ('video_metadata', 'video_keyframes', 'video_scenes', 'video_ocr')
-            """)
+                """
+            )
             tables = [row["name"] for row in cursor.fetchall()]
 
             expected_tables = [
@@ -63,111 +65,83 @@ def test_video_analyzer_database():
             assert len(results) == 0
 
             conn.close()
-
-        # Cleanup
+    finally:
         os.unlink(db_path)
 
-        print("✅ Database tests passed!")
-        return True
-
-    except Exception as e:
-        print(f"❌ Database test failed: {str(e)}")
-        return False
+    print("✅ Database tests passed!")
 
 
 def test_video_analysis_imports():
     """Test that all required imports work correctly."""
     print("📦 Testing Video Analysis Imports...")
 
+    # Test optional dependencies
     try:
-        # Test optional dependencies
-        try:
-            import cv2  # noqa: F401
+        import cv2  # noqa: F401
 
-            print("✅ OpenCV available")
-        except ImportError:
-            print("⚠️  OpenCV not available - will use ffmpeg fallback")
+        print("✅ OpenCV available")
+    except ImportError:
+        print("⚠️  OpenCV not available - will use ffmpeg fallback")
 
-        try:
-            import ffmpeg  # noqa: F401
+    try:
+        import ffmpeg  # noqa: F401
 
-            print("✅ ffmpeg-python available")
-        except ImportError:
-            print("❌ ffmpeg-python not available - video processing will fail")
-            return False
+        print("✅ ffmpeg-python available")
+    except ImportError:
+        raise AssertionError("ffmpeg-python not available - video processing will fail")
 
-        try:
-            from PIL import Image  # noqa: F401
+    try:
+        from PIL import Image  # noqa: F401
 
-            print("✅ PIL available")
-        except ImportError:
-            print("❌ PIL not available - image processing will fail")
-            return False
+        print("✅ PIL available")
+    except ImportError:
+        raise AssertionError("PIL not available - image processing will fail")
 
-        print("✅ Import tests passed!")
-        return True
-
-    except Exception as e:
-        print(f"❌ Import test failed: {str(e)}")
-        return False
+    print("✅ Import tests passed!")
 
 
 def test_api_endpoints():
     """Test that video analysis API endpoints are properly defined."""
     print("🌐 Testing API Endpoints...")
 
-    try:
-        # Import the main server module to check endpoints
-        sys.path.insert(0, str(project_root / "server"))
+    # Import the server components to check analyzer availability
+    sys.path.insert(0, str(project_root / "server"))
 
-        # Check if video analyzer is initialized
-        from server.main import video_analyzer
+    # Check if video analyzer is initialized
+    from server.core.components import video_analyzer
 
-        # Test that the analyzer exists
-        assert video_analyzer is not None, "Video analyzer not initialized"
+    # Test that the analyzer exists
+    assert video_analyzer is not None, "Video analyzer not initialized"
 
-        print("✅ API endpoint tests passed!")
-        return True
-
-    except Exception as e:
-        print(f"❌ API endpoint test failed: {str(e)}")
-        return False
+    print("✅ API endpoint tests passed!")
 
 
 def test_ui_component():
     """Test that the UI component can be imported."""
     print("🎨 Testing UI Component...")
 
-    try:
-        # Check if the component file exists and is valid TypeScript
-        component_path = project_root / "ui" / "src" / "components" / "video" / "VideoAnalysisPanel.tsx"
+    # Check if the component file exists and is valid TypeScript
+    component_path = project_root / "ui" / "src" / "components" / "video" / "VideoAnalysisPanel.tsx"
 
-        if not component_path.exists():
-            print("❌ VideoAnalysisPanel.tsx not found")
-            return False
+    if not component_path.exists():
+        raise AssertionError("VideoAnalysisPanel.tsx not found")
 
-        # Read the component file and check for key elements
-        content = component_path.read_text()
+    # Read the component file and check for key elements
+    content = component_path.read_text()
 
-        required_elements = [
-            "VideoAnalysisPanel",
-            "analyzeVideo",
-            "searchVideoContent",
-            "glass.surface",
-            "export default VideoAnalysisPanel",
-        ]
+    required_elements = [
+        "VideoAnalysisPanel",
+        "analyzeVideo",
+        "searchVideoContent",
+        "glass.surface",
+        "export default VideoAnalysisPanel",
+    ]
 
-        for element in required_elements:
-            if element not in content:
-                print(f"❌ Missing required element: {element}")
-                return False
+    for element in required_elements:
+        if element not in content:
+            raise AssertionError(f"Missing required element: {element}")
 
-        print("✅ UI component tests passed!")
-        return True
-
-    except Exception as e:
-        print(f"❌ UI component test failed: {str(e)}")
-        return False
+    print("✅ UI component tests passed!")
 
 
 def main():
@@ -185,8 +159,11 @@ def main():
     total = len(tests)
 
     for test in tests:
-        if test():
+        try:
+            test()
             passed += 1
+        except Exception as e:
+            print(f"❌ {test.__name__} failed: {str(e)}")
         print()  # Add spacing between tests
 
     print(f"📊 Test Results: {passed}/{total} tests passed")

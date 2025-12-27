@@ -52,6 +52,29 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import cv2
 
+try:
+    from server.face_attribute_analyzer import (
+        AdvancedFaceQualityAssessor,
+        FaceAttributeAnalyzer,
+        QualityScores,
+    )
+except Exception:  # pragma: no cover - keep clusterer usable even if helpers missing
+    AdvancedFaceQualityAssessor = None  # type: ignore
+    FaceAttributeAnalyzer = None  # type: ignore
+    QualityScores = None  # type: ignore
+
+if QualityScores is None:
+
+    @dataclass
+    class QualityScores:  # type: ignore[redefinition]
+        blur_score: float
+        lighting_score: float
+        occlusion_score: float
+        pose_score: float
+        resolution_score: float
+        overall_quality: float
+
+
 from src.insightface_compat import patch_insightface_deprecations
 
 # Configure logging
@@ -132,10 +155,21 @@ class FaceDetection:
     quality_score: float
     pose_angles: Dict[str, float]
     blur_score: float
+    lighting_score: Optional[float] = None
+    occlusion_score: Optional[float] = None
+    resolution_score: Optional[float] = None
+    pose_quality_score: Optional[float] = None
+    overall_quality: Optional[float] = None
     face_size: int
     landmarks: List[Tuple[int, int]]
     age_estimate: Optional[float] = None
+    age_confidence: Optional[float] = None
     gender: Optional[str] = None
+    gender_confidence: Optional[float] = None
+    emotion: Optional[str] = None
+    emotion_confidence: Optional[float] = None
+    pose_type: Optional[str] = None
+    pose_confidence: Optional[float] = None
     created_at: Optional[str] = None
 
 
@@ -190,6 +224,10 @@ class EnhancedFaceClusterer:
         self.cache_lock = threading.Lock()
         self.face_cache: Dict[str, FaceDetection] = {}
         self.cluster_cache: Dict[str, FaceCluster] = {}
+
+        # Attribute and quality analysis helpers (lightweight placeholders)
+        self.attribute_analyzer = FaceAttributeAnalyzer() if FaceAttributeAnalyzer else None
+        self.quality_assessor = AdvancedFaceQualityAssessor() if AdvancedFaceQualityAssessor else None
 
         # Model management
         self.face_detector = None
@@ -388,31 +426,52 @@ class EnhancedFaceClusterer:
             return json.loads(decrypted_bytes.decode())
         return json.loads(encrypted_data.decode())
 
-    def _calculate_face_quality(self, face_data: Dict, image_shape: Tuple[int, int]) -> float:
-        """Calculate face quality score based on multiple factors"""
-        quality_score = 0.0
+    def _assess_quality(self, face_crop: np.ndarray, pose_angles: Tuple[float, float, float]) -> "QualityScores":
+        """Assess quality with the advanced assessor when available.
 
-        # Size score (0-30 points)
-        face_size = face_data.get("bbox", [0, 0, 0, 0])[2]  # width
-        size_score = min(30, (face_size / 100) * 30)
-        quality_score += size_score
+        Returns a QualityScores-like object even if the helper module is missing.
+        """
+        if self.quality_assessor:
+            try:
+                return self.quality_assessor.assess(face_crop, pose_angles)
+            except Exception as e:  # pragma: no cover - defensive guard
+                logger.warning(f"Falling back to heuristic quality scoring: {e}")
 
-        # Confidence score (0-40 points)
-        det_score = face_data.get("det_score", 0.0)
-        confidence_score = det_score * 40
-        quality_score += confidence_score
+        # Fallback heuristic roughly aligned with previous implementation
+        pose_penalty = (abs(pose_angles[0]) + abs(pose_angles[1]) + abs(pose_angles[2])) / 270.0
+        pose_score = max(0.0, 1.0 - pose_penalty)
 
-        # Pose score (0-20 points) - more frontal faces get higher scores
-        pose = face_data.get("pose", [0, 0, 0])  # yaw, pitch, roll
-        pose_penalty = sum(abs(angle) for angle in pose) / 90.0
-        pose_score = max(0, 20 - (pose_penalty * 20))
-        quality_score += pose_score
+        # Sharpness proxy using Laplacian variance
+        if face_crop is not None and face_crop.size > 0:
+            gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
+            lap_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+            blur_score = min(1.0, lap_var / 300.0)
+            brightness = float(np.mean(gray) / 255.0)
+            lighting_score = max(0.0, 1.0 - abs(brightness - 0.55) / 0.55)
+            resolution_score = min(1.0, min(gray.shape) / 180.0)
+        else:
+            blur_score = 0.0
+            lighting_score = 0.0
+            resolution_score = 0.0
 
-        # Sharpness estimation (0-10 points) - simplified
-        sharpness_score = 10.0  # Would need actual image analysis
-        quality_score += sharpness_score
+        occlusion_score = 1.0  # Unknown without dedicated model
+        overall = (
+            blur_score * 0.3
+            + lighting_score * 0.25
+            + occlusion_score * 0.2
+            + pose_score * 0.15
+            + resolution_score * 0.1
+        )
 
-        return min(100.0, quality_score)
+        # Construct a duck-typed QualityScores object
+        return QualityScores(  # type: ignore[arg-type]
+            blur_score=blur_score,
+            lighting_score=lighting_score,
+            occlusion_score=occlusion_score,
+            pose_score=pose_score,
+            resolution_score=resolution_score,
+            overall_quality=float(min(1.0, overall)),
+        )
 
     def detect_faces(self, image_path: str) -> List[FaceDetection]:
         """
@@ -462,30 +521,66 @@ class EnhancedFaceClusterer:
                 if face_width > MAX_FACE_SIZE or face_height > MAX_FACE_SIZE:
                     continue  # Skip very large faces (likely false positives)
 
-                # Calculate quality score
-                quality_score = self._calculate_face_quality(face, img.shape)
+                # Calculate crop bounds safely
+                x0, y0 = int(max(0, bbox[0])), int(max(0, bbox[1]))
+                x1, y1 = int(min(img.shape[1], bbox[2])), int(min(img.shape[0], bbox[3]))
+                width_int = max(0, x1 - x0)
+                height_int = max(0, y1 - y0)
+                face_crop = img[y0:y1, x0:x1] if y1 > y0 and x1 > x0 else None
+
+                pose_values = face.get("pose", [0, 0, 0])
+                pose_angles = (
+                    float(pose_values[0]) if len(pose_values) > 0 else 0.0,
+                    float(pose_values[1]) if len(pose_values) > 1 else 0.0,
+                    float(pose_values[2]) if len(pose_values) > 2 else 0.0,
+                )
+
+                # Quality assessment
+                quality_scores = self._assess_quality(face_crop, pose_angles)
+
+                # Attribute analysis
+                if self.attribute_analyzer:
+                    attributes = self.attribute_analyzer.analyze(
+                        face_crop,
+                        pose_angles,
+                        raw_age=face.get("age"),
+                        raw_gender=face.get("gender"),
+                    )
+                else:
+                    attributes = None
 
                 # Create face detection object
                 face_detection = FaceDetection(
                     id=f"{hashlib.md5(f'{image_path}_{i}'.encode()).hexdigest()}",
                     photo_path=image_path,
-                    bbox_x=int(bbox[0]),
-                    bbox_y=int(bbox[1]),
-                    bbox_width=int(face_width),
-                    bbox_height=int(face_height),
+                    bbox_x=x0,
+                    bbox_y=y0,
+                    bbox_width=width_int,
+                    bbox_height=height_int,
                     confidence=float(face.get("det_score", 0.0)),
                     embedding=face["embedding"].tolist(),
-                    quality_score=quality_score,
+                    quality_score=quality_scores.overall_quality,
                     pose_angles={
-                        "yaw": float(face.get("pose", [0, 0, 0])[0]),
-                        "pitch": float(face.get("pose", [0, 0, 0])[1]),
-                        "roll": float(face.get("pose", [0, 0, 0])[2]),
+                        "yaw": pose_angles[0],
+                        "pitch": pose_angles[1],
+                        "roll": pose_angles[2],
                     },
-                    blur_score=0.0,  # Would need additional analysis
-                    face_size=max(face_width, face_height),
+                    blur_score=quality_scores.blur_score,
+                    lighting_score=quality_scores.lighting_score,
+                    occlusion_score=quality_scores.occlusion_score,
+                    resolution_score=quality_scores.resolution_score,
+                    pose_quality_score=quality_scores.pose_score,
+                    overall_quality=quality_scores.overall_quality,
+                    face_size=max(width_int, height_int),
                     landmarks=[(int(point[0]), int(point[1])) for point in face.get("kps", [])],
-                    age_estimate=face.get("age"),
-                    gender=face.get("gender"),
+                    age_estimate=attributes.age if attributes else face.get("age"),
+                    age_confidence=attributes.age_confidence if attributes else None,
+                    gender=attributes.gender if attributes else face.get("gender"),
+                    gender_confidence=attributes.gender_confidence if attributes else None,
+                    emotion=attributes.emotion if attributes else None,
+                    emotion_confidence=attributes.emotion_confidence if attributes else None,
+                    pose_type=attributes.pose_type if attributes else None,
+                    pose_confidence=attributes.pose_confidence if attributes else None,
                     created_at=datetime.now().isoformat(),
                 )
 
@@ -600,8 +695,11 @@ class EnhancedFaceClusterer:
                         """
                         INSERT OR REPLACE INTO face_detections
                         (id, photo_path, embedding, bbox_x, bbox_y, bbox_width, bbox_height,
-                         confidence, face_size, quality_score, pose_angles, blur_score, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                         confidence, face_size, quality_score, pose_angles, blur_score,
+                         lighting_score, occlusion_score, resolution_score, pose_quality_score, overall_quality,
+                         age_estimate, age_confidence, gender, gender_confidence, emotion, emotion_confidence,
+                         pose_type, pose_confidence, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                         (
                             face.id,
@@ -616,6 +714,19 @@ class EnhancedFaceClusterer:
                             face.quality_score,
                             json.dumps(face.pose_angles),
                             face.blur_score,
+                            face.lighting_score,
+                            face.occlusion_score,
+                            face.resolution_score,
+                            face.pose_quality_score,
+                            face.overall_quality,
+                            face.age_estimate,
+                            face.age_confidence,
+                            face.gender,
+                            face.gender_confidence,
+                            face.emotion,
+                            face.emotion_confidence,
+                            face.pose_type,
+                            face.pose_confidence,
                             face.created_at,
                         ),
                     )

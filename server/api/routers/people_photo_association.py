@@ -159,8 +159,23 @@ async def get_faces_in_photo(photo_path: str):
 
             rows = conn.execute(
                 """
-                SELECT fd.detection_id, fd.bounding_box, fd.quality_score,
-                       ppa.cluster_id, fc.label as person_label
+                SELECT fd.detection_id,
+                       fd.bounding_box,
+                       fd.quality_score,
+                       fd.overall_quality,
+                       fd.age_estimate,
+                       fd.age_confidence,
+                       fd.emotion,
+                       fd.emotion_confidence,
+                       fd.pose_type,
+                       fd.pose_confidence,
+                       fd.gender,
+                       fd.gender_confidence,
+                       fd.lighting_score,
+                       fd.occlusion_score,
+                       fd.resolution_score,
+                       ppa.cluster_id,
+                       fc.label as person_label
                 FROM face_detections fd
                 LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
@@ -175,6 +190,18 @@ async def get_faces_in_photo(photo_path: str):
                         "detection_id": row["detection_id"],
                         "bounding_box": json.loads(row["bounding_box"]),
                         "quality_score": row["quality_score"],
+                        "overall_quality": row["overall_quality"],
+                        "age_estimate": row["age_estimate"],
+                        "age_confidence": row["age_confidence"],
+                        "emotion": row["emotion"],
+                        "emotion_confidence": row["emotion_confidence"],
+                        "pose_type": row["pose_type"],
+                        "pose_confidence": row["pose_confidence"],
+                        "gender": row["gender"],
+                        "gender_confidence": row["gender_confidence"],
+                        "lighting_score": row["lighting_score"],
+                        "occlusion_score": row["occlusion_score"],
+                        "resolution_score": row["resolution_score"],
                         "person_id": row["cluster_id"],
                         "person_label": row["person_label"],
                     }

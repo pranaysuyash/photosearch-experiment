@@ -75,6 +75,19 @@ class SchemaExtensions:
                 quality_score REAL DEFAULT 0.0,  -- Image quality assessment
                 pose_angles TEXT NULL,  -- JSON: {yaw, pitch, roll}
                 blur_score REAL DEFAULT 0.0,
+                lighting_score REAL DEFAULT 0.0,
+                occlusion_score REAL DEFAULT 0.0,
+                resolution_score REAL DEFAULT 0.0,
+                pose_quality_score REAL DEFAULT 0.0,
+                overall_quality REAL DEFAULT 0.0,
+                age_estimate INTEGER NULL,
+                age_confidence REAL NULL,
+                emotion TEXT NULL,
+                emotion_confidence REAL NULL,
+                pose_type TEXT NULL,
+                pose_confidence REAL NULL,
+                gender TEXT NULL,
+                gender_confidence REAL NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (cluster_id) REFERENCES face_clusters(id)
             )
@@ -83,6 +96,7 @@ class SchemaExtensions:
         # Create indexes separately
         conn.execute("CREATE INDEX IF NOT EXISTS idx_face_photo_path ON face_detections(photo_path)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_face_cluster ON face_detections(cluster_id)")
+        self._ensure_face_detection_columns(conn)
 
         # Face recognition training data
         conn.execute("""
@@ -99,6 +113,28 @@ class SchemaExtensions:
         """)
 
         conn.execute("CREATE INDEX IF NOT EXISTS idx_training_cluster ON face_training(cluster_id)")
+
+    def _ensure_face_detection_columns(self, conn: sqlite3.Connection) -> None:
+        """Add missing attribute/quality columns to face_detections."""
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(face_detections)").fetchall()}
+        additions = {
+            "lighting_score": "REAL DEFAULT 0.0",
+            "occlusion_score": "REAL DEFAULT 0.0",
+            "resolution_score": "REAL DEFAULT 0.0",
+            "pose_quality_score": "REAL DEFAULT 0.0",
+            "overall_quality": "REAL DEFAULT 0.0",
+            "age_estimate": "INTEGER",
+            "age_confidence": "REAL",
+            "emotion": "TEXT",
+            "emotion_confidence": "REAL",
+            "pose_type": "TEXT",
+            "pose_confidence": "REAL",
+            "gender": "TEXT",
+            "gender_confidence": "REAL",
+        }
+        for name, ddl in additions.items():
+            if name not in columns:
+                conn.execute(f"ALTER TABLE face_detections ADD COLUMN {name} {ddl}")
 
     def _create_enhanced_duplicate_tables(self, conn: sqlite3.Connection) -> None:
         """Enhance existing duplicate detection with more sophisticated features"""

@@ -13,6 +13,7 @@
 - [ ] Add health/status reporting for active detection + embedding backends.
 
 ## Testing & Validation
+- [ ] Complete manual checklist in `FACE_TESTING_CHECKLIST.md` (core workflows, edge cases, perf).
 - [ ] Add tests for detection-only backends with embedding fallback (MediaPipe/YOLO + CLIP/Remote).
 - [ ] Add tests for remote detection/embedding error paths (timeouts, malformed payloads).
 - [ ] Run end-to-end UI workflows for face management with fallback backends enabled.

@@ -26,7 +26,7 @@ class LanceDBStore:
         self.table = None
 
         # Open table if exists
-        if table_name in self.db.table_names():
+        if table_name in self.db.list_tables():
             self.table = self.db.open_table(table_name)
 
     def get_count(self) -> int:
@@ -192,7 +192,7 @@ class LanceDBStore:
 
     def reset(self):
         """Drop the table - destructive!"""
-        if self.table_name in self.db.table_names():
+        if self.table_name in self.db.list_tables():
             self.db.drop_table(self.table_name)
             self.table = None
 

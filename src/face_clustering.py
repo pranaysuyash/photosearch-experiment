@@ -143,8 +143,23 @@ class FaceDetection:
     blur_score: float
     face_size: int
     landmarks: List[Tuple[int, int]]
-    age_estimate: Optional[float] = None
-    gender: Optional[str] = None
+
+    # Enhanced facial attributes (Phase 2: Advanced Intelligence Features)
+    age_estimate: Optional[int] = None
+    age_confidence: Optional[float] = None
+    emotion: Optional[str] = None  # happy, sad, angry, surprised, fearful, disgusted, neutral
+    emotion_confidence: Optional[float] = None
+    pose_type: Optional[str] = None  # frontal, profile, three_quarter
+    pose_confidence: Optional[float] = None
+    gender: Optional[str] = None  # male, female
+    gender_confidence: Optional[float] = None
+
+    # Enhanced quality metrics (Phase 2: Advanced Intelligence Features)
+    lighting_score: Optional[float] = None
+    occlusion_score: Optional[float] = None
+    resolution_score: Optional[float] = None
+    overall_quality: Optional[float] = None
+
     created_at: Optional[str] = None
 
 
@@ -484,7 +499,7 @@ class FaceClusterer:
 
     def detect_faces(self, image_path: str, min_confidence: float = 0.75, min_face_area: int = 1000) -> List[Dict]:
         """
-        Detect faces in an image using InsightFace RetinaFace.
+        Detect faces in an image using InsightFace RetinaFace with enhanced attribute analysis.
 
         Args:
             image_path: Path to image file
@@ -492,7 +507,7 @@ class FaceClusterer:
             min_face_area: Minimum face area in pixels (default 1000)
 
         Returns:
-            List of face detection results with bounding boxes and embeddings
+            List of face detection results with bounding boxes, embeddings, and facial attributes
         """
         backend = getattr(self, "_backend", None)
         if backend is None:
@@ -509,7 +524,13 @@ class FaceClusterer:
 
             embedding_backend = getattr(self, "_embedding_backend", None)
 
-            # Filter by confidence and face size
+            # Initialize attribute analyzer and quality assessor
+            from server.face_attribute_analyzer import FaceAttributeAnalyzer, AdvancedFaceQualityAssessor
+
+            attribute_analyzer = FaceAttributeAnalyzer()
+            quality_assessor = AdvancedFaceQualityAssessor()
+
+            # Filter by confidence and face size, then enhance with attributes
             filtered_results = []
             for r in results:
                 confidence = r.get("confidence", 0)
@@ -517,6 +538,47 @@ class FaceClusterer:
                 face_area = bbox[2] * bbox[3] if len(bbox) == 4 else 0
 
                 if confidence >= min_confidence and face_area >= min_face_area:
+                    # Extract face crop for attribute analysis
+                    x, y, w, h = bbox
+                    padding = int(max(w, h) * 0.2)
+                    x1 = max(0, x - padding)
+                    y1 = max(0, y - padding)
+                    x2 = min(img.shape[1], x + w + padding)
+                    y2 = min(img.shape[0], y + h + padding)
+
+                    face_crop = img[y1:y2, x1:x2]
+                    landmarks = r.get("landmarks")
+
+                    # Analyze facial attributes
+                    try:
+                        attributes = attribute_analyzer.analyze_attributes(face_crop, landmarks)
+                        quality_metrics = quality_assessor.assess_comprehensive_quality(face_crop, landmarks)
+
+                        # Merge attribute data into result
+                        r.update(attributes)
+                        r.update(quality_metrics)
+
+                    except Exception as e:
+                        logger.warning(f"Attribute analysis failed for face in {image_path}: {e}")
+                        # Continue with basic detection if attribute analysis fails
+                        r.update(
+                            {
+                                "age_estimate": None,
+                                "age_confidence": 0.0,
+                                "emotion": "neutral",
+                                "emotion_confidence": 0.0,
+                                "pose_type": "frontal",
+                                "pose_confidence": 0.0,
+                                "gender": None,
+                                "gender_confidence": 0.0,
+                                "lighting_score": 0.5,
+                                "occlusion_score": 0.5,
+                                "resolution_score": 0.5,
+                                "overall_quality": 0.5,
+                            }
+                        )
+
+                    # Handle embeddings
                     if r.get("embedding") is None and embedding_backend is not None:
                         embedding = embedding_backend.embed_bgr(img, bbox)
                         if embedding is not None:
@@ -587,11 +649,11 @@ class FaceClusterer:
 
     def _upsert_face(self, cursor, record: Dict) -> Tuple[int, Optional[int]]:
         """
-        Insert or update a face record, preserving cluster membership.
+        Insert or update a face record with enhanced attributes, preserving cluster membership.
 
         Args:
             cursor: Database cursor
-            record: Face record with image_path, bounding_box, embedding, confidence
+            record: Face record with image_path, bounding_box, embedding, confidence, and attributes
 
         Returns:
             Tuple of (face_id, existing_cluster_id or None)
@@ -611,30 +673,73 @@ class FaceClusterer:
         existing = cursor.fetchone()
 
         if existing:
-            # Update existing face, preserve cluster_id
+            # Update existing face with new attributes, preserve cluster_id
             face_id = existing["id"]
             existing_cluster = existing["cluster_id"]
             cursor.execute(
                 """
                 UPDATE faces
-                SET embedding = ?, confidence = ?, updated_at = CURRENT_TIMESTAMP
+                SET embedding = ?, confidence = ?,
+                    age_estimate = ?, age_confidence = ?,
+                    emotion = ?, emotion_confidence = ?,
+                    pose_type = ?, pose_confidence = ?,
+                    gender = ?, gender_confidence = ?,
+                    lighting_score = ?, occlusion_score = ?,
+                    resolution_score = ?, overall_quality = ?,
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE id = ?
             """,
-                (embedding_blob, record["confidence"], face_id),
+                (
+                    embedding_blob,
+                    record["confidence"],
+                    record.get("age_estimate"),
+                    record.get("age_confidence"),
+                    record.get("emotion"),
+                    record.get("emotion_confidence"),
+                    record.get("pose_type"),
+                    record.get("pose_confidence"),
+                    record.get("gender"),
+                    record.get("gender_confidence"),
+                    record.get("lighting_score"),
+                    record.get("occlusion_score"),
+                    record.get("resolution_score"),
+                    record.get("overall_quality"),
+                    face_id,
+                ),
             )
-            logger.debug(f"Updated existing face {face_id}, cluster={existing_cluster}")
+            logger.debug(f"Updated existing face {face_id} with attributes, cluster={existing_cluster}")
             return face_id, existing_cluster
         else:
-            # Insert new face
+            # Insert new face with attributes
             cursor.execute(
                 """
-                INSERT INTO faces (image_path, bounding_box, embedding, confidence)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO faces (image_path, bounding_box, embedding, confidence,
+                                 age_estimate, age_confidence, emotion, emotion_confidence,
+                                 pose_type, pose_confidence, gender, gender_confidence,
+                                 lighting_score, occlusion_score, resolution_score, overall_quality)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-                (record["image_path"], bbox_json, embedding_blob, record["confidence"]),
+                (
+                    record["image_path"],
+                    bbox_json,
+                    embedding_blob,
+                    record["confidence"],
+                    record.get("age_estimate"),
+                    record.get("age_confidence"),
+                    record.get("emotion"),
+                    record.get("emotion_confidence"),
+                    record.get("pose_type"),
+                    record.get("pose_confidence"),
+                    record.get("gender"),
+                    record.get("gender_confidence"),
+                    record.get("lighting_score"),
+                    record.get("occlusion_score"),
+                    record.get("resolution_score"),
+                    record.get("overall_quality"),
+                ),
             )
             face_id = cursor.lastrowid
-            logger.debug(f"Inserted new face {face_id}")
+            logger.debug(f"Inserted new face {face_id} with attributes")
             return face_id, None
 
     def _find_matching_labeled_cluster(self, embedding: np.ndarray, threshold: float = 0.5) -> Optional[Dict]:

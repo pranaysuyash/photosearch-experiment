@@ -915,7 +915,7 @@ async def get_face_crop(face_id: int, state: AppState = Depends(get_state), size
 
 @router.get("/api/faces/stats")
 async def get_face_stats_api(state: AppState = Depends(get_state)):
-    """Get face recognition statistics."""
+    """Get comprehensive face recognition statistics including attributes."""
     try:
         face_clusterer = state.face_clusterer
 
@@ -928,31 +928,23 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
         db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
         cursor = db.conn.cursor()
 
-        # Total faces
+        # Basic face statistics
         cursor.execute("SELECT COUNT(*) FROM faces")
         total_faces = cursor.fetchone()[0]
 
-        # Total clusters
         cursor.execute("SELECT COUNT(*) FROM clusters")
         total_clusters = cursor.fetchone()[0]
 
-        # Labeled clusters
         cursor.execute(
             "SELECT COUNT(*) FROM clusters WHERE label IS NOT NULL AND label != '' AND label NOT LIKE 'Person %'"
         )
         labeled_clusters = cursor.fetchone()[0]
 
-        # Unlabeled clusters
         unlabeled_clusters = total_clusters - labeled_clusters
 
-        # Photos with faces
         cursor.execute("SELECT COUNT(DISTINCT image_path) FROM faces")
         photos_with_faces = cursor.fetchone()[0]
 
-        # Avg faces per photo
-        total_faces / photos_with_faces if photos_with_faces > 0 else 0
-
-        # Singletons
         cursor.execute(
             """
             SELECT COUNT(*) FROM (
@@ -963,10 +955,36 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
         )
         singletons = cursor.fetchone()[0]
 
+        # Attribute statistics
+        cursor.execute("SELECT COUNT(*) FROM faces WHERE age_estimate IS NOT NULL")
+        faces_with_age = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM faces WHERE emotion IS NOT NULL")
+        faces_with_emotion = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM faces WHERE overall_quality IS NOT NULL")
+        faces_with_quality = cursor.fetchone()[0]
+
+        # Quality distribution
+        cursor.execute("""
+            SELECT
+                CASE
+                    WHEN overall_quality >= 0.8 THEN 'high'
+                    WHEN overall_quality >= 0.6 THEN 'medium'
+                    WHEN overall_quality >= 0.4 THEN 'low'
+                    ELSE 'very_low'
+                END as quality_tier,
+                COUNT(*) as count
+            FROM faces
+            WHERE overall_quality IS NOT NULL
+            GROUP BY quality_tier
+        """)
+        quality_distribution = {row[0]: row[1] for row in cursor.fetchall()}
+
         return {
             "status": "available",
             "models_loaded": face_clusterer.models_loaded,
-            # Field names matching frontend FaceStats interface
+            # Basic stats (matching frontend FaceStats interface)
             "total_photos": photos_with_faces,
             "faces_detected": total_faces,
             "clusters_found": total_clusters,
@@ -975,6 +993,20 @@ async def get_face_stats_api(state: AppState = Depends(get_state)):
             "low_confidence": face_clusterer.get_low_confidence_count()
             if hasattr(face_clusterer, "get_low_confidence_count")
             else 0,
+            # Enhanced attribute statistics
+            "attribute_coverage": {
+                "faces_with_age": faces_with_age,
+                "faces_with_emotion": faces_with_emotion,
+                "faces_with_quality": faces_with_quality,
+                "age_coverage_percent": round((faces_with_age / total_faces) * 100, 1) if total_faces > 0 else 0,
+                "emotion_coverage_percent": round((faces_with_emotion / total_faces) * 100, 1)
+                if total_faces > 0
+                else 0,
+                "quality_coverage_percent": round((faces_with_quality / total_faces) * 100, 1)
+                if total_faces > 0
+                else 0,
+            },
+            "quality_distribution": quality_distribution,
         }
     except Exception as e:
         return {"status": "error", "error": str(e)}
@@ -1141,6 +1173,290 @@ async def get_person_analytics(person_id: str, state: AppState = Depends(get_sta
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/search/by-attributes")
+async def search_faces_by_attributes(
+    state: AppState = Depends(get_state),
+    age_min: Optional[int] = None,
+    age_max: Optional[int] = None,
+    emotion: Optional[str] = None,
+    pose_type: Optional[str] = None,
+    gender: Optional[str] = None,
+    min_quality: Optional[float] = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    """
+    Search faces by facial attributes.
+
+    Supports queries like:
+    - Children: age_max=12
+    - Adults: age_min=18
+    - Happy faces: emotion=happy
+    - Profile shots: pose_type=profile
+    - High quality faces: min_quality=0.8
+    """
+    try:
+        face_clusterer = state.face_clusterer
+
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        cursor = db.conn.cursor()
+
+        # Build dynamic query based on provided attributes
+        conditions = []
+        params = []
+
+        if age_min is not None:
+            conditions.append("age_estimate >= ?")
+            params.append(age_min)
+
+        if age_max is not None:
+            conditions.append("age_estimate <= ?")
+            params.append(age_max)
+
+        if emotion:
+            conditions.append("emotion = ?")
+            params.append(emotion)
+
+        if pose_type:
+            conditions.append("pose_type = ?")
+            params.append(pose_type)
+
+        if gender:
+            conditions.append("gender = ?")
+            params.append(gender)
+
+        if min_quality is not None:
+            conditions.append("overall_quality >= ?")
+            params.append(min_quality)
+
+        # Base query
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+
+        query = f"""
+            SELECT f.id, f.image_path, f.bounding_box, f.confidence,
+                   f.age_estimate, f.age_confidence, f.emotion, f.emotion_confidence,
+                   f.pose_type, f.pose_confidence, f.gender, f.gender_confidence,
+                   f.overall_quality, cm.cluster_id, c.label
+            FROM faces f
+            LEFT JOIN cluster_membership cm ON f.id = cm.face_id
+            LEFT JOIN clusters c ON cm.cluster_id = c.id
+            WHERE {where_clause}
+            ORDER BY f.overall_quality DESC, f.confidence DESC
+            LIMIT ? OFFSET ?
+        """
+
+        params.extend([limit, offset])
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+        faces = []
+        for row in rows:
+            faces.append(
+                {
+                    "face_id": row[0],
+                    "image_path": row[1],
+                    "bounding_box": json.loads(row[2]) if row[2] else None,
+                    "confidence": row[3],
+                    "age_estimate": row[4],
+                    "age_confidence": row[5],
+                    "emotion": row[6],
+                    "emotion_confidence": row[7],
+                    "pose_type": row[8],
+                    "pose_confidence": row[9],
+                    "gender": row[10],
+                    "gender_confidence": row[11],
+                    "overall_quality": row[12],
+                    "cluster_id": str(row[13]) if row[13] else None,
+                    "person_name": row[14],
+                }
+            )
+
+        return {
+            "faces": faces,
+            "count": len(faces),
+            "filters": {
+                "age_min": age_min,
+                "age_max": age_max,
+                "emotion": emotion,
+                "pose_type": pose_type,
+                "gender": gender,
+                "min_quality": min_quality,
+            },
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/emotions")
+async def get_emotion_distribution(state: AppState = Depends(get_state)):
+    """Get distribution of emotions across all detected faces."""
+    try:
+        face_clusterer = state.face_clusterer
+
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        cursor = db.conn.cursor()
+
+        cursor.execute("""
+            SELECT emotion, COUNT(*) as count, AVG(emotion_confidence) as avg_confidence
+            FROM faces
+            WHERE emotion IS NOT NULL
+            GROUP BY emotion
+            ORDER BY count DESC
+        """)
+
+        rows = cursor.fetchall()
+        emotions = [
+            {"emotion": row[0], "count": row[1], "avg_confidence": round(row[2], 3) if row[2] else 0} for row in rows
+        ]
+
+        return {"emotions": emotions, "total_faces": sum(e["count"] for e in emotions)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/age-distribution")
+async def get_age_distribution(state: AppState = Depends(get_state)):
+    """Get age distribution across all detected faces."""
+    try:
+        face_clusterer = state.face_clusterer
+
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        cursor = db.conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                CASE
+                    WHEN age_estimate < 13 THEN 'child'
+                    WHEN age_estimate < 20 THEN 'teen'
+                    WHEN age_estimate < 35 THEN 'young_adult'
+                    WHEN age_estimate < 55 THEN 'middle_age'
+                    ELSE 'senior'
+                END as age_group,
+                COUNT(*) as count,
+                AVG(age_estimate) as avg_age,
+                AVG(age_confidence) as avg_confidence
+            FROM faces
+            WHERE age_estimate IS NOT NULL
+            GROUP BY age_group
+            ORDER BY avg_age
+        """)
+
+        rows = cursor.fetchall()
+        age_groups = [
+            {
+                "age_group": row[0],
+                "count": row[1],
+                "avg_age": round(row[2], 1) if row[2] else 0,
+                "avg_confidence": round(row[3], 3) if row[3] else 0,
+            }
+            for row in rows
+        ]
+
+        return {"age_groups": age_groups, "total_faces": sum(g["count"] for g in age_groups)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/people/{person_id}/attributes")
+async def get_person_attributes(person_id: str, state: AppState = Depends(get_state)):
+    """Get facial attribute analysis for a specific person."""
+    try:
+        face_clusterer = state.face_clusterer
+
+        if not face_clusterer:
+            raise HTTPException(status_code=503, detail="Face recognition not available")
+
+        db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        cursor = db.conn.cursor()
+
+        # Get all faces for this person with attributes
+        cursor.execute(
+            """
+            SELECT f.age_estimate, f.age_confidence, f.emotion, f.emotion_confidence,
+                   f.pose_type, f.pose_confidence, f.gender, f.gender_confidence,
+                   f.overall_quality, f.image_path, f.created_at
+            FROM faces f
+            JOIN cluster_membership cm ON f.id = cm.face_id
+            WHERE cm.cluster_id = ? AND f.age_estimate IS NOT NULL
+            ORDER BY f.overall_quality DESC, f.created_at DESC
+        """,
+            (int(person_id),),
+        )
+
+        rows = cursor.fetchall()
+
+        if not rows:
+            return {"person_id": person_id, "message": "No faces with attributes found for this person"}
+
+        # Analyze attributes
+        ages = [r[0] for r in rows if r[0] is not None]
+        emotions = [r[2] for r in rows if r[2] is not None]
+        poses = [r[4] for r in rows if r[4] is not None]
+        genders = [r[6] for r in rows if r[6] is not None]
+        qualities = [r[8] for r in rows if r[8] is not None]
+
+        # Calculate statistics
+        age_stats = {
+            "min_age": min(ages) if ages else None,
+            "max_age": max(ages) if ages else None,
+            "avg_age": round(sum(ages) / len(ages), 1) if ages else None,
+            "age_progression": sorted(set(ages)) if ages else [],
+        }
+
+        emotion_counts = {}
+        for emotion in emotions:
+            emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
+
+        dominant_emotion = max(emotion_counts.items(), key=lambda x: x[1])[0] if emotion_counts else None
+
+        pose_counts = {}
+        for pose in poses:
+            pose_counts[pose] = pose_counts.get(pose, 0) + 1
+
+        gender_counts = {}
+        for gender in genders:
+            gender_counts[gender] = gender_counts.get(gender, 0) + 1
+
+        likely_gender = max(gender_counts.items(), key=lambda x: x[1])[0] if gender_counts else None
+
+        return {
+            "person_id": person_id,
+            "total_faces": len(rows),
+            "age_analysis": age_stats,
+            "dominant_emotion": dominant_emotion,
+            "emotion_distribution": emotion_counts,
+            "pose_distribution": pose_counts,
+            "likely_gender": likely_gender,
+            "gender_distribution": gender_counts,
+            "avg_quality": round(sum(qualities) / len(qualities), 3) if qualities else 0,
+            "quality_range": {"min": min(qualities) if qualities else 0, "max": max(qualities) if qualities else 0},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
+# Enhanced Face Recognition Stats with Attributes
+# ===================================================================
 
 
 # ===================================================================
@@ -1665,6 +1981,23 @@ class CoOccurrenceRequest(BaseModel):
     offset: int = 0
 
 
+class FaceAttributeSearchRequest(BaseModel):
+    min_age: Optional[int] = None
+    max_age: Optional[int] = None
+    emotions: Optional[List[str]] = None
+    emotion: Optional[str] = None
+    gender: Optional[str] = None
+    pose_type: Optional[str] = None
+    min_quality: Optional[float] = None
+    min_confidence: Optional[float] = None
+    min_age_confidence: Optional[float] = None
+    min_emotion_confidence: Optional[float] = None
+    min_pose_confidence: Optional[float] = None
+    min_gender_confidence: Optional[float] = None
+    limit: int = 100
+    offset: int = 0
+
+
 @router.post("/api/photos/by-people")
 async def search_photos_by_people_ids(request: CoOccurrenceRequest, state: AppState = Depends(get_state)):
     """
@@ -1684,6 +2017,44 @@ async def search_photos_by_people_ids(request: CoOccurrenceRequest, state: AppSt
             include_people=request.include_people,
             exclude_people=request.exclude_people,
             require_all=request.require_all,
+            limit=request.limit,
+            offset=request.offset,
+        )
+
+        return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/photos/by-face-attributes")
+async def search_photos_by_face_attributes(
+    request: FaceAttributeSearchRequest,
+    state: AppState = Depends(get_state),
+):
+    """
+    Search photos by face attributes like age, emotion, pose, gender, and quality.
+    """
+    try:
+        from pathlib import Path
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+
+        emotions = request.emotions
+        if emotions is None and request.emotion:
+            emotions = [request.emotion]
+
+        result = face_db.search_photos_by_face_attributes(
+            min_age=request.min_age,
+            max_age=request.max_age,
+            emotions=emotions,
+            gender=request.gender,
+            pose_type=request.pose_type,
+            min_quality=request.min_quality,
+            min_confidence=request.min_confidence,
+            min_age_confidence=request.min_age_confidence,
+            min_emotion_confidence=request.min_emotion_confidence,
+            min_pose_confidence=request.min_pose_confidence,
+            min_gender_confidence=request.min_gender_confidence,
             limit=request.limit,
             offset=request.offset,
         )

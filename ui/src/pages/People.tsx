@@ -25,6 +25,7 @@ import {
   Shield,
   Star,
   Undo2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
@@ -32,6 +33,7 @@ import ReviewQueue from '../components/people/ReviewQueue';
 import MergeSuggestions from '../components/people/MergeSuggestions';
 import SplitClusterModal from '../components/people/SplitClusterModal';
 import BooleanPeopleSearch from '../components/people/BooleanPeopleSearch';
+import FaceAttributeSearch from '../components/people/FaceAttributeSearch';
 
 interface FaceCluster {
   id: string;
@@ -186,6 +188,7 @@ export function People() {
 
   // Boolean search functionality
   const [booleanSearchOpen, setBooleanSearchOpen] = useState(false);
+  const [attributeSearchOpen, setAttributeSearchOpen] = useState(false);
 
   // Mixed cluster detection tools
   const [mixedClusters, setMixedClusters] = useState<MixedCluster[]>([]);
@@ -733,6 +736,16 @@ export function People() {
               >
                 <Search size={14} />
                 <span className='hidden sm:inline'>Advanced Search</span>
+              </button>
+
+              {/* Attribute Search Button */}
+              <button
+                onClick={() => setAttributeSearchOpen(true)}
+                className='flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
+                title='Search by face attributes (age, emotion, pose)'
+              >
+                <SlidersHorizontal size={14} />
+                <span className='hidden sm:inline'>Face Filters</span>
               </button>
 
               {/* Undo Button */}
@@ -1814,6 +1827,12 @@ export function People() {
       <BooleanPeopleSearch
         isOpen={booleanSearchOpen}
         onClose={() => setBooleanSearchOpen(false)}
+      />
+
+      {/* Face Attribute Search Modal */}
+      <FaceAttributeSearch
+        isOpen={attributeSearchOpen}
+        onClose={() => setAttributeSearchOpen(false)}
       />
     </div>
   );

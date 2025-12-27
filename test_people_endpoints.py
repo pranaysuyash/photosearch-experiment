@@ -129,10 +129,11 @@ def test_people_endpoints():
         # Test 2: POST /api/photos/{photo_path}/people (add a person)
         print("\nTest 2: POST add person to photo")
         person_id = "test_person_123"
+        detection_id = "test_face_123"
         response = requests.post(
             f"{base_url}/api/photos/{test_photo_path}/people",
-            json={"person_id": person_id},
-            timeout=5,
+            json={"person_id": person_id, "detection_id": detection_id},
+            timeout=10,
         )
         print(f"Status: {response.status_code}")
         print(f"Response: {response.json()}")

@@ -115,7 +115,65 @@ def test_face_clustering_db_edge_cases():
         shutil.rmtree(temp_dir)
 
 
+def test_face_attribute_search():
+    """Test attribute-based face search."""
+    temp_dir = tempfile.mkdtemp()
+    db_path = Path(temp_dir) / "test_face_clusters.db"
+
+    try:
+        face_db = FaceClusteringDB(db_path)
+
+        face_db.add_face_detection(
+            photo_path="/test/photo1.jpg",
+            bounding_box={"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+            embedding=[0.1, 0.2, 0.3],
+            quality_score=0.9,
+            age_estimate=12,
+            age_confidence=0.8,
+            emotion="happy",
+            emotion_confidence=0.9,
+            pose_type="frontal",
+            pose_confidence=0.8,
+            gender="female",
+            gender_confidence=0.9,
+            overall_quality=0.92,
+        )
+
+        face_db.add_face_detection(
+            photo_path="/test/photo2.jpg",
+            bounding_box={"x": 0.2, "y": 0.3, "width": 0.2, "height": 0.2},
+            embedding=[0.2, 0.3, 0.4],
+            quality_score=0.6,
+            age_estimate=35,
+            age_confidence=0.7,
+            emotion="sad",
+            emotion_confidence=0.7,
+            pose_type="profile",
+            pose_confidence=0.6,
+            gender="male",
+            gender_confidence=0.8,
+            overall_quality=0.6,
+        )
+
+        result = face_db.search_photos_by_face_attributes(
+            min_age=10,
+            max_age=20,
+            emotions=["happy"],
+        )
+        assert result["total"] == 1
+        assert result["photos"][0]["photo_path"] == "/test/photo1.jpg"
+        assert result["photos"][0]["match_count"] == 1
+
+        result = face_db.search_photos_by_face_attributes(gender="male")
+        assert result["total"] == 1
+        assert result["photos"][0]["photo_path"] == "/test/photo2.jpg"
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 if __name__ == "__main__":
     test_face_clustering_db_basic_operations()
     test_face_clustering_db_edge_cases()
+    test_face_attribute_search()
     print("🎉 All face clustering database tests completed successfully!")

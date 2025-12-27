@@ -6,7 +6,7 @@ This implementation plan converts the comprehensive face recognition design into
 
 ## Tasks
 
-- [ ] 1. Phase 1: High-Performance Foundation
+- [-] 1. Phase 1: High-Performance Foundation
   - Implement FAISS vector search and performance optimizations
   - _Requirements: 1.1, 1.2, 1.3, 19.1_
 
@@ -52,7 +52,7 @@ This implementation plan converts the comprehensive face recognition design into
   - Implement facial attribute analysis and quality assessment
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 2.1 Extend FaceDetection dataclass with attributes
+- [x] 2.1 Extend FaceDetection dataclass with attributes
   - Update `src/face_clustering.py` FaceDetection with age, emotion, pose, gender fields
   - Add confidence scores for each attribute
   - Update database schema with new attribute columns

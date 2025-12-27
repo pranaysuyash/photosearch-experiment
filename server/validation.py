@@ -12,7 +12,7 @@ from pathlib import Path
 from datetime import datetime
 from functools import wraps
 from fastapi import Request, HTTPException
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 
 # Common validation patterns
 SAFE_FILENAME_REGEX = re.compile(r"^[a-zA-Z0-9._-]+$")
@@ -378,21 +378,21 @@ class SearchQueryValidator(BaseModel):
     offset: int = 0
     mode: str = "metadata"
 
-    @validator("query")
+    @field_validator("query")
     def validate_search_content(cls, v):
         result = validate_search_query(v)
         if not result.is_valid:
             raise ValueError(result.error_message)
         return result.sanitized_value
 
-    @validator("limit")
+    @field_validator("limit")
     def validate_limit(cls, v):
         result = validate_pagination_params(v, 0)
         if not result.is_valid:
             raise ValueError(result.error_message)
         return result.sanitized_value["limit"]
 
-    @validator("offset")
+    @field_validator("offset")
     def validate_offset(cls, v):
         result = validate_pagination_params(50, v)
         if not result.is_valid:
@@ -405,7 +405,7 @@ class FilePathValidator(BaseModel):
 
     path: str
 
-    @validator("path")
+    @field_validator("path")
     def validate_path_content(cls, v):
         result = validate_file_path(v)
         if not result.is_valid:
@@ -419,7 +419,7 @@ class DateValidator(BaseModel):
     date_from: Optional[str] = None
     date_to: Optional[str] = None
 
-    @validator("date_from", "date_to")
+    @field_validator("date_from", "date_to")
     def validate_date_content(cls, v):
         if v is None:
             return v

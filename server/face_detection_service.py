@@ -27,6 +27,19 @@ class DetectedFace:
     confidence: Optional[float] = None
     landmarks: Optional[Dict] = None
     pose: Optional[Dict] = None  # {yaw, pitch, roll}
+    age_estimate: Optional[float] = None
+    age_confidence: Optional[float] = None
+    gender: Optional[str] = None
+    gender_confidence: Optional[float] = None
+    emotion: Optional[str] = None
+    emotion_confidence: Optional[float] = None
+    pose_type: Optional[str] = None
+    pose_confidence: Optional[float] = None
+    lighting_score: Optional[float] = None
+    occlusion_score: Optional[float] = None
+    resolution_score: Optional[float] = None
+    pose_quality_score: Optional[float] = None
+    overall_quality: Optional[float] = None
 
 
 @dataclass
@@ -64,6 +77,28 @@ class FaceDetectionService:
     def is_available(self) -> bool:
         """Check if face detection is available."""
         return self.initialized and self.clusterer is not None
+
+    @staticmethod
+    def _to_bbox_dict(detection) -> Dict[str, float]:
+        """Normalize bounding box structure from detection outputs."""
+        if hasattr(detection, "bbox_x"):
+            return {
+                "x": getattr(detection, "bbox_x", 0.0),
+                "y": getattr(detection, "bbox_y", 0.0),
+                "width": getattr(detection, "bbox_width", 0.0),
+                "height": getattr(detection, "bbox_height", 0.0),
+            }
+
+        bbox = getattr(detection, "bbox", None)
+        if bbox and len(bbox) >= 4:
+            return {
+                "x": bbox[0],
+                "y": bbox[1],
+                "width": bbox[2] - bbox[0],
+                "height": bbox[3] - bbox[1],
+            }
+
+        return {"x": 0.0, "y": 0.0, "width": 0.0, "height": 0.0}
 
     def detect_faces(self, photo_path: str) -> FaceDetectionResult:
         """Detect faces in a single photo."""
@@ -103,26 +138,39 @@ class FaceDetectionService:
             # Convert to our standard format
             faces = []
             for i, detection in enumerate(detection_results):
+                pose_data = getattr(detection, "pose_angles", None) or getattr(detection, "pose", None)
+                pose_dict = None
+                if isinstance(pose_data, dict):
+                    pose_dict = {
+                        "yaw": pose_data.get("yaw"),
+                        "pitch": pose_data.get("pitch"),
+                        "roll": pose_data.get("roll"),
+                    }
+                elif isinstance(pose_data, (list, tuple)) and len(pose_data) >= 3:
+                    pose_dict = {"yaw": pose_data[0], "pitch": pose_data[1], "roll": pose_data[2]}
+
                 face = DetectedFace(
                     detection_id=f"face_{os.path.basename(photo_path)}_{i}",
                     photo_path=photo_path,
-                    bounding_box={
-                        "x": detection.bbox[0],
-                        "y": detection.bbox[1],
-                        "width": detection.bbox[2] - detection.bbox[0],
-                        "height": detection.bbox[3] - detection.bbox[1],
-                    },
+                    bounding_box=self._to_bbox_dict(detection),
                     embedding=detection.embedding.tolist() if detection.embedding is not None else None,
-                    quality_score=detection.quality,
-                    confidence=detection.confidence,
-                    landmarks=detection.landmarks,
-                    pose={
-                        "yaw": detection.pose[0],
-                        "pitch": detection.pose[1],
-                        "roll": detection.pose[2],
-                    }
-                    if detection.pose
-                    else None,
+                    quality_score=getattr(detection, "quality_score", getattr(detection, "quality", None)),
+                    confidence=getattr(detection, "confidence", None),
+                    landmarks=getattr(detection, "landmarks", None),
+                    pose=pose_dict,
+                    age_estimate=getattr(detection, "age_estimate", None),
+                    age_confidence=getattr(detection, "age_confidence", None),
+                    gender=getattr(detection, "gender", None),
+                    gender_confidence=getattr(detection, "gender_confidence", None),
+                    emotion=getattr(detection, "emotion", None),
+                    emotion_confidence=getattr(detection, "emotion_confidence", None),
+                    pose_type=getattr(detection, "pose_type", None),
+                    pose_confidence=getattr(detection, "pose_confidence", None),
+                    lighting_score=getattr(detection, "lighting_score", None),
+                    occlusion_score=getattr(detection, "occlusion_score", None),
+                    resolution_score=getattr(detection, "resolution_score", None),
+                    pose_quality_score=getattr(detection, "pose_quality_score", None),
+                    overall_quality=getattr(detection, "overall_quality", None),
                 )
                 faces.append(face)
 
@@ -209,26 +257,39 @@ class FaceDetectionService:
             # Convert to our standard format
             faces = []
             for i, detection in enumerate(detection_results):
+                pose_data = getattr(detection, "pose_angles", None) or getattr(detection, "pose", None)
+                pose_dict = None
+                if isinstance(pose_data, dict):
+                    pose_dict = {
+                        "yaw": pose_data.get("yaw"),
+                        "pitch": pose_data.get("pitch"),
+                        "roll": pose_data.get("roll"),
+                    }
+                elif isinstance(pose_data, (list, tuple)) and len(pose_data) >= 3:
+                    pose_dict = {"yaw": pose_data[0], "pitch": pose_data[1], "roll": pose_data[2]}
+
                 face = DetectedFace(
                     detection_id=f"face_{source_id}_{i}",
                     photo_path=source_id,
-                    bounding_box={
-                        "x": detection.bbox[0],
-                        "y": detection.bbox[1],
-                        "width": detection.bbox[2] - detection.bbox[0],
-                        "height": detection.bbox[3] - detection.bbox[1],
-                    },
+                    bounding_box=self._to_bbox_dict(detection),
                     embedding=detection.embedding.tolist() if detection.embedding is not None else None,
-                    quality_score=detection.quality,
-                    confidence=detection.confidence,
-                    landmarks=detection.landmarks,
-                    pose={
-                        "yaw": detection.pose[0],
-                        "pitch": detection.pose[1],
-                        "roll": detection.pose[2],
-                    }
-                    if detection.pose
-                    else None,
+                    quality_score=getattr(detection, "quality_score", getattr(detection, "quality", None)),
+                    confidence=getattr(detection, "confidence", None),
+                    landmarks=getattr(detection, "landmarks", None),
+                    pose=pose_dict,
+                    age_estimate=getattr(detection, "age_estimate", None),
+                    age_confidence=getattr(detection, "age_confidence", None),
+                    gender=getattr(detection, "gender", None),
+                    gender_confidence=getattr(detection, "gender_confidence", None),
+                    emotion=getattr(detection, "emotion", None),
+                    emotion_confidence=getattr(detection, "emotion_confidence", None),
+                    pose_type=getattr(detection, "pose_type", None),
+                    pose_confidence=getattr(detection, "pose_confidence", None),
+                    lighting_score=getattr(detection, "lighting_score", None),
+                    occlusion_score=getattr(detection, "occlusion_score", None),
+                    resolution_score=getattr(detection, "resolution_score", None),
+                    pose_quality_score=getattr(detection, "pose_quality_score", None),
+                    overall_quality=getattr(detection, "overall_quality", None),
                 )
                 faces.append(face)
 

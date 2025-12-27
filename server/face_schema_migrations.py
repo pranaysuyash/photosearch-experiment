@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -326,15 +326,85 @@ def migration_v5_video_support(conn: sqlite3.Connection):
         logger.info("Added is_best_frame column to face_detections")
 
 
-def migration_v6_performance_indexes(conn: sqlite3.Connection):
+def migration_v6_facial_attributes(conn: sqlite3.Connection):
     """
-    Version 6: Add performance indexes for common face queries.
+    Version 6: Add facial attribute columns to face_detections table.
+
+    Changes:
+    - Add age_estimate, age_confidence columns
+    - Add emotion, emotion_confidence columns
+    - Add pose_type, pose_confidence columns
+    - Add gender, gender_confidence columns
+    - Add enhanced quality metrics: lighting_score, occlusion_score, resolution_score, overall_quality
+    """
+
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    # Age estimation attributes
+    if "age_estimate" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN age_estimate INTEGER")
+        logger.info("Added age_estimate column to face_detections")
+
+    if "age_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN age_confidence REAL")
+        logger.info("Added age_confidence column to face_detections")
+
+    # Emotion detection attributes
+    if "emotion" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN emotion TEXT")
+        logger.info("Added emotion column to face_detections")
+
+    if "emotion_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN emotion_confidence REAL")
+        logger.info("Added emotion_confidence column to face_detections")
+
+    # Pose classification attributes
+    if "pose_type" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN pose_type TEXT")
+        logger.info("Added pose_type column to face_detections")
+
+    if "pose_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN pose_confidence REAL")
+        logger.info("Added pose_confidence column to face_detections")
+
+    # Gender classification attributes
+    if "gender" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN gender TEXT")
+        logger.info("Added gender column to face_detections")
+
+    if "gender_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN gender_confidence REAL")
+        logger.info("Added gender_confidence column to face_detections")
+
+    # Enhanced quality metrics
+    if "lighting_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN lighting_score REAL")
+        logger.info("Added lighting_score column to face_detections")
+
+    if "occlusion_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN occlusion_score REAL")
+        logger.info("Added occlusion_score column to face_detections")
+
+    if "resolution_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN resolution_score REAL")
+        logger.info("Added resolution_score column to face_detections")
+
+    if "overall_quality" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN overall_quality REAL")
+        logger.info("Added overall_quality column to face_detections")
+
+
+def migration_v7_performance_indexes(conn: sqlite3.Connection):
+    """
+    Version 7: Add performance indexes for common face queries.
 
     Changes:
     - Composite index for photo/person lookups
     - Assignment state index for review workflows
     - Created_at indexes for temporal filtering
     - Label index for quick lookup by name
+    - Attribute indexes for facial attribute searches
     """
 
     conn.execute(
@@ -346,7 +416,15 @@ def migration_v6_performance_indexes(conn: sqlite3.Connection):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_photo_person_created_at ON photo_person_associations(created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)")
-    logger.info("Added performance indexes for face clustering")
+
+    # Indexes for facial attribute searches
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_age ON face_detections(age_estimate)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_emotion ON face_detections(emotion)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_pose ON face_detections(pose_type)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_gender ON face_detections(gender)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_quality ON face_detections(overall_quality)")
+
+    logger.info("Added performance indexes for face clustering and attribute searches")
 
 
 # Migration registry: version -> (migration_function, description)
@@ -369,7 +447,11 @@ MIGRATIONS = {
         "Add video face tracking tables",
     ),
     6: (
-        migration_v6_performance_indexes,
+        migration_v6_facial_attributes,
+        "Add facial attribute analysis columns",
+    ),
+    7: (
+        migration_v7_performance_indexes,
         "Add performance indexes for face clustering",
     ),
 }
