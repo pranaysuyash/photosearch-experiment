@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import React from 'react';
+import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { PhotoGrid } from '../components/gallery/PhotoGrid';
 import { api, type Photo } from '../api';
@@ -38,17 +38,19 @@ describe('PhotoGrid favorites batching', () => {
     document.body.appendChild(container);
     const root = createRoot(container);
 
-    root.render(
-      <AmbientThemeProvider>
-        <PhotoSearchProvider>
-          <PhotoGrid photos={photos} onPhotoSelect={() => {}} />
-        </PhotoSearchProvider>
-      </AmbientThemeProvider>
-    );
+    await act(async () => {
+      root.render(
+        <AmbientThemeProvider>
+          <PhotoSearchProvider>
+            <PhotoGrid photos={photos} onPhotoSelect={() => {}} />
+          </PhotoSearchProvider>
+        </AmbientThemeProvider>
+      );
 
-    // Wait for effect to run
-    await flush();
-    await flush();
+      // Wait for effect to run
+      await flush();
+      await flush();
+    });
 
     expect(getFavSpy).toHaveBeenCalledTimes(1);
 
@@ -69,7 +71,9 @@ describe('PhotoGrid favorites batching', () => {
     expect(hasAdd).toBe(true);
 
     // Cleanup
-    root.unmount();
+    act(() => {
+      root.unmount();
+    });
     container.remove();
   });
 });

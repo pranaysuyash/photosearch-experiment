@@ -79,9 +79,11 @@ export function usePerformanceMonitor() {
     loadTimesRef.current = [];
   }, []);
 
-  // Log performance metrics in development
+  const perfLoggingEnabled = import.meta.env.VITE_PERF_LOGGING === 'true';
+
+  // Log performance metrics in development (controlled via VITE_PERF_LOGGING)
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && perfLoggingEnabled) {
       const logMetrics = () => {
         const metrics = getMetrics();
         if (metrics.apiCallCount > 0 || metrics.cacheHitCount > 0) {
@@ -96,10 +98,10 @@ export function usePerformanceMonitor() {
         }
       };
 
-      const interval = setInterval(logMetrics, 10000); // Log every 10 seconds
+      const interval = setInterval(logMetrics, 60000); // Log every 60 seconds if enabled
       return () => clearInterval(interval);
     }
-  }, [getMetrics]);
+  }, [getMetrics, perfLoggingEnabled]);
 
   return {
     startSearch,

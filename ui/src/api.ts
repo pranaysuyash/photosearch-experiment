@@ -4,9 +4,9 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const SERVER_CONFIG_TTL_MS = 60_000;
 let serverConfigCache: {
-  value: unknown | null;
+  value: Record<string, unknown> | null;
   timestamp: number;
-  promise: Promise<unknown> | null;
+  promise: Promise<Record<string, unknown>> | null;
 } = { value: null, timestamp: 0, promise: null };
 
 type SignedUrlCacheEntry = { token: string; expiresAt: number };
@@ -70,9 +70,17 @@ export interface PhotoMetadata {
   audio?: Record<string, unknown>;
   pdf?: Record<string, unknown>;
   svg?: Record<string, unknown>;
-  exif?: Record<string, unknown>;
+  exif?: (Record<string, unknown> & {
+    image?: {
+      Make?: string;
+      Model?: string;
+    };
+  });
   gps?: { latitude?: number; longitude?: number; altitude?: number };
-  filesystem?: Record<string, unknown>;
+  filesystem?: (Record<string, unknown> & {
+    created?: string;
+    modified?: string;
+  });
   thumbnail?: Record<string, unknown>;
   hashes?: Record<string, string>;
   calculated?: Record<string, unknown>;
@@ -99,6 +107,8 @@ export interface Photo {
   score: number;
   metadata: PhotoMetadata;
   matchExplanation?: MatchExplanation;
+  is_favorited?: boolean;
+  location_tagged?: boolean;
 }
 
 export interface PhotoEdit {
@@ -124,6 +134,8 @@ export interface ExportOptions {
   rename_pattern?: string;
   password_protect?: boolean;
   password?: string;
+  blur_faces?: boolean;
+  blur_strength?: number;
 }
 
 export interface IntentSearchParams {
@@ -329,6 +341,23 @@ export interface SimilarFacesResult {
   success: boolean;
 }
 
+export interface LowConfidenceFaceLegacy {
+  face_id: number;
+  image_path: string;
+  confidence: number;
+  cluster_id: string | null;
+  label?: string | null;
+}
+
+export interface LowConfidenceFacesResultLegacy {
+  faces: LowConfidenceFaceLegacy[];
+  count: number;
+  total?: number;
+  threshold: number;
+  limit?: number;
+  offset?: number;
+}
+
 export interface FaceAttributeSearchRequest {
   min_age?: number;
   max_age?: number;
@@ -342,6 +371,12 @@ export interface FaceAttributeSearchRequest {
   min_emotion_confidence?: number;
   min_pose_confidence?: number;
   min_gender_confidence?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export interface FaceAttributeQueryRequest {
+  query: string;
   limit?: number;
   offset?: number;
 }
@@ -383,6 +418,70 @@ export interface FaceAttributeSearchResult {
   limit: number;
   offset: number;
   success: boolean;
+}
+
+export interface FaceAttributeQueryResult extends FaceAttributeSearchResult {
+  query: string;
+  filters: FaceAttributeSearchRequest;
+  warnings?: string[];
+}
+
+export interface NaturalLanguageFaceSearchRequest {
+  query: string;
+  include_known_people?: boolean;
+  execute?: boolean;
+  limit?: number;
+  offset?: number;
+}
+
+export interface NaturalLanguagePersonConstraint {
+  name: string;
+  required: boolean;
+}
+
+export interface NaturalLanguageGroupConstraint {
+  min_people?: number | null;
+  max_people?: number | null;
+  exact_count?: number | null;
+}
+
+export interface NaturalLanguageEmotionConstraint {
+  emotion: string;
+  all_faces: boolean;
+}
+
+export interface NaturalLanguageAgeConstraint {
+  min_age?: number | null;
+  max_age?: number | null;
+  category?: string | null;
+}
+
+export interface NaturalLanguageTemporalConstraint {
+  start_date?: string | null;
+  end_date?: string | null;
+  relative_period?: string | null;
+}
+
+export interface NaturalLanguageFaceSearchParsed {
+  person_constraints: NaturalLanguagePersonConstraint[];
+  group_constraint?: NaturalLanguageGroupConstraint | null;
+  emotion_constraints: NaturalLanguageEmotionConstraint[];
+  age_constraints: NaturalLanguageAgeConstraint[];
+  temporal_constraint?: NaturalLanguageTemporalConstraint | null;
+  original_query: string;
+  unparsed_parts: string[];
+  parse_confidence: number;
+}
+
+export interface NaturalLanguageFaceSearchResult {
+  success: boolean;
+  query: string;
+  parsed: NaturalLanguageFaceSearchParsed;
+  warnings?: string[];
+  photos?: FaceAttributeSearchResult['photos'];
+  total?: number;
+  limit?: number;
+  offset?: number;
 }
 
 export interface ClusterQuality {
@@ -612,6 +711,37 @@ export const api = {
     return res.data;
   },
 
+  /**
+   * Browse photos without search dependency.
+   * Use this for initial gallery load instead of search with empty query.
+   */
+  browsePhotos: async (
+    limit: number = 50,
+    offset: number = 0,
+    sortBy: string = 'date_desc',
+    typeFilter: string = 'all',
+    sourceFilter: 'all' | 'local' | 'cloud' | 'hybrid' = 'all',
+    favoritesFilter: string = 'all',
+    dateFrom?: string | null,
+    dateTo?: string | null,
+    signal?: AbortSignal
+  ) => {
+    const res = await apiClient.get('/browse', {
+      params: {
+        limit,
+        offset,
+        sort_by: sortBy,
+        type_filter: typeFilter,
+        source_filter: sourceFilter,
+        favorites_filter: favoritesFilter,
+        ...(dateFrom ? { date_from: dateFrom } : {}),
+        ...(dateTo ? { date_to: dateTo } : {}),
+      },
+      signal,
+    });
+    return res.data as { count: number; results: Photo[]; hasMore: boolean };
+  },
+
   getTimeline: async () => {
     const res = await apiClient.get('/timeline');
     return res.data.timeline as TimelineData[];
@@ -655,7 +785,10 @@ export const api = {
     }`;
   },
 
-  getServerConfig: async () => {
+  getServerConfig: async (): Promise<Record<string, unknown>> => {
+    if (import.meta.env.MODE === 'test') {
+      return { signed_url_enabled: false };
+    }
     const now = Date.now();
     if (
       serverConfigCache.value &&
@@ -667,14 +800,14 @@ export const api = {
       return serverConfigCache.promise;
     }
     serverConfigCache.promise = apiClient
-      .get('/server/config')
+      .get<Record<string, unknown>>('/server/config')
       .then((res) => {
         serverConfigCache = {
-          value: res.data,
+          value: res.data as Record<string, unknown>,
           timestamp: Date.now(),
           promise: null,
         };
-        return res.data;
+        return res.data as Record<string, unknown>;
       })
       .catch((err) => {
         serverConfigCache.promise = null;
@@ -1830,6 +1963,23 @@ export const api = {
     return res.data;
   },
 
+  searchPhotosByFaceAttributesQuery: async (
+    payload: FaceAttributeQueryRequest
+  ) => {
+    const res = await apiClient.post(
+      '/api/photos/by-face-attributes/query',
+      payload
+    );
+    return res.data;
+  },
+
+  searchFacesNaturalLanguage: async (
+    payload: NaturalLanguageFaceSearchRequest
+  ) => {
+    const res = await apiClient.post('/api/search/natural-language', payload);
+    return res.data;
+  },
+
   getFaceThumbnail: async (detectionId: string) => {
     const res = await apiClient.get(
       `/api/faces/${encodeURIComponent(detectionId)}/thumbnail`
@@ -1883,6 +2033,43 @@ export const api = {
   getFaceStats: async () => {
     const res = await apiClient.get('/api/faces/stats');
     return res.data;
+  },
+
+  getFaceEmotionDistribution: async () => {
+    const res = await apiClient.get('/api/faces/emotions');
+    return res.data as {
+      emotions: Array<{
+        emotion: string;
+        count: number;
+        avg_confidence: number;
+      }>;
+      total_faces: number;
+    };
+  },
+
+  getFaceAgeDistribution: async () => {
+    const res = await apiClient.get('/api/faces/age-distribution');
+    return res.data as {
+      age_groups: Array<{
+        age_group: string;
+        count: number;
+        avg_age: number;
+        avg_confidence: number;
+      }>;
+      total_faces: number;
+    };
+  },
+
+  getFaceRelationships: async () => {
+    const res = await apiClient.get('/api/analytics/relationships');
+    return res.data as {
+      relationships: Array<{
+        person1: string;
+        person2: string;
+        shared_count: number;
+        strength?: number;
+      }>;
+    };
   },
 
   scanFaces: async () => {
@@ -2037,6 +2224,18 @@ export const api = {
     return res.data;
   },
 
+  // Get legacy low-confidence detections (uses legacy `faces` table if present)
+  getLowConfidenceFaces: async (
+    threshold: number = 0.8,
+    limit: number = 100,
+    offset: number = 0
+  ) => {
+    const res = await apiClient.get('/api/faces/low-confidence', {
+      params: { threshold, limit, offset },
+    });
+    return res.data as LowConfidenceFacesResultLegacy;
+  },
+
   // Rename a cluster with undo support
   renameCluster: async (clusterId: string, label: string) => {
     const res = await apiClient.post(
@@ -2068,18 +2267,14 @@ export const api = {
       `/api/faces/${encodeURIComponent(detectionId)}/similar`,
       { params: { limit } }
     );
-    return res.data as {
-      detection_id: string;
-      similar_faces: Array<{
-        detection_id: string;
-        photo_path: string;
-        similarity: number;
-        person_id?: string;
-        person_label?: string;
-      }>;
-      count?: number;
-      success?: boolean;
-    };
+    const data = res.data as Partial<SimilarFacesResult>;
+    const similarFaces = Array.isArray(data.similar_faces) ? data.similar_faces : [];
+    return {
+      detection_id: data.detection_id ?? detectionId,
+      similar_faces: similarFaces,
+      count: data.count ?? similarFaces.length,
+      success: data.success ?? true,
+    } satisfies SimilarFacesResult;
   },
 
   // Get all clusters suspected to contain multiple people
@@ -2194,6 +2389,10 @@ export const api = {
   // Get embedding index statistics
   getEmbeddingIndexStats: async () => {
     const res = await apiClient.get('/api/faces/index/stats');
+    return res.data;
+  },
+  getFaceBackendStatus: async () => {
+    const res = await apiClient.get('/api/faces/backends/status');
     return res.data;
   },
 

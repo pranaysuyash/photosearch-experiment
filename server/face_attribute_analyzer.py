@@ -20,12 +20,17 @@ Usage:
     attributes = analyzer.analyze_attributes(face_crop, landmarks)
 """
 
+import hashlib
 import logging
+from collections import OrderedDict
 from dataclasses import dataclass
-import numpy as np
-from typing import Dict, Tuple, Optional
 from pathlib import Path
+from typing import Dict, Optional, Tuple
+
 import cv2
+import numpy as np
+
+from server.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +58,25 @@ class FaceAttributeResult:
     pose_confidence: Optional[float]
 
 
+@dataclass
+class QualityScores:
+    blur_score: float
+    lighting_score: float
+    occlusion_score: float
+    pose_score: float
+    resolution_score: float
+    overall_quality: float
+
+
 class FaceAttributeAnalyzer:
     """Analyzes facial attributes using specialized models"""
 
-    def __init__(self, models_dir: str = "models"):
+    def __init__(
+        self,
+        models_dir: str = "models",
+        backend_preference: Optional[Tuple[str, ...]] = None,
+        cache_size: int = 256,
+    ):
         """
         Initialize face attribute analyzer.
 
@@ -65,6 +85,12 @@ class FaceAttributeAnalyzer:
         """
         self.models_dir = Path(models_dir)
         self.models_dir.mkdir(exist_ok=True)
+
+        # Backend selection
+        if backend_preference is None:
+            preference_str = getattr(settings, "FACE_ATTRIBUTE_BACKENDS", "insightface,mediapipe,heuristic")
+            backend_preference = tuple(part.strip().lower() for part in preference_str.split(",") if part.strip())
+        self.backend = self._select_backend(backend_preference)
 
         # Model instances (loaded lazily)
         self.age_model = None
@@ -77,7 +103,8 @@ class FaceAttributeAnalyzer:
         self.mp_drawing = None
 
         # Cache for performance
-        self.attribute_cache = {}
+        self.cache_size = max(8, cache_size)
+        self.attribute_cache: OrderedDict[str, Dict] = OrderedDict()
 
         logger.info("FaceAttributeAnalyzer initialized")
 
@@ -98,8 +125,10 @@ class FaceAttributeAnalyzer:
         try:
             # Generate cache key
             cache_key = self._generate_cache_key(face_crop)
-            if cache_key in self.attribute_cache:
-                return self.attribute_cache[cache_key]
+            cached = self.attribute_cache.get(cache_key)
+            if cached is not None:
+                self.attribute_cache.move_to_end(cache_key)
+                return cached
 
             attributes = {}
 
@@ -123,7 +152,7 @@ class FaceAttributeAnalyzer:
             attributes.update(gender_result)
 
             # Cache result
-            self.attribute_cache[cache_key] = attributes
+            self._cache_put(cache_key, attributes)
 
             return attributes
 
@@ -138,18 +167,42 @@ class FaceAttributeAnalyzer:
         raw_age: Optional[float] = None,
         raw_gender: Optional[object] = None,
     ) -> FaceAttributeResult:
-        """Compatibility wrapper returning typed attributes for downstream pipelines."""
-        attributes = self.analyze_attributes(face_crop)
-        pose_type = attributes.get("pose_type")
-        pose_confidence = attributes.get("pose_confidence")
-        if pose_angles is not None:
-            pose_type, pose_confidence = self._classify_pose_from_angles(pose_angles)
+        """
+        Compatibility wrapper returning typed attributes for downstream pipelines.
 
-        age = raw_age if raw_age is not None else attributes.get("age_estimate")
-        age_confidence = attributes.get("age_confidence")
+        If raw_age or raw_gender are provided (e.g., from InsightFace), use them with high confidence.
+        Otherwise, analyze from the face crop.
+        """
+        # If InsightFace already provided age/gender, use them with high confidence
+        if raw_age is not None or raw_gender is not None:
+            # Use InsightFace values directly (they're more accurate)
+            age = float(raw_age) if raw_age is not None else None
+            age_confidence = 0.90 if raw_age is not None else None  # High confidence for InsightFace
 
-        gender = self._normalize_gender(raw_gender) if raw_gender is not None else attributes.get("gender")
-        gender_confidence = attributes.get("gender_confidence")
+            gender = self._normalize_gender(raw_gender) if raw_gender is not None else None
+            gender_confidence = 0.90 if raw_gender is not None else None  # High confidence for InsightFace
+
+            # Still analyze other attributes (emotion, pose) from the crop
+            attributes = self.analyze_attributes(face_crop)
+
+            # Use pose from angles if provided, otherwise from analysis
+            pose_type = attributes.get("pose_type")
+            pose_confidence = attributes.get("pose_confidence")
+            if pose_angles is not None:
+                pose_type, pose_confidence = self._classify_pose_from_angles(pose_angles)
+        else:
+            # No InsightFace values, analyze everything from crop
+            attributes = self.analyze_attributes(face_crop)
+            age = attributes.get("age_estimate")
+            age_confidence = attributes.get("age_confidence")
+
+            gender = attributes.get("gender")
+            gender_confidence = attributes.get("gender_confidence")
+
+            pose_type = attributes.get("pose_type")
+            pose_confidence = attributes.get("pose_confidence")
+            if pose_angles is not None:
+                pose_type, pose_confidence = self._classify_pose_from_angles(pose_angles)
 
         return FaceAttributeResult(
             age=age,
@@ -166,40 +219,63 @@ class FaceAttributeAnalyzer:
         """
         Estimate age with confidence score.
 
+        Uses InsightFace's built-in age estimation when available, falls back to heuristic.
+
         Args:
-            face_crop: Face image crop
+            face_crop: Face image crop (BGR format)
 
         Returns:
             Dictionary with age_estimate and age_confidence
         """
         try:
-            # For now, use a simple heuristic based on face characteristics
-            # In production, this would use a trained age estimation model
+            # Try InsightFace age estimation first (if available and selected)
+            if self.backend == "insightface" and INSIGHTFACE_AVAILABLE:
+                try:
+                    from insightface.app import FaceAnalysis
 
-            # Convert to grayscale for analysis
+                    # Use cached analyzer if available, otherwise create temporary one
+                    if not hasattr(self, "_insightface_analyzer") or self._insightface_analyzer is None:
+                        # Create temporary analyzer for age/gender
+                        analyzer = FaceAnalysis(
+                            name="buffalo_l",
+                            root=str(self.models_dir),
+                            providers=["CPUExecutionProvider"],
+                        )
+                        analyzer.prepare(ctx_id=-1, det_thresh=0.5)
+                        self._insightface_analyzer = analyzer
+                    else:
+                        analyzer = self._insightface_analyzer
+
+                    # Get age from InsightFace
+                    faces = analyzer.get(face_crop)
+                    if faces and len(faces) > 0:
+                        face = faces[0]
+                        # InsightFace provides age as an attribute
+                        age = getattr(face, "age", None)
+                        if age is not None:
+                            # InsightFace age is typically accurate, use high confidence
+                            return {
+                                "age_estimate": int(age),
+                                "age_confidence": 0.85,  # InsightFace age model is quite accurate
+                            }
+                except Exception as e:
+                    logger.debug(f"InsightFace age estimation failed, using fallback: {e}")
+
+            # Deterministic fallback: texture + brightness heuristic
             gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
+            laplacian_var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+            mean_brightness = float(np.mean(gray))
 
-            # Simple age estimation based on texture analysis
-            # This is a placeholder - real implementation would use deep learning
+            texture_score = min(laplacian_var / 400.0, 1.0)
+            brightness_score = 1.0 - abs(mean_brightness - 110.0) / 110.0
+            brightness_score = max(0.0, brightness_score)
 
-            # Calculate texture variance (wrinkles, smoothness)
-            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            age_estimate = 10 + texture_score * 50 + (1.0 - brightness_score) * 10
+            age_estimate = int(np.clip(age_estimate, 5, 80))
 
-            # Estimate age based on texture complexity
-            if laplacian_var < 100:
-                age_estimate = np.random.randint(5, 15)  # Child
-                confidence = 0.6
-            elif laplacian_var < 300:
-                age_estimate = np.random.randint(16, 35)  # Young adult
-                confidence = 0.7
-            elif laplacian_var < 500:
-                age_estimate = np.random.randint(36, 55)  # Middle age
-                confidence = 0.8
-            else:
-                age_estimate = np.random.randint(56, 80)  # Senior
-                confidence = 0.7
+            confidence = 0.55 + min(0.35, texture_score * 0.35)
 
-            return {"age_estimate": int(age_estimate), "age_confidence": float(confidence)}
+            return {"age_estimate": age_estimate, "age_confidence": float(round(confidence, 2))}
 
         except Exception as e:
             logger.error(f"Age estimation failed: {e}")
@@ -216,31 +292,24 @@ class FaceAttributeAnalyzer:
             Dictionary with emotion and emotion_confidence
         """
         try:
-            # Placeholder emotion detection
-            # Real implementation would use emotion recognition models
-
-            # Supported emotions: happy, sad, angry, surprised, fearful, disgusted, neutral
-
-            # Simple heuristic based on image brightness and contrast
             gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
-            mean_brightness = np.mean(gray)
-            contrast = np.std(gray)
+            mean_brightness = float(np.mean(gray))
+            contrast = float(np.std(gray))
 
-            # Basic emotion inference (placeholder logic)
-            if mean_brightness > 120 and contrast > 30:
+            if mean_brightness > 135 and contrast > 35:
                 emotion = "happy"
-                confidence = 0.75
-            elif mean_brightness < 80:
+                confidence = 0.78
+            elif mean_brightness < 75 and contrast < 25:
                 emotion = "sad"
-                confidence = 0.65
-            elif contrast > 50:
+                confidence = 0.7
+            elif contrast > 55:
                 emotion = "surprised"
-                confidence = 0.70
+                confidence = 0.72
             else:
                 emotion = "neutral"
-                confidence = 0.80
+                confidence = 0.82
 
-            return {"emotion": emotion, "emotion_confidence": float(confidence)}
+            return {"emotion": emotion, "emotion_confidence": float(round(confidence, 2))}
 
         except Exception as e:
             logger.error(f"Emotion detection failed: {e}")
@@ -375,30 +444,68 @@ class FaceAttributeAnalyzer:
         """
         Classify gender with confidence score.
 
+        Uses InsightFace's built-in gender classification when available, falls back to heuristic.
+
         Args:
-            face_crop: Face image crop
+            face_crop: Face image crop (BGR format)
 
         Returns:
             Dictionary with gender and gender_confidence
         """
         try:
-            # Placeholder gender classification
-            # Real implementation would use gender classification models
+            # Try InsightFace gender classification first (if available and selected)
+            if self.backend == "insightface" and INSIGHTFACE_AVAILABLE:
+                try:
+                    from insightface.app import FaceAnalysis
 
-            # Simple heuristic based on face characteristics
+                    # Use cached analyzer if available
+                    if not hasattr(self, "_insightface_analyzer") or self._insightface_analyzer is None:
+                        analyzer = FaceAnalysis(
+                            name="buffalo_l",
+                            root=str(self.models_dir),
+                            providers=["CPUExecutionProvider"],
+                        )
+                        analyzer.prepare(ctx_id=-1, det_thresh=0.5)
+                        self._insightface_analyzer = analyzer
+                    else:
+                        analyzer = self._insightface_analyzer
+
+                    # Get gender from InsightFace
+                    faces = analyzer.get(face_crop)
+                    if faces and len(faces) > 0:
+                        face = faces[0]
+                        # InsightFace provides gender as an attribute (0=male, 1=female typically)
+                        gender_val = getattr(face, "gender", None)
+                        if gender_val is not None:
+                            # Convert to string format
+                            if isinstance(gender_val, (int, float)):
+                                gender = "male" if int(gender_val) == 0 else "female"
+                            elif isinstance(gender_val, str):
+                                gender = gender_val.lower()
+                            else:
+                                gender = str(gender_val).lower()
+
+                            # InsightFace gender model is quite accurate
+                            return {"gender": gender, "gender_confidence": 0.85}
+                except Exception as e:
+                    logger.debug(f"InsightFace gender classification failed, using fallback: {e}")
+
+            # Fallback: Use heuristic based on face characteristics
             gray = cv2.cvtColor(face_crop, cv2.COLOR_BGR2GRAY)
 
             # Calculate some basic features
-            mean_intensity = np.mean(gray)
-            edge_density = cv2.Canny(gray, 50, 150).sum() / gray.size
+            mean_intensity = float(np.mean(gray))
+            edge_density = float(cv2.Canny(gray, 50, 150).sum() / gray.size)
 
-            # Basic gender inference (placeholder logic)
-            if edge_density > 0.1 and mean_intensity < 100:
+            if edge_density > 0.12 and mean_intensity < 105:
                 gender = "male"
-                confidence = 0.65
-            else:
+                confidence = 0.68
+            elif edge_density < 0.07 and mean_intensity > 120:
                 gender = "female"
-                confidence = 0.65
+                confidence = 0.68
+            else:
+                gender = "neutral"
+                confidence = 0.52
 
             return {"gender": gender, "gender_confidence": float(confidence)}
 
@@ -407,12 +514,29 @@ class FaceAttributeAnalyzer:
             return {"gender": None, "gender_confidence": 0.0}
 
     def _generate_cache_key(self, face_crop: np.ndarray) -> str:
-        """Generate cache key for face crop."""
+        """Generate stable cache key for face crop."""
         try:
-            # Use image hash as cache key
-            return str(hash(face_crop.tobytes()))
-        except:
+            return hashlib.sha1(face_crop.tobytes()).hexdigest()
+        except Exception:
             return str(np.random.randint(0, 1000000))
+
+    def _cache_put(self, key: str, value: Dict) -> None:
+        """Insert into LRU cache respecting cache size."""
+        self.attribute_cache[key] = value
+        self.attribute_cache.move_to_end(key)
+        if len(self.attribute_cache) > self.cache_size:
+            self.attribute_cache.popitem(last=False)
+
+    def _select_backend(self, preference: Tuple[str, ...]) -> str:
+        """Select first available backend from preference."""
+        for backend in preference:
+            if backend == "insightface" and INSIGHTFACE_AVAILABLE:
+                return backend
+            if backend == "mediapipe" and MEDIAPIPE_AVAILABLE:
+                return backend
+            if backend == "heuristic":
+                return backend
+        return "heuristic"
 
     def _empty_attributes(self) -> Dict:
         """Return empty attributes dictionary."""
@@ -431,10 +555,31 @@ class FaceAttributeAnalyzer:
 class AdvancedFaceQualityAssessor:
     """Enhanced face quality assessment with comprehensive scoring"""
 
-    def __init__(self):
+    def __init__(self, cache_size: int = 256):
         """Initialize quality assessor."""
-        self.quality_cache = {}
+        self.cache_size = max(8, cache_size)
+        self.quality_cache: OrderedDict[str, Dict] = OrderedDict()
         logger.info("AdvancedFaceQualityAssessor initialized")
+
+    def assess(self, face_crop: np.ndarray, pose_angles: Optional[Tuple[float, float, float]] = None) -> QualityScores:
+        """Public entrypoint returning typed quality scores with optional pose weighting."""
+        scores = self.assess_comprehensive_quality(face_crop)
+
+        if pose_angles is not None:
+            yaw, pitch = abs(float(pose_angles[0])), abs(float(pose_angles[1]))
+            pose_penalty = min(1.0, (yaw + pitch) / 180.0)
+            adjusted_pose = max(0.0, 1.0 - pose_penalty)
+            scores = scores.copy()
+            scores["pose_score"] = adjusted_pose
+            scores["overall_quality"] = float(
+                scores["blur_score"] * 0.3
+                + scores["lighting_score"] * 0.25
+                + scores["occlusion_score"] * 0.2
+                + adjusted_pose * 0.15
+                + scores["resolution_score"] * 0.1
+            )
+
+        return QualityScores(**scores)
 
     def assess_comprehensive_quality(self, face_crop: np.ndarray, landmarks: Optional[np.ndarray] = None) -> Dict:
         """
@@ -452,9 +597,11 @@ class AdvancedFaceQualityAssessor:
 
         try:
             # Generate cache key
-            cache_key = str(hash(face_crop.tobytes()))
-            if cache_key in self.quality_cache:
-                return self.quality_cache[cache_key]
+            cache_key = hashlib.sha1(face_crop.tobytes()).hexdigest()
+            cached = self.quality_cache.get(cache_key)
+            if cached is not None:
+                self.quality_cache.move_to_end(cache_key)
+                return cached
 
             # Individual quality assessments
             blur_score = self._assess_blur(face_crop)
@@ -483,6 +630,9 @@ class AdvancedFaceQualityAssessor:
 
             # Cache result
             self.quality_cache[cache_key] = quality_scores
+            self.quality_cache.move_to_end(cache_key)
+            if len(self.quality_cache) > self.cache_size:
+                self.quality_cache.popitem(last=False)
 
             return quality_scores
 

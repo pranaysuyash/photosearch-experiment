@@ -11,7 +11,7 @@ Part of Phase 1: High-Performance Foundation implementation.
 """
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import numpy as np
 
 from server.face_embedding_index import (
@@ -47,23 +47,33 @@ class PerformanceOptimizedFaceService:
         self.use_cache = use_cache
         self.cache: Dict[str, List[Dict]] = {}  # Simple in-memory cache
 
-        # Create FAISS index
+        # One FAISS index per embedding version to prevent cross-model mixing.
+        # Key "" represents unknown/legacy embedding versions.
+        self.faiss_indices: Dict[str, FAISSIndex] = {}
+        self._faiss_index_kwargs: Dict[str, Any] = {}
+
         # Determine index type based on collection size
         if index_type == "auto":
             # Use IndexIVFFlat for large collections, IndexFlatIP for smaller ones
             num_clusters = self.db.get_cluster_count()
             if num_clusters > 10000:
                 logger.info(f"Auto-selecting IndexIVFFlat for {num_clusters} clusters")
-                self.faiss_index = FAISSIndex(index_type="IndexIVFFlat", nlist=100)
+                self._faiss_index_kwargs = {"index_type": "IndexIVFFlat", "nlist": 100}
             else:
                 logger.info(f"Auto-selecting IndexFlatIP for {num_clusters} clusters")
-                self.faiss_index = FAISSIndex(index_type="IndexFlatIP")
+                self._faiss_index_kwargs = {"index_type": "IndexFlatIP"}
         elif index_type == "IndexFlatIP":
-            self.faiss_index = FAISSIndex(index_type="IndexFlatIP")
+            self._faiss_index_kwargs = {"index_type": "IndexFlatIP"}
         elif index_type == "IndexIVFFlat":
-            self.faiss_index = FAISSIndex(index_type="IndexIVFFlat", nlist=100)
+            self._faiss_index_kwargs = {"index_type": "IndexIVFFlat", "nlist": 100}
         else:
             raise ValueError(f"Unknown index_type: {index_type}")
+
+        # Backward-compatible single-index attribute (unknown/legacy bucket).
+        self.faiss_index = FAISSIndex(**self._faiss_index_kwargs)
+
+    def _new_index(self) -> FAISSIndex:
+        return FAISSIndex(**self._faiss_index_kwargs)
 
     def initialize_index(self) -> None:
         """
@@ -81,13 +91,18 @@ class PerformanceOptimizedFaceService:
             logger.warning("No cluster prototypes found in database")
             return
 
-        logger.info(f"Loading {len(prototypes)} cluster prototypes into FAISS index...")
+        logger.info(f"Loading {len(prototypes)} cluster prototypes into FAISS indices...")
 
-        # Prepare embeddings for bulk load
-        embeddings_dict = {}
+        # Clear old indices + cache
+        self.faiss_indices = {}
+        self.cache = {}
+
+        # Group embeddings by embedding_version
+        grouped: Dict[str, Dict[str, tuple[np.ndarray, Optional[str]]]] = {}
         for cluster_id, prototype_data in prototypes.items():
             embedding = prototype_data.get("embedding")
             label = prototype_data.get("label")
+            version = (prototype_data.get("embedding_version") or "").strip()
 
             if embedding is None:
                 logger.warning(f"Cluster {cluster_id} has no prototype embedding, skipping")
@@ -95,21 +110,29 @@ class PerformanceOptimizedFaceService:
 
             # Embedding is already a numpy array from get_all_cluster_prototypes
             if not isinstance(embedding, np.ndarray):
-                # Fallback: try to convert
                 if isinstance(embedding, list):
                     embedding = np.array(embedding, dtype=np.float32)
                 else:
                     logger.warning(f"Invalid embedding type for cluster {cluster_id}, skipping")
                     continue
 
-            embeddings_dict[cluster_id] = (embedding, label)
+            grouped.setdefault(version, {})[cluster_id] = (embedding, label)
 
-        # Bulk load into FAISS index
-        if embeddings_dict:
-            self.faiss_index.bulk_load(embeddings_dict)
-            logger.info(f"FAISS index initialized with {self.faiss_index.count()} prototypes")
-        else:
+        if not grouped:
             logger.warning("No valid embeddings found for index initialization")
+            return
+
+        # Build one index per version
+        for version, embeddings_dict in grouped.items():
+            idx = self._new_index()
+            idx.bulk_load(embeddings_dict)
+            self.faiss_indices[version] = idx
+            logger.info(
+                f"Initialized FAISS index for embedding_version='{version or 'UNKNOWN'}' with {idx.count()} prototypes"
+            )
+
+        # Maintain backward-compatible attribute for unknown bucket
+        self.faiss_index = self.faiss_indices.get("", self._new_index())
 
     def find_similar_faces(
         self, face_id: str, threshold: float = 0.7, limit: int = 10, exclude_self: bool = True
@@ -138,11 +161,24 @@ class PerformanceOptimizedFaceService:
             logger.warning(f"Face {face_id} not found or has no embedding")
             return []
 
+        # Pick a version-compatible index.
+        version = (face_detection.embedding_version or "").strip()
+        if version:
+            idx = self.faiss_indices.get(version)
+            if idx is None:
+                logger.warning(
+                    f"No FAISS index initialized for embedding_version='{version}'. "
+                    "Reinitialize the index to include this version."
+                )
+                return []
+        else:
+            idx = self.faiss_indices.get("", self.faiss_index)
+
         # Convert embedding to numpy array (embedding is stored as list in FaceDetection)
         embedding = np.array(face_detection.embedding, dtype=np.float32)
 
         # Search FAISS index
-        similar_faces = self.faiss_index.search(embedding, k=limit, threshold=threshold)
+        similar_faces = idx.search(embedding, k=limit, threshold=threshold)
 
         # Enrich with metadata
         results = []

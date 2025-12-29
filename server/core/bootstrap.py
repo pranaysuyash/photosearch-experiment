@@ -27,6 +27,7 @@ def init_stores(base_dir: Path) -> dict[str, Any]:
     from server.trash_db import TrashDB
     from src.intent_recognition import IntentDetector
     from src.saved_searches import SavedSearchManager
+    from server.jobs import job_store
 
     return {
         "vector_store": LanceDBStore(),
@@ -35,6 +36,7 @@ def init_stores(base_dir: Path) -> dict[str, Any]:
         "source_store": SourceStore(base_dir / "sources.db"),
         "source_item_store": SourceItemStore(base_dir / "sources_items.db"),
         "trash_db": TrashDB(base_dir / "trash.db"),
+        "job_store": job_store,
     }
 
 
@@ -117,6 +119,7 @@ def build_state(*, skip_heavy_components: bool = False) -> AppState:
         source_store=stores["source_store"],
         source_item_store=stores["source_item_store"],
         trash_db=stores["trash_db"],
+        job_store=stores["job_store"],
         # Components
         face_clusterer=components["face_clusterer"],
         ocr_search=components["ocr_search"],

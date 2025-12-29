@@ -259,11 +259,38 @@ def scan_directories(
 
             # For incremental scan, check if directory has changed
             if incremental and existing_catalog:
-                # Check directory modification time
-                os.path.getmtime(root)
-                # If directory hasn't changed, skip it (simplified check)
-                # In production, we'd check against stored mtime
-                pass
+                # Check directory modification time to avoid re-scanning unchanged directories
+                try:
+                    current_mtime = os.path.getmtime(root)
+                    # Extract catalog from existing_catalog if it's wrapped in a dict
+                    catalog_data = (
+                        existing_catalog.get("catalog", existing_catalog) if isinstance(existing_catalog, dict) else {}
+                    )
+
+                    # Check for stored directory mtime
+                    mtime_key = root + "::mtime"
+                    if mtime_key in catalog_data:
+                        prev_mtime = catalog_data[mtime_key]
+
+                        # If modification time hasn't changed, skip this directory
+                        if current_mtime <= prev_mtime:
+                            logger.debug(
+                                f"Skipping unchanged directory: {root} (mtime: {prev_mtime} -> {current_mtime})"
+                            )
+                            skipped_dirs += 1
+                            continue
+                    elif root in catalog_data:
+                        # Fallback for old catalog format without explicit mtime
+                        logger.debug(f"No mtime metadata for {root}, will re-scan")
+                except (OSError, PermissionError) as e:
+                    logger.debug(f"Cannot check mtime for {root}: {e}")
+                    # If we can't check mtime, continue processing
+
+            # Get directory modification time for incremental scans
+            try:
+                dir_mtime = os.path.getmtime(root)
+            except (OSError, PermissionError):
+                dir_mtime = 0
 
             # Scan files in this directory
             try:
@@ -271,6 +298,10 @@ def scan_directories(
             except PermissionError:
                 logger.warning(f"Permission denied: {root}")
                 continue
+
+            # Initialize directory entry if needed
+            if root not in catalog:
+                catalog[root] = []
 
             for filename in files:
                 filepath = os.path.join(root, filename)
@@ -295,6 +326,11 @@ def scan_directories(
                 except (OSError, PermissionError) as e:
                     logger.warning(f"Cannot access file {filepath}: {e}")
                     continue
+
+            # Store directory mtime if we found files
+            if catalog[root]:
+                # Attach directory metadata to the catalog entry
+                catalog[root + "::mtime"] = dir_mtime
 
         except Exception as e:
             logger.error(f"Error scanning {root}: {e}")

@@ -67,7 +67,7 @@ export function PhotoSearchProvider({
   const [resultCount, setResultCount] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [searchMode, setSearchModeState] = useState<SearchMode>('semantic');
+  const [searchMode, setSearchModeState] = useState<SearchMode>('metadata');
   const [manualSearchMode, setManualSearchMode] = useState<SearchMode | null>(
     null
   );
@@ -279,9 +279,8 @@ export function PhotoSearchProvider({
       const currentDateFrom = dateFromRef.current;
       const currentDateTo = dateToRef.current;
 
-      const searchParams = `${query}|${currentSearchMode}|${currentSortBy}|${currentTypeFilter}|${currentFavoritesFilter}|${
-        currentTag ?? ''
-      }|${currentDateFrom ?? ''}|${currentDateTo ?? ''}`;
+      const searchParams = `${query}|${currentSearchMode}|${currentSortBy}|${currentTypeFilter}|${currentFavoritesFilter}|${currentTag ?? ''
+        }|${currentDateFrom ?? ''}|${currentDateTo ?? ''}`;
       if (!isLoadMore && searchParams === lastSearchParamsRef.current) {
         // Skip duplicate search with same parameters
         return;
@@ -467,19 +466,86 @@ export function PhotoSearchProvider({
     }
   }, []);
 
-  // Single effect to handle all search triggers
+  // Initial browse (no search mode dependency)
+  const doBrowse = useCallback(
+    async (isLoadMore: boolean = false) => {
+      if (loadingRef.current) return;
+
+      if (!isLoadMore) startSearch();
+
+      loadingRef.current = true;
+      setLoading(true);
+      setError(null);
+
+      if (!isLoadMore) {
+        setPhotos([]);
+        setResultCount(null);
+        offsetRef.current = 0;
+        hasMoreRef.current = true;
+        setHasMore(true);
+      }
+
+      try {
+        const effectiveOffset = isLoadMore ? offsetRef.current : 0;
+
+        recordApiCall();
+        const res = await api.browsePhotos(
+          LIMIT,
+          effectiveOffset,
+          sortByRef.current,
+          typeFilterRef.current,
+          sourceFilter,
+          favoritesFilterRef.current,
+          dateFromRef.current,
+          dateToRef.current
+        );
+
+        const newPhotos = (res?.results ?? []) as Photo[];
+        if (typeof res?.count === 'number') setResultCount(res.count);
+
+        if (!isLoadMore) {
+          setPhotos(newPhotos);
+          offsetRef.current = newPhotos.length;
+          hasMoreRef.current = res?.hasMore ?? newPhotos.length >= LIMIT;
+          setHasMore(hasMoreRef.current);
+          endSearch();
+        } else {
+          setPhotos((prev) => [...prev, ...newPhotos]);
+          offsetRef.current += newPhotos.length;
+          hasMoreRef.current = res?.hasMore ?? newPhotos.length >= LIMIT;
+          setHasMore(hasMoreRef.current);
+        }
+      } catch (err) {
+        console.error('[PhotoSearchContext] Browse failed:', err);
+        setError(err instanceof Error ? err : new Error('Browse failed'));
+        if (!isLoadMore) setPhotos([]);
+        hasMoreRef.current = false;
+        setHasMore(false);
+      } finally {
+        loadingRef.current = false;
+        setLoading(false);
+      }
+    },
+    [LIMIT, endSearch, recordApiCall, sourceFilter, startSearch]
+  );
+
+  // Single effect to handle search triggers (only when there's an actual query)
   useEffect(() => {
     if (!initialFetchDoneRef.current) {
       initialFetchDoneRef.current = true;
-      doSearch('');
-    } else {
-      // Only re-search if we've done the initial fetch
+      // Use browse for initial load (no search mode dependency)
+      doBrowse(false);
+    } else if (debouncedSearchQuery.trim()) {
+      // Only trigger search when there's an actual query
       doSearch(debouncedSearchQuery);
+    } else {
+      // Empty query -> browse mode
+      doBrowse(false);
     }
   }, [
     debouncedSearchQuery,
+    doBrowse,
     doSearch,
-    searchMode,
     sortBy,
     typeFilter,
     sourceFilter,

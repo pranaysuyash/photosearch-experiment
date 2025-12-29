@@ -68,22 +68,40 @@ async def export_photos(request: ExportRequest, state: AppState = Depends(get_st
             else:
                 filename = original_filename
 
-            # Process image if size reduction is requested
-            if request.options.max_resolution:
+            # Process image if size reduction or face blur is requested
+            if request.options.max_resolution or request.options.blur_faces:
                 try:
-                    # Open and resize image if needed
+                    # Open image
                     with Image.open(path) as img:
-                        img.thumbnail((request.options.max_resolution, request.options.max_resolution))
+                        # Apply face blur if requested
+                        if request.options.blur_faces:
+                            try:
+                                from server.face_blur_processor import FaceBlurProcessor
+
+                                blur_processor = FaceBlurProcessor(settings.FACE_CLUSTERS_DB_PATH)
+                                img_bytes = blur_processor.blur_image(path, blur_strength=request.options.blur_strength)
+                                if img_bytes:
+                                    # Re-open the blurred image for further processing
+                                    temp_blur_buffer = io.BytesIO(img_bytes)
+                                    img = Image.open(temp_blur_buffer)
+                            except Exception as e:
+                                # Log warning but continue with unblurred image
+                                print(f"Warning: Failed to apply face blur: {e}")
+
+                        # Apply size reduction if requested
+                        if request.options.max_resolution:
+                            img.thumbnail((request.options.max_resolution, request.options.max_resolution))
 
                         # Save to temporary bytes buffer
                         temp_buffer = io.BytesIO()
-                        img.save(temp_buffer, format=img.format)
+                        img.save(temp_buffer, format=img.format or "JPEG")
                         temp_buffer.seek(0)
 
                         # Write to zip
                         zip_file.writestr(filename, temp_buffer.getvalue())
-                except Exception:
+                except Exception as e:
                     # If image processing fails, just copy the file
+                    print(f"Error processing image {path}: {e}")
                     zip_file.write(path, filename)
             else:
                 # Write original file

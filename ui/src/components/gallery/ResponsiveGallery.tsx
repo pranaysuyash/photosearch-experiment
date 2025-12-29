@@ -14,15 +14,15 @@ import {
   ChevronRight,
   RotateCcw,
 } from 'lucide-react';
-import { api } from '../api';
+import { api, type PhotoMetadata } from '../api';
 import { glass } from '../design/glass';
 
 interface Photo {
   path: string;
   filename: string;
-  metadata?: unknown;
+  metadata?: PhotoMetadata;
   score?: number;
-  matchExplanation?: string;
+  matchExplanation?: unknown;
 }
 
 interface GalleryProps {
@@ -395,9 +395,13 @@ export function ResponsiveGallery({
                 </div>
               </div>
 
-              {selectedPhoto.matchExplanation && (
+              {Boolean(selectedPhoto.matchExplanation) && (
                 <div className='mt-3 text-sm text-muted-foreground'>
-                  <p>{selectedPhoto.matchExplanation}</p>
+                  <p>
+                    {typeof selectedPhoto.matchExplanation === 'string'
+                      ? selectedPhoto.matchExplanation
+                      : JSON.stringify(selectedPhoto.matchExplanation)}
+                  </p>
                 </div>
               )}
             </div>

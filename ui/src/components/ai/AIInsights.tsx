@@ -55,7 +55,7 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
       setLoading(true);
       setError(null);
 
-      const response = await api.get(
+      const response = await api.get<{ insights?: PhotoInsight[] }>(
         `/ai/insights/photo/${encodeURIComponent(photoPath)}`
       );
       setInsights(response.insights || []);

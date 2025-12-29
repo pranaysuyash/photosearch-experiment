@@ -16,20 +16,47 @@ def start_watcher(path: str, callback: Callable[[str], None]) -> Optional[Any]:
     class PhotoEventHandler(FileSystemEventHandler):
         """Handle file system events for photos."""
 
+        VALID_EXTENSIONS = {
+            # Images
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".bmp",
+            ".webp",
+            ".tiff",
+            ".heic",
+            # Videos
+            ".mp4",
+            ".mov",
+            ".avi",
+            ".mkv",
+            ".webm",
+            ".m4v",
+        }
+
         def __init__(self, cb: Callable[[str], None]):
             self.callback = cb
 
+        def _is_valid_file(self, path: str) -> bool:
+            """Check if file is a valid media file."""
+            if path.split("/")[-1].startswith("."):  # ignore hidden files
+                return False
+
+            ext = "." + path.split(".")[-1].lower() if "." in path else ""
+            return ext in self.VALID_EXTENSIONS
+
         def on_created(self, event):
             if not event.is_directory:
-                if event.src_path.split("/")[-1].startswith("."):  # ignore hidden files
-                    return
-                logger.info(f"Watcher: New file detected: {event.src_path}")
-                self.callback(event.src_path)
+                if self._is_valid_file(event.src_path):
+                    logger.info(f"Watcher: New file detected: {event.src_path}")
+                    self.callback(event.src_path)
 
         def on_moved(self, event):
             if not event.is_directory:
-                logger.info(f"Watcher: File moved: {event.src_path} -> {event.dest_path}")
-                self.callback(event.dest_path)
+                if self._is_valid_file(event.dest_path):
+                    logger.info(f"Watcher: File moved: {event.src_path} -> {event.dest_path}")
+                    self.callback(event.dest_path)
 
     try:
         event_handler = PhotoEventHandler(callback)

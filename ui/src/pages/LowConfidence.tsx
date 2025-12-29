@@ -7,11 +7,11 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { glass } from '../design/glass';
 
 interface LowConfidenceFace {
-    id: number;
+    face_id: number;
     image_path: string;
-    bounding_box: number[];
     confidence: number;
-    cluster_id: number | null;
+    cluster_id: string | null;
+    label?: string | null;
 }
 
 export function LowConfidence() {
@@ -27,10 +27,12 @@ export function LowConfidence() {
     const fetchLowConfidence = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/low-confidence`);
+            const response = await fetch(
+              `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/low-confidence`
+            );
             const data = await response.json();
             setFaces(data.faces || []);
-            setCount(data.count || 0);
+            setCount(data.total ?? data.count ?? 0);
         } catch (err) {
             console.error('Failed to fetch low confidence faces:', err);
         } finally {
@@ -44,7 +46,12 @@ export function LowConfidence() {
             <div className="border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/people')} className="btn-glass btn-glass--muted p-2">
+                                                <button
+                                                    onClick={() => navigate('/people')}
+                                                    className="btn-glass btn-glass--muted p-2"
+                                                    title="Back to People"
+                                                    aria-label="Back to People"
+                                                >
                             <ArrowLeft size={20} />
                         </button>
                         <div className="flex items-center gap-3">
@@ -79,13 +86,13 @@ export function LowConfidence() {
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
                         {faces.map((face) => (
                             <div
-                                key={face.id}
+                                key={face.face_id}
                                 className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-red-500/50 transition-colors`}
                             >
                                 <div className="p-3 bg-black/20">
                                     <img
-                                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${face.id}/crop?size=150`}
-                                        alt={`Face ${face.id}`}
+                                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${face.face_id}?size=150`}
+                                        alt={`Face ${face.face_id}`}
                                         className="w-full h-24 object-cover rounded"
                                     />
                                 </div>
@@ -93,6 +100,11 @@ export function LowConfidence() {
                                     <div className="text-sm font-medium text-foreground">
                                         {(face.confidence * 100).toFixed(0)}% confidence
                                     </div>
+                                    {face.label ? (
+                                      <div className="text-xs text-muted-foreground truncate">
+                                        {face.label}
+                                      </div>
+                                    ) : null}
                                     <div className="text-xs text-muted-foreground truncate">
                                         {face.image_path.split('/').pop()}
                                     </div>

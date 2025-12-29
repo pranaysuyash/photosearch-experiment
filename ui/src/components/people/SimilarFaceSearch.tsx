@@ -30,11 +30,13 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [threshold, setThreshold] = useState(0.7);
+  const [hasSearched, setHasSearched] = useState(false);
 
   const findSimilarFaces = async () => {
     try {
       setLoading(true);
       setError(null);
+      setHasSearched(true);
 
       const response = await fetch(
         `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/similar?threshold=${threshold}`
@@ -58,6 +60,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
   const handleClose = () => {
     setSimilarFaces([]);
     setError(null);
+    setHasSearched(false);
     onClose();
   };
 
@@ -200,7 +203,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
             </div>
           )}
 
-          {similarFaces.length === 0 && !loading && !error && (
+          {similarFaces.length === 0 && !loading && !error && !hasSearched && (
             <div className="text-center py-12">
               <Search size={48} className="mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">
@@ -212,7 +215,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
             </div>
           )}
 
-          {similarFaces.length === 0 && !loading && !error && findSimilarFaces.length > 0 && (
+          {similarFaces.length === 0 && !loading && !error && hasSearched && (
             <div className="text-center py-12">
               <User size={48} className="mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium text-foreground mb-2">

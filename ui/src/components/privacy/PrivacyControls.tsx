@@ -285,12 +285,12 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
             </h3>
 
             <div className="space-y-3">
-              {[
+              {([
                 { key: 'view', label: 'View Photo', desc: 'Users can view the photo' },
                 { key: 'download', label: 'Download Photo', desc: 'Users can download the original photo' },
                 { key: 'share', label: 'Share Photo', desc: 'Users can share the photo with others' },
                 { key: 'edit', label: 'Edit Photo', desc: 'Users can make edits to the photo' }
-              ].map(permission => (
+              ] as const satisfies ReadonlyArray<{ key: SharePermissionKey; label: string; desc: string }>).map(permission => (
                 <label
                   key={permission.key}
                   className="flex items-center gap-3 p-3 rounded-lg cursor-pointer border border-white/10 hover:border-white/20"

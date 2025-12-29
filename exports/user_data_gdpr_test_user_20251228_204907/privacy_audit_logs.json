@@ -1,0 +1,57 @@
+[
+  {
+    "log_id": "32a54017-4a8c-4cca-89e3-92ebb3bac42f",
+    "timestamp": "2025-12-28 15:19:07",
+    "user_id": "gdpr_test_user",
+    "action": "consent_granted",
+    "resource_type": "consent",
+    "resource_id": "fe0b3a42-59ac-4b06-9897-fad1dd667cc5",
+    "details": "{}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "95f09b67-799b-4bc8-9487-c1d3af38b518",
+    "timestamp": "2025-12-28 15:19:07",
+    "user_id": "gdpr_test_user",
+    "action": "consent_requested",
+    "resource_type": "consent",
+    "resource_id": "fe0b3a42-59ac-4b06-9897-fad1dd667cc5",
+    "details": "{\"consent_type\": \"face_recognition\", \"purpose\": \"Automated photo organization\"}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "b089b2d2-51c6-4825-abb9-3afbfc146e44",
+    "timestamp": "2025-12-28 15:19:07",
+    "user_id": "gdpr_test_user",
+    "action": "consent_withdrawn",
+    "resource_type": "consent",
+    "resource_id": null,
+    "details": "{\"consent_type\": \"face_recognition\", \"withdrawn_count\": 1}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "44ba1e87-ea93-454b-9b09-65db4a0bdd83",
+    "timestamp": "2025-12-28 15:19:07",
+    "user_id": "gdpr_test_user",
+    "action": "data_anonymized",
+    "resource_type": "person",
+    "resource_id": "test_person",
+    "details": "{\"anonymized_id\": \"anon_fce1362503a392ca\"}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "34d1fff4-5c31-4b18-8ad4-8424dd3878ff",
+    "timestamp": "2025-12-28 15:19:07",
+    "user_id": "gdpr_test_user",
+    "action": "data_export_requested",
+    "resource_type": "user_data",
+    "resource_id": "f4fa9d70-2765-4e0f-9623-1c10398f3ec6",
+    "details": "{\"export_types\": [\"consent\", \"audit_logs\", \"privacy_settings\"]}",
+    "ip_address": null,
+    "user_agent": null
+  }
+]

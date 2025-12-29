@@ -549,7 +549,7 @@ async def add_s3_source(
         state.source_store.update_source(src.id, status="connected", last_error=None)
         job_id = state.job_store.create_job(type="source_sync")
 
-        def run_sync(state: AppState = Depends(get_state)):
+        def run_sync(state: AppState):
             try:
                 _sync_s3_source(state, src.id, job_id)
             except Exception as e:
@@ -560,7 +560,7 @@ async def add_s3_source(
                     last_error=str(e),
                 )
 
-        background_tasks.add_task(run_sync)
+        background_tasks.add_task(run_sync, state)
     except Exception as e:
         state.source_store.update_source(src.id, status="error", last_error=str(e))
         return {"source": _source_to_out(state, src.id)}

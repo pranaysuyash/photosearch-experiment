@@ -54,6 +54,7 @@ const Search = () => {
           loadMore={loadMore}
         />
       </div>
+
     </PageSearchWrapper>
   );
 };

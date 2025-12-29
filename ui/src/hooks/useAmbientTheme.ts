@@ -66,7 +66,8 @@ async function averageColorFromImageUrl(url: string): Promise<RGB> {
     };
 
     img.onerror = () => {
-      console.warn('Failed to load image for ambient theme, using default accent');
+      // Silently fall back to default accent
+      console.debug('Failed to load image for ambient theme, using default accent');
       resolve(DEFAULT_ACCENT);
     };
   });

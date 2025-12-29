@@ -72,7 +72,9 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
 
   const loadAvailablePeople = async () => {
     try {
-      const response = await api.get('/api/faces/clusters');
+      const response = await api.get<{ clusters?: FaceCluster[] }>(
+        '/api/faces/clusters'
+      );
       const allClusters: FaceCluster[] = response.clusters || [];
       setAvailablePeople(allClusters.filter(cluster => cluster.label));
     } catch (err) {

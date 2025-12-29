@@ -267,7 +267,10 @@ export function MobilePhotoEditor({
   };
 
   // Touch gesture handlers
-  const getTouchDistance = (touches: TouchList) => {
+  type TouchPointLike = { clientX: number; clientY: number };
+  type TouchListLike = { length: number; [index: number]: TouchPointLike };
+
+  const getTouchDistance = (touches: TouchListLike) => {
     if (!touches || touches.length < 2) return 0;
     const touch1 = touches[0];
     const touch2 = touches[1];

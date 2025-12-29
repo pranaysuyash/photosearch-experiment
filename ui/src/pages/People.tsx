@@ -18,6 +18,7 @@ import {
   Trash2,
   AlertCircle,
   CheckCircle,
+  AlertTriangle,
   EyeOff,
   Pause,
   Play,
@@ -26,14 +27,21 @@ import {
   Star,
   Undo2,
   SlidersHorizontal,
+  Activity,
+  Sparkles,
+  Calendar,
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
 import ReviewQueue from '../components/people/ReviewQueue';
+import ReviewInbox from '../components/people/ReviewInbox';
 import MergeSuggestions from '../components/people/MergeSuggestions';
 import SplitClusterModal from '../components/people/SplitClusterModal';
 import BooleanPeopleSearch from '../components/people/BooleanPeopleSearch';
 import FaceAttributeSearch from '../components/people/FaceAttributeSearch';
+import AdvancedFaceSearch from '../components/search/AdvancedFaceSearch';
+import PersonAnalytics from '../components/people/PersonAnalytics';
+import Events from '../components/people/Events';
 
 interface FaceCluster {
   id: string;
@@ -90,6 +98,22 @@ interface IndexStats {
   [key: string]: unknown;
 }
 
+interface FaceBackendStatus {
+  detection: {
+    preferred: string[];
+    active?: string | null;
+    supports_embeddings?: boolean;
+    remote_configured?: boolean;
+  };
+  embedding: {
+    preferred: string[];
+    active?: string | null;
+    embedding_version?: string | null;
+    remote_configured?: boolean;
+    clip_model?: string | null;
+  };
+}
+
 const getApiErrorMessage = (err: unknown, fallback: string) => {
   if (err && typeof err === 'object') {
     const maybe = err as {
@@ -118,7 +142,7 @@ export function People() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<
-    'people' | 'hidden' | 'review' | 'merge'
+    'inbox' | 'people' | 'analytics' | 'events' | 'hidden' | 'review' | 'merge'
   >('people');
   const [reviewCount, setReviewCount] = useState(0);
 
@@ -189,6 +213,7 @@ export function People() {
   // Boolean search functionality
   const [booleanSearchOpen, setBooleanSearchOpen] = useState(false);
   const [attributeSearchOpen, setAttributeSearchOpen] = useState(false);
+  const [advancedSearchOpen, setAdvancedSearchOpen] = useState(false);
 
   // Mixed cluster detection tools
   const [mixedClusters, setMixedClusters] = useState<MixedCluster[]>([]);
@@ -201,6 +226,13 @@ export function People() {
   const [indexStats, setIndexStats] = useState<IndexStats | null>(null);
   const [indexStatsLoading, setIndexStatsLoading] = useState(false);
   const [indexStatsError, setIndexStatsError] = useState<string | null>(null);
+  const [backendStatus, setBackendStatus] = useState<FaceBackendStatus | null>(
+    null
+  );
+  const [backendStatusLoading, setBackendStatusLoading] = useState(false);
+  const [backendStatusError, setBackendStatusError] = useState<string | null>(
+    null
+  );
 
   // Prototype recompute
   const [recomputeLoading, setRecomputeLoading] = useState(false);
@@ -388,6 +420,23 @@ export function People() {
     }
   }, []);
 
+  const fetchBackendStatus = useCallback(async () => {
+    try {
+      setBackendStatusLoading(true);
+      setBackendStatusError(null);
+      const data = await api.getFaceBackendStatus();
+      setBackendStatus(data);
+    } catch (err: unknown) {
+      console.error('Failed to load face backend status:', err);
+      setBackendStatusError(
+        getApiErrorMessage(err, 'Failed to load backend status')
+      );
+      setBackendStatus(null);
+    } finally {
+      setBackendStatusLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void Promise.all([
       fetchClusters(),
@@ -395,12 +444,14 @@ export function People() {
       fetchReviewCount(),
       fetchIndexingStatus(),
       checkUndoAvailability(),
+      fetchBackendStatus(),
     ]);
   }, [
     fetchClusters,
     fetchStats,
     fetchReviewCount,
     fetchIndexingStatus,
+    fetchBackendStatus,
   ]);
 
   const handleScan = async () => {
@@ -471,10 +522,11 @@ export function People() {
       setPersonLookupError(null);
       setPersonLookupResult(null);
 
-      const data = await api.get(
+      const data = await api.get<PersonLookupResult>(
         `/api/faces/person/${encodeURIComponent(name)}`
       );
-      setPersonLookupResult(data);
+      const result = data as PersonLookupResult;
+      setPersonLookupResult(result);
     } catch (err: unknown) {
       console.error('Failed to lookup person by name:', err);
       setPersonLookupError(
@@ -498,8 +550,12 @@ export function People() {
       setScanSingleError(null);
       setScanSingleResult(null);
 
-      const data = await api.post('/api/faces/scan-single', { files });
-      setScanSingleResult(data);
+      const data = await api.post<ScanSingleResult>(
+        '/api/faces/scan-single',
+        { files }
+      );
+      const result = data as ScanSingleResult;
+      setScanSingleResult(result);
     } catch (err: unknown) {
       console.error('Failed to scan single file(s) for faces:', err);
       setScanSingleError(
@@ -519,10 +575,11 @@ export function People() {
       setScanStatusError(null);
       setScanStatusResult(null);
 
-      const data = await api.get(
+      const data = await api.get<ScanStatusResult>(
         `/api/faces/scan-status/${encodeURIComponent(jobId)}`
       );
-      setScanStatusResult(data);
+      const result = data as ScanStatusResult;
+      setScanStatusResult(result);
     } catch (err: unknown) {
       console.error('Failed to fetch scan job status:', err);
       setScanStatusError(
@@ -565,6 +622,7 @@ export function People() {
       setIndexStatsLoading(false);
     }
   };
+
 
   const handleRecomputePrototypes = async () => {
     try {
@@ -662,6 +720,12 @@ export function People() {
   const showHidden = activeTab === 'hidden';
   const displayedClusters = showHidden ? hiddenClusters : visibleClusters;
   const noResults = !loading && displayedClusters.length === 0;
+  const detectionBackend = backendStatus?.detection?.active || 'unknown';
+  const embeddingBackend = backendStatus?.embedding?.active || 'unknown';
+  const fallbackEmbedding =
+    embeddingBackend !== 'insightface' && embeddingBackend !== 'unknown';
+  const fallbackDetection =
+    detectionBackend !== 'insightface' && detectionBackend !== 'unknown';
 
   const formatUndoLabel = (operationType?: string | null) => {
     if (!operationType) return 'last operation';
@@ -738,6 +802,16 @@ export function People() {
                 <span className='hidden sm:inline'>Advanced Search</span>
               </button>
 
+              {/* Power Search Button */}
+              <button
+                onClick={() => setAdvancedSearchOpen(true)}
+                className='flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
+                title='Natural language, temporal, and similarity face search'
+              >
+                <Sparkles size={14} />
+                <span className='hidden sm:inline'>Power Search</span>
+              </button>
+
               {/* Attribute Search Button */}
               <button
                 onClick={() => setAttributeSearchOpen(true)}
@@ -753,8 +827,8 @@ export function People() {
                 onClick={handleUndo}
                 disabled={!canUndo || undoLoading}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${canUndo && !undoLoading
-                    ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
-                    : 'bg-white/5 border-white/5 text-muted-foreground cursor-not-allowed'
+                  ? 'bg-white/5 border-white/10 hover:bg-white/10 text-foreground'
+                  : 'bg-white/5 border-white/5 text-muted-foreground cursor-not-allowed'
                   }`}
                 title={
                   canUndo
@@ -777,8 +851,8 @@ export function People() {
                 onClick={handleTogglePause}
                 disabled={pauseLoading}
                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors ${isIndexingPaused
-                    ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
-                    : 'bg-white/5 border-white/10 hover:bg-white/10'
+                  ? 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/30'
+                  : 'bg-white/5 border-white/10 hover:bg-white/10'
                   }`}
                 title={
                   isIndexingPaused
@@ -826,20 +900,50 @@ export function People() {
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
           <div className='flex gap-1'>
             <button
+              onClick={() => setActiveTab('inbox')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'inbox'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Sparkles size={16} />
+              Inbox
+            </button>
+            <button
               onClick={() => setActiveTab('people')}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'people'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
               <Users size={16} className='inline mr-2' />
               People
             </button>
             <button
-              onClick={() => setActiveTab('hidden')}
-              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
+              onClick={() => setActiveTab('analytics')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'analytics'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Activity size={16} />
+              Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('events')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'events'
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <Calendar size={16} />
+              Events
+            </button>
+            <button
+              onClick={() => setActiveTab('hidden')}
+              className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
               <EyeOff size={16} />
@@ -853,8 +957,8 @@ export function People() {
             <button
               onClick={() => setActiveTab('review')}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
               <CheckCircle size={16} />
@@ -869,8 +973,8 @@ export function People() {
             <button
               onClick={() => setActiveTab('merge')}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                ? 'border-primary text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
                 }`}
             >
               <Users size={16} />
@@ -879,6 +983,30 @@ export function People() {
           </div>
         </div>
       </div>
+
+      {/* Analytics Tab Content */}
+      {activeTab === 'analytics' && (
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
+          <PersonAnalytics />
+        </div>
+      )}
+
+      {/* Events Tab Content */}
+      {activeTab === 'events' && (
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
+          <Events />
+        </div>
+      )}
+
+      {/* Review Inbox Tab Content */}
+      {activeTab === 'inbox' && (
+        <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
+          <ReviewInbox
+            onOpenNeedsReview={() => setActiveTab('review')}
+            onOpenMergeSuggestions={() => setActiveTab('merge')}
+          />
+        </div>
+      )}
 
       {/* Review Queue Tab Content */}
       {activeTab === 'review' && (
@@ -1060,14 +1188,43 @@ export function People() {
                     Scanning for faces...
                   </span>
                 </div>
-                <div className='w-full bg-white/10 rounded-full h-2 mb-2'>
-                  <div
-                    className='bg-primary h-2 rounded-full transition-all duration-300'
-                    style={{ width: `${scanProgress.progress}%` }}
-                  />
-                </div>
+                <progress
+                  value={scanProgress.progress}
+                  max={100}
+                  className='w-full h-2 mb-2 rounded-full overflow-hidden bg-white/10 [&::-webkit-progress-bar]:bg-white/10 [&::-webkit-progress-value]:bg-primary [&::-moz-progress-bar]:bg-primary'
+                />
                 <div className='text-xs text-muted-foreground'>
                   {scanProgress.message}
+                </div>
+              </div>
+            )}
+
+            {/* Backend fallback warning */}
+            {(fallbackDetection || fallbackEmbedding) && (
+              <div
+                className={`${glass.surface} rounded-xl p-4 border border-yellow-500/30 bg-yellow-500/10 mb-6`}
+              >
+                <div className='flex items-start gap-3'>
+                  <AlertTriangle className='text-yellow-400 mt-0.5' size={18} />
+                  <div className='text-sm text-yellow-100'>
+                    <div className='font-semibold text-yellow-200'>
+                      Face quality warning
+                    </div>
+                    <div className='mt-1 text-yellow-100/90'>
+                      {fallbackDetection && (
+                        <span>
+                          Detection backend: {detectionBackend}.{' '}
+                        </span>
+                      )}
+                      {fallbackEmbedding && (
+                        <span>
+                          Embedding backend: {embeddingBackend}.{' '}
+                        </span>
+                      )}
+                      Clustering accuracy may be reduced when fallback models
+                      are active.
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
@@ -1400,6 +1557,64 @@ export function People() {
                     )}
                   </div>
 
+                  {/* Backend status */}
+                  <div>
+                    <div className='flex items-center gap-2 mb-2'>
+                      <Activity size={14} className='text-muted-foreground' />
+                      <span className='text-sm text-foreground'>
+                        Face backend status
+                      </span>
+                    </div>
+                    <div className='flex gap-2'>
+                      <button
+                        onClick={fetchBackendStatus}
+                        className='btn-glass btn-glass--muted px-3 py-2 text-sm'
+                        disabled={backendStatusLoading}
+                      >
+                        {backendStatusLoading ? (
+                          <RefreshCw size={16} className='animate-spin' />
+                        ) : (
+                          'Refresh status'
+                        )}
+                      </button>
+                    </div>
+                    {backendStatusError && (
+                      <div className='mt-2 text-xs text-red-400'>
+                        {backendStatusError}
+                      </div>
+                    )}
+                    {backendStatus && (
+                      <div className='mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground'>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {backendStatus.detection.active || 'unknown'}
+                          </div>
+                          <div>Detection</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {backendStatus.embedding.active || 'unknown'}
+                          </div>
+                          <div>Embedding</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {backendStatus.embedding.embedding_version ||
+                              'unknown'}
+                          </div>
+                          <div>Embedding version</div>
+                        </div>
+                        <div className='bg-white/5 border border-white/10 rounded-lg px-3 py-2'>
+                          <div className='text-foreground font-medium'>
+                            {backendStatus.detection.preferred.join(', ') ||
+                              'n/a'}
+                          </div>
+                          <div>Detection order</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Recompute prototypes */}
                   <div>
                     <div className='flex items-center gap-2 mb-2'>
@@ -1687,6 +1902,38 @@ export function People() {
 
                           <button
                             onClick={() =>
+                              showHidden
+                                ? handleUnhidePerson(cluster.id)
+                                : handleHidePerson(cluster.id)
+                            }
+                            disabled={hideLoading}
+                            className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400 disabled:opacity-50'
+                            title={
+                              showHidden
+                                ? 'Unhide this person'
+                                : 'Hide this person'
+                            }
+                          >
+                            {hideLoading ? (
+                              <svg
+                                width='12'
+                                height='12'
+                                className='animate-spin'
+                                viewBox='0 0 24 24'
+                                fill='none'
+                                stroke='currentColor'
+                                strokeWidth='2'
+                              >
+                                <circle cx='12' cy='12' r='10' />
+                                <path d='M12 6v6l4 2' />
+                              </svg>
+                            ) : (
+                              <EyeOff size={12} />
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() =>
                               openDeleteModal(
                                 cluster.id,
                                 cluster.label || `Person ${cluster.id}`
@@ -1827,6 +2074,12 @@ export function People() {
       <BooleanPeopleSearch
         isOpen={booleanSearchOpen}
         onClose={() => setBooleanSearchOpen(false)}
+      />
+
+      {/* Advanced Face Search Modal */}
+      <AdvancedFaceSearch
+        isOpen={advancedSearchOpen}
+        onClose={() => setAdvancedSearchOpen(false)}
       />
 
       {/* Face Attribute Search Modal */}

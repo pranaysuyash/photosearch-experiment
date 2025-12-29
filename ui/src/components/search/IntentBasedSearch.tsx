@@ -65,7 +65,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
   // Detect intent as user types
   const detectIntent = React.useCallback(async () => {
     try {
-      const result: SearchIntentResult = await api.get(`/intent/detect`, {
+      const result = await api.get<SearchIntentResult>(`/intent/detect`, {
         params: { query }
       });
       setIntent(result);
@@ -105,7 +105,10 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
         offset: 0
       };
 
-      const response = await api.post('/search/intent', params);
+      const response = await api.post<{ results: SearchResult[] }>(
+        '/search/intent',
+        params
+      );
       setPreviousResults(response.results);
       onResults(response.results);
     } catch (err) {
@@ -123,11 +126,14 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
     setError(null);
 
     try {
-      const response = await api.post('/search/refine', {
+      const response = await api.post<{ results: SearchResult[] }>(
+        '/search/refine',
+        {
         query,
         previous_results: previousResults,
         refinement
-      });
+        }
+      );
 
       setPreviousResults(response.results);
       onResults(response.results);

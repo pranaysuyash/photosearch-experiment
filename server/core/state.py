@@ -48,6 +48,7 @@ class AppState:
     source_store: Any  # SourceStore
     source_item_store: Any  # SourceItemStore
     trash_db: Any  # TrashDB
+    job_store: Any = None  # JobStore for background jobs
 
     # ─────────────────────────────────────────────────────────────────────────
     # Search & Indexing (initialized in lifespan)

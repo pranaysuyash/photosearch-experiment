@@ -14,11 +14,14 @@ import {
 } from 'lucide-react';
 import {
   api,
+  type FaceAttributeQueryResult,
   type FaceAttributeSearchRequest,
   type FaceAttributeSearchResult,
+  type Photo,
 } from '../../api';
 import { glass } from '../../design/glass';
 import SecureLazyImage from '../gallery/SecureLazyImage';
+import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 
 const EMOTIONS = [
   'happy',
@@ -32,6 +35,15 @@ const EMOTIONS = [
 
 const POSE_TYPES = ['frontal', 'three_quarter', 'profile'] as const;
 type PoseType = (typeof POSE_TYPES)[number];
+
+const QUERY_SUGGESTIONS = [
+  'happy kids under 10',
+  'female profile portraits',
+  'high quality frontal faces',
+  'neutral expression',
+  'senior portraits',
+  'angry faces',
+];
 
 interface FaceAttributeSearchProps {
   isOpen: boolean;
@@ -72,6 +84,7 @@ export function FaceAttributeSearch({
   isOpen,
   onClose,
 }: FaceAttributeSearchProps) {
+  const photoViewer = usePhotoViewer();
   const [filters, setFilters] = useState<SearchFilters>(defaultFilters);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<
@@ -80,6 +93,8 @@ export function FaceAttributeSearch({
   const [total, setTotal] = useState(0);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queryText, setQueryText] = useState('');
+  const [queryWarnings, setQueryWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -88,6 +103,8 @@ export function FaceAttributeSearch({
       setTotal(0);
       setSearched(false);
       setError(null);
+      setQueryText('');
+      setQueryWarnings([]);
     }
   }, [isOpen]);
 
@@ -156,12 +173,63 @@ export function FaceAttributeSearch({
     return payload;
   };
 
-  const executeSearch = async () => {
+  const applyParsedFilters = (parsed: FaceAttributeQueryResult['filters']) => {
+    const hasConfidence =
+      parsed.min_age_confidence !== undefined ||
+      parsed.min_emotion_confidence !== undefined ||
+      parsed.min_pose_confidence !== undefined ||
+      parsed.min_gender_confidence !== undefined;
+
+    setFilters({
+      minAge: parsed.min_age !== undefined ? String(parsed.min_age) : '',
+      maxAge: parsed.max_age !== undefined ? String(parsed.max_age) : '',
+      emotions: parsed.emotions ?? (parsed.emotion ? [parsed.emotion] : []),
+      gender: (parsed.gender ?? '') as SearchFilters['gender'],
+      poseType: (parsed.pose_type ?? '') as SearchFilters['poseType'],
+      minQuality:
+        parsed.min_quality !== undefined
+          ? parsed.min_quality
+          : defaultFilters.minQuality,
+      minConfidence:
+        parsed.min_confidence !== undefined
+          ? parsed.min_confidence
+          : defaultFilters.minConfidence,
+      showConfidence: hasConfidence,
+      minAgeConfidence:
+        parsed.min_age_confidence ?? defaultFilters.minAgeConfidence,
+      minEmotionConfidence:
+        parsed.min_emotion_confidence ?? defaultFilters.minEmotionConfidence,
+      minPoseConfidence:
+        parsed.min_pose_confidence ?? defaultFilters.minPoseConfidence,
+      minGenderConfidence:
+        parsed.min_gender_confidence ?? defaultFilters.minGenderConfidence,
+    });
+  };
+
+  const executeSearch = async (overrideQuery?: string) => {
     try {
       setLoading(true);
       setError(null);
       setResults([]);
       setSearched(true);
+
+      const trimmedQuery = (overrideQuery ?? queryText).trim();
+      if (overrideQuery) {
+        setQueryText(overrideQuery);
+      }
+      if (trimmedQuery) {
+        const response: FaceAttributeQueryResult =
+          await api.searchPhotosByFaceAttributesQuery({
+            query: trimmedQuery,
+            limit: 100,
+            offset: 0,
+          });
+        applyParsedFilters(response.filters);
+        setQueryWarnings(response.warnings || []);
+        setResults(response.photos || []);
+        setTotal(response.total || 0);
+        return;
+      }
 
       const payload = buildPayload();
       const response = await api.searchPhotosByFaceAttributes(payload);
@@ -175,12 +243,41 @@ export function FaceAttributeSearch({
     }
   };
 
+  const buildViewerPhotos = (photos: FaceAttributeSearchResult['photos']) => {
+    return photos.map((item) => {
+      const filename = item.photo_path.split('/').pop() || item.photo_path;
+      return {
+        path: item.photo_path,
+        filename,
+        score: 0,
+        metadata: {},
+      } satisfies Photo;
+    });
+  };
+
+  const handleOpenPhoto = (photoPath: string) => {
+    const viewerPhotos = buildViewerPhotos(results);
+    const idx = viewerPhotos.findIndex((photo) => photo.path === photoPath);
+    if (idx >= 0) {
+      photoViewer.open(viewerPhotos, idx);
+    } else {
+      photoViewer.open(viewerPhotos, 0);
+    }
+  };
+
   const clearFilters = () => {
     setFilters(defaultFilters);
     setResults([]);
     setTotal(0);
     setSearched(false);
     setError(null);
+    setQueryText('');
+    setQueryWarnings([]);
+  };
+
+  const runSuggestion = (suggestion: string) => {
+    setQueryWarnings([]);
+    void executeSearch(suggestion);
   };
 
   if (!isOpen) return null;
@@ -217,6 +314,42 @@ export function FaceAttributeSearch({
           {error && (
             <div className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
               {error}
+            </div>
+          )}
+
+          {/* Natural Language Query */}
+          <div className='space-y-2'>
+            <label className='block text-sm font-medium text-foreground'>
+              Natural language (optional)
+            </label>
+            <input
+              type='text'
+              placeholder="e.g. happy kids under 10, profile shots"
+              value={queryText}
+              onChange={(e) => setQueryText(e.target.value)}
+              className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
+            />
+            <p className='text-xs text-muted-foreground'>
+              When provided, we parse the query into filters before searching.
+            </p>
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className='text-xs text-muted-foreground'>Try:</span>
+              {QUERY_SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type='button'
+                  onClick={() => runSuggestion(suggestion)}
+                  className='text-xs px-2 py-1 rounded-full border border-white/10 bg-white/5 text-foreground hover:bg-white/10 transition-colors'
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {queryWarnings.length > 0 && (
+            <div className='p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-200 text-xs'>
+              {queryWarnings.join(' ')}
             </div>
           )}
 
@@ -489,7 +622,16 @@ export function FaceAttributeSearch({
                 {results.slice(0, 20).map((result) => (
                   <div
                     key={result.photo_path}
-                    className='bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-colors'
+                    className='bg-white/5 border border-white/10 rounded-lg overflow-hidden hover:border-white/20 transition-colors cursor-pointer'
+                    role='button'
+                    tabIndex={0}
+                    onClick={() => handleOpenPhoto(result.photo_path)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleOpenPhoto(result.photo_path);
+                      }
+                    }}
                   >
                     <div className='aspect-square bg-black/20'>
                       <SecureLazyImage
@@ -566,7 +708,7 @@ export function FaceAttributeSearch({
               Close
             </button>
             <button
-              onClick={executeSearch}
+              onClick={() => void executeSearch()}
               className='btn-glass btn-glass--primary px-4 py-2 flex items-center gap-2'
               disabled={loading}
             >

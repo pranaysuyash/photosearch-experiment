@@ -919,6 +919,19 @@ class FaceClusterer:
                             "bounding_box": face["bounding_box"],
                             "confidence": face["confidence"],
                             "embedding": embedding,
+                            # Attributes
+                            "age_estimate": face.get("age_estimate"),
+                            "age_confidence": face.get("age_confidence"),
+                            "emotion": face.get("emotion"),
+                            "emotion_confidence": face.get("emotion_confidence"),
+                            "pose_type": face.get("pose_type"),
+                            "pose_confidence": face.get("pose_confidence"),
+                            "gender": face.get("gender"),
+                            "gender_confidence": face.get("gender_confidence"),
+                            "lighting_score": face.get("lighting_score"),
+                            "occlusion_score": face.get("occlusion_score"),
+                            "resolution_score": face.get("resolution_score"),
+                            "overall_quality": face.get("overall_quality"),
                         }
 
                         # Upsert face - preserves existing cluster assignments

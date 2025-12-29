@@ -45,12 +45,24 @@ import numpy as np
 from typing import List, Dict, Optional, Any, Tuple, Callable, cast
 from pathlib import Path
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from cryptography.fernet import Fernet
 import requests  # type: ignore[import-untyped]
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import time
 import cv2
+
+try:
+    from server.config import settings
+except Exception:  # pragma: no cover - keep standalone usage working
+
+    class _DefaultSettings:
+        FACE_ATTRIBUTE_CACHE_SIZE = 256
+        FACE_QUALITY_CACHE_SIZE = 256
+        FACE_ATTRIBUTE_BACKENDS = "insightface,mediapipe,heuristic"
+        FACE_ATTRIBUTE_ENABLED = True
+
+    settings = _DefaultSettings()  # type: ignore
 
 try:
     from server.face_attribute_analyzer import (
@@ -160,8 +172,8 @@ class FaceDetection:
     resolution_score: Optional[float] = None
     pose_quality_score: Optional[float] = None
     overall_quality: Optional[float] = None
-    face_size: int
-    landmarks: List[Tuple[int, int]]
+    face_size: int = 0
+    landmarks: List[Tuple[int, int]] = field(default_factory=list)
     age_estimate: Optional[float] = None
     age_confidence: Optional[float] = None
     gender: Optional[str] = None
@@ -225,9 +237,24 @@ class EnhancedFaceClusterer:
         self.face_cache: Dict[str, FaceDetection] = {}
         self.cluster_cache: Dict[str, FaceCluster] = {}
 
-        # Attribute and quality analysis helpers (lightweight placeholders)
-        self.attribute_analyzer = FaceAttributeAnalyzer() if FaceAttributeAnalyzer else None
-        self.quality_assessor = AdvancedFaceQualityAssessor() if AdvancedFaceQualityAssessor else None
+        # Attribute and quality analysis helpers (configurable)
+        attr_pref = tuple(
+            part.strip().lower()
+            for part in getattr(settings, "FACE_ATTRIBUTE_BACKENDS", "insightface,mediapipe,heuristic").split(",")
+            if part.strip()
+        )
+        attr_enabled = getattr(settings, "FACE_ATTRIBUTE_ENABLED", True)
+        attr_cache_size = getattr(settings, "FACE_ATTRIBUTE_CACHE_SIZE", 256)
+        quality_cache_size = getattr(settings, "FACE_QUALITY_CACHE_SIZE", 256)
+
+        self.attribute_analyzer = (
+            FaceAttributeAnalyzer(backend_preference=attr_pref, cache_size=attr_cache_size)
+            if FaceAttributeAnalyzer and attr_enabled
+            else None
+        )
+        self.quality_assessor = (
+            AdvancedFaceQualityAssessor(cache_size=quality_cache_size) if AdvancedFaceQualityAssessor else None
+        )
 
         # Model management
         self.face_detector = None
@@ -426,6 +453,22 @@ class EnhancedFaceClusterer:
             return json.loads(decrypted_bytes.decode())
         return json.loads(encrypted_data.decode())
 
+    def _normalize_gender_from_insightface(self, raw_gender: Optional[object]) -> Optional[str]:
+        """Normalize gender values from InsightFace to 'male'/'female'."""
+        if raw_gender is None:
+            return None
+        if isinstance(raw_gender, str):
+            value = raw_gender.strip().lower()
+            if value in {"male", "m", "0"}:
+                return "male"
+            if value in {"female", "f", "1"}:
+                return "female"
+            return value
+        if isinstance(raw_gender, (int, float)):
+            # InsightFace typically uses 0=male, 1=female
+            return "male" if int(raw_gender) == 0 else "female"
+        return None
+
     def _assess_quality(self, face_crop: np.ndarray, pose_angles: Tuple[float, float, float]) -> "QualityScores":
         """Assess quality with the advanced assessor when available.
 
@@ -473,7 +516,13 @@ class EnhancedFaceClusterer:
             overall_quality=float(min(1.0, overall)),
         )
 
-    def detect_faces(self, image_path: str) -> List[FaceDetection]:
+    def detect_faces(
+        self,
+        image_path: str,
+        include_embeddings: bool = True,
+        include_landmarks: bool = True,
+        include_pose: bool = True,
+    ) -> List[FaceDetection]:
         """
         Detect faces in an image with comprehensive metadata.
 
@@ -510,8 +559,14 @@ class EnhancedFaceClusterer:
 
             face_detections = []
             for i, face in enumerate(faces):
+                # InsightFace returns face objects that support both attribute and dict access
+                # Try attribute access first, fall back to dict access
+                if hasattr(face, "bbox"):
+                    bbox = face.bbox
+                else:
+                    bbox = face.get("bbox") if isinstance(face, dict) else face["bbox"]
+
                 # Check face size
-                bbox = face["bbox"]
                 face_width = bbox[2] - bbox[0]
                 face_height = bbox[3] - bbox[1]
 
@@ -528,26 +583,95 @@ class EnhancedFaceClusterer:
                 height_int = max(0, y1 - y0)
                 face_crop = img[y0:y1, x0:x1] if y1 > y0 and x1 > x0 else None
 
-                pose_values = face.get("pose", [0, 0, 0])
+                # Extract pose (try attribute access, fall back to dict)
+                pose_values = [0, 0, 0]
+                if hasattr(face, "pose"):
+                    pose_values = face.pose if isinstance(face.pose, (list, tuple)) else [0, 0, 0]
+                elif isinstance(face, dict):
+                    pose_values = face.get("pose", [0, 0, 0])
+                else:
+                    try:
+                        pose_values = face["pose"]
+                    except (KeyError, TypeError):
+                        pass
+
                 pose_angles = (
                     float(pose_values[0]) if len(pose_values) > 0 else 0.0,
                     float(pose_values[1]) if len(pose_values) > 1 else 0.0,
                     float(pose_values[2]) if len(pose_values) > 2 else 0.0,
                 )
 
+                # Extract age and gender from InsightFace (if available)
+                # InsightFace buffalo_l includes genderage model
+                raw_age = None
+                raw_gender = None
+                if hasattr(face, "age"):
+                    raw_age = float(face.age) if face.age is not None else None
+                elif isinstance(face, dict):
+                    raw_age = face.get("age")
+                else:
+                    try:
+                        raw_age = face["age"] if "age" in dir(face) else None
+                    except (KeyError, TypeError):
+                        pass
+
+                if hasattr(face, "gender"):
+                    raw_gender = face.gender
+                elif isinstance(face, dict):
+                    raw_gender = face.get("gender")
+                else:
+                    try:
+                        raw_gender = face["gender"] if "gender" in dir(face) else None
+                    except (KeyError, TypeError):
+                        pass
+
                 # Quality assessment
                 quality_scores = self._assess_quality(face_crop, pose_angles)
 
-                # Attribute analysis
+                # Attribute analysis (will use InsightFace age/gender if available)
                 if self.attribute_analyzer:
                     attributes = self.attribute_analyzer.analyze(
                         face_crop,
                         pose_angles,
-                        raw_age=face.get("age"),
-                        raw_gender=face.get("gender"),
+                        raw_age=raw_age,
+                        raw_gender=raw_gender,
                     )
                 else:
                     attributes = None
+
+                # Extract embedding and other attributes
+                embedding = None
+                if hasattr(face, "embedding"):
+                    embedding = face.embedding
+                elif isinstance(face, dict):
+                    embedding = face.get("embedding")
+                else:
+                    try:
+                        embedding = face["embedding"]
+                    except (KeyError, TypeError):
+                        pass
+
+                det_score = 0.0
+                if hasattr(face, "det_score"):
+                    det_score = float(face.det_score)
+                elif isinstance(face, dict):
+                    det_score = float(face.get("det_score", 0.0))
+                else:
+                    try:
+                        det_score = float(face["det_score"])
+                    except (KeyError, TypeError):
+                        pass
+
+                kps = []
+                if hasattr(face, "kps"):
+                    kps = face.kps if face.kps is not None else []
+                elif isinstance(face, dict):
+                    kps = face.get("kps", [])
+                else:
+                    try:
+                        kps = face["kps"]
+                    except (KeyError, TypeError):
+                        pass
 
                 # Create face detection object
                 face_detection = FaceDetection(
@@ -557,8 +681,8 @@ class EnhancedFaceClusterer:
                     bbox_y=y0,
                     bbox_width=width_int,
                     bbox_height=height_int,
-                    confidence=float(face.get("det_score", 0.0)),
-                    embedding=face["embedding"].tolist(),
+                    confidence=det_score,
+                    embedding=embedding.tolist() if embedding is not None else [],
                     quality_score=quality_scores.overall_quality,
                     pose_angles={
                         "yaw": pose_angles[0],
@@ -572,11 +696,17 @@ class EnhancedFaceClusterer:
                     pose_quality_score=quality_scores.pose_score,
                     overall_quality=quality_scores.overall_quality,
                     face_size=max(width_int, height_int),
-                    landmarks=[(int(point[0]), int(point[1])) for point in face.get("kps", [])],
-                    age_estimate=attributes.age if attributes else face.get("age"),
-                    age_confidence=attributes.age_confidence if attributes else None,
-                    gender=attributes.gender if attributes else face.get("gender"),
-                    gender_confidence=attributes.gender_confidence if attributes else None,
+                    landmarks=[(int(point[0]), int(point[1])) for point in kps] if kps else [],
+                    age_estimate=int(attributes.age)
+                    if attributes and attributes.age is not None
+                    else (int(raw_age) if raw_age is not None else None),
+                    age_confidence=attributes.age_confidence if attributes else (0.90 if raw_age is not None else None),
+                    gender=attributes.gender
+                    if attributes
+                    else (self._normalize_gender_from_insightface(raw_gender) if raw_gender is not None else None),
+                    gender_confidence=attributes.gender_confidence
+                    if attributes
+                    else (0.90 if raw_gender is not None else None),
                     emotion=attributes.emotion if attributes else None,
                     emotion_confidence=attributes.emotion_confidence if attributes else None,
                     pose_type=attributes.pose_type if attributes else None,
@@ -737,6 +867,25 @@ class EnhancedFaceClusterer:
                 logger.error(f"Error storing face detections: {e}")
                 self.conn.rollback()
 
+    def _apply_quality_weight(
+        self, distance_matrix: np.ndarray, qualities: List[float], weight: float = 0.15
+    ) -> np.ndarray:
+        """Penalize distances for low-quality faces to favor clean matches."""
+        if not qualities or distance_matrix.size == 0:
+            return distance_matrix
+
+        q = np.clip(np.array(qualities, dtype=float), 0.0, 1.0)
+        adjusted = distance_matrix.copy()
+
+        for i in range(len(q)):
+            for j in range(len(q)):
+                if i == j:
+                    continue
+                penalty = max(0.0, 1.0 - min(q[i], q[j]))
+                adjusted[i, j] *= 1.0 + weight * penalty
+
+        return adjusted
+
     def _update_clustering(self) -> int:
         """Update face clustering with DBSCAN algorithm"""
         try:
@@ -754,10 +903,16 @@ class EnhancedFaceClusterer:
             # Extract embeddings for clustering
             embeddings = []
             face_ids = []
+            qualities: List[float] = []
             for face in unclustered_faces:
                 embedding = self._decrypt_embedding(face["embedding"])
                 embeddings.append(embedding)
                 face_ids.append(face["id"])
+                q = face.get("quality_score") if isinstance(face, dict) else face["quality_score"]
+                try:
+                    qualities.append(float(q) if q is not None else 0.5)
+                except Exception:
+                    qualities.append(0.5)
 
             # Perform DBSCAN clustering
             from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
@@ -770,6 +925,9 @@ class EnhancedFaceClusterer:
             distance_matrix = 1 - similarity_matrix
             # Guard against tiny negative values from floating point error
             distance_matrix = np.clip(distance_matrix, 0.0, 2.0)
+
+            # Apply quality-aware weighting to distance matrix
+            distance_matrix = self._apply_quality_weight(distance_matrix, qualities)
 
             # Apply DBSCAN with adaptive parameters
             eps = 0.3  # Distance threshold

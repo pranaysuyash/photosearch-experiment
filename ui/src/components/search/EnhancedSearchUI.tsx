@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import {
   Search,
   Filter,
+  SlidersHorizontal,
+  Sparkles,
   X,
   Image as ImageIcon,
   Film,
@@ -21,6 +23,8 @@ import { MetadataFieldAutocomplete } from './MetadataFieldAutocomplete';
 import { useLiveMatchCount } from '../../hooks/useLiveMatchCount';
 import { api, type TagSummary } from '../../api';
 import { glass } from '../../design/glass';
+import FaceAttributeSearch from '../people/FaceAttributeSearch';
+import NaturalLanguageFaceSearch from './NaturalLanguageFaceSearch';
 
 type SourceFilter = 'all' | 'local' | 'cloud' | 'hybrid';
 
@@ -110,6 +114,8 @@ export function EnhancedSearchUI({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showHelpHint, setShowHelpHint] = useState(false);
   const [showFieldAutocomplete, setShowFieldAutocomplete] = useState(false);
+  const [attributeSearchOpen, setAttributeSearchOpen] = useState(false);
+  const [naturalFaceSearchOpen, setNaturalFaceSearchOpen] = useState(false);
   const [recognizedIntent, setRecognizedIntent] = useState<string | null>(null);
   const [tags, setTags] = useState<TagSummary[]>([]);
   const [tagsLoading, setTagsLoading] = useState(false);
@@ -288,6 +294,22 @@ export function EnhancedSearchUI({
             aria-label={showFilters ? 'Hide filters' : 'Show filters'}
           >
             <Filter size={16} />
+          </button>
+          <button
+            onClick={() => setAttributeSearchOpen(true)}
+            className='p-2 mr-1 rounded-full text-muted-foreground hover:text-foreground transition-colors'
+            title='Face filters'
+            aria-label='Face filters'
+          >
+            <SlidersHorizontal size={16} />
+          </button>
+          <button
+            onClick={() => setNaturalFaceSearchOpen(true)}
+            className='p-2 mr-1 rounded-full text-muted-foreground hover:text-foreground transition-colors'
+            title='Face natural language search'
+            aria-label='Face natural language search'
+          >
+            <Sparkles size={16} />
           </button>
           <div className='mr-1'>
             <SearchModeHelp />
@@ -624,6 +646,14 @@ export function EnhancedSearchUI({
             </motion.div>
           )}
         </AnimatePresence>
+        <FaceAttributeSearch
+          isOpen={attributeSearchOpen}
+          onClose={() => setAttributeSearchOpen(false)}
+        />
+        <NaturalLanguageFaceSearch
+          isOpen={naturalFaceSearchOpen}
+          onClose={() => setNaturalFaceSearchOpen(false)}
+        />
       </div>
     );
   }
@@ -739,6 +769,22 @@ export function EnhancedSearchUI({
               aria-label={showFilters ? 'Hide filters' : 'Show filters'}
             >
               <Filter size={18} />
+            </button>
+            <button
+              onClick={() => setAttributeSearchOpen(true)}
+              className='p-3 mr-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors'
+              title='Face filters'
+              aria-label='Face filters'
+            >
+              <SlidersHorizontal size={18} />
+            </button>
+            <button
+              onClick={() => setNaturalFaceSearchOpen(true)}
+              className='p-3 mr-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors'
+              title='Face natural language search'
+              aria-label='Face natural language search'
+            >
+              <Sparkles size={18} />
             </button>
             <button
               onClick={onSearch}
@@ -1029,6 +1075,14 @@ export function EnhancedSearchUI({
       >
         Advanced search with multiple modes • Keyboard shortcuts available
       </motion.p>
+      <FaceAttributeSearch
+        isOpen={attributeSearchOpen}
+        onClose={() => setAttributeSearchOpen(false)}
+      />
+      <NaturalLanguageFaceSearch
+        isOpen={naturalFaceSearchOpen}
+        onClose={() => setNaturalFaceSearchOpen(false)}
+      />
     </motion.div>
   );
 }

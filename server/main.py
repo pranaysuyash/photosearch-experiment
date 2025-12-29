@@ -92,6 +92,7 @@ from server.api.routers.trash import router as trash_router
 from server.api.routers.legacy_compat import router as legacy_compat_router
 from server.api.routers.video_faces import router as video_faces_router
 from server.api.routers.captions import router as captions_router
+from server.api.routers.browse import router as browse_router
 
 
 if TYPE_CHECKING:
@@ -338,6 +339,7 @@ app.include_router(bulk_router)
 app.include_router(indexing_router)
 app.include_router(sources_router)
 app.include_router(trash_router)
+app.include_router(browse_router)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Register API version manager endpoints

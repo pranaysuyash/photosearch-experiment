@@ -1,0 +1,16 @@
+{
+  "export_id": "761d2e61-6030-4ab2-8133-6aafb540e445",
+  "user_id": "test_user_123",
+  "exported_at": "2025-12-28T20:49:06.849707",
+  "export_types": [
+    "consent",
+    "audit_logs"
+  ],
+  "total_files": 2,
+  "total_size_bytes": 1608,
+  "gdpr_compliance": {
+    "article_20_data_portability": true,
+    "machine_readable_format": true,
+    "structured_format": "JSON"
+  }
+}

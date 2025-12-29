@@ -138,7 +138,184 @@ export function PhotoEditor({
     loadEdits();
   }, [isOpen, photoPath]);
 
-  // Keyboard shortcuts
+  // Define applyEditsToCanvas first (before other callbacks that use it)
+  const applyEditsToCanvas = useCallback(
+    (
+      img: HTMLImageElement,
+      currentSettings: EditSettings,
+      canvas: HTMLCanvasElement,
+      ctx: CanvasRenderingContext2D
+    ): void => {
+      // Set canvas size to match image
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Apply transformations
+      ctx.save();
+
+      // Apply rotation and flips
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      ctx.translate(centerX, centerY);
+      ctx.rotate((currentSettings.rotation * Math.PI) / 180);
+      ctx.scale(
+        currentSettings.flipH ? -1 : 1,
+        currentSettings.flipV ? -1 : 1
+      );
+      ctx.translate(-centerX, -centerY);
+
+      // Apply filters
+      const filters = [];
+      if (currentSettings.brightness !== 0) {
+        filters.push(`brightness(${100 + currentSettings.brightness}%)`);
+      }
+      if (currentSettings.contrast !== 0) {
+        filters.push(`contrast(${100 + currentSettings.contrast}%)`);
+      }
+      if (currentSettings.saturation !== 0) {
+        filters.push(`saturate(${100 + currentSettings.saturation}%)`);
+      }
+      ctx.filter = filters.join(' ');
+
+      // Draw image
+      if (currentSettings.crop) {
+        const { x, y, width, height } = currentSettings.crop;
+        ctx.drawImage(
+          img,
+          x,
+          y,
+          width,
+          height,
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+      } else {
+        ctx.drawImage(img, 0, 0);
+      }
+
+      ctx.restore();
+    },
+    []
+  );
+
+  // Define all callback functions before the useEffect that uses them
+  const updateSetting = useCallback(
+    <K extends keyof EditSettings>(
+      key: K,
+      value: EditSettings[K] | ((prev: EditSettings[K]) => EditSettings[K])
+    ) => {
+      setSettings((prev) => {
+        const newValue = typeof value === 'function' ? value(prev[key]) : value;
+        const newSettings = { ...prev, [key]: newValue };
+
+        // Add to history
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newSettings);
+
+        // Limit history to 20 steps
+        if (newHistory.length > 20) {
+          newHistory.shift();
+        }
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+
+        return newSettings;
+      });
+    },
+    [history, historyIndex]
+  );
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      const previousSettings = history[newIndex];
+      setHistoryIndex(newIndex);
+      setSettings(previousSettings);
+      showToast('Undid last change', 'info');
+
+      if (originalImage && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Apply the previous settings to canvas
+          applyEditsToCanvas(originalImage, previousSettings, canvas, ctx);
+        }
+      }
+    }
+  }, [historyIndex, history, showToast, originalImage, applyEditsToCanvas]);
+
+  const redo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const newIndex = historyIndex + 1;
+      const nextSettings = history[newIndex];
+      setHistoryIndex(newIndex);
+      setSettings(nextSettings);
+      showToast('Redid change', 'info');
+
+      if (originalImage && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Apply the next settings to canvas
+          applyEditsToCanvas(originalImage, nextSettings, canvas, ctx);
+        }
+      }
+    }
+  }, [historyIndex, history, showToast, originalImage, applyEditsToCanvas]);
+
+  const applyEdits = useCallback(
+    (img: HTMLImageElement, currentSettings: EditSettings) => {
+      if (!canvasRef.current) return;
+
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      applyEditsToCanvas(img, currentSettings, canvas, ctx);
+    },
+    [applyEditsToCanvas]
+  );
+
+  const resetSettings = useCallback(() => {
+    const resetSettings = { ...DEFAULT_SETTINGS };
+    setSettings(resetSettings);
+    setCropMode(false);
+
+    // Add reset to history
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(resetSettings);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+
+    showToast('All edits reset', 'info');
+    if (originalImage) {
+      applyEdits(originalImage, resetSettings);
+    }
+  }, [history, historyIndex, showToast, originalImage, applyEdits]);
+
+  const rotateLeft = useCallback(() => {
+    updateSetting('rotation', (settings.rotation - 90) % 360);
+  }, [settings.rotation, updateSetting]);
+
+  const rotateRight = useCallback(() => {
+    updateSetting('rotation', (settings.rotation + 90) % 360);
+  }, [settings.rotation, updateSetting]);
+
+  const flipHorizontal = useCallback(() => {
+    updateSetting('flipH', !settings.flipH);
+  }, [settings.flipH, updateSetting]);
+
+  const flipVertical = useCallback(() => {
+    updateSetting('flipV', !settings.flipV);
+  }, [settings.flipV, updateSetting]);
+
+  // Keyboard shortcuts - now all functions are defined above
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
@@ -201,59 +378,7 @@ export function PhotoEditor({
     flipHorizontal,
     flipVertical,
   ]);
-  const applyEdits = useCallback(
-    (img: HTMLImageElement, currentSettings: EditSettings) => {
-    if (!canvasRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Calculate canvas size with rotation
-    const angle = (currentSettings.rotation * Math.PI) / 180;
-    const rotatedWidth =
-      Math.abs(img.width * Math.cos(angle)) +
-      Math.abs(img.height * Math.sin(angle));
-    const rotatedHeight =
-      Math.abs(img.width * Math.sin(angle)) +
-      Math.abs(img.height * Math.cos(angle));
-
-    canvas.width = rotatedWidth;
-    canvas.height = rotatedHeight;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Apply transformations
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(angle);
-    ctx.scale(currentSettings.flipH ? -1 : 1, currentSettings.flipV ? -1 : 1);
-
-    // Apply filters
-    ctx.filter = `brightness(${100 + currentSettings.brightness}%) contrast(${100 + currentSettings.contrast
-      }%) saturate(${100 + currentSettings.saturation}%)`;
-
-    // Apply crop if active
-    if (currentSettings.crop) {
-      const crop = currentSettings.crop;
-      ctx.drawImage(
-        img,
-        crop.x,
-        crop.y,
-        crop.width,
-        crop.height,
-        -img.width / 2,
-        -img.height / 2,
-        img.width,
-        img.height
-      );
-    } else {
-      ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    }
-
-    ctx.restore();
-  }, []);
 
   useEffect(() => {
     if (originalImage) {
@@ -272,93 +397,6 @@ export function PhotoEditor({
     },
     [settings, originalImage, applyEdits]
   );
-
-  // Commit update to history (for slider release, button clicks)
-  const updateSetting = useCallback(
-    (key: keyof EditSettings, value: EditSettings[keyof EditSettings]) => {
-      const newSettings = { ...settings, [key]: value };
-
-      // Add to history (remove any future history if we're not at the end)
-      const newHistory = history.slice(0, historyIndex + 1);
-      newHistory.push(newSettings);
-
-      // Limit history to 20 steps
-      if (newHistory.length > 20) {
-        newHistory.shift();
-      } else {
-        setHistoryIndex(historyIndex + 1);
-      }
-
-      setHistory(newHistory);
-      setSettings(newSettings);
-
-      if (originalImage) {
-        applyEdits(originalImage, newSettings);
-      }
-    },
-    [settings, history, historyIndex, originalImage, applyEdits]
-  );
-
-  const undo = useCallback(() => {
-    if (historyIndex > 0) {
-      const newIndex = historyIndex - 1;
-      const previousSettings = history[newIndex];
-      setHistoryIndex(newIndex);
-      setSettings(previousSettings);
-      showToast('Undid last change', 'info');
-
-      if (originalImage) {
-        applyEdits(originalImage, previousSettings);
-      }
-    }
-  }, [historyIndex, history, showToast, originalImage, applyEdits]);
-
-  const redo = useCallback(() => {
-    if (historyIndex < history.length - 1) {
-      const newIndex = historyIndex + 1;
-      const nextSettings = history[newIndex];
-      setHistoryIndex(newIndex);
-      setSettings(nextSettings);
-      showToast('Redid change', 'info');
-
-      if (originalImage) {
-        applyEdits(originalImage, nextSettings);
-      }
-    }
-  }, [historyIndex, history, showToast, originalImage, applyEdits]);
-
-  const resetSettings = useCallback(() => {
-    const resetSettings = { ...DEFAULT_SETTINGS };
-    setSettings(resetSettings);
-    setCropMode(false);
-
-    // Add reset to history
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(resetSettings);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
-
-    showToast('All edits reset', 'info');
-    if (originalImage) {
-      applyEdits(originalImage, resetSettings);
-    }
-  }, [history, historyIndex, showToast, originalImage, applyEdits]);
-
-  const rotateLeft = useCallback(() => {
-    updateSetting('rotation', (settings.rotation - 90) % 360);
-  }, [settings.rotation, updateSetting]);
-
-  const rotateRight = useCallback(() => {
-    updateSetting('rotation', (settings.rotation + 90) % 360);
-  }, [settings.rotation, updateSetting]);
-
-  const flipHorizontal = useCallback(() => {
-    updateSetting('flipH', !settings.flipH);
-  }, [settings.flipH, updateSetting]);
-
-  const flipVertical = useCallback(() => {
-    updateSetting('flipV', !settings.flipV);
-  }, [settings.flipV, updateSetting]);
 
   const startCrop = (e: React.MouseEvent<HTMLImageElement>) => {
     if (!cropMode || !imageRef.current) return;

@@ -1,0 +1,35 @@
+[
+  {
+    "log_id": "81710995-c020-43be-ba22-f2e42cbb39a6",
+    "timestamp": "2025-12-28 15:19:06",
+    "user_id": "test_user_123",
+    "action": "consent_granted",
+    "resource_type": "consent",
+    "resource_id": "9d4f2a0f-8646-4779-8d44-52070a6016fb",
+    "details": "{}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "b989c147-ca3d-4038-a81d-44bcc50fd118",
+    "timestamp": "2025-12-28 15:19:06",
+    "user_id": "test_user_123",
+    "action": "consent_requested",
+    "resource_type": "consent",
+    "resource_id": "9d4f2a0f-8646-4779-8d44-52070a6016fb",
+    "details": "{\"consent_type\": \"face_recognition\", \"purpose\": \"Face recognition for photo organization\"}",
+    "ip_address": null,
+    "user_agent": null
+  },
+  {
+    "log_id": "c2492f85-5920-46ee-9816-d370dfb6fa98",
+    "timestamp": "2025-12-28 15:19:06",
+    "user_id": "test_user_123",
+    "action": "data_export_requested",
+    "resource_type": "user_data",
+    "resource_id": "761d2e61-6030-4ab2-8133-6aafb540e445",
+    "details": "{\"export_types\": [\"consent\", \"audit_logs\"]}",
+    "ip_address": null,
+    "user_agent": null
+  }
+]

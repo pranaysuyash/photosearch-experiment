@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -11,3 +11,4 @@ class OCRSearchRequest(BaseModel):
 
 class OCRImageRequest(BaseModel):
     image_paths: List[str]
+    language: Optional[str] = None

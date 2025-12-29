@@ -205,19 +205,71 @@ class FAISSIndex(EmbeddingIndex):
         self.nlist = nlist
         self._is_trained = False
 
-        # Create index based on type
+        # Canonical in-memory store for rebuilds/removals.
+        # NOTE: Prototypes are relatively small (one per cluster), so keeping
+        # these in memory is acceptable and makes removal/rebuild deterministic.
+        self.cluster_ids: List[str] = []  # index -> cluster_id
+        self.id_to_index: Dict[str, int] = {}  # cluster_id -> index
+        self.labels: Dict[str, Optional[str]] = {}  # cluster_id -> label
+        self._embeddings: List[np.ndarray] = []  # index-aligned, float32 unit vectors
+
+        # Create index based on type. For IndexIVFFlat, we start with an IndexFlatIP
+        # fallback until we have enough vectors to train the IVF index.
+        self._active_index_type: str = "IndexFlatIP"
+        self.index = faiss.IndexFlatIP(dimension)
+
         if index_type == "IndexFlatIP":
-            self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine similarity
+            self._active_index_type = "IndexFlatIP"
         elif index_type == "IndexIVFFlat":
-            quantizer = faiss.IndexFlatIP(dimension)
-            self.index = faiss.IndexIVFFlat(quantizer, dimension, nlist)
-            # IndexIVFFlat needs training before adding vectors
+            # Start in flat fallback mode; upgrade once we have enough vectors.
+            self._active_index_type = "IndexFlatIP"
         else:
             raise ValueError(f"Unknown index_type: {index_type}. Use 'IndexFlatIP' or 'IndexIVFFlat'")
 
-        self.cluster_ids: List[str] = []  # Maps FAISS indices to cluster IDs
-        self.id_to_index: Dict[str, int] = {}  # Maps cluster IDs to FAISS indices
-        self.labels: Dict[str, Optional[str]] = {}  # Cluster labels
+    def _maybe_upgrade_to_ivf(self) -> None:
+        """Upgrade from FlatIP fallback to IVFFlat when enough vectors exist."""
+        if self.index_type != "IndexIVFFlat":
+            return
+        if self._active_index_type == "IndexIVFFlat":
+            return
+        if len(self._embeddings) < self.nlist:
+            return
+
+        embeddings_array = np.vstack(self._embeddings).astype("float32")
+        quantizer = faiss.IndexFlatIP(self.dimension)
+        ivf = faiss.IndexIVFFlat(quantizer, self.dimension, self.nlist)
+        ivf.train(embeddings_array)
+        ivf.add(embeddings_array)
+
+        self.index = ivf
+        self._active_index_type = "IndexIVFFlat"
+        self._is_trained = True
+
+    def _rebuild_index(self) -> None:
+        """Rebuild the underlying FAISS index from canonical embeddings."""
+        if not self._embeddings:
+            self.index = faiss.IndexFlatIP(self.dimension)
+            self._active_index_type = "IndexFlatIP"
+            self._is_trained = False
+            return
+
+        embeddings_array = np.vstack(self._embeddings).astype("float32")
+
+        if self.index_type == "IndexIVFFlat" and len(self._embeddings) >= self.nlist:
+            quantizer = faiss.IndexFlatIP(self.dimension)
+            ivf = faiss.IndexIVFFlat(quantizer, self.dimension, self.nlist)
+            ivf.train(embeddings_array)
+            ivf.add(embeddings_array)
+            self.index = ivf
+            self._active_index_type = "IndexIVFFlat"
+            self._is_trained = True
+        else:
+            # Flat fallback (exact) for small collections or when IVF can't be trained yet.
+            flat = faiss.IndexFlatIP(self.dimension)
+            flat.add(embeddings_array)
+            self.index = flat
+            self._active_index_type = "IndexFlatIP"
+            self._is_trained = False
 
     def add_prototype(self, cluster_id: str, embedding: np.ndarray, label: Optional[str] = None) -> None:
         """
@@ -230,101 +282,40 @@ class FAISSIndex(EmbeddingIndex):
             self.remove_prototype(cluster_id)
 
         # Ensure L2 normalization for cosine similarity
-        norm = np.linalg.norm(embedding)
+        emb = embedding.astype(np.float32)
+        norm = np.linalg.norm(emb)
         if norm > 0:
-            embedding = embedding / norm
+            emb = emb / norm
 
-        # For IndexIVFFlat, train if needed (requires at least nlist vectors)
-        if self.index_type == "IndexIVFFlat" and not self._is_trained:
-            # Need at least nlist vectors to train, but we can train with what we have
-            # For incremental updates, we'll train when we have enough vectors
-            if self.index.ntotal >= self.nlist:
-                # Train with existing vectors
-                training_vectors = np.vstack([self.index.reconstruct(i) for i in range(self.index.ntotal)])
-                self.index.train(training_vectors)
-                self._is_trained = True
-            elif self.index.ntotal == 0:
-                # First vector - will train later when we have enough
-                pass
+        # Update canonical stores
+        self.cluster_ids.append(cluster_id)
+        self.id_to_index[cluster_id] = len(self.cluster_ids) - 1
+        self.labels[cluster_id] = label
+        self._embeddings.append(emb)
 
-        # Add to FAISS index
-        faiss_index = len(self.cluster_ids)
-        embedding_array = embedding.reshape(1, -1).astype("float32")
-
-        # For IndexIVFFlat, if not trained yet, we need to collect vectors and train later
-        if self.index_type == "IndexIVFFlat" and not self._is_trained:
-            # Store temporarily, will train and add in bulk
-            if not hasattr(self, "_pending_embeddings"):
-                self._pending_embeddings = []
-                self._pending_ids = []
-                self._pending_labels = {}
-            self._pending_embeddings.append(embedding_array[0])
-            self._pending_ids.append(cluster_id)
-            self._pending_labels[cluster_id] = label
-
-            # Train and add when we have enough
-            if len(self._pending_embeddings) >= self.nlist:
-                training_vectors = np.vstack(self._pending_embeddings).astype("float32")
-                self.index.train(training_vectors)
-                self.index.add(training_vectors)
-                self._is_trained = True
-
-                # Update mappings
-                for i, cid in enumerate(self._pending_ids):
-                    self.cluster_ids.append(cid)
-                    self.id_to_index[cid] = len(self.cluster_ids) - 1
-                    self.labels[cid] = self._pending_labels[cid]
-
-                # Clear pending
-                del self._pending_embeddings
-                del self._pending_ids
-                del self._pending_labels
-            else:
-                # Still collecting, update mappings for pending
-                self.cluster_ids.append(cluster_id)
-                self.id_to_index[cluster_id] = len(self.cluster_ids) - 1
-                self.labels[cluster_id] = label
-        else:
-            # IndexFlatIP or trained IndexIVFFlat - add directly
-            self.index.add(embedding_array)
-
-            # Update mappings
-            self.cluster_ids.append(cluster_id)
-            self.id_to_index[cluster_id] = faiss_index
-            self.labels[cluster_id] = label
+        # Add to current active index. If IVF was requested but not yet trained,
+        # we'll be in FlatIP fallback mode until we can upgrade.
+        self.index.add(emb.reshape(1, -1))
+        self._maybe_upgrade_to_ivf()
 
     def remove_prototype(self, cluster_id: str) -> bool:
         """Remove a cluster prototype."""
         if cluster_id not in self.id_to_index:
             return False
 
-        # FAISS doesn't support efficient removal, so we rebuild the index
-        # This is acceptable for prototype management (infrequent operation)
-        old_index = self.id_to_index[cluster_id]
+        remove_idx = self.id_to_index[cluster_id]
 
-        # Collect all embeddings except the one to remove
-        remaining_embeddings = []
-        remaining_ids = []
-        remaining_labels = {}
+        # Remove from canonical stores
+        del self.cluster_ids[remove_idx]
+        del self._embeddings[remove_idx]
+        if cluster_id in self.labels:
+            del self.labels[cluster_id]
 
-        for i, cid in enumerate(self.cluster_ids):
-            if i != old_index:
-                embedding = self.index.reconstruct(i)
-                remaining_embeddings.append(embedding)
-                remaining_ids.append(cid)
-                remaining_labels[cid] = self.labels[cid]
+        # Rebuild id mapping
+        self.id_to_index = {cid: i for i, cid in enumerate(self.cluster_ids)}
 
-        # Rebuild index
-        self.index = faiss.IndexFlatIP(self.dimension)
-        self.cluster_ids = remaining_ids
-        self.labels = remaining_labels
-        self.id_to_index = {cid: i for i, cid in enumerate(remaining_ids)}
-
-        # Add remaining embeddings
-        if remaining_embeddings:
-            embeddings_array = np.vstack(remaining_embeddings).astype("float32")
-            self.index.add(embeddings_array)
-
+        # Rebuild the underlying index based on requested type + available vectors
+        self._rebuild_index()
         return True
 
     def search(self, query_embedding: np.ndarray, k: int = 5, threshold: float = 0.0) -> List[SearchResult]:
@@ -344,7 +335,7 @@ class FAISSIndex(EmbeddingIndex):
 
         # For IndexIVFFlat, set nprobe (number of clusters to search)
         # Higher nprobe = better accuracy but slower
-        if self.index_type == "IndexIVFFlat" and hasattr(self.index, "nprobe"):
+        if self._active_index_type == "IndexIVFFlat" and hasattr(self.index, "nprobe"):
             # Default nprobe: search 10% of clusters or at least 10
             nprobe = max(10, min(self.nlist // 10, 50))
             self.index.nprobe = nprobe
@@ -357,7 +348,6 @@ class FAISSIndex(EmbeddingIndex):
         results = []
         for score, idx in zip(scores[0], indices[0]):
             if idx != -1 and score >= threshold:  # Valid result above threshold
-                # Handle pending embeddings case
                 if idx < len(self.cluster_ids):
                     cluster_id = self.cluster_ids[idx]
                     results.append(
@@ -373,8 +363,14 @@ class FAISSIndex(EmbeddingIndex):
         if cluster_id not in self.id_to_index:
             return None
 
-        faiss_index = self.id_to_index[cluster_id]
-        return self.index.reconstruct(faiss_index)
+        idx = self.id_to_index[cluster_id]
+        try:
+            return self.index.reconstruct(idx)
+        except Exception:
+            # Reconstruct may not be available for some index configurations; fall back to canonical copy.
+            if 0 <= idx < len(self._embeddings):
+                return self._embeddings[idx]
+            return None
 
     def count(self) -> int:
         """Return number of prototypes in the index."""
@@ -382,21 +378,13 @@ class FAISSIndex(EmbeddingIndex):
 
     def clear(self) -> None:
         """Clear all prototypes from the index."""
-        # Recreate index based on type
-        if self.index_type == "IndexFlatIP":
-            self.index = faiss.IndexFlatIP(self.dimension)
-        elif self.index_type == "IndexIVFFlat":
-            quantizer = faiss.IndexFlatIP(self.dimension)
-            self.index = faiss.IndexIVFFlat(quantizer, self.dimension, self.nlist)
-        self._is_trained = False
         self.cluster_ids.clear()
         self.id_to_index.clear()
         self.labels.clear()
-        # Clear any pending embeddings
-        if hasattr(self, "_pending_embeddings"):
-            del self._pending_embeddings
-            del self._pending_ids
-            del self._pending_labels
+        self._embeddings.clear()
+        self.index = faiss.IndexFlatIP(self.dimension)
+        self._active_index_type = "IndexFlatIP"
+        self._is_trained = False
 
     def bulk_load(self, prototypes: Dict[str, Tuple[np.ndarray, Optional[str]]]) -> None:
         """
@@ -412,57 +400,29 @@ class FAISSIndex(EmbeddingIndex):
         self.clear()
 
         # Prepare data
-        embeddings = []
-        cluster_ids = []
-        labels = {}
-
         for cluster_id, (embedding, label) in prototypes.items():
-            # Normalize embedding
-            norm = np.linalg.norm(embedding)
+            emb = embedding.astype(np.float32)
+            norm = np.linalg.norm(emb)
             if norm > 0:
-                embedding = embedding / norm
+                emb = emb / norm
+            self.cluster_ids.append(cluster_id)
+            self.id_to_index[cluster_id] = len(self.cluster_ids) - 1
+            self.labels[cluster_id] = label
+            self._embeddings.append(emb)
 
-            embeddings.append(embedding.astype(np.float32))
-            cluster_ids.append(cluster_id)
-            labels[cluster_id] = label
-
-        # Bulk add to FAISS
-        if embeddings:
-            embeddings_array = np.vstack(embeddings)
-
-            # For IndexIVFFlat, train before adding
-            if self.index_type == "IndexIVFFlat":
-                if len(embeddings) >= self.nlist:
-                    # Train with all embeddings
-                    self.index.train(embeddings_array)
-                    self._is_trained = True
-                else:
-                    # Not enough vectors to train, use IndexFlatIP as fallback
-                    logger.warning(
-                        f"Only {len(embeddings)} embeddings available, need at least {self.nlist} for IndexIVFFlat. "
-                        "Falling back to IndexFlatIP."
-                    )
-                    # Recreate as IndexFlatIP
-                    self.index = faiss.IndexFlatIP(self.dimension)
-                    self.index_type = "IndexFlatIP"
-                    self._is_trained = True
-
-            self.index.add(embeddings_array)
-
-            # Update mappings
-            self.cluster_ids = cluster_ids
-            self.id_to_index = {cid: i for i, cid in enumerate(cluster_ids)}
-            self.labels = labels
+        # Rebuild underlying index once
+        self._rebuild_index()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get index statistics."""
         stats = {
             "index_type": f"faiss_{self.index_type}",
+            "active_index_type": f"faiss_{self._active_index_type}",
             "num_prototypes": self.index.ntotal,
             "dimension": self.dimension,
             "memory_usage_mb": self.index.ntotal * self.dimension * 4 / (1024 * 1024),  # float32
         }
-        if self.index_type == "IndexIVFFlat":
+        if self._active_index_type == "IndexIVFFlat":
             stats["nlist"] = self.nlist
             stats["is_trained"] = self._is_trained
             if hasattr(self.index, "nprobe"):

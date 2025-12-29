@@ -25,9 +25,15 @@ const Albums = lazy(() => import('../pages/Albums'));
 const Favorites = lazy(() => import('../pages/Favorites'));
 const Videos = lazy(() => import('../pages/Videos'));
 const Trash = lazy(() => import('../pages/Trash'));
+const Duplicates = lazy(() =>
+  import('../pages/Duplicates').then((m) => ({
+    default: m.Duplicates,
+  }))
+);
 const People = lazy(() => import('../pages/People'));
 const PersonDetail = lazy(() => import('../pages/PersonDetail'));
 const UnidentifiedFaces = lazy(() => import('../pages/UnidentifiedFaces'));
+const UnassignedFaces = lazy(() => import('../pages/UnassignedFaces'));
 const AllFacePhotos = lazy(() => import('../pages/AllFacePhotos'));
 const Singletons = lazy(() => import('../pages/Singletons'));
 const LowConfidence = lazy(() => import('../pages/LowConfidence'));
@@ -46,10 +52,21 @@ const TauriIntegration = lazy(() => import('../components/features/TauriIntegrat
 
 // Lazy load heavy advanced feature components for better performance
 const AnalyticsDashboard = lazy(() => import('../components/advanced/AnalyticsDashboard'));
-const SmartAlbumsBuilder = lazy(() => import('../components/advanced/SmartAlbumsBuilder'));
-const FaceRecognitionPanel = lazy(() => import('../components/advanced/FaceRecognitionPanel'));
-const DuplicateManagementPanel = lazy(() => import('../components/advanced/DuplicateManagementPanel'));
 const OCRTextSearchPanel = lazy(() => import('../components/advanced/OCRTextSearchPanel'));
+
+// Phase 8: Advanced Face Recognition UI Components
+// These modules export named components (not default exports). React.lazy expects a default.
+const PrivacyDashboard = lazy(() =>
+  import('../components/privacy/PrivacyDashboard').then((m) => ({
+    default: m.PrivacyDashboard,
+  }))
+);
+const PerformanceDashboardAdvanced = lazy(() =>
+  import('../components/performance/PerformanceDashboard').then((m) => ({
+    default: m.PerformanceDashboard,
+  }))
+);
+
 const Settings = lazy(() => import('../pages/Settings'));
 const About = lazy(() => import('../pages/About'));
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -75,6 +92,7 @@ const MainRouter = () => {
               <Route path='/albums' element={<Albums />} />
               <Route path='/people' element={<People />} />
               <Route path='/people/unidentified' element={<UnidentifiedFaces />} />
+              <Route path='/people/unassigned' element={<UnassignedFaces />} />
               <Route path='/people/all-photos' element={<AllFacePhotos />} />
               <Route path='/people/singletons' element={<Singletons />} />
               <Route path='/people/low-confidence' element={<LowConfidence />} />
@@ -82,6 +100,7 @@ const MainRouter = () => {
               <Route path='/favorites' element={<Favorites />} />
               <Route path='/videos' element={<Videos />} />
               <Route path='/trash' element={<Trash />} />
+              <Route path='/duplicates' element={<Duplicates />} />
               <Route path='/tags' element={<Tags />} />
               <Route path='/saved-searches' element={<SavedSearches />} />
               <Route path='/jobs' element={<JobMonitor />} />
@@ -116,10 +135,15 @@ const MainRouter = () => {
 
               {/* Advanced Analytics Routes */}
               <Route path='/analytics/dashboard' element={<AnalyticsDashboard />} />
-              <Route path='/analytics/albums' element={<SmartAlbumsBuilder />} />
-              <Route path='/analytics/faces' element={<FaceRecognitionPanel />} />
-              <Route path='/analytics/duplicates' element={<DuplicateManagementPanel />} />
+              <Route path='/analytics/albums' element={<Navigate to='/albums' replace />} />
+              <Route path='/analytics/faces' element={<Navigate to='/faces/advanced' replace />} />
+              <Route path='/analytics/duplicates' element={<Navigate to='/duplicates' replace />} />
               <Route path='/analytics/ocr' element={<OCRTextSearchPanel />} />
+
+              {/* Phase 8: Advanced Face Recognition Routes */}
+              <Route path='/faces/advanced' element={<Navigate to='/people' replace />} />
+              <Route path='/privacy/dashboard' element={<PrivacyDashboard />} />
+              <Route path='/performance/advanced' element={<PerformanceDashboardAdvanced />} />
 
               {/* Utility Routes */}
               <Route path='/settings' element={<Settings />} />

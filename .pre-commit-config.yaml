@@ -18,14 +18,14 @@ repos:
     hooks:
       - id: ban-lazy-imports
         name: Ban lazy imports of server.main in routers
-        entry: python scripts/precommit_ban_imports.py
+        entry: ./.venv/bin/python scripts/precommit_ban_imports.py
         language: system
         files: ^server/(api/routers|services)/.*\.py$
         pass_filenames: true
 
       - id: file-size-limits
         name: Enforce file size/line limits
-        entry: python scripts/precommit_file_limits.py
+        entry: ./.venv/bin/python scripts/precommit_file_limits.py
         language: system
         files: ^server/.*\.py$
         pass_filenames: true

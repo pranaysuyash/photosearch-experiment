@@ -1,0 +1,20 @@
+# Security Improvements Dependencies
+# Additional dependencies for Phase 1 security enhancements
+
+# Input validation and sanitization
+bleach>=6.0.0
+defusedxml>=0.7.1
+python-magic>=0.4.27
+
+# Cryptography for secure key management
+cryptography>=41.0.0
+
+# File type detection
+python-magic-bin>=0.4.14; platform_system == "Windows"
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+
+# System monitoring for performance
+psutil>=5.9.0

@@ -1,0 +1,16 @@
+[
+  {
+    "consent_id": "9d4f2a0f-8646-4779-8d44-52070a6016fb",
+    "user_id": "test_user_123",
+    "consent_type": "face_recognition",
+    "status": "granted",
+    "granted_at": "2025-12-28 15:19:06",
+    "withdrawn_at": null,
+    "expires_at": "2027-12-28 20:49:06.842584",
+    "purpose": "Face recognition for photo organization",
+    "legal_basis": "consent",
+    "metadata": "{}",
+    "created_at": "2025-12-28 15:19:06",
+    "updated_at": "2025-12-28 15:19:06"
+  }
+]

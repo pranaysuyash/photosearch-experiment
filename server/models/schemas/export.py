@@ -11,6 +11,8 @@ class ExportOptions(BaseModel):
     rename_pattern: Optional[str] = None  # Pattern for renaming files
     password_protect: bool = False
     password: Optional[str] = None
+    blur_faces: bool = False  # Blur detected faces in photos
+    blur_strength: int = 10  # Blur radius (1-50)
 
 
 class ExportRequest(BaseModel):

@@ -13,7 +13,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 9
 
 
 def get_schema_version(conn: sqlite3.Connection) -> int:
@@ -394,6 +394,63 @@ def migration_v6_facial_attributes(conn: sqlite3.Connection):
         conn.execute("ALTER TABLE face_detections ADD COLUMN overall_quality REAL")
         logger.info("Added overall_quality column to face_detections")
 
+    # Also add attributes to the legacy faces table if it exists
+    try:
+        cursor = conn.execute("PRAGMA table_info(faces)")
+        faces_columns = {row[1] for row in cursor.fetchall()}
+
+        if faces_columns:  # Table exists
+            if "age_estimate" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN age_estimate INTEGER")
+                logger.info("Added age_estimate column to faces table")
+
+            if "age_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN age_confidence REAL")
+                logger.info("Added age_confidence column to faces table")
+
+            if "emotion" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN emotion TEXT")
+                logger.info("Added emotion column to faces table")
+
+            if "emotion_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN emotion_confidence REAL")
+                logger.info("Added emotion_confidence column to faces table")
+
+            if "pose_type" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN pose_type TEXT")
+                logger.info("Added pose_type column to faces table")
+
+            if "pose_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN pose_confidence REAL")
+                logger.info("Added pose_confidence column to faces table")
+
+            if "gender" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN gender TEXT")
+                logger.info("Added gender column to faces table")
+
+            if "gender_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN gender_confidence REAL")
+                logger.info("Added gender_confidence column to faces table")
+
+            if "lighting_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN lighting_score REAL")
+                logger.info("Added lighting_score column to faces table")
+
+            if "occlusion_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN occlusion_score REAL")
+                logger.info("Added occlusion_score column to faces table")
+
+            if "resolution_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN resolution_score REAL")
+                logger.info("Added resolution_score column to faces table")
+
+            if "overall_quality" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN overall_quality REAL")
+                logger.info("Added overall_quality column to faces table")
+
+    except Exception as e:
+        logger.warning(f"Could not update faces table: {e}")
+
 
 def migration_v7_performance_indexes(conn: sqlite3.Connection):
     """
@@ -417,14 +474,255 @@ def migration_v7_performance_indexes(conn: sqlite3.Connection):
     conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_created_at ON face_detections(created_at)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_face_clusters_label ON face_clusters(label)")
 
-    # Indexes for facial attribute searches
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_age ON face_detections(age_estimate)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_emotion ON face_detections(emotion)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_pose ON face_detections(pose_type)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_gender ON face_detections(gender)")
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_quality ON face_detections(overall_quality)")
+    # Indexes for facial attribute searches (only if columns exist)
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if "age_estimate" in columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_age ON face_detections(age_estimate)")
+        logger.info("Created age_estimate index on face_detections")
+
+    if "emotion" in columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_emotion ON face_detections(emotion)")
+        logger.info("Created emotion index on face_detections")
+
+    if "pose_type" in columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_pose ON face_detections(pose_type)")
+        logger.info("Created pose_type index on face_detections")
+
+    if "gender" in columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_gender ON face_detections(gender)")
+        logger.info("Created gender index on face_detections")
+
+    if "overall_quality" in columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_quality ON face_detections(overall_quality)")
+        logger.info("Created overall_quality index on face_detections")
+
+    # Also create indexes on faces table if it exists and has the columns
+    try:
+        cursor = conn.execute("PRAGMA table_info(faces)")
+        faces_columns = {row[1] for row in cursor.fetchall()}
+
+        if faces_columns:  # Table exists
+            if "age_estimate" in faces_columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_faces_age ON faces(age_estimate)")
+                logger.info("Created age_estimate index on faces")
+
+            if "emotion" in faces_columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_faces_emotion ON faces(emotion)")
+                logger.info("Created emotion index on faces")
+
+            if "pose_type" in faces_columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_faces_pose ON faces(pose_type)")
+                logger.info("Created pose_type index on faces")
+
+            if "gender" in faces_columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_faces_gender ON faces(gender)")
+                logger.info("Created gender index on faces")
+
+            if "overall_quality" in faces_columns:
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_faces_quality ON faces(overall_quality)")
+                logger.info("Created overall_quality index on faces")
+
+    except Exception as e:
+        logger.warning(f"Could not create indexes on faces table: {e}")
 
     logger.info("Added performance indexes for face clustering and attribute searches")
+
+
+def migration_v8_facial_attributes_v2(conn: sqlite3.Connection):
+    """
+    Version 8: Add facial attribute columns to face_detections and faces tables.
+
+    Changes:
+    - Add age_estimate, age_confidence columns
+    - Add emotion, emotion_confidence columns
+    - Add pose_type, pose_confidence columns
+    - Add gender, gender_confidence columns
+    - Add enhanced quality metrics: lighting_score, occlusion_score, resolution_score, overall_quality
+    """
+
+    # Update face_detections table
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    # Age estimation attributes
+    if "age_estimate" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN age_estimate INTEGER")
+        logger.info("Added age_estimate column to face_detections")
+
+    if "age_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN age_confidence REAL")
+        logger.info("Added age_confidence column to face_detections")
+
+    # Emotion detection attributes
+    if "emotion" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN emotion TEXT")
+        logger.info("Added emotion column to face_detections")
+
+    if "emotion_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN emotion_confidence REAL")
+        logger.info("Added emotion_confidence column to face_detections")
+
+    # Pose classification attributes
+    if "pose_type" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN pose_type TEXT")
+        logger.info("Added pose_type column to face_detections")
+
+    if "pose_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN pose_confidence REAL")
+        logger.info("Added pose_confidence column to face_detections")
+
+    # Gender classification attributes
+    if "gender" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN gender TEXT")
+        logger.info("Added gender column to face_detections")
+
+    if "gender_confidence" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN gender_confidence REAL")
+        logger.info("Added gender_confidence column to face_detections")
+
+    # Enhanced quality metrics
+    if "lighting_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN lighting_score REAL")
+        logger.info("Added lighting_score column to face_detections")
+
+    if "occlusion_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN occlusion_score REAL")
+        logger.info("Added occlusion_score column to face_detections")
+
+    if "resolution_score" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN resolution_score REAL")
+        logger.info("Added resolution_score column to face_detections")
+
+    if "overall_quality" not in columns:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN overall_quality REAL")
+        logger.info("Added overall_quality column to face_detections")
+
+    # Also add attributes to the legacy faces table if it exists
+    try:
+        cursor = conn.execute("PRAGMA table_info(faces)")
+        faces_columns = {row[1] for row in cursor.fetchall()}
+
+        if faces_columns:  # Table exists
+            if "age_estimate" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN age_estimate INTEGER")
+                logger.info("Added age_estimate column to faces table")
+
+            if "age_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN age_confidence REAL")
+                logger.info("Added age_confidence column to faces table")
+
+            if "emotion" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN emotion TEXT")
+                logger.info("Added emotion column to faces table")
+
+            if "emotion_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN emotion_confidence REAL")
+                logger.info("Added emotion_confidence column to faces table")
+
+            if "pose_type" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN pose_type TEXT")
+                logger.info("Added pose_type column to faces table")
+
+            if "pose_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN pose_confidence REAL")
+                logger.info("Added pose_confidence column to faces table")
+
+            if "gender" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN gender TEXT")
+                logger.info("Added gender column to faces table")
+
+            if "gender_confidence" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN gender_confidence REAL")
+                logger.info("Added gender_confidence column to faces table")
+
+            if "lighting_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN lighting_score REAL")
+                logger.info("Added lighting_score column to faces table")
+
+            if "occlusion_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN occlusion_score REAL")
+                logger.info("Added occlusion_score column to faces table")
+
+            if "resolution_score" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN resolution_score REAL")
+                logger.info("Added resolution_score column to faces table")
+
+            if "overall_quality" not in faces_columns:
+                conn.execute("ALTER TABLE faces ADD COLUMN overall_quality REAL")
+                logger.info("Added overall_quality column to faces table")
+
+    except Exception as e:
+        logger.warning(f"Could not update faces table: {e}")
+
+    # Create indexes for the new attribute columns
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    updated_columns = {row[1] for row in cursor.fetchall()}
+
+    if "age_estimate" in updated_columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_age_v8 ON face_detections(age_estimate)")
+        logger.info("Created age_estimate index on face_detections")
+
+    if "emotion" in updated_columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_emotion_v8 ON face_detections(emotion)")
+        logger.info("Created emotion index on face_detections")
+
+    if "pose_type" in updated_columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_pose_v8 ON face_detections(pose_type)")
+        logger.info("Created pose_type index on face_detections")
+
+    if "gender" in updated_columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_gender_v8 ON face_detections(gender)")
+        logger.info("Created gender index on face_detections")
+
+    if "overall_quality" in updated_columns:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_face_detections_quality_v8 ON face_detections(overall_quality)")
+        logger.info("Created overall_quality index on face_detections")
+
+
+def migration_v9_embedding_version_gating(conn: sqlite3.Connection):
+    """Version 9: Track embedding versions for compatibility gating.
+
+    Changes:
+    - Add face_detections.embedding_version (TEXT)
+    - Add face_clusters.prototype_embedding_version (TEXT)
+    - Add indexes to support filtering by version
+    """
+
+    # face_detections.embedding_version
+    cursor = conn.execute("PRAGMA table_info(face_detections)")
+    det_cols = {row[1] for row in cursor.fetchall()}
+
+    if "embedding_version" not in det_cols:
+        conn.execute("ALTER TABLE face_detections ADD COLUMN embedding_version TEXT")
+        logger.info("Added embedding_version column to face_detections")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_face_detections_embedding_version ON face_detections(embedding_version)"
+        )
+        logger.info("Created embedding_version index on face_detections")
+
+    # face_clusters.prototype_embedding_version
+    cursor = conn.execute("PRAGMA table_info(face_clusters)")
+    cluster_cols = {row[1] for row in cursor.fetchall()}
+
+    if "prototype_embedding_version" not in cluster_cols:
+        conn.execute("ALTER TABLE face_clusters ADD COLUMN prototype_embedding_version TEXT")
+        logger.info("Added prototype_embedding_version column to face_clusters")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_face_clusters_prototype_embedding_version ON face_clusters(prototype_embedding_version)"
+        )
+        logger.info("Created prototype_embedding_version index on face_clusters")
+
+    # Legacy faces table (optional)
+    try:
+        cursor = conn.execute("PRAGMA table_info(faces)")
+        faces_cols = {row[1] for row in cursor.fetchall()}
+        if faces_cols and "embedding_version" not in faces_cols:
+            conn.execute("ALTER TABLE faces ADD COLUMN embedding_version TEXT")
+            logger.info("Added embedding_version column to faces table")
+    except Exception as e:
+        logger.warning(f"Could not update faces table for embedding_version: {e}")
 
 
 # Migration registry: version -> (migration_function, description)
@@ -453,6 +751,14 @@ MIGRATIONS = {
     7: (
         migration_v7_performance_indexes,
         "Add performance indexes for face clustering",
+    ),
+    8: (
+        migration_v8_facial_attributes_v2,
+        "Add facial attribute analysis columns (age, emotion, pose, gender, quality)",
+    ),
+    9: (
+        migration_v9_embedding_version_gating,
+        "Add embedding version columns for compatibility gating",
     ),
 }
 

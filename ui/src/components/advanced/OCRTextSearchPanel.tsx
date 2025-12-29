@@ -34,18 +34,18 @@ export interface TextRegion {
   id: string;
   photo_path: string;
   text_content: string;
-  highlighted_text: string;
+  highlighted_text?: string;
   confidence_score: number;
   language_code: string;
-  bbox: {
+  bbox?: {
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  text_type: string;
-  reading_order: number;
-  created_at: string;
+  text_type?: string;
+  reading_order?: number;
+  created_at?: string;
 }
 
 export interface OCRResult {
@@ -76,14 +76,46 @@ interface ProcessingJob {
 
 type TabId = 'search' | 'extract' | 'regions' | 'settings';
 type OcrStats = {
-  total_text_regions_in_db?: number;
+  total_images_processed?: number;
+  images_with_text?: number;
+  images_without_text?: number;
+  total_words_extracted?: number;
+  avg_words_per_image?: number;
+  language_distribution?: Record<string, number>;
+  images_with_most_text?: Array<{ image_path: string; word_count: number }>;
+  recent_ocr_processing?: Array<{ image_path: string; extracted_at: string; word_count: number }>;
   [key: string]: unknown;
 };
-type OcrAnalyticsResponse = { analytics?: { ocr_processing?: OcrStats } };
-type OcrSearchResponse = { matches: TextRegion[] };
-type OcrBatchStartResponse = { job_id: string; message?: string };
-type JobStatusResponse = { job_status: ProcessingJob } | ProcessingJob;
-type RegionsResponse = { regions: TextRegion[] };
+type OcrStatsResponse = { stats?: OcrStats };
+type OcrSearchResponse = {
+  results?: {
+    results?: Array<{
+      image_path: string;
+      text_content: string;
+      language?: string;
+      confidence?: number;
+      extracted_at?: string;
+    }>;
+  };
+};
+type OcrExtractResponse = {
+  results?: {
+    status?: string;
+    processed?: number;
+    successful?: number;
+    failed?: number;
+    message?: string;
+  };
+};
+type OcrImageStatsResponse = {
+  stats?: {
+    status?: string;
+    text_content?: string;
+    language?: string;
+    confidence?: number;
+    extracted_at?: string;
+  };
+};
 
 const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'en', name: 'English', supported: true },
@@ -100,6 +132,73 @@ const SUPPORTED_LANGUAGES: LanguageInfo[] = [
   { code: 'hi', name: 'Hindi', supported: false },
 ];
 
+const LANGUAGE_FLAG_MAP: Record<string, string> = {
+  en: '🇺🇸',
+  es: '🇪🇸',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+  it: '🇮🇹',
+  pt: '🇵🇹',
+  ru: '🇷🇺',
+  ja: '🇯🇵',
+  zh: '🇨🇳',
+  ko: '🇰🇷',
+  ar: '🇸🇦',
+  hi: '🇮🇳',
+};
+
+const LANGUAGE_NORMALIZATION_MAP: Record<string, string> = {
+  eng: 'en',
+  spa: 'es',
+  fra: 'fr',
+  deu: 'de',
+  ita: 'it',
+  por: 'pt',
+  rus: 'ru',
+  jpn: 'ja',
+  chi_sim: 'zh',
+  chi_tra: 'zh',
+  kor: 'ko',
+  ara: 'ar',
+  hin: 'hi',
+};
+
+const TESSERACT_LANGUAGE_MAP: Record<string, string> = {
+  en: 'eng',
+  es: 'spa',
+  fr: 'fra',
+  de: 'deu',
+  it: 'ita',
+  pt: 'por',
+  ru: 'rus',
+  ja: 'jpn',
+  zh: 'chi_sim',
+  ko: 'kor',
+  ar: 'ara',
+  hi: 'hin',
+};
+
+const normalizeLanguageCode = (langCode?: string) => {
+  if (!langCode) return 'unknown';
+  return LANGUAGE_NORMALIZATION_MAP[langCode] || langCode;
+};
+
+const toTesseractLanguage = (langCode: string) => {
+  return TESSERACT_LANGUAGE_MAP[langCode] || langCode || 'eng';
+};
+
+const buildHighlightedText = (text: string, query: string) => {
+  if (!query.trim()) return text;
+  const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(safeQuery, 'gi');
+  return text.replace(regex, (match) => `<mark>${match}</mark>`);
+};
+
+const getLanguageFlag = (langCode: string) => {
+  const normalized = normalizeLanguageCode(langCode);
+  return LANGUAGE_FLAG_MAP[normalized] || '🌐';
+};
+
 export function OCRTextSearchPanel() {
   const [activeTab, setActiveTab] = useState<TabId>('search');
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,20 +210,15 @@ export function OCRTextSearchPanel() {
   const [loading, setLoading] = useState(false);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['en']);
   const [minConfidence, setMinConfidence] = useState(0.5);
-  const [enableHandwriting, setEnableHandwriting] = useState(true);
+  const [enableHandwriting] = useState(false);
   const [showHighlighting, setShowHighlighting] = useState(true);
   const [batchProgress, setBatchProgress] = useState(0);
   const [stats, setStats] = useState<OcrStats>({});
 
   const loadStats = useCallback(async () => {
     try {
-      const response = await api.get<OcrAnalyticsResponse>(
-        '/api/analytics/library',
-        {
-          params: { metric_types: ['ocr_processing'] },
-        }
-      );
-      setStats(response?.analytics?.ocr_processing ?? {});
+      const response = await api.get<OcrStatsResponse>('/ocr/stats');
+      setStats(response?.stats ?? {});
     } catch (error) {
       console.error('Failed to load OCR stats:', error);
     }
@@ -139,14 +233,47 @@ export function OCRTextSearchPanel() {
     async (query: string, language?: string) => {
       try {
         setLoading(true);
-        const response = await api.post<OcrSearchResponse>('/api/ocr/search', {
-          query,
-          language,
-          min_confidence: minConfidence,
-          limit: 100,
+        const response = await api.get<OcrSearchResponse>('/ocr/search', {
+          params: {
+            query,
+            limit: 100,
+            offset: 0,
+            ...(language ? { language } : {}),
+          },
         });
 
-        setSearchResults(response?.matches ?? []);
+        const matches = response?.results?.results ?? [];
+        const normalized = matches.map((match, index) => {
+          const normalizedLanguage = normalizeLanguageCode(match.language);
+          return {
+            id: `${match.image_path}-${index}`,
+            photo_path: match.image_path,
+            text_content: match.text_content,
+            highlighted_text: buildHighlightedText(
+              match.text_content,
+              query
+            ),
+            confidence_score:
+              typeof match.confidence === 'number' ? match.confidence : 0,
+            language_code: normalizedLanguage,
+            text_type: 'full',
+            reading_order: index,
+            created_at: match.extracted_at,
+          } as TextRegion;
+        });
+
+        const filteredByLanguage =
+          selectedLanguages.length > 0
+            ? normalized.filter((result) =>
+                selectedLanguages.includes(result.language_code)
+              )
+            : normalized;
+
+        setSearchResults(
+          filteredByLanguage.filter(
+            (result) => result.confidence_score >= minConfidence
+          )
+        );
       } catch (error) {
         console.error('Failed to search text:', error);
         setSearchResults([]);
@@ -154,92 +281,99 @@ export function OCRTextSearchPanel() {
         setLoading(false);
       }
     },
-    [minConfidence]
+    [minConfidence, selectedLanguages]
   );
 
   const extractTextBatch = useCallback(
     async (imagePaths: string[]) => {
+      const jobId = `ocr-${Date.now()}`;
+      const selectedLanguage = selectedLanguages[0] ?? 'en';
+      const language = toTesseractLanguage(selectedLanguage);
       try {
         setLoading(true);
-
-        const response = await api.post<OcrBatchStartResponse>(
-          '/api/ocr/extract-batch',
-          {
-            image_paths: imagePaths,
-            languages: selectedLanguages,
-            enable_handwriting: enableHandwriting,
-          }
-        );
-
-        const jobId = response?.job_id;
-        if (!jobId) {
-          setLoading(false);
-          return;
-        }
+        setBatchProgress(0);
         setProcessingJobs((prev) => ({
           ...prev,
           [jobId]: {
             job_id: jobId,
-            status: 'queued',
-            message: response?.message ?? '',
+            status: 'processing',
+            message: 'Extracting text...',
             progress: 0,
             created_at: new Date().toISOString(),
           },
         }));
 
-        // Start polling for job status
-        const pollInterval = window.setInterval(async () => {
-          try {
-            const jobResponse = await api.get<JobStatusResponse>(
-              `/api/jobs/${jobId}`
-            );
-            const jobStatus =
-              jobResponse && 'job_status' in jobResponse
-                ? jobResponse.job_status
-                : jobResponse;
+        const response = await api.post<OcrExtractResponse>('/ocr/extract', {
+          image_paths: imagePaths,
+          language,
+        });
 
-            if (jobStatus) {
-              setProcessingJobs((prev) => ({
-                ...prev,
-                [jobId]: jobStatus,
-              }));
-            }
+        const result = response?.results;
+        const failed = result?.status === 'error';
+        const message =
+          result?.message ||
+          (failed ? 'OCR extraction failed' : 'OCR extraction complete');
 
-            setBatchProgress(jobStatus?.progress ?? 0);
-
-            if (jobStatus?.status === 'completed') {
-              clearInterval(pollInterval);
-              setLoading(false);
-              loadStats();
-            } else if (jobStatus?.status === 'failed') {
-              clearInterval(pollInterval);
-              setLoading(false);
-            }
-          } catch (pollError) {
-            console.error('Failed to poll OCR batch:', pollError);
-            clearInterval(pollInterval);
-            setLoading(false);
-          }
-        }, 2000);
+        setProcessingJobs((prev) => ({
+          ...prev,
+          [jobId]: {
+            ...prev[jobId],
+            status: failed ? 'failed' : 'completed',
+            progress: 100,
+            message,
+          },
+        }));
+        setBatchProgress(100);
+        loadStats();
       } catch (error) {
         console.error('Failed to extract text batch:', error);
+        setProcessingJobs((prev) => ({
+          ...prev,
+          [jobId]: {
+            ...prev[jobId],
+            status: 'failed',
+            progress: 0,
+            message: 'OCR extraction failed',
+          },
+        }));
+      } finally {
         setLoading(false);
       }
     },
-    [selectedLanguages, enableHandwriting, loadStats]
+    [selectedLanguages, loadStats]
   );
 
   const getTextRegions = useCallback(async (imagePath: string) => {
     try {
-      const response = await api.get<RegionsResponse>(
-        `/api/ocr/regions/${encodeURIComponent(imagePath)}`
+      const response = await api.get<OcrImageStatsResponse>(
+        `/ocr/image/${encodeURIComponent(imagePath)}`
       );
-      setSelectedRegions(response?.regions ?? []);
+      const stats = response?.stats;
+      if (stats?.status !== 'processed') {
+        setSelectedRegions([]);
+        return;
+      }
+      const textContent = stats.text_content ?? '';
+      const normalizedLanguage = normalizeLanguageCode(stats.language);
+      setSelectedRegions([
+        {
+          id: `${imagePath}-full`,
+          photo_path: imagePath,
+          text_content: textContent,
+          highlighted_text: buildHighlightedText(textContent, searchQuery),
+          confidence_score:
+            typeof stats.confidence === 'number' ? stats.confidence : 0,
+          language_code: normalizedLanguage,
+          text_type: 'full',
+          reading_order: 0,
+          created_at: stats.extracted_at,
+        },
+      ]);
     } catch (error) {
       console.error('Failed to get text regions:', error);
       setSelectedRegions([]);
     }
-  }, []);
+  }, [searchQuery]);
 
   const handleDirectorySelect = () => {
     const input = document.createElement('input');
@@ -275,25 +409,7 @@ export function OCRTextSearchPanel() {
     return 'text-red-500';
   };
 
-  const getLanguageFlag = (langCode: string) => {
-    const flags: Record<string, string> = {
-      en: '🇺🇸',
-      es: '🇪🇸',
-      fr: '🇫🇷',
-      de: '🇩🇪',
-      it: '🇮🇹',
-      pt: '🇵🇹',
-      ru: '🇷🇺',
-      ja: '🇯🇵',
-      zh: '🇨🇳',
-      ko: '🇰🇷',
-      ar: '🇸🇦',
-      hi: '🇮🇳',
-    };
-    return flags[langCode] || '🌐';
-  };
-
-  const renderHighlightedText = (text: string, highlighted: string) => {
+  const renderHighlightedText = (text: string, highlighted?: string) => {
     if (!showHighlighting || !highlighted || !text) {
       return <span className='text-gray-300'>{text}</span>;
     }
@@ -325,6 +441,8 @@ export function OCRTextSearchPanel() {
     return <span className='text-gray-300'>{elements}</span>;
   };
 
+  const hasRegionGeometry = selectedRegions.some((region) => region.bbox);
+
   return (
     <div className='p-6 space-y-6'>
       {/* Header */}
@@ -340,9 +458,9 @@ export function OCRTextSearchPanel() {
         <div className='flex items-center gap-3'>
           <div className='text-right'>
             <p className='text-white font-semibold'>
-              {stats.total_text_regions_in_db || 0}
+              {stats.total_images_processed || 0}
             </p>
-            <p className='text-gray-400 text-sm'>Text regions found</p>
+            <p className='text-gray-400 text-sm'>Images processed</p>
           </div>
           <button
             onClick={handleDirectorySelect}
@@ -548,7 +666,7 @@ export function OCRTextSearchPanel() {
                             {(region.confidence_score * 100).toFixed(1)}%
                           </span>
                           <span className='px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded'>
-                            {region.text_type}
+                            {region.text_type || 'text'}
                           </span>
                         </div>
                         <button
@@ -562,7 +680,7 @@ export function OCRTextSearchPanel() {
                       <div className='mb-3'>
                         {renderHighlightedText(
                           region.text_content,
-                          region.highlighted_text
+                          region.highlighted_text || region.text_content
                         )}
                       </div>
 
@@ -571,9 +689,15 @@ export function OCRTextSearchPanel() {
                           {region.photo_path.split('/').pop()}
                         </span>
                         <div className='flex items-center gap-2'>
-                          <span className='text-gray-400 text-xs'>
-                            Position: ({region.bbox.x}, {region.bbox.y})
-                          </span>
+                          {region.bbox ? (
+                            <span className='text-gray-400 text-xs'>
+                              Position: ({region.bbox!.x}, {region.bbox!.y})
+                            </span>
+                          ) : (
+                            <span className='text-gray-400 text-xs'>
+                              Full text
+                            </span>
+                          )}
                           <button className='px-2 py-1 bg-white/10 text-gray-300 text-xs rounded hover:bg-white/20'>
                             View Image
                           </button>
@@ -638,6 +762,9 @@ export function OCRTextSearchPanel() {
                       </label>
                     ))}
                   </div>
+                  <p className='text-xs text-gray-500 mt-2'>
+                    Only the first selected language is used for extraction.
+                  </p>
                 </div>
 
                 <div>
@@ -652,14 +779,14 @@ export function OCRTextSearchPanel() {
                           Handwriting Recognition
                         </h5>
                         <p className='text-gray-400 text-sm'>
-                          Extract handwritten text using EasyOCR
+                          Not available with the current OCR backend
                         </p>
                       </div>
                       <button
-                        onClick={() => setEnableHandwriting(!enableHandwriting)}
+                        disabled
                         className={`w-12 h-6 ${
                           enableHandwriting ? 'bg-blue-600' : 'bg-gray-600'
-                        } rounded-full relative`}
+                        } rounded-full relative opacity-50 cursor-not-allowed`}
                       >
                         <div
                           className={`absolute ${
@@ -713,9 +840,10 @@ export function OCRTextSearchPanel() {
                       Extraction Information
                     </h4>
                     <p className='text-gray-300 text-sm'>
-                      Text extraction uses Tesseract OCR for printed text and
-                      EasyOCR for handwritten text. Processing time varies based
-                      on image complexity and selected languages.
+                      Text extraction uses Tesseract OCR for printed text.
+                      Handwriting recognition is not available in the current
+                      backend. Processing time varies based on image complexity
+                      and selected language.
                     </p>
                   </div>
                 </div>
@@ -761,6 +889,11 @@ export function OCRTextSearchPanel() {
               <h3 className='text-xl font-semibold text-white mb-4'>
                 Text Regions
               </h3>
+              {!hasRegionGeometry && selectedRegions.length > 0 && (
+                <p className='text-sm text-gray-400 mb-4'>
+                  Region coordinates are not available in the current OCR backend.
+                </p>
+              )}
 
               {selectedRegions.length > 0 ? (
                 <div className='space-y-4'>
@@ -777,25 +910,28 @@ export function OCRTextSearchPanel() {
                           alt='Text regions'
                           className='w-full h-auto'
                         />
-                        {/* Overlay text regions - simplified for demo */}
-                        <div className='absolute inset-0 pointer-events-none'>
-                          {selectedRegions.map((region, index) => (
-                            <div
-                              key={region.id}
-                              className='absolute border-2 border-yellow-500 bg-yellow-500/10'
-                              style={{
-                                left: `${(region.bbox.x / 1000) * 100}%`,
-                                top: `${(region.bbox.y / 1000) * 100}%`,
-                                width: `${(region.bbox.width / 1000) * 100}%`,
-                                height: `${(region.bbox.height / 1000) * 100}%`,
-                              }}
-                            >
-                              <span className='absolute -top-6 left-0 text-xs bg-yellow-500 text-black px-1 rounded'>
-                                {index + 1}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                        {hasRegionGeometry && (
+                          <div className='absolute inset-0 pointer-events-none'>
+                            {selectedRegions.map((region, index) =>
+                              region.bbox ? (
+                                <div
+                                  key={region.id}
+                                  className='absolute border-2 border-yellow-500 bg-yellow-500/10'
+                                  style={{
+                                    left: `${(region.bbox!.x / 1000) * 100}%`,
+                                    top: `${(region.bbox!.y / 1000) * 100}%`,
+                                    width: `${(region.bbox!.width / 1000) * 100}%`,
+                                    height: `${(region.bbox!.height / 1000) * 100}%`,
+                                  }}
+                                >
+                                  <span className='absolute -top-6 left-0 text-xs bg-yellow-500 text-black px-1 rounded'>
+                                    {index + 1}
+                                  </span>
+                                </div>
+                              ) : null
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -830,14 +966,20 @@ export function OCRTextSearchPanel() {
                               {region.text_content}
                             </p>
                             <div className='flex items-center gap-4 text-xs text-gray-500'>
-                              <span>
-                                Position: ({region.bbox.x}, {region.bbox.y})
-                              </span>
-                              <span>
-                                Size: {region.bbox.width}×{region.bbox.height}
-                              </span>
+                              {region.bbox ? (
+                                <>
+                                  <span>
+                                    Position: ({region.bbox!.x}, {region.bbox!.y})
+                                  </span>
+                                  <span>
+                                    Size: {region.bbox!.width}×{region.bbox!.height}
+                                  </span>
+                                </>
+                              ) : (
+                                <span>Full text</span>
+                              )}
                               <span className='capitalize'>
-                                {region.text_type}
+                                {region.text_type || 'text'}
                               </span>
                             </div>
                           </div>

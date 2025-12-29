@@ -1,6 +1,13 @@
 // Test setup file for vitest
 import { vi } from 'vitest';
 
+// Enable React act() support in tests to suppress act warnings.
+(
+  globalThis as typeof globalThis & {
+    IS_REACT_ACT_ENVIRONMENT?: boolean;
+  }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock navigator.clipboard for tests
 Object.assign(navigator, {
   clipboard: {
@@ -28,7 +35,8 @@ class MockIntersectionObserver {
     this.callback = callback;
     this.root = options?.root ?? null;
     this.rootMargin = options?.rootMargin ?? '';
-    this.thresholds = options?.threshold ?? [];
+    const t = options?.threshold;
+    this.thresholds = t === undefined ? [] : Array.isArray(t) ? t : [t];
   }
   observe() {
     // No-op

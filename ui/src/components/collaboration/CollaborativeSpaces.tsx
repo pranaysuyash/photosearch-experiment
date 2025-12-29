@@ -103,7 +103,9 @@ export function CollaborativeSpaces() {
 
       // In a real app, the user_id would come from authentication
       // For this example, we'll use a placeholder user ID
-      const response = await api.get('/collaborative/spaces/user/user-placeholder-id');
+      const response = await api.get<{ spaces?: CollaborativeSpace[] }>(
+        '/collaborative/spaces/user/user-placeholder-id'
+      );
       setCurrentUserSpaces(response.spaces || []);
     } catch (err) {
       console.error('Failed to load user spaces:', err);
@@ -116,21 +118,34 @@ export function CollaborativeSpaces() {
   const loadSpaceDetails = async (spaceId: string) => {
     try {
       // Load space members
-      const membersResponse = await api.get(`/collaborative/spaces/${spaceId}/members`);
+      const membersResponse = await api.get<{ members?: SpaceMember[] }>(
+        `/collaborative/spaces/${spaceId}/members`
+      );
       setSpaceMembers(membersResponse.members || []);
 
       // Load space photos
-      const photosResponse = await api.get(`/collaborative/spaces/${spaceId}/photos`);
+      const photosResponse = await api.get<{ photos?: SpacePhoto[] }>(
+        `/collaborative/spaces/${spaceId}/photos`
+      );
       setSpacePhotos(photosResponse.photos || []);
 
       // Load space stats
-      const statsResponse = await api.get(`/collaborative/spaces/${spaceId}/stats`);
+      const statsResponse = await api.get<Record<string, unknown>>(
+        `/collaborative/spaces/${spaceId}/stats`
+      );
+      const stats =
+        typeof statsResponse === 'object' && statsResponse
+          ? ((('stats' in statsResponse ? statsResponse.stats : statsResponse) as Record<
+              string,
+              unknown
+            >) || {})
+          : {};
 
       // Find and update the space in the main list
       setCurrentUserSpaces(prev =>
         prev.map(space =>
           space.id === spaceId
-            ? { ...space, ...statsResponse.stats }
+            ? { ...space, ...stats }
             : space
         )
       );
@@ -213,7 +228,7 @@ export function CollaborativeSpaces() {
       });
 
       // Refresh comments for this photo
-      const commentsResponse = await api.get(
+      const commentsResponse = await api.get<{ comments?: SpaceComment[] }>(
         `/collaborative/spaces/${selectedSpace.id}/photos/${photoPath}/comments`
       );
       const latestComments = commentsResponse.comments || [];

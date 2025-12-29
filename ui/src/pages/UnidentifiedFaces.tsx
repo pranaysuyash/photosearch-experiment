@@ -11,17 +11,37 @@ import { glass } from '../design/glass';
 import { api } from '../api';
 
 interface UnidentifiedFace {
-  id: number;
-  image_path: string;
-  bounding_box: number[];
-  confidence: number;
+  detection_id: string;
+  photo_path: string;
+  bounding_box: unknown;
+  quality_score?: number | null;
 }
 
 interface Cluster {
   id: string;
-  label: string;
-  face_count: number;
+  label?: string | null;
+  face_count?: number;
 }
+
+type RawCluster = {
+  id?: string | number;
+  cluster_id?: string | number;
+  label?: string | null;
+  face_count?: number;
+};
+
+const normalizeCluster = (value: unknown): Cluster | null => {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as RawCluster;
+  const idRaw = v.id ?? v.cluster_id;
+  if (idRaw === undefined || idRaw === null) return null;
+
+  return {
+    id: String(idRaw),
+    label: v.label ?? null,
+    face_count: typeof v.face_count === 'number' ? v.face_count : undefined,
+  };
+};
 
 export default function UnidentifiedFaces() {
   const navigate = useNavigate();
@@ -43,25 +63,13 @@ export default function UnidentifiedFaces() {
   const fetchUnidentifiedFaces = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/api/faces/unidentified');
-      // API now returns clusters (unlabeled ones)
-      // Convert to face-like format for display
-      const clusterData = data.clusters || [];
-      const facesFromClusters: UnidentifiedFace[] = [];
-      for (const cluster of clusterData) {
-        for (let i = 0; i < (cluster.face_ids || []).length; i++) {
-          facesFromClusters.push({
-            id: cluster.face_ids[i],
-            image_path: cluster.images?.[i] || '',
-            bounding_box: [],
-            confidence: 1.0,
-          });
-        }
-      }
-      setFaces(facesFromClusters);
+      setError(null);
+      const data = await api.getUnassignedFaces(100, 0);
+      setFaces(Array.isArray(data?.faces) ? data.faces : []);
     } catch (err) {
       console.error('Failed to fetch unidentified faces:', err);
       setError('Failed to load unidentified faces');
+      setFaces([]);
     } finally {
       setLoading(false);
     }
@@ -69,17 +77,23 @@ export default function UnidentifiedFaces() {
 
   const fetchClusters = async () => {
     try {
-      const data = await api.get('/api/faces/clusters');
-      setClusters(data.clusters || []);
+      const data = await api.getFaceClusters();
+      const raw: unknown[] = Array.isArray(data?.clusters) ? data.clusters : [];
+      setClusters(
+        raw
+          .map(normalizeCluster)
+          .filter((c): c is Cluster => c !== null)
+      );
     } catch (err) {
       console.error('Failed to fetch clusters:', err);
+      setClusters([]);
     }
   };
 
-  const assignToPerson = async (faceId: number, clusterId: string) => {
+  const assignToPerson = async (detectionId: string, clusterId: string) => {
     try {
-      await api.post(`/api/faces/${faceId}/assign`, { cluster_id: clusterId });
-      setFaces(faces.filter((f) => f.id !== faceId));
+      await api.moveFace(detectionId, clusterId);
+      setFaces(faces.filter((f) => f.detection_id !== detectionId));
       setShowAssignModal(false);
       setSelectedFace(null);
     } catch (err) {
@@ -87,23 +101,22 @@ export default function UnidentifiedFaces() {
     }
   };
 
-  const createNewPerson = async (faceId: number, name: string) => {
+  const createNewPerson = async (detectionId: string, name: string) => {
     try {
-      await api.post(`/api/faces/${faceId}/create-person`, { label: name });
-      setFaces(faces.filter((f) => f.id !== faceId));
+      await api.splitFaces([detectionId], name);
+      setFaces(faces.filter((f) => f.detection_id !== detectionId));
       setShowAssignModal(false);
       setSelectedFace(null);
       setNewPersonName('');
-      fetchClusters();
+      void fetchClusters();
     } catch (err) {
       console.error('Failed to create person:', err);
     }
   };
 
-  const getFaceCropUrl = (faceId: number) => {
-    return `${
-      import.meta.env.VITE_API_URL || 'http://localhost:8000'
-    }/api/faces/crop/${faceId}?size=200`;
+  const getThumbnailUrl = (photoPath: string) => {
+    const encodedPath = encodeURIComponent(photoPath);
+    return `/api/thumbnail/${encodedPath}?size=180`;
   };
 
   return (
@@ -169,7 +182,7 @@ export default function UnidentifiedFaces() {
           <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4'>
             {faces.map((face) => (
               <div
-                key={face.id}
+                key={face.detection_id}
                 className={`${glass.surface} rounded-xl overflow-hidden border border-white/10 hover:border-primary/50 transition-colors cursor-pointer group`}
                 onClick={() => {
                   setSelectedFace(face);
@@ -178,7 +191,7 @@ export default function UnidentifiedFaces() {
               >
                 <div className='aspect-square relative'>
                   <img
-                    src={getFaceCropUrl(face.id)}
+                    src={getThumbnailUrl(face.photo_path)}
                     alt='Unidentified face'
                     className='w-full h-full object-cover'
                   />
@@ -208,7 +221,7 @@ export default function UnidentifiedFaces() {
 
             <div className='mb-4 flex justify-center'>
               <img
-                src={getFaceCropUrl(selectedFace.id)}
+                src={getThumbnailUrl(selectedFace.photo_path)}
                 alt='Face'
                 className='w-32 h-32 object-cover rounded-lg'
               />
@@ -230,7 +243,7 @@ export default function UnidentifiedFaces() {
                 <button
                   onClick={() =>
                     newPersonName.trim() &&
-                    createNewPerson(selectedFace.id, newPersonName.trim())
+                    createNewPerson(selectedFace.detection_id, newPersonName.trim())
                   }
                   className='btn-glass btn-glass--primary px-4 py-2'
                   disabled={!newPersonName.trim()}
@@ -251,7 +264,7 @@ export default function UnidentifiedFaces() {
                     <button
                       key={cluster.id}
                       onClick={() =>
-                        assignToPerson(selectedFace.id, cluster.id)
+                        assignToPerson(selectedFace.detection_id, cluster.id)
                       }
                       className='w-full text-left px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors'
                     >
@@ -259,7 +272,7 @@ export default function UnidentifiedFaces() {
                         {cluster.label || `Person ${cluster.id}`}
                       </span>
                       <span className='text-muted-foreground text-xs ml-2'>
-                        ({cluster.face_count} faces)
+                        ({cluster.face_count ?? 0} faces)
                       </span>
                     </button>
                   ))}

@@ -194,6 +194,59 @@ def test_similar_face_finding():
         shutil.rmtree(temp_dir)
 
 
+def test_similar_face_finding_respects_embedding_version():
+    """Ensure similarity search does not mix incompatible embedding versions."""
+    print("\n🧪 Testing similar face finding with embedding_version gating...")
+
+    temp_dir = tempfile.mkdtemp()
+    db_path = Path(temp_dir) / "test_clustering.db"
+
+    try:
+        face_db = FaceClusteringDB(db_path)
+
+        # Reference face uses version v1
+        ref_embedding = [1.0, 0.5, 0.2, 0.1, 0.0]
+        ref_det_id = face_db.add_face_detection(
+            photo_path="/test/reference.jpg",
+            bounding_box={"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+            embedding=ref_embedding,
+            embedding_version="v1",
+            quality_score=0.9,
+        )
+
+        # Same embedding but different version should be excluded
+        same_version_id = face_db.add_face_detection(
+            photo_path="/test/same_version.jpg",
+            bounding_box={"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+            embedding=[1.0, 0.49, 0.21, 0.1, 0.0],
+            embedding_version="v1",
+            quality_score=0.8,
+        )
+        diff_version_id = face_db.add_face_detection(
+            photo_path="/test/diff_version.jpg",
+            bounding_box={"x": 0.1, "y": 0.2, "width": 0.3, "height": 0.4},
+            embedding=[1.0, 0.49, 0.21, 0.1, 0.0],
+            embedding_version="v2",
+            quality_score=0.8,
+        )
+
+        # Threshold low enough that both would match if version gating were not applied.
+        similar_faces = face_db.find_similar_faces(ref_det_id, threshold=0.7)
+        ids = {f["detection_id"] for f in similar_faces}
+
+        assert same_version_id in ids
+        assert diff_version_id not in ids
+
+        # When schema supports embedding_version, results should include it.
+        for item in similar_faces:
+            assert item.get("embedding_version") == "v1"
+
+        print("✅ Embedding version gating enforced in find_similar_faces")
+
+    finally:
+        shutil.rmtree(temp_dir)
+
+
 def test_cluster_quality_analysis():
     """Test cluster quality analysis."""
     print("\n🧪 Testing cluster quality analysis...")

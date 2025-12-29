@@ -417,7 +417,7 @@ export function DynamicNotchSearch({
                           <Sparkles className='w-3 h-3' />
                         </button>
                       )}
-                      {[
+                      {([
                         { id: 'semantic', label: 'Semantic', icon: Sparkles },
                         { id: 'metadata', label: 'Metadata', icon: FileText },
                         {
@@ -425,7 +425,7 @@ export function DynamicNotchSearch({
                           label: 'Hybrid',
                           icon: ImageIcon,
                         },
-                      ].map((item) => (
+                      ] as const).map((item) => (
                         <button
                           key={item.id}
                           type='button'

@@ -1,11 +1,13 @@
 /**
  * Performance Dashboard Page
  *
- * Displays cache statistics, API schema, and performance metrics
+ * Displays cache statistics, API schema, performance metrics, and advanced face recognition performance
  */
 
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api';
+import { Zap, BarChart3, Activity } from 'lucide-react';
 
 interface CacheStats {
   memory: {
@@ -111,7 +113,75 @@ const PerformanceDashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8 text-center">Performance Dashboard</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">Performance Dashboard</h1>
+
+        {/* Advanced Performance Link */}
+        <Link
+          to="/performance/advanced"
+          className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+        >
+          <Zap className="w-4 h-4" />
+          <span>Advanced Performance</span>
+        </Link>
+      </div>
+
+      {/* Performance Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Link
+          to="/performance/advanced"
+          className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="p-2 bg-blue-600 rounded-lg">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="font-semibold text-blue-900">System Performance</h3>
+          </div>
+          <p className="text-sm text-blue-700 mb-2">
+            Real-time performance monitoring and optimization for face recognition system
+          </p>
+          <p className="text-xs text-blue-600 group-hover:text-blue-800">
+            View advanced metrics →
+          </p>
+        </Link>
+
+        <Link
+          to="/faces/advanced"
+          className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="p-2 bg-green-600 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="font-semibold text-green-900">Advanced Face Recognition</h3>
+          </div>
+          <p className="text-sm text-green-700 mb-2">
+            Advanced face management with analytics and performance optimization
+          </p>
+          <p className="text-xs text-green-600 group-hover:text-green-800">
+            Manage faces →
+          </p>
+        </Link>
+
+        <Link
+          to="/privacy/dashboard"
+          className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6 hover:shadow-md transition-all group"
+        >
+          <div className="flex items-center space-x-3 mb-3">
+            <div className="p-2 bg-purple-600 rounded-lg">
+              <Activity className="w-5 h-5 text-white" />
+            </div>
+            <h3 className="font-semibold text-purple-900">Privacy Controls</h3>
+          </div>
+          <p className="text-sm text-purple-700 mb-2">
+            GDPR-compliant privacy management and data export controls
+          </p>
+          <p className="text-xs text-purple-600 group-hover:text-purple-800">
+            Privacy settings →
+          </p>
+        </Link>
+      </div>
 
       {error && (
         <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">

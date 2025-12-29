@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Depends
 
 from server.models.schemas.ocr import OCRImageRequest
@@ -20,14 +22,21 @@ async def extract_text_from_images(request: OCRImageRequest, state: AppState = D
         Dictionary with extracted text for each image
     """
     try:
-        results = state.ocr_search.extract_text_from_images(request.image_paths)
+        language = request.language or "eng"
+        results = state.ocr_search.extract_text_from_images(request.image_paths, language=language)
         return {"status": "success", "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/ocr/search")
-async def search_ocr_text(query: str, limit: int = 100, offset: int = 0, state: AppState = Depends(get_state)):
+async def search_ocr_text(
+    query: str,
+    limit: int = 100,
+    offset: int = 0,
+    language: Optional[str] = None,
+    state: AppState = Depends(get_state),
+):
     """
     Search for images containing specific text
 
@@ -40,7 +49,7 @@ async def search_ocr_text(query: str, limit: int = 100, offset: int = 0, state: 
         Dictionary with search results
     """
     try:
-        results = state.ocr_search.search_text(query, limit, offset)
+        results = state.ocr_search.search_text(query, limit, offset, language)
         return {"status": "success", "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

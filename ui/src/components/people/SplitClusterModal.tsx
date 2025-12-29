@@ -81,10 +81,12 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
             photo.faces.forEach((face) => {
               const detectionId = face.detection_id || face.id;
               if (!detectionId) return;
+              const photoPath = photo.photo_path || photo.path;
+              if (!photoPath) return;
               clusterFaces.push({
                 id: detectionId,
                 detection_id: detectionId,
-                photo_path: photo.photo_path || photo.path,
+                photo_path: photoPath,
                 quality_score: face.quality_score,
                 bounding_box: face.bounding_box
               });

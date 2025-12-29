@@ -109,7 +109,7 @@ source venv/bin/activate   # Mac/Linux
 
 Use these when iterating on the React UI + FastAPI backend and you want a clean restart without hunting down stale processes.
 
-```bash
+````bash
 ## Phase 0 & 1 Complete ✅
 
 ### Features Implemented:
@@ -129,18 +129,22 @@ cargo tauri dev
 
 # Web version
 cd ui && npm run dev
-```
+````
 
 ### Known Issues:
+
 - None
 
 ## Setup & Running on ports 8000/5173 and restart both servers
+
 ./start.sh
 
 # Stop both servers
+
 bash stop.sh
 
 # See what is running / what owns the ports
+
 bash scripts/dev-status.sh
 
 ### Docker (Full App Audit/Test)
@@ -154,7 +158,19 @@ docker build -f Dockerfile.full -t photosearch-full .
 # Run (exposed at localhost:8080)
 docker run -p 8080:80 photosearch-full
 ```
-```
+
+### Face attributes & quality configuration
+
+These knobs control attribute/quality analysis in the face pipeline (FastAPI backend):
+
+- `FACE_ATTRIBUTE_BACKENDS`: Preference-ordered list, e.g. `insightface,mediapipe,heuristic` (defaults to this).
+- `FACE_ATTRIBUTE_CACHE_SIZE`: LRU cache size for attribute inference results.
+- `FACE_QUALITY_CACHE_SIZE`: LRU cache size for quality scoring.
+- `FACE_ATTRIBUTE_ENABLED`: Toggle attribute analysis on/off if you need a lightweight run.
+
+Defined in `server/config.py`; override via environment variables as needed.
+
+````
 
 More:
 
@@ -189,7 +205,7 @@ Scans user directories for all image and video files, creates a searchable catal
 
 ```bash
 python file_discovery.py
-```
+````
 
 Then choose from menu:
 
@@ -807,16 +823,19 @@ The application includes a comprehensive face recognition and people management 
 
 ### Features
 
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Face Detection** | ✅ | InsightFace with RetinaFace backend |
-| **Face Recognition** | ✅ | ArcFace 512-dim embeddings |
-| **Auto-Clustering** | ✅ | DBSCAN clustering of similar faces |
-| **Person Management** | ✅ | Rename, hide, merge, split clusters |
-| **Undo Operations** | ✅ | Full undo support for all operations |
-| **Unknown Bucket** | ✅ | View and assign unidentified faces |
-| **Co-occurrence Search** | ✅ | Find photos with multiple people |
-| **Similar Face Search** | ✅ | "Find more like this" feature |
+| Feature                  | Status | Description                          |
+| ------------------------ | ------ | ------------------------------------ |
+| **Face Detection**       | ✅     | InsightFace with RetinaFace backend  |
+| **Face Recognition**     | ✅     | ArcFace 512-dim embeddings           |
+| **Auto-Clustering**      | ✅     | DBSCAN clustering of similar faces   |
+| **Person Management**    | ✅     | Rename, hide, merge, split clusters  |
+| **Undo Operations**      | ✅     | Full undo support for all operations |
+| **Unknown Bucket**       | ✅     | View and assign unidentified faces   |
+| **Co-occurrence Search** | ✅     | Find photos with multiple people     |
+| **Similar Face Search**  | ✅     | "Find more like this" feature        |
+| **Natural Language**     | ✅     | "Photos with 3 happy people"         |
+| **Face Analytics**       | ✅     | Age, Emotion, & Co-occurrence Stats  |
+| **Video Timeline**       | ✅     | Face tracking markers on videos      |
 
 ### Key API Endpoints
 
@@ -833,8 +852,10 @@ POST /api/faces/scan
 # Find similar faces
 GET /api/faces/{face_id}/similar
 
-# Search photos by people
+# Natural language search
 POST /api/photos/by-people
+
+
 ```
 
 ### Hardware Support

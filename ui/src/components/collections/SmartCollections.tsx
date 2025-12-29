@@ -70,7 +70,9 @@ export function SmartCollections() {
       setLoading(true);
       setError(null);
 
-      const response = await api.get('/collections/smart');
+      const response = await api.get<{ collections?: SmartCollection[] }>(
+        '/collections/smart'
+      );
       setCollections(response.collections || []);
     } catch (err) {
       console.error('Failed to load collections:', err);
@@ -313,7 +315,12 @@ export function SmartCollections() {
                   <label className="block text-sm font-medium text-foreground mb-1">Rule Type</label>
                   <select
                     value={newCollection.ruleType}
-                    onChange={(e) => setNewCollection({...newCollection, ruleType: e.target.value})}
+                    onChange={(e) =>
+                      setNewCollection({
+                        ...newCollection,
+                        ruleType: e.target.value as RuleType,
+                      })
+                    }
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     <option value="date">Date Range</option>

@@ -167,8 +167,8 @@ export default function PersonDetail() {
 
   const loadClustersForMove = useCallback(async () => {
     try {
-      const data = await api.getFaceClusters();
-      const clusters = (data?.clusters || [])
+      const data: { clusters?: RawCluster[] } = await api.getFaceClusters();
+      const clusters = (data.clusters || [])
         .map((c: RawCluster) => {
           const id = c.id ?? c.cluster_id;
           if (!id) return null;

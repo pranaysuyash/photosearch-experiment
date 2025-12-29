@@ -50,11 +50,21 @@ class Settings(BaseSettings):
     FACE_REMOTE_EMBEDDING_API_KEY: str | None = None
     FACE_REMOTE_EMBEDDING_TIMEOUT: float = 10.0
 
+    # Facial attribute and quality analysis
+    # Preference-ordered list of attribute backends: insightface, mediapipe, heuristic
+    FACE_ATTRIBUTE_BACKENDS: str = "insightface,mediapipe,heuristic"
+    FACE_ATTRIBUTE_CACHE_SIZE: int = 256
+    FACE_QUALITY_CACHE_SIZE: int = 256
+    FACE_ATTRIBUTE_ENABLED: bool = True
+
     # Path to face clustering database (SQLite)
     FACE_CLUSTERS_DB_PATH: str = str(
         # Store face DB at repo root so all components share the same file.
         Path(__file__).resolve().parent.parent / "face_clusters.db"
     )
+
+    # Path to photo metadata database (SQLite)
+    PHOTO_METADATA_DB_PATH: str = str(Path(__file__).resolve().parent.parent / "photo_metadata.db")
 
     @computed_field
     def DEVICE(self) -> str:
@@ -74,6 +84,9 @@ class Settings(BaseSettings):
     # Default to a 'media' folder in the project root if not specified
     # We use a computed field or just a property to resolve relative paths if needed
     BASE_DIR: Path = Path(__file__).resolve().parent.parent
+
+    # Data directory for databases and keys
+    DATA_DIR: Path = Path(__file__).resolve().parent.parent / "data"
 
     # Media storage roots (defaults are inside project for dev)
     MEDIA_DIR: Path = Path(__file__).resolve().parent.parent / "media"

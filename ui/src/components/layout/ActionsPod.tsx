@@ -9,11 +9,15 @@ import {
   Star,
   Film,
   Trash2,
+  Copy,
   Hash,
   BarChart3,
   Users,
   Download,
   Menu,
+  Shield,
+  Zap,
+  Brain,
 } from 'lucide-react';
 
 interface ActionsPodProps {
@@ -88,12 +92,18 @@ export function ActionsPod({
           <Film size={iconSize} />
         ) : location.pathname.startsWith('/trash') ? (
           <Trash2 size={iconSize} />
+        ) : location.pathname.startsWith('/duplicates') ? (
+          <Copy size={iconSize} />
         ) : location.pathname.startsWith('/tags') ? (
           <Hash size={iconSize} />
         ) : location.pathname.startsWith('/jobs') ? (
           <Clock size={iconSize} />
         ) : location.pathname.startsWith('/performance') ? (
           <BarChart3 size={iconSize} />
+        ) : location.pathname.startsWith('/faces/advanced') ? (
+          <Brain size={iconSize} />
+        ) : location.pathname.startsWith('/privacy/dashboard') ? (
+          <Shield size={iconSize} />
         ) : location.pathname.startsWith('/settings') ? (
           <Settings size={iconSize} />
         ) : location.pathname.startsWith('/about') ? (
@@ -157,6 +167,14 @@ export function ActionsPod({
         >
           <Trash2 size={18} />
         </Link>
+        <Link
+          to='/duplicates'
+          className={linkClass}
+          title='Duplicates'
+          aria-label='Duplicates'
+        >
+          <Copy size={18} />
+        </Link>
         <Link to='/tags' className={linkClass} title='Tags' aria-label='Tags'>
           <Hash size={18} />
         </Link>
@@ -178,6 +196,30 @@ export function ActionsPod({
           aria-label='Performance'
         >
           <BarChart3 size={18} />
+        </Link>
+        <Link
+          to='/faces/advanced'
+          className={linkClass}
+          title='Advanced Face Recognition'
+          aria-label='Advanced Face Recognition'
+        >
+          <Brain size={18} />
+        </Link>
+        <Link
+          to='/privacy/dashboard'
+          className={linkClass}
+          title='Privacy Dashboard'
+          aria-label='Privacy Dashboard'
+        >
+          <Shield size={18} />
+        </Link>
+        <Link
+          to='/performance/advanced'
+          className={linkClass}
+          title='Advanced Performance'
+          aria-label='Advanced Performance'
+        >
+          <Zap size={18} />
         </Link>
         <button
           onClick={toggleMinimalMode}

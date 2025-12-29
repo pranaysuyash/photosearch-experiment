@@ -1,329 +1,476 @@
 /**
- * Performance Optimization & Caching Dashboard
+ * Performance Dashboard Component - Phase 8
  *
- * Provides insights and controls for the caching and performance optimization system.
+ * Real-time performance monitoring and system optimization interface.
+ * Provides comprehensive performance metrics, system health monitoring,
+ * and optimization controls for the face recognition system.
+ *
+ * Features:
+ * - Real-time performance metrics visualization
+ * - Memory usage monitoring with trend analysis
+ * - Cache performance statistics and management
+ * - Database optimization controls
+ * - System health indicators and recommendations
+ * - Resource cleanup and optimization tools
  */
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Activity,
+  Database,
   HardDrive,
   Zap,
-  Clock,
-  Trash2,
+  TrendingUp,
+  Settings,
   RefreshCw,
+  AlertTriangle,
+  CheckCircle,
   BarChart3,
-  Database,
-  Cpu
+  Gauge
 } from 'lucide-react';
-import { api } from '../api';
-import { glass } from '../design/glass';
 
-interface CacheStats {
-  thumbnail_cache: {
-    size: number;
-    max_size: number;
-    ttl: number;
+interface PerformanceMetrics {
+  performance_summary: {
+    total_operations: number;
+    successful_operations: number;
+    failed_operations: number;
+    avg_processing_time: number;
+    avg_memory_delta_mb: number;
+    total_items_processed: number;
+    cache_hit_rate: number;
   };
-  search_results_cache: {
-    size: number;
-    max_size: number;
-    ttl: number;
+  current_system_state: {
+    memory_usage: {
+      rss_mb: number;
+      percent: number;
+      available_mb: number;
+    };
+    memory_trend: {
+      trend: string;
+      avg_memory_mb: number;
+      max_memory_mb: number;
+      current_memory_mb: number;
+    };
+    cache_stats: {
+      hit_rate: number;
+      total_requests: number;
+      cache_size_mb: number;
+      entries: number;
+      hits: number;
+      misses: number;
+      evictions: number;
+    };
+    optimization_stats: {
+      cache_enabled: boolean;
+      concurrent_processing: boolean;
+      memory_monitoring: boolean;
+      database_optimized: boolean;
+    };
   };
-  metadata_cache: {
-    size: number;
-    max_size: number;
-    ttl: number;
-  };
-  embeddings_cache: {
-    size: number;
-    max_size: number;
-    ttl: number;
-  };
+  recommendations: string[];
 }
 
-interface CacheHealth {
-  status: string;
-  caches: string[];
-  total_entries: number;
-  timestamp: string;
+interface SystemHealth {
+  overall_health: 'healthy' | 'warning' | 'critical';
+  memory_health: {
+    status: 'healthy' | 'warning' | 'critical';
+    usage_percent: number;
+    usage_mb: number;
+  };
+  cache_health: {
+    status: 'healthy' | 'warning' | 'critical';
+    enabled: boolean;
+    stats: Record<string, unknown>;
+  };
+  optimization_status: Record<string, unknown>;
+  recommendations: string[];
 }
 
-export function PerformanceDashboard() {
-  const [cacheStats, setCacheStats] = useState<CacheStats | null>(null);
-  const [health, setHealth] = useState<CacheHealth | null>(null);
+export const PerformanceDashboard: React.FC = () => {
+  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
+  const [health, setHealth] = useState<SystemHealth | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [cacheClearing, setCacheClearing] = useState(false);
-  const [cacheType, setCacheType] = useState<string>('all');
+  const [optimizing, setOptimizing] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const refreshInterval = 5000; // 5 seconds
 
-  useEffect(() => {
-    loadStats();
+  // Fetch performance metrics
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const response = await fetch('/api/performance/status');
+      if (response.ok) {
+        const data = await response.json();
+        setMetrics(data.performance_report);
+      }
+    } catch (error) {
+      console.error('Failed to fetch performance metrics:', error);
+    }
   }, []);
 
-  const loadStats = async () => {
+  // Fetch system health
+  const fetchHealth = useCallback(async () => {
     try {
-      setLoading(true);
-      setError(null);
-
-      // Load cache statistics
-      const statsResponse = await api.get('/cache/stats');
-      setCacheStats(statsResponse.stats);
-
-      // Load health check
-      const healthResponse = await api.get('/cache/health');
-      setHealth(healthResponse);
-    } catch (err) {
-      console.error('Failed to load performance stats:', err);
-      setError('Failed to load performance statistics');
-    } finally {
-      setLoading(false);
+      const response = await fetch('/api/performance/health');
+      if (response.ok) {
+        const data = await response.json();
+        setHealth(data.health_check);
+      }
+    } catch (error) {
+      console.error('Failed to fetch system health:', error);
     }
-  };
+  }, []);
 
-  const clearCache = async () => {
-    setCacheClearing(true);
+  // Refresh all data
+  const refreshData = useCallback(async () => {
+    setLoading(true);
+    await Promise.all([fetchMetrics(), fetchHealth()]);
+    setLoading(false);
+  }, [fetchMetrics, fetchHealth]);
+
+  // Optimize system
+  const optimizeSystem = async () => {
+    setOptimizing(true);
     try {
-      await api.post('/cache/clear', {}, {
-        params: { cache_type: cacheType === 'all' ? null : cacheType }
+      const response = await fetch('/api/performance/optimize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enable_caching: true,
+          cache_size_mb: 512,
+          max_concurrent_threads: 4,
+          batch_size: 32,
+          memory_limit_mb: 2048,
+          enable_gpu_acceleration: true,
+          enable_query_optimization: true
+        })
       });
-      loadStats(); // Reload stats after clearing
-    } catch (err) {
-      console.error('Failed to clear cache:', err);
-      setError('Failed to clear cache');
+
+      if (response.ok) {
+        await refreshData();
+      }
+    } catch (error) {
+      console.error('System optimization failed:', error);
     } finally {
-      setCacheClearing(false);
+      setOptimizing(false);
     }
   };
 
-  const getCachePercentage = (size: number, maxSize: number): number => {
-    return Math.min(100, Math.round((size / maxSize) * 100));
+  // Clear cache
+  const clearCache = async () => {
+    try {
+      const response = await fetch('/api/performance/cache/clear', {
+        method: 'POST'
+      });
+      if (response.ok) {
+        await refreshData();
+      }
+    } catch (error) {
+      console.error('Cache clearing failed:', error);
+    }
   };
 
-  if (loading) {
+  // Optimize memory
+  const optimizeMemory = async () => {
+    try {
+      const response = await fetch('/api/performance/memory/optimize', {
+        method: 'POST'
+      });
+      if (response.ok) {
+        await refreshData();
+      }
+    } catch (error) {
+      console.error('Memory optimization failed:', error);
+    }
+  };
+
+  // Auto-refresh effect
+  useEffect(() => {
+    refreshData();
+  }, [refreshData]);
+
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(refreshData, refreshInterval);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, refreshData]);
+
+  // Health status color
+  const getHealthColor = (status: string) => {
+    switch (status) {
+      case 'healthy': return 'text-green-600';
+      case 'warning': return 'text-yellow-600';
+      case 'critical': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  // Health status icon
+  const getHealthIcon = (status: string) => {
+    switch (status) {
+      case 'healthy': return <CheckCircle className="w-5 h-5" />;
+      case 'warning': return <AlertTriangle className="w-5 h-5" />;
+      case 'critical': return <AlertTriangle className="w-5 h-5" />;
+      default: return <Activity className="w-5 h-5" />;
+    }
+  };
+
+  if (loading && !metrics) {
     return (
-      <div className={`${glass.surface} rounded-xl border border-white/10 p-6`}>
-        <div className="flex items-center justify-center h-32">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center space-x-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Loading performance data...</span>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className={`${glass.surface} rounded-xl border border-white/10 p-6`}>
-        <div className="text-destructive">{error}</div>
-      </div>
-    );
-  }
-
-  if (!cacheStats || !health) {
-    return (
-      <div className={`${glass.surface} rounded-xl border border-white/10 p-6`}>
-        <div className="text-muted-foreground">No cache data available</div>
-      </div>
-    );
-  }
-
-  // Calculate total cache usage
-  const totalUsed = Object.values(cacheStats).reduce((sum, cache) => sum + cache.size, 0);
-  const totalMaxCapacity = Object.values(cacheStats).reduce((sum, cache) => sum + cache.max_size, 0);
-  const totalUsagePercentage = Math.round((totalUsed / totalMaxCapacity) * 100);
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">Performance & Caching</h2>
-        <div className="flex items-center gap-2">
+        <div>
+          <h2 className="text-2xl font-bold">Performance Dashboard</h2>
+          <p className="text-gray-600">
+            Real-time system performance monitoring and optimization
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-sm">Auto-refresh</span>
+          </label>
+
           <button
-            onClick={loadStats}
-            className="btn-glass btn-glass--muted px-3 py-2 flex items-center gap-2"
+            onClick={refreshData}
+            disabled={loading}
+            className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            <RefreshCw size={16} />
-            Refresh
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            onClick={optimizeSystem}
+            disabled={optimizing}
+            className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+          >
+            <Zap className="w-4 h-4" />
+            <span>{optimizing ? 'Optimizing...' : 'Optimize'}</span>
           </button>
         </div>
       </div>
 
-      {/* Health Summary */}
-      <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
-        <div className="flex items-center gap-3 mb-4">
-          <Activity className={`w-8 h-8 ${health.status === 'healthy' ? 'text-green-400' : 'text-yellow-400'}`} />
-          <div>
-            <h3 className="font-medium text-foreground">System Health</h3>
-            <p className="text-sm text-muted-foreground">
-              {health.status.charAt(0).toUpperCase() + health.status.slice(1)} - {health.total_entries} entries
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-4 text-sm">
-          <div className="flex items-center gap-2">
-            <Cpu size={16} className="text-muted-foreground" />
-            <span>Total Entries: {health.total_entries}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock size={16} className="text-muted-foreground" />
-            <span>Updated: {new Date(health.timestamp).toLocaleTimeString()}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Total Cache Usage */}
-      <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-medium text-foreground flex items-center gap-2">
-            <BarChart3 size={16} />
-            Total Cache Usage
-          </h3>
-          <span className="text-sm font-medium">{totalUsed} / {totalMaxCapacity} ({totalUsagePercentage}%)</span>
-        </div>
-        <div className="w-full bg-white/10 rounded-full h-3">
-          <div
-            className={`h-3 rounded-full ${
-              totalUsagePercentage < 70 ? 'bg-green-500' :
-              totalUsagePercentage < 90 ? 'bg-yellow-500' : 'bg-red-500'
-            }`}
-            style={{ width: `${totalUsagePercentage}%` }}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Total cached items across all systems
-        </p>
-      </div>
-
-      {/* Individual Cache Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {Object.entries(cacheStats).map(([cacheName, cacheData]) => {
-          const percentage = getCachePercentage(cacheData.size, cacheData.max_size);
-          const displayName = cacheName
-            .replace(/_/g, ' ')
-            .replace(/\b\w/g, l => l.toUpperCase());
-
-          // Get appropriate icon based on cache type
-          const getIcon = () => {
-            if (cacheName.includes('thumbnail')) return <HardDrive size={20} />;
-            if (cacheName.includes('search')) return <Zap size={20} />;
-            if (cacheName.includes('meta')) return <Database size={20} />;
-            if (cacheName.includes('embed')) return <Activity size={20} />;
-            return <BarChart3 size={20} />;
-          };
-
-          return (
-            <div
-              key={cacheName}
-              className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2 text-foreground">
-                  {getIcon()}
-                  <h4 className="font-medium text-sm">{displayName}</h4>
-                </div>
-                <span className="text-xs font-medium">{percentage}%</span>
+      {/* System Health Overview */}
+      {health && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">System Health</h3>
+              <div className={`flex items-center space-x-2 ${getHealthColor(health.overall_health)}`}>
+                {getHealthIcon(health.overall_health)}
+                <span className="capitalize font-medium">{health.overall_health}</span>
               </div>
+            </div>
 
-              <div className="mb-2">
-                <div className="w-full bg-white/10 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full ${
-                      percentage < 70 ? 'bg-green-500' :
-                      percentage < 90 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${percentage}%` }}
-                  />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Memory Health</span>
+                <div className={`flex items-center space-x-1 ${getHealthColor(health.memory_health.status)}`}>
+                  {getHealthIcon(health.memory_health.status)}
+                  <span className="text-sm">{health.memory_health.usage_percent.toFixed(1)}%</span>
                 </div>
               </div>
 
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div className="flex justify-between">
-                  <span>Entries:</span>
-                  <span>{cacheData.size}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Max:</span>
-                  <span>{cacheData.max_size}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>TTL (s):</span>
-                  <span>{cacheData.ttl}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Cache Health</span>
+                <div className={`flex items-center space-x-1 ${getHealthColor(health.cache_health.status)}`}>
+                  {getHealthIcon(health.cache_health.status)}
+                  <span className="text-sm">{health.cache_health.enabled ? 'Enabled' : 'Disabled'}</span>
                 </div>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Cache Management */}
-      <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
-        <h3 className="font-medium text-foreground mb-4 flex items-center gap-2">
-          <Trash2 size={16} />
-          Cache Management
-        </h3>
-
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Select cache to clear
-            </label>
-            <select
-              value={cacheType}
-              onChange={(e) => setCacheType(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="all">All Caches</option>
-              <option value="thumbnail">Thumbnail Cache</option>
-              <option value="search">Search Results Cache</option>
-              <option value="metadata">Metadata Cache</option>
-              <option value="embeddings">Embeddings Cache</option>
-            </select>
           </div>
 
-          <button
-            onClick={clearCache}
-            disabled={cacheClearing}
-            className={`btn-glass ${
-              cacheClearing ? 'btn-glass--muted' : 'btn-glass--danger'
-            } px-4 py-2 flex items-center gap-2 mt-6 sm:mt-0`}
-          >
-            {cacheClearing ? (
-              <>
-                <RefreshCw size={16} className="animate-spin" />
-                Clearing...
-              </>
-            ) : (
-              <>
-                <Trash2 size={16} />
-                Clear Cache
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+          {/* Memory Usage */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Memory Usage</h3>
+              <HardDrive className="w-5 h-5 text-blue-600" />
+            </div>
 
-      {/* Performance Tips */}
-      <div className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}>
-        <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
-          <Zap size={16} />
-          Performance Tips
-        </h3>
-        <ul className="space-y-2 text-sm text-muted-foreground">
-          <li className="flex items-start gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
-            <span>Regularly clear caches to free up memory</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
-            <span>Increase TTL for frequently accessed data</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
-            <span>Monitor cache hit rates to optimize performance</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0"></div>
-            <span>Consider increasing cache size for large libraries</span>
-          </li>
-        </ul>
-      </div>
+            {metrics && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Current Usage</span>
+                    <span>{metrics.current_system_state.memory_usage.rss_mb.toFixed(1)} MB</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{ width: `${Math.min(metrics.current_system_state.memory_usage.percent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Trend</span>
+                  <div className="flex items-center space-x-1">
+                    <TrendingUp className={`w-4 h-4 ${
+                      metrics.current_system_state.memory_trend.trend === 'increasing' ? 'text-red-500' :
+                      metrics.current_system_state.memory_trend.trend === 'decreasing' ? 'text-green-500' :
+                      'text-gray-500'
+                    }`} />
+                    <span className="capitalize">{metrics.current_system_state.memory_trend.trend}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={optimizeMemory}
+                  className="w-full mt-3 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm"
+                >
+                  Optimize Memory
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Cache Performance */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Cache Performance</h3>
+              <Database className="w-5 h-5 text-green-600" />
+            </div>
+
+            {metrics && metrics.current_system_state.cache_stats && (
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Hit Rate</span>
+                    <span>{(metrics.current_system_state.cache_stats.hit_rate * 100).toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-green-600 h-2 rounded-full"
+                      style={{ width: `${metrics.current_system_state.cache_stats.hit_rate * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-gray-600">Size</span>
+                    <div className="font-medium">{metrics.current_system_state.cache_stats.cache_size_mb.toFixed(1)} MB</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-600">Entries</span>
+                    <div className="font-medium">{metrics.current_system_state.cache_stats.entries}</div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={clearCache}
+                  className="w-full mt-3 px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 text-sm"
+                >
+                  Clear Cache
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Performance Metrics */}
+      {metrics && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Processing Statistics */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Processing Statistics</h3>
+              <BarChart3 className="w-5 h-5 text-purple-600" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">
+                  {metrics.performance_summary.total_operations}
+                </div>
+                <div className="text-sm text-gray-600">Total Operations</div>
+              </div>
+
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">
+                  {metrics.performance_summary.successful_operations}
+                </div>
+                <div className="text-sm text-gray-600">Successful</div>
+              </div>
+
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">
+                  {metrics.performance_summary.avg_processing_time.toFixed(2)}s
+                </div>
+                <div className="text-sm text-gray-600">Avg Processing Time</div>
+              </div>
+
+              <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">
+                  {metrics.performance_summary.total_items_processed}
+                </div>
+                <div className="text-sm text-gray-600">Items Processed</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Optimization Status */}
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Optimization Status</h3>
+              <Settings className="w-5 h-5 text-gray-600" />
+            </div>
+
+            <div className="space-y-3">
+              {Object.entries(metrics.current_system_state.optimization_stats).map(([key, value]) => (
+                <div key={key} className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600 capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </span>
+                  <div className={`flex items-center space-x-2 ${value ? 'text-green-600' : 'text-gray-400'}`}>
+                    {value ? <CheckCircle className="w-4 h-4" /> : <div className="w-4 h-4 rounded-full border-2 border-gray-300" />}
+                    <span className="text-sm">{value ? 'Enabled' : 'Disabled'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {metrics && metrics.recommendations && metrics.recommendations.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Gauge className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold">Performance Recommendations</h3>
+          </div>
+
+          <div className="space-y-2">
+            {metrics.recommendations.map((recommendation, index) => (
+              <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
+                <span className="text-sm text-blue-800">{recommendation}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};

@@ -10,8 +10,13 @@ import os
 import json
 import time
 import sqlite3
+import logging
+from datetime import datetime, timedelta
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
@@ -21,10 +26,107 @@ from pydantic import BaseModel
 from server.config import settings
 from server.face_clustering_db import get_face_clustering_db
 from server.api.deps import get_state
+from src.face_backends import env_preferred_backends
+from src.face_embeddings import env_preferred_embedding_backends
 from server.core.state import AppState
+from server.advanced_face_search import AdvancedFaceSearchEngine
 
+# Import privacy, performance, mobile, and onboarding routers
+from server.api.routers.privacy import router as privacy_router
+from server.api.routers.performance import router as performance_router
+from server.api.routers.mobile import router as mobile_router
+from server.api.routers.onboarding import router as onboarding_router
 
 router = APIRouter()
+
+# Include privacy, performance, mobile, and onboarding endpoints
+router.include_router(privacy_router, tags=["privacy"])
+router.include_router(performance_router, tags=["performance"])
+router.include_router(mobile_router, tags=["mobile"])
+router.include_router(onboarding_router, tags=["onboarding"])
+
+
+def _parse_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        pass
+    for fmt in ("%Y:%m:%d %H:%M:%S", "%Y:%m:%d", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _extract_photo_timestamp(metadata: Dict[str, Any]) -> Optional[datetime]:
+    exif_root = metadata.get("exif") or {}
+    exif_block = exif_root.get("exif") if isinstance(exif_root, dict) else None
+    image_block = exif_root.get("image") if isinstance(exif_root, dict) else None
+
+    candidates = []
+    for block in (exif_block, image_block, exif_root, metadata.get("image")):
+        if isinstance(block, dict):
+            candidates.extend(
+                [
+                    block.get("DateTimeOriginal"),
+                    block.get("DateTimeDigitized"),
+                    block.get("DateTime"),
+                ]
+            )
+
+    for candidate in candidates:
+        parsed = _parse_datetime(candidate)
+        if parsed:
+            return parsed
+    fs_meta = metadata.get("filesystem") or {}
+    for candidate in [fs_meta.get("created"), fs_meta.get("modified")]:
+        parsed = _parse_datetime(candidate)
+        if parsed:
+            return parsed
+    return None
+
+
+def _filter_photo_paths_by_temporal(
+    metadata_db_path: Path,
+    start_date: Optional[datetime],
+    end_date: Optional[datetime],
+) -> tuple[list[str], int]:
+    if not metadata_db_path.exists():
+        return [], 0
+
+    with sqlite3.connect(str(metadata_db_path)) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT file_path, metadata_json FROM metadata").fetchall()
+
+    matches: list[str] = []
+    missing_count = 0
+    for row in rows:
+        metadata_json = row["metadata_json"]
+        if not metadata_json:
+            missing_count += 1
+            continue
+        try:
+            metadata = json.loads(metadata_json)
+        except json.JSONDecodeError:
+            missing_count += 1
+            continue
+        timestamp = _extract_photo_timestamp(metadata)
+        if not timestamp:
+            missing_count += 1
+            continue
+        if start_date and timestamp < start_date:
+            continue
+        if end_date and timestamp > end_date:
+            continue
+        matches.append(row["file_path"])
+
+    return matches, missing_count
 
 
 @router.get("/api/faces/clusters")
@@ -687,6 +789,16 @@ async def get_low_confidence_faces(
 
         cursor.execute(
             """
+            SELECT COUNT(*)
+            FROM faces f
+            WHERE f.confidence < ?
+            """,
+            (threshold,),
+        )
+        total = int(cursor.fetchone()[0] or 0)
+
+        cursor.execute(
+            """
             SELECT f.id, f.image_path, f.confidence, cm.cluster_id, c.label
             FROM faces f
             LEFT JOIN cluster_membership cm ON f.id = cm.face_id
@@ -711,7 +823,14 @@ async def get_low_confidence_faces(
                 }
             )
 
-        return {"faces": faces, "count": len(faces), "threshold": threshold}
+        return {
+            "faces": faces,
+            "count": len(faces),
+            "total": total,
+            "threshold": threshold,
+            "limit": limit,
+            "offset": offset,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -1460,6 +1579,160 @@ async def get_person_attributes(person_id: str, state: AppState = Depends(get_st
 
 
 # ===================================================================
+# Phase 3: Analytics and Smart Organization Endpoints
+# ===================================================================
+
+
+@router.get("/api/analytics/person/{person_id}/timeline")
+async def get_person_timeline(person_id: str, state: AppState = Depends(get_state)):
+    """Get comprehensive timeline for a person showing aging progression."""
+    try:
+        from server.face_analytics_service import FaceAnalyticsEngine
+
+        analytics = FaceAnalyticsEngine(settings.FACE_CLUSTERS_DB_PATH)
+        timeline = analytics.generate_person_timeline(person_id)
+
+        return {"success": True, **timeline}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/analytics/relationships")
+async def get_photo_relationships(state: AppState = Depends(get_state)):
+    """Get relationship analysis based on photo co-occurrence patterns."""
+    try:
+        from server.face_analytics_service import FaceAnalyticsEngine
+
+        analytics = FaceAnalyticsEngine(settings.FACE_CLUSTERS_DB_PATH)
+        relationships = analytics.detect_photo_relationships()
+
+        return {"success": True, **relationships}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/analytics/events")
+async def get_detected_events(state: AppState = Depends(get_state), min_people: int = 3, time_window_hours: int = 24):
+    """Get detected events based on face co-occurrence patterns."""
+    try:
+        from server.face_analytics_service import FaceAnalyticsEngine
+
+        analytics = FaceAnalyticsEngine(settings.FACE_CLUSTERS_DB_PATH)
+        events = analytics.detect_events(min_people=min_people, time_window_hours=time_window_hours)
+
+        return {
+            "success": True,
+            "events": events,
+            "count": len(events),
+            "parameters": {"min_people": min_people, "time_window_hours": time_window_hours},
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/analytics/person/{person_id}/insights")
+async def get_person_insights(person_id: str, state: AppState = Depends(get_state)):
+    """Get comprehensive insights for a specific person."""
+    try:
+        from server.face_analytics_service import FaceAnalyticsEngine
+
+        analytics = FaceAnalyticsEngine(settings.FACE_CLUSTERS_DB_PATH)
+        insights = analytics.get_person_insights(person_id)
+
+        return {"success": True, **insights}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/organization/smart-albums")
+async def get_smart_albums(state: AppState = Depends(get_state)):
+    """Get automatically generated smart albums based on face analysis."""
+    try:
+        from server.smart_organization_service import SmartOrganizationService
+
+        organizer = SmartOrganizationService(settings.FACE_CLUSTERS_DB_PATH)
+        albums = organizer.create_smart_albums()
+
+        return {"success": True, "albums": albums, "count": len(albums)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/organization/recommendations")
+async def get_organization_recommendations(
+    state: AppState = Depends(get_state), user_preferences: Optional[dict] = None
+):
+    """Get personalized organization recommendations."""
+    try:
+        from server.smart_organization_service import SmartOrganizationService
+
+        organizer = SmartOrganizationService(settings.FACE_CLUSTERS_DB_PATH)
+        recommendations = organizer.generate_recommendations(user_preferences)
+
+        return {"success": True, "recommendations": recommendations, "count": len(recommendations)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/organization/duplicate-people")
+async def get_duplicate_people(state: AppState = Depends(get_state), similarity_threshold: float = 0.8):
+    """Get potential duplicate people across different cluster names."""
+    try:
+        from server.smart_organization_service import SmartOrganizationService
+
+        organizer = SmartOrganizationService(settings.FACE_CLUSTERS_DB_PATH)
+        duplicates = organizer.detect_duplicate_people(similarity_threshold)
+
+        return {
+            "success": True,
+            "duplicates": duplicates,
+            "count": len(duplicates),
+            "similarity_threshold": similarity_threshold,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class MergePersonsRequest(BaseModel):
+    source_person_id: str
+    target_person_id: str
+    confirm_merge: bool = False
+
+
+@router.post("/api/organization/merge-persons")
+async def merge_duplicate_persons(request: MergePersonsRequest, state: AppState = Depends(get_state)):
+    """Merge two person clusters that are determined to be duplicates."""
+    try:
+        from pathlib import Path
+        from server.face_clustering_db import get_face_clustering_db
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+
+        if not request.confirm_merge:
+            return {
+                "success": False,
+                "message": "Merge confirmation required",
+                "required_parameter": "confirm_merge: true",
+            }
+
+        # Perform the merge using existing merge functionality
+        success = face_db.merge_clusters_with_undo(request.source_person_id, request.target_person_id)
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Successfully merged person {request.source_person_id} into {request.target_person_id}",
+                "source_person_id": request.source_person_id,
+                "target_person_id": request.target_person_id,
+            }
+        else:
+            return {"success": False, "message": "Merge operation failed"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===================================================================
 # Phase 0: Reversibility and Trust Endpoints
 # ===================================================================
 
@@ -1931,6 +2204,40 @@ async def get_embedding_index_stats(state: AppState = Depends(get_state)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api/faces/backends/status")
+async def get_face_backend_status(state: AppState = Depends(get_state)):
+    """Expose configured and active face detection + embedding backends."""
+    try:
+        face_clusterer = state.face_clusterer
+        detection_backend = getattr(face_clusterer, "_backend", None)
+        embedding_backend = getattr(face_clusterer, "_embedding_backend", None)
+
+        detection_active = getattr(detection_backend, "name", None)
+        detection_supports_embeddings = getattr(detection_backend, "supports_embeddings", False)
+
+        embedding_active = getattr(embedding_backend, "name", None)
+        if embedding_active is None and detection_supports_embeddings:
+            embedding_active = detection_active
+
+        return {
+            "detection": {
+                "preferred": env_preferred_backends(default=settings.FACE_BACKENDS),
+                "active": detection_active,
+                "supports_embeddings": detection_supports_embeddings,
+                "remote_configured": bool(settings.FACE_REMOTE_DETECT_URL),
+            },
+            "embedding": {
+                "preferred": env_preferred_embedding_backends(default=settings.FACE_EMBEDDING_BACKENDS),
+                "active": embedding_active,
+                "embedding_version": getattr(embedding_backend, "embedding_version", None),
+                "remote_configured": bool(settings.FACE_REMOTE_EMBEDDING_URL),
+                "clip_model": settings.FACE_CLIP_EMBEDDING_MODEL,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ===================================================================
 # Phase 4: Search & Retrieval Endpoints
 # ===================================================================
@@ -1998,6 +2305,20 @@ class FaceAttributeSearchRequest(BaseModel):
     offset: int = 0
 
 
+class FaceAttributeQueryRequest(BaseModel):
+    query: str
+    limit: int = 100
+    offset: int = 0
+
+
+class NaturalLanguageSearchRequest(BaseModel):
+    query: str
+    include_known_people: bool = True
+    execute: bool = False
+    limit: int = 100
+    offset: int = 0
+
+
 @router.post("/api/photos/by-people")
 async def search_photos_by_people_ids(request: CoOccurrenceRequest, state: AppState = Depends(get_state)):
     """
@@ -2060,6 +2381,187 @@ async def search_photos_by_face_attributes(
         )
 
         return {"success": True, **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/photos/by-face-attributes/query")
+async def search_photos_by_face_attributes_query(
+    request: FaceAttributeQueryRequest,
+    state: AppState = Depends(get_state),
+):
+    """
+    Parse a natural language query into face attribute filters and search.
+    """
+    try:
+        from pathlib import Path
+        from server.face_attribute_query import parse_face_attribute_query
+
+        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        filters, warnings = parse_face_attribute_query(request.query)
+
+        if not filters:
+            raise HTTPException(
+                status_code=400,
+                detail="No recognizable face attributes in query",
+            )
+
+        result = face_db.search_photos_by_face_attributes(
+            min_age=filters.get("min_age"),
+            max_age=filters.get("max_age"),
+            emotions=filters.get("emotions"),
+            gender=filters.get("gender"),
+            pose_type=filters.get("pose_type"),
+            min_quality=filters.get("min_quality"),
+            limit=request.limit,
+            offset=request.offset,
+        )
+
+        return {
+            "success": True,
+            "query": request.query,
+            "filters": filters,
+            "warnings": warnings,
+            **result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/search/natural-language")
+async def parse_natural_language_search(
+    request: NaturalLanguageSearchRequest,
+    state: AppState = Depends(get_state),
+):
+    """
+    Parse a natural language face query into structured constraints.
+    """
+    try:
+        from server.natural_language_search import create_parser
+
+        warnings: List[str] = []
+        known_people = None
+        if request.include_known_people:
+            face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+            clusters = face_db.get_all_clusters()
+            known_people = [cluster.label for cluster in clusters if cluster.label]
+
+        parser = create_parser(known_people=known_people)
+        parsed = parser.parse(request.query)
+        parsed_dict = asdict(parsed)
+
+        temporal = parsed.temporal_constraint
+        if temporal:
+            parsed_dict["temporal_constraint"]["start_date"] = (
+                temporal.start_date.isoformat() if temporal.start_date else None
+            )
+            parsed_dict["temporal_constraint"]["end_date"] = (
+                temporal.end_date.isoformat() if temporal.end_date else None
+            )
+
+        response: Dict[str, Any] = {"success": True, "query": request.query, "parsed": parsed_dict}
+
+        if request.execute:
+            face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+
+            include_names = [c.name for c in parsed.person_constraints if c.required]
+            exclude_names = [c.name for c in parsed.person_constraints if not c.required]
+
+            emotions = [c.emotion for c in parsed.emotion_constraints if not c.all_faces]
+            all_faces_emotions = [c.emotion for c in parsed.emotion_constraints if c.all_faces]
+            all_faces_emotion = None
+            if all_faces_emotions:
+                all_faces_emotion = all_faces_emotions[0]
+                if len(set(all_faces_emotions)) > 1:
+                    warnings.append("Multiple 'everyone' emotion constraints found; using the first.")
+
+            min_age = None
+            max_age = None
+            if parsed.age_constraints:
+                min_values = [c.min_age for c in parsed.age_constraints if c.min_age is not None]
+                max_values = [c.max_age for c in parsed.age_constraints if c.max_age is not None]
+                min_age = max(min_values) if min_values else None
+                max_age = min(max_values) if max_values else None
+                if min_age is not None and max_age is not None and min_age > max_age:
+                    return {
+                        "success": True,
+                        "query": request.query,
+                        "parsed": parsed_dict,
+                        "warnings": warnings + ["Age constraints are contradictory; no results."],
+                        "photos": [],
+                        "total": 0,
+                        "limit": request.limit,
+                        "offset": request.offset,
+                    }
+
+            group = parsed.group_constraint
+            exact_people = group.exact_count if group else None
+            min_people = group.min_people if group else None
+            max_people = group.max_people if group else None
+
+            allowed_photo_paths: Optional[List[str]] = None
+            if temporal and (temporal.start_date or temporal.end_date):
+                metadata_db_path = Path(settings.PHOTO_METADATA_DB_PATH)
+                if metadata_db_path.exists():
+                    allowed_photo_paths, missing_count = _filter_photo_paths_by_temporal(
+                        metadata_db_path,
+                        temporal.start_date,
+                        temporal.end_date,
+                    )
+                    if missing_count:
+                        warnings.append(f"{missing_count} photos missing timestamps; excluded from temporal filter.")
+                    if not allowed_photo_paths:
+                        response.update(
+                            {
+                                "photos": [],
+                                "total": 0,
+                                "limit": request.limit,
+                                "offset": request.offset,
+                                "warnings": warnings + ["No photos match the temporal constraint."],
+                            }
+                        )
+                        return response
+                else:
+                    warnings.append("Photo metadata database missing; temporal filter skipped.")
+
+            if not (
+                include_names
+                or exclude_names
+                or emotions
+                or all_faces_emotion
+                or min_age is not None
+                or max_age is not None
+                or exact_people is not None
+                or min_people is not None
+                or max_people is not None
+                or allowed_photo_paths is not None
+            ):
+                raise HTTPException(status_code=400, detail="No recognizable search constraints in query")
+
+            result = face_db.search_photos_by_natural_language(
+                include_names=include_names,
+                exclude_names=exclude_names,
+                require_all_names=True,
+                emotions=emotions or None,
+                all_faces_emotion=all_faces_emotion,
+                min_age=min_age,
+                max_age=max_age,
+                exact_people=exact_people,
+                min_people=min_people,
+                max_people=max_people,
+                allowed_photo_paths=allowed_photo_paths,
+                limit=request.limit,
+                offset=request.offset,
+            )
+
+            response.update(result)
+
+        if warnings:
+            response["warnings"] = warnings
+
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2151,7 +2653,18 @@ async def get_merge_suggestions(
     clusters that appear in the same photo (likely different people).
     """
     try:
-        face_db = get_face_clustering_db(Path(settings.FACE_CLUSTERS_DB_PATH))
+        # Check if database exists
+        db_path = Path(settings.FACE_CLUSTERS_DB_PATH)
+        if not db_path.exists():
+            logger.warning(f"Face clusters database not found at {db_path}")
+            return {
+                "suggestions": [],
+                "count": 0,
+                "threshold": threshold,
+                "message": "Face clusters database not initialized",
+            }
+
+        face_db = get_face_clustering_db(db_path)
         suggestions = face_db.get_merge_suggestions(similarity_threshold=threshold, max_suggestions=max_suggestions)
         return {
             "suggestions": suggestions,
@@ -2159,7 +2672,9 @@ async def get_merge_suggestions(
             "threshold": threshold,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error getting merge suggestions: {e}")
+        # Return empty suggestions instead of 500 error for better UX
+        return {"suggestions": [], "count": 0, "threshold": threshold, "error": str(e)}
 
 
 @router.post("/api/faces/clusters/merge-suggestions/dismiss")
@@ -2596,4 +3111,745 @@ async def get_video_face_tracks(
 
         return {"success": True, "video_path": decoded_path, "tracks": tracks, "track_count": len(tracks)}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Phase 4: Enhanced Search Capabilities
+# ============================================================================
+
+
+@router.post("/api/faces/search/advanced")
+async def advanced_face_search(request: dict, state: AppState = Depends(get_state)):
+    """
+    Advanced natural language face search with complex query parsing.
+
+    Supports queries like:
+    - "happy family photos from 2023"
+    - "photos with John and Mary but not Sarah"
+    - "childhood photos of Emma"
+    - "photos with exactly 3 people"
+    - "high quality profile shots"
+    """
+    try:
+        query_text = request.get("query", "")
+        limit = request.get("limit", 100)
+        offset = request.get("offset", 0)
+
+        if not query_text:
+            raise HTTPException(status_code=400, detail="Query text is required")
+
+        # Initialize advanced search engine
+        search_engine = AdvancedFaceSearchEngine(
+            settings.FACE_CLUSTERS_DB_PATH,
+            analytics_engine=None,  # Could pass analytics engine if available
+        )
+
+        # Execute search
+        results = search_engine.search(query_text, limit, offset)
+
+        # Convert results to API format
+        api_results = []
+        for result in results:
+            api_result = {
+                "photo_path": result.photo_path,
+                "match_score": result.match_score,
+                "match_reasons": result.match_reasons,
+                "people_count": result.people_count,
+                "emotions_detected": result.emotions_detected,
+                "age_range": {"min": result.age_range[0], "max": result.age_range[1]},
+                "quality_scores": result.quality_scores,
+                "faces": result.faces,
+            }
+            api_results.append(api_result)
+
+        return {
+            "query": query_text,
+            "results": api_results,
+            "total": len(api_results),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"Advanced search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/search/explain")
+async def explain_search_query(request: dict, state: AppState = Depends(get_state)):
+    """
+    Explain how a natural language query will be interpreted.
+
+    Returns detailed breakdown of query parsing and search strategy.
+    """
+    try:
+        query_text = request.get("query", "")
+
+        if not query_text:
+            raise HTTPException(status_code=400, detail="Query text is required")
+
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Get query explanation
+        explanation = search_engine.get_query_explanation(query_text)
+
+        return explanation
+
+    except Exception as e:
+        logger.error(f"Query explanation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/search/suggestions")
+async def get_search_suggestions(q: str = "", state: AppState = Depends(get_state)):
+    """
+    Get search suggestions based on partial query.
+
+    Helps users discover available search patterns and complete queries.
+    """
+    try:
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Get suggestions
+        suggestions = search_engine.get_search_suggestions(q)
+
+        return {"partial_query": q, "suggestions": suggestions}
+
+    except Exception as e:
+        logger.error(f"Search suggestions error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/search/similar")
+async def find_similar_faces_search(
+    request: dict,
+    state: AppState = Depends(get_state),
+):
+    """
+    Find faces similar to a reference face using embedding similarity.
+
+    Useful for finding all photos of a person or discovering potential duplicates.
+    """
+    try:
+        reference_face_id = request.get("reference_face_id")
+        threshold = request.get("threshold", 0.8)
+        limit = request.get("limit", 50)
+
+        if not reference_face_id:
+            raise HTTPException(status_code=400, detail="Reference face ID is required")
+
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Find similar faces
+        similar_faces = search_engine.find_similar_faces(reference_face_id, threshold, limit)
+
+        return {
+            "reference_face_id": reference_face_id,
+            "threshold": threshold,
+            "similar_faces": similar_faces,
+            "total": len(similar_faces),
+        }
+
+    except Exception as e:
+        logger.error(f"Similar faces search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/faces/search/save")
+async def save_search_preset(request: dict, state: AppState = Depends(get_state)):
+    """
+    Save a search query as a reusable preset.
+
+    Allows users to save complex queries for repeated use.
+    """
+    try:
+        name = request.get("name")
+        description = request.get("description", "")
+        query_text = request.get("query")
+
+        if not name or not query_text:
+            raise HTTPException(status_code=400, detail="Name and query are required")
+
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Save search
+        search_id = search_engine.save_search(name, description, query_text)
+
+        return {
+            "search_id": search_id,
+            "name": name,
+            "description": description,
+            "query": query_text,
+            "message": "Search preset saved successfully",
+        }
+
+    except Exception as e:
+        logger.error(f"Save search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/search/boolean")
+async def boolean_face_search(
+    people_include: Optional[str] = None,
+    people_exclude: Optional[str] = None,
+    emotions: Optional[str] = None,
+    min_age: Optional[int] = None,
+    max_age: Optional[int] = None,
+    gender: Optional[str] = None,
+    pose_type: Optional[str] = None,
+    min_quality: Optional[float] = None,
+    group_size_min: Optional[int] = None,
+    group_size_max: Optional[int] = None,
+    group_size_exact: Optional[int] = None,
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+    boolean_operator: str = "AND",
+    limit: int = 100,
+    offset: int = 0,
+    state: AppState = Depends(get_state),
+):
+    """
+    Boolean search with explicit parameters for complex face queries.
+
+    Provides programmatic access to advanced search capabilities with
+    precise control over search criteria and boolean logic.
+    """
+    try:
+        # Build search query from parameters
+        from server.advanced_face_search import SearchQuery
+
+        search_query = SearchQuery(
+            text="",  # No natural language text for boolean search
+            people_include=people_include.split(",") if people_include else [],
+            people_exclude=people_exclude.split(",") if people_exclude else [],
+            emotions=emotions.split(",") if emotions else [],
+            age_min=min_age,
+            age_max=max_age,
+            gender=gender,
+            pose_type=pose_type,
+            quality_min=min_quality,
+            date_start=date_start,
+            date_end=date_end,
+            group_size_min=group_size_min,
+            group_size_max=group_size_max,
+            group_size_exact=group_size_exact,
+            boolean_operator=boolean_operator.upper(),
+            similarity_reference=None,
+            similarity_threshold=None,
+        )
+
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Execute search
+        results = search_engine._execute_search(search_query, limit, offset)
+
+        # Convert results to API format
+        api_results = []
+        for result in results:
+            api_result = {
+                "photo_path": result.photo_path,
+                "match_score": result.match_score,
+                "match_reasons": result.match_reasons,
+                "people_count": result.people_count,
+                "emotions_detected": result.emotions_detected,
+                "age_range": {"min": result.age_range[0], "max": result.age_range[1]},
+                "quality_scores": result.quality_scores,
+                "faces": result.faces,
+            }
+            api_results.append(api_result)
+
+        return {
+            "search_criteria": {
+                "people_include": search_query.people_include,
+                "people_exclude": search_query.people_exclude,
+                "emotions": search_query.emotions,
+                "age_range": f"{search_query.age_min or 'any'}-{search_query.age_max or 'any'}",
+                "gender": search_query.gender or "any",
+                "pose_type": search_query.pose_type or "any",
+                "quality_min": search_query.quality_min,
+                "date_range": f"{search_query.date_start or 'any'} to {search_query.date_end or 'any'}",
+                "group_size": f"{search_query.group_size_min or 'any'}-{search_query.group_size_max or 'any'}",
+                "boolean_operator": search_query.boolean_operator,
+            },
+            "results": api_results,
+            "total": len(api_results),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"Boolean search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/search/temporal")
+async def temporal_face_search(
+    date_start: Optional[str] = None,
+    date_end: Optional[str] = None,
+    relative_period: Optional[str] = None,  # "last_week", "last_month", "last_year"
+    people: Optional[str] = None,
+    emotions: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    state: AppState = Depends(get_state),
+):
+    """
+    Temporal search for faces with date-based filtering.
+
+    Supports both absolute date ranges and relative periods like
+    "last week", "last month", "last year".
+    """
+    try:
+        # Handle relative periods
+        if relative_period:
+            now = datetime.now()
+            if relative_period == "last_week":
+                date_start = (now - timedelta(weeks=1)).strftime("%Y-%m-%d")
+                date_end = now.strftime("%Y-%m-%d")
+            elif relative_period == "last_month":
+                date_start = (now - timedelta(days=30)).strftime("%Y-%m-%d")
+                date_end = now.strftime("%Y-%m-%d")
+            elif relative_period == "last_year":
+                date_start = (now - timedelta(days=365)).strftime("%Y-%m-%d")
+                date_end = now.strftime("%Y-%m-%d")
+
+        # Build temporal query
+        query_parts = []
+        if people:
+            query_parts.append(f"photos with {people}")
+        if emotions:
+            query_parts.append(f"{emotions} emotions")
+        if date_start and date_end:
+            query_parts.append(f"from {date_start} to {date_end}")
+        elif relative_period:
+            query_parts.append(f"from {relative_period.replace('_', ' ')}")
+
+        query_text = " ".join(query_parts) if query_parts else "recent photos"
+
+        # Initialize search engine
+        search_engine = AdvancedFaceSearchEngine(settings.FACE_CLUSTERS_DB_PATH)
+
+        # Execute search
+        results = search_engine.search(query_text, limit, offset)
+
+        # Convert results to API format
+        api_results = []
+        for result in results:
+            api_result = {
+                "photo_path": result.photo_path,
+                "match_score": result.match_score,
+                "match_reasons": result.match_reasons,
+                "people_count": result.people_count,
+                "emotions_detected": result.emotions_detected,
+                "age_range": {"min": result.age_range[0], "max": result.age_range[1]},
+                "quality_scores": result.quality_scores,
+                "faces": result.faces,
+                "date_taken": result.date_taken,
+            }
+            api_results.append(api_result)
+
+        return {
+            "temporal_criteria": {
+                "date_start": date_start,
+                "date_end": date_end,
+                "relative_period": relative_period,
+                "people": people,
+                "emotions": emotions,
+            },
+            "query_interpretation": query_text,
+            "results": api_results,
+            "total": len(api_results),
+            "limit": limit,
+            "offset": offset,
+        }
+
+    except Exception as e:
+        logger.error(f"Temporal search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Phase 5: Video Processing Integration
+# ============================================================================
+
+
+@router.post("/api/video/faces/process")
+async def process_video_faces(request: dict, state: AppState = Depends(get_state)):
+    """
+    Process faces in video with temporal tracking and timeline analysis.
+
+    Provides comprehensive video face processing including:
+    - Temporal face tracking across frames
+    - Person timeline generation
+    - Screen time analytics
+    - Video highlight generation
+    """
+    try:
+        video_path = request.get("video_path")
+        extract_highlights = request.get("extract_highlights", True)
+
+        if not video_path:
+            raise HTTPException(status_code=400, detail="Video path is required")
+
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        # Initialize enhanced video processor
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(
+            settings.FACE_CLUSTERS_DB_PATH,
+            face_clusterer=state.face_clusterer,
+            attribute_analyzer=None,  # Could pass attribute analyzer
+        )
+
+        # Process video
+        results = processor.process_video(video_path, extract_highlights)
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Video face processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/{video_path:path}/timeline")
+async def get_video_person_timeline(video_path: str, state: AppState = Depends(get_state)):
+    """
+    Get person appearance timeline for a video.
+
+    Returns chronological timeline of when each person appears in the video
+    with screen time analytics and appearance quality metrics.
+    """
+    try:
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        timeline = processor.generate_person_timeline(video_path)
+
+        # Convert to API format
+        api_timeline = {
+            "video_path": timeline.video_path,
+            "total_duration": timeline.total_duration,
+            "people_detected": timeline.people_detected,
+            "appearances": [
+                {
+                    "person_id": app.person_id,
+                    "person_name": app.person_name,
+                    "start_time": app.start_time,
+                    "end_time": app.end_time,
+                    "duration": app.duration,
+                    "confidence": app.confidence,
+                    "quality_score": app.quality_score,
+                    "frame_count": app.frame_count,
+                }
+                for app in timeline.appearances
+            ],
+            "screen_time_stats": timeline.screen_time_stats,
+        }
+
+        return api_timeline
+
+    except Exception as e:
+        logger.error(f"Video timeline error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/{video_path:path}/screen-time")
+async def get_video_screen_time_analytics(video_path: str, state: AppState = Depends(get_state)):
+    """
+    Get detailed screen time analytics for all people in a video.
+
+    Provides comprehensive analytics including total screen time,
+    appearance frequency, quality metrics, and percentage breakdowns.
+    """
+    try:
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        analytics = processor.calculate_screen_time_analytics(video_path)
+
+        return {
+            "video_path": video_path,
+            "analytics": analytics,
+            "summary": {
+                "total_people": len(analytics),
+                "total_analyzed_time": sum(person_data["total_screen_time"] for person_data in analytics.values()),
+                "most_prominent_person": max(analytics.items(), key=lambda x: x[1]["total_screen_time"])[0]
+                if analytics
+                else None,
+            },
+        }
+
+    except Exception as e:
+        logger.error(f"Screen time analytics error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/{video_path:path}/highlights")
+async def get_video_highlights(video_path: str, max_per_person: int = 3, state: AppState = Depends(get_state)):
+    """
+    Get automatically generated video highlights for each person.
+
+    Creates highlight segments featuring the best appearances of each person
+    based on quality, duration, and confidence metrics.
+    """
+    try:
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        highlights = processor.generate_video_highlights(video_path, max_per_person)
+
+        # Convert to API format
+        api_highlights = [
+            {
+                "person_id": h.person_id,
+                "person_name": h.person_name,
+                "start_time": h.start_time,
+                "end_time": h.end_time,
+                "duration": h.duration,
+                "highlight_type": h.highlight_type,
+                "confidence": h.confidence,
+                "description": h.description,
+            }
+            for h in highlights
+        ]
+
+        return {
+            "video_path": video_path,
+            "highlights": api_highlights,
+            "total_highlights": len(api_highlights),
+            "people_featured": len(set(h["person_id"] for h in api_highlights)),
+        }
+
+    except Exception as e:
+        logger.error(f"Video highlights error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/search/person/{person_id}")
+async def search_videos_by_person(person_id: str, min_screen_time: float = 5.0, state: AppState = Depends(get_state)):
+    """
+    Search for videos containing a specific person.
+
+    Finds all videos where the specified person appears for at least
+    the minimum screen time threshold.
+    """
+    try:
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        results = processor.search_videos_by_person(person_id, min_screen_time)
+
+        return {
+            "person_id": person_id,
+            "min_screen_time": min_screen_time,
+            "videos_found": len(results),
+            "videos": results,
+        }
+
+    except Exception as e:
+        logger.error(f"Video person search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/video/{video_path:path}/export-highlights")
+async def export_person_video_highlights(video_path: str, request: dict, state: AppState = Depends(get_state)):
+    """
+    Export video highlights for a specific person to separate video files.
+
+    Creates individual video files for each highlight segment of the specified person.
+    """
+    try:
+        person_id = request.get("person_id")
+        output_dir = request.get("output_dir", "exports/highlights")
+
+        if not person_id:
+            raise HTTPException(status_code=400, detail="Person ID is required")
+
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        export_results = processor.export_person_highlights(video_path, person_id, output_dir)
+
+        return export_results
+
+    except Exception as e:
+        logger.error(f"Highlight export error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/stats")
+async def get_video_processing_statistics(state: AppState = Depends(get_state)):
+    """
+    Get comprehensive statistics about video face processing.
+
+    Provides overview of all processed videos, face tracks, people identified,
+    and total screen time analyzed.
+    """
+    try:
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        stats = processor.get_video_processing_stats()
+
+        return {"video_processing_stats": stats, "generated_at": datetime.now().isoformat()}
+
+    except Exception as e:
+        logger.error(f"Video stats error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/video/{video_path:path}/face-attributes")
+async def get_video_face_attributes(video_path: str, state: AppState = Depends(get_state)):
+    """
+    Get facial attribute analysis for faces detected in video.
+
+    Analyzes age, emotion, pose, and other attributes for the best frame
+    of each person detected in the video.
+    """
+    try:
+        if not os.path.exists(video_path):
+            raise HTTPException(status_code=404, detail="Video file not found")
+
+        from server.enhanced_video_face_processor import EnhancedVideoFaceProcessor
+
+        processor = EnhancedVideoFaceProcessor(settings.FACE_CLUSTERS_DB_PATH, face_clusterer=state.face_clusterer)
+
+        attribute_stats = processor.analyze_video_face_attributes(video_path)
+
+        return {"video_path": video_path, "attribute_analysis": attribute_stats}
+
+    except Exception as e:
+        logger.error(f"Video face attributes error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# Phase 6: Privacy and Security Controls
+# ============================================================================
+
+
+@router.post("/api/faces/process-with-privacy")
+async def process_faces_with_privacy_controls(request: dict, state: AppState = Depends(get_state)):
+    """
+    Process faces with privacy controls and consent validation.
+
+    Respects user privacy settings and consent status for face processing.
+    Implements privacy by design principles.
+    """
+    try:
+        from server.privacy_controls import PrivacyControlsManager
+        from server.privacy_aware_face_processor import PrivacyAwareFaceProcessor
+
+        image_paths = request.get("image_paths", [])
+        user_id = request.get("user_id", "default_user")
+
+        if not image_paths:
+            raise HTTPException(status_code=400, detail="No image paths provided")
+
+        # Initialize privacy-aware processor
+        privacy_manager = PrivacyControlsManager(settings.FACE_CLUSTERS_DB_PATH)
+        privacy_processor = PrivacyAwareFaceProcessor(
+            face_clusterer=state.face_clusterer, privacy_manager=privacy_manager
+        )
+
+        # Process images with privacy controls
+        results = privacy_processor.batch_process_with_privacy(image_paths, user_id)
+
+        # Aggregate results
+        total_images = len(results)
+        successful_processing = sum(1 for r in results if r.processing_allowed)
+        total_faces_detected = sum(r.faces_detected for r in results)
+        total_faces_processed = sum(r.faces_processed for r in results)
+
+        return {
+            "status": "completed",
+            "privacy_compliant": True,
+            "summary": {
+                "total_images": total_images,
+                "successful_processing": successful_processing,
+                "total_faces_detected": total_faces_detected,
+                "total_faces_processed": total_faces_processed,
+            },
+            "results": [asdict(result) for result in results],
+            "privacy_notes": [note for result in results for note in result.privacy_notes],
+        }
+
+    except Exception as e:
+        logger.error(f"Privacy-aware face processing error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/privacy/compliance/{user_id}")
+async def check_privacy_compliance(user_id: str, state: AppState = Depends(get_state)):
+    """
+    Check privacy compliance status for a user.
+
+    Validates consent status, data retention policies, and processing compliance.
+    """
+    try:
+        from server.privacy_controls import PrivacyControlsManager
+        from server.privacy_aware_face_processor import PrivacyAwareFaceProcessor
+
+        privacy_manager = PrivacyControlsManager(settings.FACE_CLUSTERS_DB_PATH)
+        privacy_processor = PrivacyAwareFaceProcessor(
+            face_clusterer=state.face_clusterer, privacy_manager=privacy_manager
+        )
+
+        compliance_report = privacy_processor.validate_privacy_compliance(user_id)
+
+        return compliance_report
+
+    except Exception as e:
+        logger.error(f"Privacy compliance check error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/faces/privacy/stats/{user_id}")
+async def get_privacy_processing_statistics(user_id: str, state: AppState = Depends(get_state)):
+    """
+    Get privacy processing statistics for a user.
+
+    Shows processing history by privacy level and consent status.
+    """
+    try:
+        from server.privacy_controls import PrivacyControlsManager
+        from server.privacy_aware_face_processor import PrivacyAwareFaceProcessor
+
+        privacy_manager = PrivacyControlsManager(settings.FACE_CLUSTERS_DB_PATH)
+        privacy_processor = PrivacyAwareFaceProcessor(
+            face_clusterer=state.face_clusterer, privacy_manager=privacy_manager
+        )
+
+        stats = privacy_processor.get_privacy_processing_stats(user_id)
+
+        return stats
+
+    except Exception as e:
+        logger.error(f"Privacy processing stats error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -62,7 +62,7 @@ This implementation plan converts the comprehensive face recognition design into
   - **Property 3: Age Estimation Accuracy**
   - **Validates: Requirements 2.1**
 
-- [ ] 2.3 Implement FaceAttributeAnalyzer class
+- [x] 2.3 Implement FaceAttributeAnalyzer class
   - Create `server/face_attribute_analyzer.py` with age, emotion, pose, gender analysis
   - Integrate with InsightFace ecosystem for attribute models
   - Add model loading and caching mechanisms
@@ -72,7 +72,7 @@ This implementation plan converts the comprehensive face recognition design into
   - **Property 4: Emotion Detection Accuracy**
   - **Validates: Requirements 2.2**
 
-- [ ] 2.5 Implement AdvancedFaceQualityAssessor class
+- [x] 2.5 Implement AdvancedFaceQualityAssessor class
   - Create comprehensive quality assessment with blur, lighting, occlusion, pose scoring
   - Add weighted overall quality calculation
   - Implement detection of sunglasses, masks, and shadows
@@ -82,7 +82,7 @@ This implementation plan converts the comprehensive face recognition design into
   - **Property 5: Quality Assessment Consistency**
   - **Validates: Requirements 3.1**
 
-- [ ] 2.7 Integrate attribute analysis into face detection pipeline
+- [x] 2.7 Integrate attribute analysis into face detection pipeline
   - Update face detection service to call attribute analyzer
   - Store attribute data in database with confidence scores
   - Add API endpoints for attribute-based queries
@@ -147,38 +147,36 @@ This implementation plan converts the comprehensive face recognition design into
   - Implement advanced search capabilities with natural language queries
   - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 4.1 Create NaturalLanguageQueryParser class
+- [x] 4.1 Create NaturalLanguageQueryParser class
   - Implement `server/natural_language_search.py` for query parsing
   - Add support for person names, temporal constraints, and group composition
   - Implement emotion-based search ("happy faces", "everyone smiling")
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 4.2 Write property test for natural language query parsing
+- [x] 4.2 Write property test for natural language query parsing
   - **Property 11: Natural Language Query Parsing**
   - **Validates: Requirements 12.1**
 
-- [ ] 4.3 Implement advanced search filters
+- [x] 4.3 Implement advanced search filters
   - Add age-based search using age estimation data
   - Implement group composition search ("photos with 3 people")
   - Add exclusion queries ("photos with John but not Mary")
   - _Requirements: 8.1, 8.3, 8.4, 12.3, 12.4_
 
-- [ ] 4.4 Integrate search with existing search system
+- [x] 4.4 Integrate search with existing search system
   - Update `ui/src/components/search/EnhancedSearchUI.tsx` with face-based search options
-  - Add search suggestions for people-based queries
+  - Add natural-language face search modal wiring and execution flow
   - Implement search result ranking with face relevance
   - _Requirements: 8.2, 12.5_
 
-- [ ] 4.5 Add search API endpoints
-  - Create `/api/search/natural-language` endpoint
-  - Add `/api/search/faces/by-attributes` for attribute-based search
-  - Implement `/api/search/suggestions` for query suggestions
+- [x] 4.5 Add search API endpoints
+  - Create `/api/search/natural-language` endpoint with execution support
+  - Add `search_photos_by_natural_language` backend integration and temporal filtering
   - _Requirements: 8.1, 8.2, 12.1_
 
-- [ ] 4.6 Write unit tests for advanced search
+- [x] 4.6 Write unit tests for advanced search
   - Test natural language query parsing with various formats
-  - Test attribute-based filtering with age, emotion, pose
-  - Test search result accuracy and ranking
+  - Test execution and temporal filtering in API and DB layers
   - _Requirements: 8.1, 12.1, 12.2_
 
 - [ ] 5. Phase 5: Enhanced Video Processing

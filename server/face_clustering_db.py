@@ -28,6 +28,7 @@ class FaceDetection:
     photo_path: str
     bounding_box: Dict[str, float]  # {x, y, width, height}
     embedding: Optional[List[float]] = None  # Face embedding vector
+    embedding_version: Optional[str] = None
     quality_score: Optional[float] = None  # 0-1 quality score
     age_estimate: Optional[float] = None
     age_confidence: Optional[float] = None
@@ -55,6 +56,7 @@ class FaceCluster:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     indexing_disabled: bool = False
+    prototype_embedding_version: Optional[str] = None
 
 
 @dataclass
@@ -133,6 +135,7 @@ class FaceClusteringDB:
                     photo_path TEXT NOT NULL,
                     bounding_box TEXT NOT NULL,
                     embedding BLOB,
+                    embedding_version TEXT,
                     quality_score REAL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -145,6 +148,12 @@ class FaceClusteringDB:
                     label TEXT,
                     face_count INTEGER DEFAULT 0,
                     photo_count INTEGER DEFAULT 0,
+                    prototype_embedding BLOB,
+                    prototype_embedding_version TEXT,
+                    prototype_updated_at TIMESTAMP,
+                    prototype_count INTEGER DEFAULT 0,
+                    hidden INTEGER DEFAULT 0,
+                    indexing_disabled INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -253,6 +262,7 @@ class FaceClusteringDB:
         photo_path: str,
         bounding_box: Dict[str, float],
         embedding: Optional[List[float]] = None,
+        embedding_version: Optional[str] = None,
         quality_score: Optional[float] = None,
         age_estimate: Optional[float] = None,
         age_confidence: Optional[float] = None,
@@ -271,48 +281,61 @@ class FaceClusteringDB:
         detection_id = f"face_{hashlib.md5(f'{photo_path}_{json.dumps(bounding_box)}'.encode()).hexdigest()}"
 
         with sqlite3.connect(str(self.db_path)) as conn:
+            cols = self._table_columns(conn, "face_detections")
+
+            insert_cols = [
+                "detection_id",
+                "photo_path",
+                "bounding_box",
+                "embedding",
+                "quality_score",
+                "age_estimate",
+                "age_confidence",
+                "emotion",
+                "emotion_confidence",
+                "pose_type",
+                "pose_confidence",
+                "gender",
+                "gender_confidence",
+                "lighting_score",
+                "occlusion_score",
+                "resolution_score",
+                "overall_quality",
+            ]
+            values = [
+                detection_id,
+                photo_path,
+                json.dumps(bounding_box),
+                json.dumps(embedding) if embedding else None,
+                quality_score,
+                age_estimate,
+                age_confidence,
+                emotion,
+                emotion_confidence,
+                pose_type,
+                pose_confidence,
+                gender,
+                gender_confidence,
+                lighting_score,
+                occlusion_score,
+                resolution_score,
+                overall_quality if overall_quality is not None else quality_score,
+            ]
+
+            if "embedding_version" in cols:
+                insert_cols.insert(4, "embedding_version")
+                values.insert(4, embedding_version)
+
+            placeholders = ", ".join(["?"] * len(insert_cols))
+            col_list = ",\n                    ".join(insert_cols)
             conn.execute(
-                """
+                f"""
                 INSERT INTO face_detections (
-                    detection_id,
-                    photo_path,
-                    bounding_box,
-                    embedding,
-                    quality_score,
-                    age_estimate,
-                    age_confidence,
-                    emotion,
-                    emotion_confidence,
-                    pose_type,
-                    pose_confidence,
-                    gender,
-                    gender_confidence,
-                    lighting_score,
-                    occlusion_score,
-                    resolution_score,
-                    overall_quality
+                    {col_list}
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES ({placeholders})
             """,
-                (
-                    detection_id,
-                    photo_path,
-                    json.dumps(bounding_box),
-                    json.dumps(embedding) if embedding else None,
-                    quality_score,
-                    age_estimate,
-                    age_confidence,
-                    emotion,
-                    emotion_confidence,
-                    pose_type,
-                    pose_confidence,
-                    gender,
-                    gender_confidence,
-                    lighting_score,
-                    occlusion_score,
-                    resolution_score,
-                    overall_quality if overall_quality is not None else quality_score,
-                ),
+                tuple(values),
             )
 
         return detection_id
@@ -616,9 +639,34 @@ class FaceClusteringDB:
 
             return len(missing_photos)
 
-    def detect_and_store_faces(self, photo_path: str) -> List[str]:
-        """Detect faces in a photo and store them in the database."""
+    def has_faces_detected(self, photo_path: str) -> bool:
+        """Check if a photo has already been scanned for faces."""
         try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT COUNT(*) as count FROM face_detections WHERE photo_path = ?", (photo_path,))
+                result = cursor.fetchone()
+                return result[0] > 0 if result else False
+        except Exception as e:
+            logger.error(f"Error checking if photo has faces detected: {e}")
+            return False
+
+    def detect_and_store_faces(self, photo_path: str, force_rescan: bool = False) -> List[str]:
+        """Detect faces in a photo and store them in the database.
+
+        Args:
+            photo_path: Path to the photo to process
+            force_rescan: If True, re-detect faces even if already processed
+
+        Returns:
+            List of detection IDs for faces found in the photo
+        """
+        try:
+            # Skip if already detected (incremental scan optimization)
+            if not force_rescan and self.has_faces_detected(photo_path):
+                logger.debug(f"Photo already scanned for faces: {photo_path}")
+                return []
+
             from server.face_detection_service import get_face_detection_service
 
             # Get face detection service
@@ -1781,7 +1829,7 @@ class FaceClusteringDB:
         # Get embeddings from confirmed, high-quality faces
         rows = conn.execute(
             """
-            SELECT fd.embedding
+            SELECT fd.embedding, fd.embedding_version
             FROM photo_person_associations ppa
             JOIN face_detections fd ON ppa.detection_id = fd.detection_id
             WHERE ppa.cluster_id = ?
@@ -1796,7 +1844,7 @@ class FaceClusteringDB:
             # Fallback: use all faces with embeddings
             rows = conn.execute(
                 """
-                SELECT fd.embedding
+                SELECT fd.embedding, fd.embedding_version
                 FROM photo_person_associations ppa
                 JOIN face_detections fd ON ppa.detection_id = fd.detection_id
                 WHERE ppa.cluster_id = ?
@@ -1808,34 +1856,55 @@ class FaceClusteringDB:
         if not rows:
             return
 
-        # Compute centroid
-        embeddings = []
+        # Decode and group by embedding_version.
+        by_version: Dict[str, List[np.ndarray]] = {}
         for row in rows:
-            if row[0]:
-                try:
-                    emb = json.loads(row[0]) if isinstance(row[0], str) else np.frombuffer(row[0], dtype=np.float32)
-                    embeddings.append(np.array(emb, dtype=np.float32))
-                except Exception:
-                    continue
+            raw_emb = row[0]
+            version = row[1] or ""
+            if not raw_emb:
+                continue
+            try:
+                emb = json.loads(raw_emb) if isinstance(raw_emb, str) else np.frombuffer(raw_emb, dtype=np.float32)
+                arr = np.array(emb, dtype=np.float32)
+            except Exception:
+                continue
+            by_version.setdefault(version, []).append(arr)
 
-        if not embeddings:
+        if not by_version:
             return
+
+        # Choose the dominant version (most embeddings), tie-break by version string for determinism.
+        chosen_version, embeddings = sorted(by_version.items(), key=lambda kv: (-len(kv[1]), kv[0]))[0]
 
         centroid = np.mean(embeddings, axis=0)
         # L2 normalize
         centroid = centroid / (np.linalg.norm(centroid) + 1e-8)
 
         # Store
-        conn.execute(
-            """
-            UPDATE face_clusters
-            SET prototype_embedding = ?,
-                prototype_updated_at = CURRENT_TIMESTAMP,
-                prototype_count = ?
-            WHERE cluster_id = ?
-        """,
-            (centroid.tobytes(), len(embeddings), cluster_id),
-        )
+        cluster_cols = self._table_columns(conn, "face_clusters")
+        if "prototype_embedding_version" in cluster_cols:
+            conn.execute(
+                """
+                UPDATE face_clusters
+                SET prototype_embedding = ?,
+                    prototype_embedding_version = ?,
+                    prototype_updated_at = CURRENT_TIMESTAMP,
+                    prototype_count = ?
+                WHERE cluster_id = ?
+            """,
+                (centroid.tobytes(), chosen_version or None, len(embeddings), cluster_id),
+            )
+        else:
+            conn.execute(
+                """
+                UPDATE face_clusters
+                SET prototype_embedding = ?,
+                    prototype_updated_at = CURRENT_TIMESTAMP,
+                    prototype_count = ?
+                WHERE cluster_id = ?
+            """,
+                (centroid.tobytes(), len(embeddings), cluster_id),
+            )
 
     def recompute_all_prototypes(self):
         """Recompute prototypes for all clusters."""
@@ -1943,7 +2012,7 @@ class FaceClusteringDB:
                 SELECT
                     fc.representative_detection_id,
                     fd.photo_path,
-                    fd.bounding_box,
+                    fd.bounding_box as bounding_box,
                     fd.quality_score
                 FROM face_clusters fc
                 LEFT JOIN face_detections fd
@@ -2000,6 +2069,7 @@ class FaceClusteringDB:
                     cluster_id,
                     label,
                     prototype_embedding,
+                    prototype_embedding_version,
                     representative_detection_id
                 FROM face_clusters
                 WHERE prototype_embedding IS NOT NULL
@@ -2065,6 +2135,12 @@ class FaceClusteringDB:
                     c2 = cluster_list[j]
                     cluster_a_id = c1["cluster_id"]
                     cluster_b_id = c2["cluster_id"]
+
+                    # Compatibility gating: only compare prototypes with the same embedding version.
+                    v1 = (c1["prototype_embedding_version"] or "").strip()
+                    v2 = (c2["prototype_embedding_version"] or "").strip()
+                    if v1 and v2 and v1 != v2:
+                        continue
 
                     # Check co-occurrence (HARD BLOCK)
                     pair = tuple(sorted([cluster_a_id, cluster_b_id]))
@@ -2239,7 +2315,7 @@ class FaceClusteringDB:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """
-                SELECT fd.detection_id, fd.photo_path, fd.bounding_box, fd.quality_score, fd.created_at
+                SELECT fd.detection_id, fd.photo_path, fd.bounding_box as bounding_box, fd.quality_score, fd.created_at
                 FROM face_detections fd
                 LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 WHERE ppa.detection_id IS NULL
@@ -2487,7 +2563,7 @@ class FaceClusteringDB:
     # Phase 3: Speed & Scale - Prototype-based Assignment
     # ===================================================================
 
-    def build_embedding_index(self, backend: str = "auto"):
+    def build_embedding_index(self, backend: str = "auto", embedding_version: str | None = None):
         """
         Build an embedding index from all cluster prototypes.
 
@@ -2503,12 +2579,26 @@ class FaceClusteringDB:
         # Count clusters to determine optimal backend
         with sqlite3.connect(str(self.db_path)) as conn:
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT COUNT(*) FROM face_clusters
-                WHERE hidden = 0
-                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
-                AND prototype_embedding IS NOT NULL
-            """)
+            if embedding_version:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM face_clusters
+                    WHERE hidden = 0
+                    AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                    AND prototype_embedding IS NOT NULL
+                    AND prototype_embedding_version = ?
+                """,
+                    (embedding_version,),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM face_clusters
+                    WHERE hidden = 0
+                    AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                    AND prototype_embedding IS NOT NULL
+                """
+                )
             cluster_count = cursor.fetchone()[0]
 
         # Create index with appropriate backend
@@ -2518,13 +2608,28 @@ class FaceClusteringDB:
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
-            rows = conn.execute("""
-                SELECT cluster_id, label, prototype_embedding
-                FROM face_clusters
-                WHERE hidden = 0
-                AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
-                AND prototype_embedding IS NOT NULL
-            """).fetchall()
+            if embedding_version:
+                rows = conn.execute(
+                    """
+                    SELECT cluster_id, label, prototype_embedding
+                    FROM face_clusters
+                    WHERE hidden = 0
+                    AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                    AND prototype_embedding IS NOT NULL
+                    AND prototype_embedding_version = ?
+                """,
+                    (embedding_version,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT cluster_id, label, prototype_embedding
+                    FROM face_clusters
+                    WHERE hidden = 0
+                    AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
+                    AND prototype_embedding IS NOT NULL
+                """
+                ).fetchall()
 
             # Prepare for bulk loading if supported
             prototypes = {}
@@ -2542,8 +2647,15 @@ class FaceClusteringDB:
                 for cluster_id, (embedding, label) in prototypes.items():
                     index.add_prototype(cluster_id, embedding, label)
 
-            backend_type = getattr(index, "get_stats", lambda: {}).get("index_type", "unknown")
-            logger.info(f"Built {backend_type} embedding index with {index.count()} prototypes")
+            backend_type = getattr(index, "get_stats", lambda: {}).get("active_index_type", None) or getattr(
+                index, "get_stats", lambda: {}
+            ).get("index_type", "unknown")
+            if embedding_version:
+                logger.info(
+                    f"Built {backend_type} embedding index with {index.count()} prototypes (embedding_version={embedding_version})"
+                )
+            else:
+                logger.info(f"Built {backend_type} embedding index with {index.count()} prototypes")
 
         return index
 
@@ -2551,6 +2663,7 @@ class FaceClusteringDB:
         self,
         detection_id: str,
         embedding: np.ndarray,
+        embedding_version: str | None = None,
         auto_assign_min: float = 0.55,
         review_min: float = 0.50,
         index=None,
@@ -2578,7 +2691,7 @@ class FaceClusteringDB:
 
         # Build index if not provided
         if index is None:
-            index = self.build_embedding_index()
+            index = self.build_embedding_index(embedding_version=embedding_version)
 
         # Create assigner with thresholds
         assigner = PrototypeAssigner(index=index, auto_assign_min=auto_assign_min, review_min=review_min)
@@ -2586,6 +2699,8 @@ class FaceClusteringDB:
         # Get assignment
         result = assigner.assign_face(embedding)
         result["detection_id"] = detection_id
+        if embedding_version is not None:
+            result["embedding_version"] = embedding_version
 
         # If auto-assign, create the association
         if result["action"] == "auto_assign" and result["cluster_id"]:
@@ -2646,7 +2761,7 @@ class FaceClusteringDB:
 
     def batch_assign_new_faces(
         self,
-        faces: List[Tuple[str, np.ndarray]],
+        faces: List[Tuple],
         auto_assign_min: float = 0.55,
         review_min: float = 0.50,
     ) -> Dict[str, Dict[str, Any]]:
@@ -2661,18 +2776,39 @@ class FaceClusteringDB:
         Returns:
             Dict of detection_id -> assignment result
         """
-        # Build index once for all faces
-        index = self.build_embedding_index()
+        # Backward compatible input:
+        # - [(detection_id, embedding)]
+        # - [(detection_id, embedding, embedding_version)]
 
-        results = {}
-        for detection_id, embedding in faces:
-            results[detection_id] = self.assign_new_face(
-                detection_id=detection_id,
-                embedding=embedding,
-                auto_assign_min=auto_assign_min,
-                review_min=review_min,
-                index=index,
-            )
+        groups: Dict[str | None, List[Tuple[str, np.ndarray]]] = {}
+        versions: Dict[str, str | None] = {}
+
+        for item in faces:
+            if len(item) == 2:
+                detection_id, embedding = item  # type: ignore[misc]
+                version = None
+            elif len(item) >= 3:
+                detection_id, embedding, version = item[0], item[1], item[2]
+            else:
+                raise ValueError(
+                    "Each face tuple must be (detection_id, embedding) or (detection_id, embedding, embedding_version)"
+                )
+
+            versions[str(detection_id)] = version
+            groups.setdefault(version, []).append((str(detection_id), embedding))
+
+        results: Dict[str, Dict[str, Any]] = {}
+        for version, group_faces in groups.items():
+            index = self.build_embedding_index(embedding_version=version)
+            for detection_id, embedding in group_faces:
+                results[detection_id] = self.assign_new_face(
+                    detection_id=detection_id,
+                    embedding=embedding,
+                    embedding_version=versions.get(detection_id),
+                    auto_assign_min=auto_assign_min,
+                    review_min=review_min,
+                    index=index,
+                )
 
         # Summary
         auto_count = sum(1 for r in results.values() if r["action"] == "auto_assign")
@@ -2746,10 +2882,17 @@ class FaceClusteringDB:
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
 
+            cols = self._table_columns(conn, "face_detections")
+            has_embedding_version = "embedding_version" in cols
+            ref_ev_select = "fd.embedding_version" if has_embedding_version else "NULL"
+
             # Get the reference face embedding
             ref_row = conn.execute(
-                """
-                SELECT fd.embedding, fd.photo_path, ppa.cluster_id
+                f"""
+                SELECT fd.embedding,
+                       {ref_ev_select} AS embedding_version,
+                       fd.photo_path,
+                       ppa.cluster_id
                 FROM face_detections fd
                 LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 WHERE fd.detection_id = ?
@@ -2764,23 +2907,34 @@ class FaceClusteringDB:
             if ref_embedding is None:
                 return []
             ref_cluster = ref_row["cluster_id"]
+            ref_embedding_version = (ref_row["embedding_version"] or "").strip()
 
             # Get all other face embeddings
+            other_ev_select = "fd.embedding_version" if has_embedding_version else "NULL"
+            where_clause = "WHERE fd.detection_id != ? AND fd.embedding IS NOT NULL"
+            params: list[Any] = [detection_id]
+            # Compatibility gating: when the reference face has a known embedding version,
+            # only compare against candidates with that same version.
+            if has_embedding_version and ref_embedding_version:
+                where_clause += " AND fd.embedding_version = ?"
+                params.append(ref_embedding_version)
+
             rows = conn.execute(
-                """
+                f"""
                 SELECT
                     fd.detection_id,
                     fd.photo_path,
                     fd.embedding,
+                    {other_ev_select} AS embedding_version,
                     fd.quality_score,
                     ppa.cluster_id,
                     fc.label as cluster_label
                 FROM face_detections fd
                 LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
-                WHERE fd.detection_id != ? AND fd.embedding IS NOT NULL
+                {where_clause}
             """,
-                (detection_id,),
+                tuple(params),
             ).fetchall()
 
             results = []
@@ -2798,16 +2952,17 @@ class FaceClusteringDB:
                     similarity = float(np.dot(ref_embedding, embedding))
 
                     if similarity >= threshold:
-                        results.append(
-                            {
-                                "detection_id": row["detection_id"],
-                                "photo_path": row["photo_path"],
-                                "similarity": similarity,
-                                "quality_score": row["quality_score"],
-                                "cluster_id": row["cluster_id"],
-                                "cluster_label": row["cluster_label"],
-                            }
-                        )
+                        item = {
+                            "detection_id": row["detection_id"],
+                            "photo_path": row["photo_path"],
+                            "similarity": similarity,
+                            "quality_score": row["quality_score"],
+                            "cluster_id": row["cluster_id"],
+                            "cluster_label": row["cluster_label"],
+                        }
+                        if has_embedding_version:
+                            item["embedding_version"] = row["embedding_version"]
+                        results.append(item)
                 except Exception as e:
                     logger.warning(f"Error comparing face {row['detection_id']}: {e}")
 
@@ -2954,7 +3109,7 @@ class FaceClusteringDB:
                     ppa.confidence,
                     ppa.assignment_state,
                     fc.label,
-                    fd.bounding_box,
+                    fd.bounding_box as bounding_box,
                     fd.quality_score
                 FROM photo_person_associations ppa
                 JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
@@ -3208,6 +3363,262 @@ class FaceClusteringDB:
                 offset=offset,
             )
 
+    def search_photos_by_natural_language(
+        self,
+        include_names: Optional[List[str]] = None,
+        exclude_names: Optional[List[str]] = None,
+        require_all_names: bool = True,
+        emotions: Optional[List[str]] = None,
+        all_faces_emotion: Optional[str] = None,
+        min_age: Optional[int] = None,
+        max_age: Optional[int] = None,
+        exact_people: Optional[int] = None,
+        min_people: Optional[int] = None,
+        max_people: Optional[int] = None,
+        allowed_photo_paths: Optional[List[str]] = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> Dict[str, Any]:
+        """
+        Search photos using parsed natural language constraints.
+
+        Constraints supported:
+        - People include/exclude by name (cluster labels)
+        - Group size (min/max/exact)
+        - Emotion filters (any-face or all-faces)
+        - Age ranges (any-face match)
+        """
+        include_names = include_names or []
+        exclude_names = exclude_names or []
+
+        with sqlite3.connect(str(self.db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+
+            def resolve_cluster_ids(names: List[str]) -> List[str]:
+                if not names:
+                    return []
+                ids: List[str] = []
+                for name in names:
+                    rows = conn.execute(
+                        """
+                        SELECT cluster_id FROM face_clusters
+                        WHERE label LIKE ? AND hidden = 0
+                    """,
+                        (f"%{name}%",),
+                    ).fetchall()
+                    ids.extend([row["cluster_id"] for row in rows])
+                # De-duplicate while preserving order
+                return list(dict.fromkeys(ids))
+
+            include_ids = resolve_cluster_ids(include_names)
+            exclude_ids = resolve_cluster_ids(exclude_names)
+
+            if include_names and not include_ids:
+                return {"photos": [], "total": 0, "limit": limit, "offset": offset}
+
+            if allowed_photo_paths is not None and not allowed_photo_paths:
+                return {"photos": [], "total": 0, "limit": limit, "offset": offset}
+
+            where_conditions = ["(fc.hidden = 0 OR ppa.cluster_id IS NULL)"]
+            where_clause = " AND ".join(where_conditions)
+
+            having_clauses: List[str] = []
+            having_params: List[Any] = []
+
+            where_params: List[Any] = []
+
+            if allowed_photo_paths:
+                placeholders = ",".join("?" * len(allowed_photo_paths))
+                where_conditions.append(f"fd.photo_path IN ({placeholders})")
+                where_params.extend(allowed_photo_paths)
+                where_clause = " AND ".join(where_conditions)
+
+            people_count_expr = "COUNT(DISTINCT COALESCE(ppa.cluster_id, fd.detection_id))"
+
+            if exact_people is not None:
+                having_clauses.append(f"{people_count_expr} = ?")
+                having_params.append(exact_people)
+            if min_people is not None:
+                having_clauses.append(f"{people_count_expr} >= ?")
+                having_params.append(min_people)
+            if max_people is not None:
+                having_clauses.append(f"{people_count_expr} <= ?")
+                having_params.append(max_people)
+
+            if include_ids:
+                placeholders = ",".join("?" * len(include_ids))
+                if require_all_names:
+                    having_clauses.append(
+                        f"COUNT(DISTINCT CASE WHEN ppa.cluster_id IN ({placeholders}) THEN ppa.cluster_id END) = ?"
+                    )
+                    having_params.extend(include_ids)
+                    having_params.append(len(include_ids))
+                else:
+                    having_clauses.append(
+                        f"COUNT(DISTINCT CASE WHEN ppa.cluster_id IN ({placeholders}) THEN ppa.cluster_id END) >= 1"
+                    )
+                    having_params.extend(include_ids)
+
+            if exclude_ids:
+                placeholders = ",".join("?" * len(exclude_ids))
+                having_clauses.append(
+                    f"COUNT(DISTINCT CASE WHEN ppa.cluster_id IN ({placeholders}) THEN ppa.cluster_id END) = 0"
+                )
+                having_params.extend(exclude_ids)
+
+            if all_faces_emotion:
+                having_clauses.append("SUM(CASE WHEN fd.emotion = ? THEN 1 ELSE 0 END) = COUNT(fd.detection_id)")
+                having_params.append(all_faces_emotion)
+                having_clauses.append("COUNT(fd.detection_id) > 0")
+            elif emotions:
+                placeholders = ",".join("?" * len(emotions))
+                having_clauses.append(f"SUM(CASE WHEN fd.emotion IN ({placeholders}) THEN 1 ELSE 0 END) >= 1")
+                having_params.extend(emotions)
+
+            if min_age is not None or max_age is not None:
+                age_checks: List[str] = []
+                age_params: List[Any] = []
+                if min_age is not None:
+                    age_checks.append("fd.age_estimate >= ?")
+                    age_params.append(min_age)
+                if max_age is not None:
+                    age_checks.append("fd.age_estimate <= ?")
+                    age_params.append(max_age)
+                age_clause = " AND ".join(age_checks)
+                having_clauses.append(f"SUM(CASE WHEN {age_clause} THEN 1 ELSE 0 END) >= 1")
+                having_params.extend(age_params)
+
+            having_clause = f"HAVING {' AND '.join(having_clauses)}" if having_clauses else ""
+
+            match_conditions: List[str] = []
+            match_params: List[Any] = []
+            if all_faces_emotion:
+                match_conditions.append("fd.emotion = ?")
+                match_params.append(all_faces_emotion)
+            elif emotions:
+                placeholders = ",".join("?" * len(emotions))
+                match_conditions.append(f"fd.emotion IN ({placeholders})")
+                match_params.extend(emotions)
+            if min_age is not None:
+                match_conditions.append("fd.age_estimate >= ?")
+                match_params.append(min_age)
+            if max_age is not None:
+                match_conditions.append("fd.age_estimate <= ?")
+                match_params.append(max_age)
+
+            match_condition_sql = " AND ".join(match_conditions) if match_conditions else "1=1"
+            match_count_expr = f"SUM(CASE WHEN {match_condition_sql} THEN 1 ELSE 0 END) AS match_count"
+            order_by_clause = "ORDER BY match_count DESC, face_count DESC, fd.photo_path"
+
+            total_row = conn.execute(
+                f"""
+                SELECT COUNT(*) AS total FROM (
+                    SELECT fd.photo_path
+                    FROM face_detections fd
+                    LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                    LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                    WHERE {where_clause}
+                    GROUP BY fd.photo_path
+                    {having_clause}
+                ) sub
+            """,
+                where_params + having_params,
+            ).fetchone()
+
+            total = total_row["total"] if total_row else 0
+
+            rows = conn.execute(
+                f"""
+                SELECT
+                    fd.photo_path,
+                    {people_count_expr} AS people_count,
+                    COUNT(fd.detection_id) AS face_count,
+                    {match_count_expr}
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE {where_clause}
+                GROUP BY fd.photo_path
+                {having_clause}
+                {order_by_clause}
+                LIMIT ? OFFSET ?
+            """,
+                match_params + where_params + having_params + [limit, offset],
+            ).fetchall()
+
+            photo_paths = [row["photo_path"] for row in rows]
+            if not photo_paths:
+                return {"photos": [], "total": total, "limit": limit, "offset": offset}
+
+            match_count_by_path = {row["photo_path"]: row["match_count"] for row in rows}
+
+            placeholders = ",".join("?" * len(photo_paths))
+            detail_rows = conn.execute(
+                f"""
+                SELECT
+                    fd.detection_id,
+                    fd.photo_path,
+                    fd.bounding_box as bounding_box,
+                    ppa.cluster_id,
+                    ppa.confidence,
+                    fd.quality_score,
+                    fd.overall_quality,
+                    fd.age_estimate,
+                    fd.age_confidence,
+                    fd.emotion,
+                    fd.emotion_confidence,
+                    fd.pose_type,
+                    fd.pose_confidence,
+                    fd.gender,
+                    fd.gender_confidence,
+                    fd.lighting_score,
+                    fd.occlusion_score,
+                    fd.resolution_score,
+                    fc.label
+                FROM face_detections fd
+                LEFT JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
+                LEFT JOIN face_clusters fc ON ppa.cluster_id = fc.cluster_id
+                WHERE {where_clause}
+                AND fd.photo_path IN ({placeholders})
+                ORDER BY fd.photo_path
+            """,
+                where_params + photo_paths,
+            ).fetchall()
+
+            grouped: Dict[str, List[Dict[str, Any]]] = {}
+            for row in detail_rows:
+                grouped.setdefault(row["photo_path"], []).append(
+                    {
+                        "detection_id": row["detection_id"],
+                        "photo_path": row["photo_path"],
+                        "bounding_box": json.loads(row["bounding_box"]) if row["bounding_box"] else None,
+                        "cluster_id": row["cluster_id"],
+                        "label": row["label"],
+                        "confidence": row["confidence"],
+                        "quality_score": row["quality_score"],
+                        "overall_quality": row["overall_quality"],
+                        "age_estimate": row["age_estimate"],
+                        "age_confidence": row["age_confidence"],
+                        "emotion": row["emotion"],
+                        "emotion_confidence": row["emotion_confidence"],
+                        "pose_type": row["pose_type"],
+                        "pose_confidence": row["pose_confidence"],
+                        "gender": row["gender"],
+                        "gender_confidence": row["gender_confidence"],
+                        "lighting_score": row["lighting_score"],
+                        "occlusion_score": row["occlusion_score"],
+                        "resolution_score": row["resolution_score"],
+                    }
+                )
+
+            photos = []
+            for path in photo_paths:
+                faces = grouped.get(path, [])
+                match_count = match_count_by_path.get(path, len(faces))
+                photos.append({"photo_path": path, "faces": faces, "match_count": match_count})
+
+            return {"photos": photos, "total": total, "limit": limit, "offset": offset}
+
     # =========================================================================
     # Review Queue Methods
     # =========================================================================
@@ -3248,7 +3659,7 @@ class FaceClusteringDB:
                     rq.status,
                     rq.created_at,
                     fd.photo_path,
-                    fd.bounding_box,
+                    fd.bounding_box as bounding_box,
                     fd.quality_score,
                     fc.label as candidate_label,
                     fc.face_count as candidate_face_count
@@ -3596,7 +4007,7 @@ class FaceClusteringDB:
                     """
                 SELECT
                     a.detection_id, a.photo_path, a.confidence, a.assignment_state,
-                    d.bounding_box, d.quality_score, d.created_at as detected_at
+                    d.bounding_box as bounding_box, d.quality_score, d.created_at as detected_at
                 FROM photo_person_associations a
                 LEFT JOIN face_detections d ON a.detection_id = d.detection_id
                 WHERE a.cluster_id = ?
@@ -3658,12 +4069,12 @@ class FaceClusteringDB:
     # Phase 1: Performance-Optimized Face Service Support Methods
     # ===================================================================
 
-    def get_all_cluster_prototypes(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_cluster_prototypes(self, embedding_version: str | None = None) -> Dict[str, Dict[str, Any]]:
         """
         Get all cluster prototypes with embeddings for FAISS index initialization.
 
         Returns:
-            Dict mapping cluster_id to {"embedding": np.ndarray, "label": str}
+            Dict mapping cluster_id to {"embedding": np.ndarray, "label": str, "embedding_version": Optional[str]}
         """
         with sqlite3.connect(str(self.db_path)) as conn:
             conn.row_factory = sqlite3.Row
@@ -3674,14 +4085,31 @@ class FaceClusteringDB:
                 logger.warning("Legacy schema detected, no prototypes available")
                 return {}
 
-            rows = conn.execute(
-                """
-                SELECT cluster_id, label, prototype_embedding
-                FROM face_clusters
+            cluster_cols = self._table_columns(conn, "face_clusters")
+            has_proto_version = "prototype_embedding_version" in cluster_cols
+            proto_ver_select = "prototype_embedding_version" if has_proto_version else "NULL"
+
+            where = """
                 WHERE (hidden = 0 OR hidden IS NULL)
                 AND (indexing_disabled = 0 OR indexing_disabled IS NULL)
                 AND prototype_embedding IS NOT NULL
-                """
+            """
+            params: list[Any] = []
+            if embedding_version is not None:
+                # When filtering is explicitly requested, treat empty/None as "unknown".
+                if embedding_version.strip():
+                    where += " AND prototype_embedding_version = ?"
+                    params.append(embedding_version)
+                else:
+                    where += " AND (prototype_embedding_version IS NULL OR prototype_embedding_version = '')"
+
+            rows = conn.execute(
+                f"""
+                SELECT cluster_id, label, prototype_embedding, {proto_ver_select} AS prototype_embedding_version
+                FROM face_clusters
+                {where}
+                """,
+                tuple(params),
             ).fetchall()
 
             prototypes = {}
@@ -3692,6 +4120,7 @@ class FaceClusteringDB:
                     prototypes[row["cluster_id"]] = {
                         "embedding": embedding,
                         "label": row["label"],
+                        "embedding_version": row["prototype_embedding_version"],
                     }
                 except Exception as e:
                     logger.warning(f"Failed to load prototype for {row['cluster_id']}: {e}")
@@ -3716,9 +4145,14 @@ class FaceClusteringDB:
                 logger.warning("Legacy schema detected, face detection retrieval not supported")
                 return None
 
+            det_cols = self._table_columns(conn, "face_detections")
+            ev_select = "embedding_version" if "embedding_version" in det_cols else "NULL"
+
             row = conn.execute(
-                """
-                SELECT detection_id, photo_path, bounding_box, embedding, quality_score, created_at
+                f"""
+                SELECT detection_id, photo_path, bounding_box, embedding,
+                       {ev_select} AS embedding_version,
+                       quality_score, created_at
                 FROM face_detections
                 WHERE detection_id = ?
                 """,
@@ -3756,6 +4190,7 @@ class FaceClusteringDB:
                 photo_path=row["photo_path"],
                 bounding_box=bounding_box,
                 embedding=embedding,
+                embedding_version=row["embedding_version"],
                 quality_score=row["quality_score"],
                 created_at=row["created_at"],
             )
@@ -3778,9 +4213,14 @@ class FaceClusteringDB:
                 logger.warning("Legacy schema detected, face retrieval not supported")
                 return []
 
+            det_cols = self._table_columns(conn, "face_detections")
+            ev_select = "fd.embedding_version" if "embedding_version" in det_cols else "NULL"
+
             rows = conn.execute(
-                """
-                SELECT fd.detection_id, fd.photo_path, fd.bounding_box, fd.embedding, fd.quality_score, fd.created_at
+                f"""
+                SELECT fd.detection_id, fd.photo_path, fd.bounding_box as bounding_box, fd.embedding,
+                       {ev_select} AS embedding_version,
+                       fd.quality_score, fd.created_at
                 FROM face_detections fd
                 JOIN photo_person_associations ppa ON fd.detection_id = ppa.detection_id
                 WHERE ppa.cluster_id = ?
@@ -3821,6 +4261,7 @@ class FaceClusteringDB:
                         photo_path=row["photo_path"],
                         bounding_box=bounding_box,
                         embedding=embedding,
+                        embedding_version=row["embedding_version"],
                         quality_score=row["quality_score"],
                         created_at=row["created_at"],
                     )

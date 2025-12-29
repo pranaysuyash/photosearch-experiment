@@ -228,6 +228,18 @@ export function BulkActions({
     executeBulkOperation('copy', { destination: destination.trim() });
   };
 
+  const performBulkDelete = () => {
+    if (selectedPhotos.length === 0) return;
+    setOperationType('delete');
+    setShowConfirmation(true);
+  };
+
+  const performBulkFavorite = (favorite: boolean) => {
+    if (selectedPhotos.length === 0) return;
+    setOperationType('favorite');
+    executeBulkOperation('favorite', { favorite });
+  };
+
   if (selectedPhotos.length === 0) {
     return null;
   }

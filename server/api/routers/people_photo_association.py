@@ -160,7 +160,7 @@ async def get_faces_in_photo(photo_path: str):
             rows = conn.execute(
                 """
                 SELECT fd.detection_id,
-                       fd.bounding_box,
+                       fd.bounding_box as bounding_box,
                        fd.quality_score,
                        fd.overall_quality,
                        fd.age_estimate,

@@ -138,8 +138,9 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
   const loadVideoStats = useCallback(async () => {
     try {
-      const response = await api.get('/video/stats');
-      setVideoStats(response.data.stats);
+      const response = await api.get<{ stats: VideoStats }>('/video/stats');
+      const data = response as { stats: VideoStats };
+      setVideoStats(data.stats);
     } catch (error) {
       console.error('Failed to load video stats:', error);
     }
@@ -172,8 +173,11 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
       const pollResults = async (): Promise<void> => {
         try {
-          const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
-          setAnalysisResult(response.data);
+          const response = await api.get<VideoAnalysisResult>(
+            `/video/analysis/${encodeURIComponent(videoPath)}`
+          );
+          const data = response as VideoAnalysisResult;
+          setAnalysisResult(data);
           setIsAnalyzing(false);
           await loadVideoStats(); // Refresh stats
         } catch (err: unknown) {
@@ -203,12 +207,16 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
     }
 
     try {
-      const response = await api.post('/video/search', {
+      const response = await api.post<{ results: VideoSearchResult[] }>(
+        '/video/search',
+        {
         query: query,
         limit: 50,
         offset: 0
-      });
-      setSearchResults(response.data.results);
+        }
+      );
+      const data = response as { results: VideoSearchResult[] };
+      setSearchResults(data.results || []);
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to search video content'));
     }
@@ -216,8 +224,11 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
   const loadVideoAnalysis = useCallback(async (videoPath: string) => {
     try {
-      const response = await api.get(`/video/analysis/${encodeURIComponent(videoPath)}`);
-      setAnalysisResult(response.data);
+      const response = await api.get<VideoAnalysisResult>(
+        `/video/analysis/${encodeURIComponent(videoPath)}`
+      );
+      const data = response as VideoAnalysisResult;
+      setAnalysisResult(data);
       setSelectedVideoPath(videoPath);
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to load video analysis'));
