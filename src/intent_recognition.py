@@ -49,8 +49,22 @@ class IntentDetector:
                     "sony",
                     "iphone",
                     "samsung",
+                    # Devices users actually name; without these, queries like
+                    # "gopro photos" carried no camera signal at all.
+                    "gopro",
+                    "drone",
+                    "webcam",
+                    "pixel",
+                    "leica",
+                    "fuji",
+                    "fujifilm",
+                    "olympus",
+                    "dji",
                 ],
-                "patterns": [r"\b(camera|device|make|model)\b"],
+                # No patterns: the previous pattern list duplicated the keyword
+                # list verbatim, double-counting every camera word (keyword 1.25
+                # + pattern 1.5) and biasing camera over all other intents.
+                "patterns": [],
                 "description": "Searching for specific camera or device information",
             },
             "date": {
@@ -65,7 +79,14 @@ class IntentDetector:
                     "recent",
                     "old",
                 ],
-                "patterns": [r"\b(\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|\d{1,2}/\d{1,2}/\d{4})\b"],
+                "patterns": [
+                    r"\b(\d{4}-\d{2}-\d{2}|\d{4}/\d{2}/\d{2}|\d{1,2}/\d{1,2}/\d{4})\b",
+                    # Month names and bare years. "may"/"mar" are excluded:
+                    # as standalone words they are too ambiguous with non-date uses.
+                    r"\b(january|february|march|april|june|july|august|september|october|november|december)\b",
+                    r"\b(jan|feb|apr|jun|jul|aug|sept|sep|oct|nov|dec)\b",
+                    r"\b(19|20)\d{2}\b",
+                ],
                 "description": "Searching by date or time range",
             },
             "location": {
@@ -91,6 +112,28 @@ class IntentDetector:
                     "friend",
                     "group",
                     "portrait",
+                    # Family-relation words users actually name; without these,
+                    # queries like "photos of my daughter" carried no signal.
+                    "grandma",
+                    "grandpa",
+                    "daughter",
+                    "son",
+                    "mother",
+                    "father",
+                    "mom",
+                    "dad",
+                    "wife",
+                    "husband",
+                    "brother",
+                    "sister",
+                    "cousin",
+                    "baby",
+                    "child",
+                    "children",
+                    "kid",
+                    "kids",
+                    "colleague",
+                    "coworker",
                 ],
                 "patterns": [r"\b(person|face|people|family)\b"],
                 "description": "Searching for photos with people or faces",
@@ -233,9 +276,9 @@ class IntentDetector:
         for intent_name, intent_def in self.intent_definitions.items():
             score = 0.0
 
-            # Keyword matching
+            # Keyword matching (word-boundary: "parking" must not hit "park")
             for keyword in intent_def["keywords"]:
-                if keyword in query_clean:
+                if re.search(rf"\b{re.escape(keyword)}\b", query_clean):
                     # Slightly favor keyword matches to boost confidence for clear queries
                     score += 1.25
 
@@ -248,11 +291,17 @@ class IntentDetector:
 
         # Boost camera confidence for brand keywords (e.g., 'canon', 'nikon')
         brand_keywords = {"canon", "nikon", "sony", "iphone", "samsung"}
-        if any(b in query_clean for b in brand_keywords):
+        if any(re.search(rf"\b{re.escape(b)}\b", query_clean) for b in brand_keywords):
             intent_scores["camera"] += 1.5
 
-        # Find primary intent (highest score)
-        primary_intent = max(intent_scores.items(), key=lambda x: x[1])[0]
+        # Find primary intent (highest score).
+        # When every intent scores zero the query carries no capability signal:
+        # without this guard, max() returned the first dict key ("camera") for
+        # any unmatched query, which misrouted the entire no-signal tail.
+        if max(intent_scores.values()) <= 0.0:
+            primary_intent = "generic"
+        else:
+            primary_intent = max(intent_scores.items(), key=lambda x: x[1])[0]
         primary_score = intent_scores[primary_intent]
 
         # Calculate confidence (0-1 scale)
@@ -285,6 +334,10 @@ class IntentDetector:
             "primary_intent": primary_intent,
             "secondary_intents": secondary_intents,
             "confidence": round(confidence, 3),
+            # Raw per-intent scores (additive): lets callers apply margin-based
+            # ambiguity triggers without re-deriving the scoring (see
+            # JevIntentAdvisor). Zero for intents with no signal.
+            "scores": dict(intent_scores),
             "suggestions": suggestions,
             "badges": badges,
             "description": self.intent_definitions[primary_intent]["description"],
@@ -399,6 +452,16 @@ class IntentDetector:
     def _get_intent_icon(self, intent: str) -> str:
         """Get icon for intent (emoji-based for now)."""
         return self._get_intent_label(intent).split()[0]  # Extract first emoji
+
+    def generate_suggestions(self, primary_intent: str, query: str) -> List[str]:
+        """Public delegate to _generate_suggestions, for callers that re-derive
+        suggestions after overriding the primary intent (see JevIntentAdvisor)."""
+        return self._generate_suggestions(primary_intent, query)
+
+    def generate_badges(self, primary_intent: str, secondary_intents: List[str]) -> List[Dict]:
+        """Public delegate to _generate_badges, for callers that re-derive badges
+        after overriding the primary intent (see JevIntentAdvisor)."""
+        return self._generate_badges(primary_intent, secondary_intents)
 
     def get_all_intents(self) -> Dict:
         """Get all supported intents with descriptions."""

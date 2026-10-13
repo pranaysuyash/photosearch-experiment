@@ -26,12 +26,15 @@ def init_stores(base_dir: Path) -> dict[str, Any]:
     from server.source_items import SourceItemStore
     from server.trash_db import TrashDB
     from src.intent_recognition import IntentDetector
+    from src.jev_intent_advisor import JevIntentAdvisor
     from src.saved_searches import SavedSearchManager
     from server.jobs import job_store
 
     return {
         "vector_store": LanceDBStore(),
-        "intent_detector": IntentDetector(),
+        # Advisory Jev tier; disabled (pure pass-through) unless explicitly
+        # configured via JEV_INTENT_ADVISOR_ENABLED + TYPESAFE_API_KEY.
+        "intent_detector": JevIntentAdvisor.from_env(IntentDetector()),
         "saved_search_manager": SavedSearchManager(),
         "source_store": SourceStore(base_dir / "sources.db"),
         "source_item_store": SourceItemStore(base_dir / "sources_items.db"),
