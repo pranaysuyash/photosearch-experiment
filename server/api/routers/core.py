@@ -11,6 +11,20 @@ async def root():
     return {"status": "ok", "message": "PhotoSearch API is running"}
 
 
+@router.get("/health")
+async def health():
+    """Lightweight health endpoint.
+
+    Intentionally does not touch AppState or heavyweight components.
+    Useful for UI availability checks and container/orchestrator probes.
+    """
+    return {
+        "status": "ok",
+        "service": settings.APP_NAME,
+        "env": settings.ENV,
+    }
+
+
 @router.get("/server/config")
 async def server_config():
     """Return a small subset of server configuration useful for the UI (non-sensitive)."""

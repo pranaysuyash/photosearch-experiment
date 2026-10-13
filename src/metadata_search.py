@@ -41,6 +41,11 @@ from tqdm import tqdm  # type: ignore[import-untyped]
 from src.file_discovery import load_catalog
 from src.metadata_extractor import extract_all_metadata
 
+try:
+    from server.metadata.metadata_mapper import MetadataMapper
+except Exception:
+    MetadataMapper = None  # type: ignore[assignment]
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -68,6 +73,29 @@ class MetadataDatabase:
         )
         self.conn.row_factory = sqlite3.Row  # Return rows as dictionaries
         self._init_database()
+        self._metadata_columns: Optional[set[str]] = None
+        self._metadata_mapper = MetadataMapper() if MetadataMapper else None
+
+    def _load_metadata_columns(self) -> set[str]:
+        """Load metadata table columns for conditional updates."""
+        cursor = self.conn.cursor()
+        columns = {row[1] for row in cursor.execute("PRAGMA table_info(metadata)").fetchall()}
+        self._metadata_columns = columns
+        return columns
+
+    def _get_metadata_columns(self) -> set[str]:
+        """Get cached metadata columns."""
+        if self._metadata_columns is None:
+            return self._load_metadata_columns()
+        return self._metadata_columns
+
+    def _map_metadata_fields(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        """Map raw metadata to searchable fields when schema supports it."""
+        if self._metadata_mapper is None:
+            return {}
+        columns = self._get_metadata_columns()
+        mapped = self._metadata_mapper.map_metadata(metadata)
+        return {key: value for key, value in mapped.items() if key in columns and value not in (None, "", [])}
 
     def _init_database(self):
         """Create database tables if they don't exist."""
@@ -222,26 +250,42 @@ class MetadataDatabase:
                 )
 
                 # Update current metadata
+                mapped_fields = self._map_metadata_fields(metadata)
+                columns = self._get_metadata_columns()
                 new_version = existing["version"] + 1
-                cursor.execute(
-                    """
-                    UPDATE metadata
-                    SET file_hash = ?, metadata_json = ?, extracted_at = CURRENT_TIMESTAMP, version = ?
-                    WHERE file_path = ?
-                """,
-                    (file_hash, metadata_json, new_version, filepath),
-                )
+                update_fields = [
+                    "file_hash = ?",
+                    "metadata_json = ?",
+                    "extracted_at = CURRENT_TIMESTAMP",
+                    "version = ?",
+                ]
+                values = [file_hash, metadata_json, new_version]
+
+                for field_name, field_value in mapped_fields.items():
+                    update_fields.append(f"{field_name} = ?")
+                    values.append(field_value)
+
+                if "updated_at" in columns:
+                    update_fields.append("updated_at = CURRENT_TIMESTAMP")
+
+                update_query = f"UPDATE metadata SET {', '.join(update_fields)} WHERE file_path = ?"
+                values.append(filepath)
+                cursor.execute(update_query, values)
 
                 logger.info(f"Updated metadata for {filepath} (version {new_version})")
             else:
                 # New file
-                cursor.execute(
-                    """
-                    INSERT INTO metadata (file_path, file_hash, metadata_json)
-                    VALUES (?, ?, ?)
-                """,
-                    (filepath, file_hash, metadata_json),
-                )
+                mapped_fields = self._map_metadata_fields(metadata)
+                insert_columns = ["file_path", "file_hash", "metadata_json"]
+                insert_values = [filepath, file_hash, metadata_json]
+
+                for field_name, field_value in mapped_fields.items():
+                    insert_columns.append(field_name)
+                    insert_values.append(field_value)
+
+                placeholders = ", ".join(["?"] * len(insert_columns))
+                insert_query = f"INSERT INTO metadata ({', '.join(insert_columns)}) VALUES ({placeholders})"
+                cursor.execute(insert_query, insert_values)
 
                 logger.info(f"Stored new metadata for {filepath}")
 
@@ -391,6 +435,8 @@ class BatchExtractor:
             all_files = catalog_data
         elif isinstance(catalog_data, dict):
             for dir_path, files in catalog_data.items():
+                if not isinstance(files, list):
+                    continue
                 for f in files:
                     if isinstance(f, dict) and "name" in f:
                         all_files.append(os.path.join(dir_path, f["name"]))

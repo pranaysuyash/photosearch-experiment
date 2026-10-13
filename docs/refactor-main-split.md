@@ -184,3 +184,11 @@ PY
 ## Current state of `server/main.py`
 - No endpoint bodies remain in `server/main.py`.
 - `server/main.py` composes routers, sets up middleware, and exposes shared globals and helpers.
+
+## Disposition (2026-10-13)
+
+Branch `refactor/main-split` retired and deleted. Semantic salvage check vs `master`
+completed at definition level (src/ + server/: zero removed functions/classes), UI
+API-surface level (all 7 files master deleted were dead, broken-at-birth, or
+superseded), and docs level (nothing deleted). Canonical target contains the full
+useful result; this document (merged in f752212 → master) is the provenance record.

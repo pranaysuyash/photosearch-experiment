@@ -233,7 +233,7 @@ def _s3_urls(
 
 
 def _s3_list_objects(cfg: Dict[str, object]) -> List[Dict[str, object]]:
-    import xml.etree.ElementTree as ET
+    from defusedxml import ElementTree as ET
 
     endpoint_url = str(cfg.get("endpoint_url", "")).strip()
     region = str(cfg.get("region", "")).strip()

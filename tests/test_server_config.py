@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient
-from server.main import app
+from fastapi import FastAPI
+
+from server.api.routers.core import router as core_router
 from server.config import settings
+
+app = FastAPI()
+app.include_router(core_router)
 
 client = TestClient(app)
 
@@ -20,3 +25,12 @@ def test_server_config_endpoint(monkeypatch):
     assert data["rate_limit_enabled"] is False
     assert data["access_log_masking"] is True
     assert data["jwt_auth_enabled"] is False
+
+
+def test_health_endpoint():
+    res = client.get("/health")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "ok"
+    assert "service" in data
+    assert "env" in data

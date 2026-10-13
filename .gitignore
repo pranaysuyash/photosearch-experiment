@@ -10,6 +10,8 @@ env/
 ENV/
 .mypy_cache/
 .pytest_cache/
+.hypothesis/
+.ruff_cache/
 
 # IDE
 .vscode/
@@ -68,16 +70,19 @@ media/
 # Test directories
 test_scan_dir/
 
-# Documentation & Review directories (internal only)
-docs/
-!docs/refactor-main-split.md
-!docs/refactor_analysis_dec_2024.md
-!docs/architecture_dependency_injection.md
+# Review directories (internal only)
 codex-review/
 copilot_raptor_review/
 old_project_docs/
 experiments/
 .agent/
+
+# Agent tooling caches
+.v2c/
+.video_agent/
+
+# Generated environment snapshots
+requirements..venv.snapshot.txt
 
 # Keep all README files
 !README.md

@@ -56,6 +56,8 @@ def create_catalog(files_by_dir: Dict[str, List], scan_root: str) -> Dict[str, A
     total_animated = 0
 
     for directory, files in files_by_dir.items():
+        if not isinstance(files, list):
+            continue
         for file_info in files:
             total_files += 1
             file_type = file_info.get("type", "")
@@ -188,6 +190,8 @@ class PhotoSearch:
         # Collect all files for semantic indexing
         all_files = []
         for folder, files in catalog["catalog"].items():
+            if not isinstance(files, list):
+                continue
             for f in files:
                 all_files.append(os.path.join(folder, f["name"]))
 
