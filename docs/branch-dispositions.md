@@ -38,3 +38,12 @@ provenance boundary.
   src/ + server/, zero removed exported components in ui/src/, zero deleted docs.
 - Nothing to salvage. UI polish content (Gmail-style dropdown et al.) merged
   into master via ancestry.
+
+## Remote-branch cleanup — 2026-10-13 (owner-approved)
+
+All stale remote branches deleted from origin after ancestry verification
+(each an ancestor of origin/master, zero unique content):
+- gemini/fix-face-scan (tip 43e7baa, content on origin/master)
+- refactor/main-split, gemini/ux-polish-phase1, nervous-wright
+Final topology: local master (in sync with origin/master) + local
+feature/metadata-enhancement-2025 (fully merged, no upstream).
