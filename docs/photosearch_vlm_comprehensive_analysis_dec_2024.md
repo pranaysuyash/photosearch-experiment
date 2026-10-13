@@ -1,7 +1,7 @@
 # PhotoSearch VLM & Model Strategy - Comprehensive Analysis
 ## December 2024 Update
 
-**Date:** December 21, 2024  
+**Date:** December 21, 2024
 **Context:** Real-time webcam demo with SmolVLM running on M3 MacBook sparked interest in on-device VLMs
 
 ---
@@ -239,18 +239,18 @@ import { pipeline, env } from "@huggingface/transformers";
 class BrowserVLMService {
   private embedder: any;
   private captioner: any;
-  
+
   async initialize() {
     // Enable WebGPU
     env.backends.onnx.wasm.proxy = false;
-    
+
     // Load embedding model (~350MB)
     this.embedder = await pipeline(
       "feature-extraction",
       "Xenova/siglip-base-patch16-224",
       { device: "webgpu", dtype: "fp16" }
     );
-    
+
     // Load VLM (~300MB)
     this.captioner = await pipeline(
       "image-to-text",
@@ -258,23 +258,23 @@ class BrowserVLMService {
       { device: "webgpu", dtype: "q8" }
     );
   }
-  
+
   async analyzePhoto(imageBlob: Blob) {
     // Generate embedding (for search)
     const embedding = await this.embedder(imageBlob, {
       pooling: "mean",
       normalize: true
     });
-    
+
     // Generate caption (for display)
     const caption = await this.captioner(imageBlob, {
       max_new_tokens: 50,
       temperature: 0.3
     });
-    
+
     // Extract tags using simple NLP
     const tags = this.extractTags(caption.generated_text);
-    
+
     return {
       embedding: Array.from(embedding.data),
       caption: caption.generated_text,
@@ -329,7 +329,7 @@ use std::process::Command;
 fn start_local_vlm_server() -> Result<(), Box<dyn std::error::Error>> {
     let llama_path = get_bundled_llama_path();
     let model_path = get_bundled_model_path();
-    
+
     Command::new(llama_path)
         .args(&[
             "-m", &model_path,
@@ -339,7 +339,7 @@ fn start_local_vlm_server() -> Result<(), Box<dyn std::error::Error>> {
             "-c", "4096"   // Context window
         ])
         .spawn()?;
-        
+
     Ok(())
 }
 ```
@@ -375,7 +375,7 @@ async def analyze_image(image: UploadFile):
                 "temperature": 0.3
             }
         )
-    
+
     return response.json()
 ```
 
@@ -406,7 +406,7 @@ class CloudVLMService:
             VLMProvider.GPT4O_MINI: self._init_openai(),
             VLMProvider.GPT4O: self._init_openai()
         }
-        
+
     async def analyze_photo(
         self,
         image_url: str,
@@ -421,7 +421,7 @@ class CloudVLMService:
             return await self._call_gemini(image_url, prompt)
         else:
             return await self._call_openai(image_url, prompt, provider.value)
-    
+
     async def _call_gemini(self, image_url: str, prompt: str):
         # Gemini 2.0 Flash implementation
         # Cost: ~$0.08 per 1000 images
@@ -446,11 +446,11 @@ class SmartVLMRouter:
     """
     async def route_query(self, query: str, image: bytes, user_tier: str):
         complexity = self.assess_complexity(query)
-        
+
         if user_tier == "free":
             # Browser-only
             return {"provider": "browser", "model": "smolvlm-256m"}
-        
+
         elif user_tier == "premium":
             if complexity < 0.3:
                 # Simple query - use local
@@ -458,7 +458,7 @@ class SmartVLMRouter:
             else:
                 # Complex query - upsell to Pro
                 return {"provider": "upsell", "message": "Upgrade to Pro for AI-powered search"}
-        
+
         elif user_tier == "pro":
             if complexity < 0.5:
                 # Use cheap Gemini Flash
@@ -702,7 +702,7 @@ async def smart_search(query: str, user_tier: str):
     # Step 1: Detect intent
     intent = detect_intent(query)
     # "sunset in paris" → semantic + geographic
-    
+
     # Step 2: Route to appropriate model
     if intent.requires_reasoning:
         if user_tier == "pro":
@@ -711,15 +711,15 @@ async def smart_search(query: str, user_tier: str):
             results = await local_vlm_search(query)
     else:
         results = await embedding_search(query)
-    
+
     # Step 3: Generate match explanations
     if user_tier in ["premium", "pro"]:
         for result in results:
             result.explanation = generate_explanation(result, query)
-    
+
     # Step 4: Rank by confidence
     results.sort(key=lambda x: x.confidence, reverse=True)
-    
+
     # Return top N
     return results[:10 if user_tier == "free" else 2]
 ```
@@ -861,9 +861,9 @@ Video search ("find videos of my dog playing")
 
 **Key Success Factors:**
 
-✅ **Privacy-first:** Never upload photos unless user chooses Pro tier  
-✅ **Progressive enhancement:** Works for everyone, better for paying users  
-✅ **Cost efficiency:** 95%+ margins even at scale  
+✅ **Privacy-first:** Never upload photos unless user chooses Pro tier
+✅ **Progressive enhancement:** Works for everyone, better for paying users
+✅ **Cost efficiency:** 95%+ margins even at scale
 ✅ **Future-proof:** Easy to swap models as technology improves
 
 ---
@@ -876,7 +876,7 @@ Output
 # PhotoSearch VLM & Model Strategy - Comprehensive Analysis
 ## December 2024 Update
 
-**Date:** December 21, 2024  
+**Date:** December 21, 2024
 **Context:** Real-time webcam demo with SmolVLM running on M3 MacBook sparked interest in on-device VLMs
 
 ---
@@ -1114,18 +1114,18 @@ import { pipeline, env } from "@huggingface/transformers";
 class BrowserVLMService {
   private embedder: any;
   private captioner: any;
-  
+
   async initialize() {
     // Enable WebGPU
     env.backends.onnx.wasm.proxy = false;
-    
+
     // Load embedding model (~350MB)
     this.embedder = await pipeline(
       "feature-extraction",
       "Xenova/siglip-base-patch16-224",
       { device: "webgpu", dtype: "fp16" }
     );
-    
+
     // Load VLM (~300MB)
     this.captioner = await pipeline(
       "image-to-text",
@@ -1133,23 +1133,23 @@ class BrowserVLMService {
       { device: "webgpu", dtype: "q8" }
     );
   }
-  
+
   async analyzePhoto(imageBlob: Blob) {
     // Generate embedding (for search)
     const embedding = await this.embedder(imageBlob, {
       pooling: "mean",
       normalize: true
     });
-    
+
     // Generate caption (for display)
     const caption = await this.captioner(imageBlob, {
       max_new_tokens: 50,
       temperature: 0.3
     });
-    
+
     // Extract tags using simple NLP
     const tags = this.extractTags(caption.generated_text);
-    
+
     return {
       embedding: Array.from(embedding.data),
       caption: caption.generated_text,
@@ -1204,7 +1204,7 @@ use std::process::Command;
 fn start_local_vlm_server() -> Result<(), Box<dyn std::error::Error>> {
     let llama_path = get_bundled_llama_path();
     let model_path = get_bundled_model_path();
-    
+
     Command::new(llama_path)
         .args(&[
             "-m", &model_path,
@@ -1214,7 +1214,7 @@ fn start_local_vlm_server() -> Result<(), Box<dyn std::error::Error>> {
             "-c", "4096"   // Context window
         ])
         .spawn()?;
-        
+
     Ok(())
 }
 ```
@@ -1250,7 +1250,7 @@ async def analyze_image(image: UploadFile):
                 "temperature": 0.3
             }
         )
-    
+
     return response.json()
 ```
 
@@ -1281,7 +1281,7 @@ class CloudVLMService:
             VLMProvider.GPT4O_MINI: self._init_openai(),
             VLMProvider.GPT4O: self._init_openai()
         }
-        
+
     async def analyze_photo(
         self,
         image_url: str,
@@ -1296,7 +1296,7 @@ class CloudVLMService:
             return await self._call_gemini(image_url, prompt)
         else:
             return await self._call_openai(image_url, prompt, provider.value)
-    
+
     async def _call_gemini(self, image_url: str, prompt: str):
         # Gemini 2.0 Flash implementation
         # Cost: ~$0.08 per 1000 images
@@ -1321,11 +1321,11 @@ class SmartVLMRouter:
     """
     async def route_query(self, query: str, image: bytes, user_tier: str):
         complexity = self.assess_complexity(query)
-        
+
         if user_tier == "free":
             # Browser-only
             return {"provider": "browser", "model": "smolvlm-256m"}
-        
+
         elif user_tier == "premium":
             if complexity < 0.3:
                 # Simple query - use local
@@ -1333,7 +1333,7 @@ class SmartVLMRouter:
             else:
                 # Complex query - upsell to Pro
                 return {"provider": "upsell", "message": "Upgrade to Pro for AI-powered search"}
-        
+
         elif user_tier == "pro":
             if complexity < 0.5:
                 # Use cheap Gemini Flash
@@ -1577,7 +1577,7 @@ async def smart_search(query: str, user_tier: str):
     # Step 1: Detect intent
     intent = detect_intent(query)
     # "sunset in paris" → semantic + geographic
-    
+
     # Step 2: Route to appropriate model
     if intent.requires_reasoning:
         if user_tier == "pro":
@@ -1586,15 +1586,15 @@ async def smart_search(query: str, user_tier: str):
             results = await local_vlm_search(query)
     else:
         results = await embedding_search(query)
-    
+
     # Step 3: Generate match explanations
     if user_tier in ["premium", "pro"]:
         for result in results:
             result.explanation = generate_explanation(result, query)
-    
+
     # Step 4: Rank by confidence
     results.sort(key=lambda x: x.confidence, reverse=True)
-    
+
     # Return top N
     return results[:10 if user_tier == "free" else 2]
 ```
@@ -1736,9 +1736,9 @@ Video search ("find videos of my dog playing")
 
 **Key Success Factors:**
 
-✅ **Privacy-first:** Never upload photos unless user chooses Pro tier  
-✅ **Progressive enhancement:** Works for everyone, better for paying users  
-✅ **Cost efficiency:** 95%+ margins even at scale  
+✅ **Privacy-first:** Never upload photos unless user chooses Pro tier
+✅ **Progressive enhancement:** Works for everyone, better for paying users
+✅ **Cost efficiency:** 95%+ margins even at scale
 ✅ **Future-proof:** Easy to swap models as technology improves
 
 ---

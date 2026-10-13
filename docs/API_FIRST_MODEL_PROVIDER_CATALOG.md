@@ -418,18 +418,18 @@ Low-ops hybrid:
 ## Recommended “Upgrade Paths” (API‑First)
 
 ### Path 1: Better semantic search without hosting GPUs
-1) Use hosted VLM to generate dense captions + tags once per image  
-2) Use a cheap hosted text embedding model for indexing/search  
+1) Use hosted VLM to generate dense captions + tags once per image
+2) Use a cheap hosted text embedding model for indexing/search
 3) Keep vector DB managed (or keep LanceDB local if single-tenant desktop)
 
 ### Path 2: OCR quality boost with minimal engineering
-1) Keep local OCR as fallback  
-2) Add Google/AWS/Azure OCR behind a toggle  
+1) Keep local OCR as fallback
+2) Add Google/AWS/Azure OCR behind a toggle
 3) Store OCR regions/text the same way so UI stays unchanged
 
 ### Path 3: “AI Insights” that feel premium
-1) Use VLM for: best-shot reasoning, album suggestions, story summaries  
-2) Persist outputs in `ai_insights_db.py` and `content_insights` schema  
+1) Use VLM for: best-shot reasoning, album suggestions, story summaries
+2) Persist outputs in `ai_insights_db.py` and `content_insights` schema
 3) Keep user controls: per-feature enable, batch jobs, cost visibility
 
 ---

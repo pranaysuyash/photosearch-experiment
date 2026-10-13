@@ -402,7 +402,7 @@
 - Context isolation: true in webPreferences
 - CSP injection via webRequest.onHeadersReceived:
   ```
-  default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; 
+  default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline';
   script-src 'self'; font-src 'self' data:
   ```
 - OpenExternal protection: whitelist only ['https:']

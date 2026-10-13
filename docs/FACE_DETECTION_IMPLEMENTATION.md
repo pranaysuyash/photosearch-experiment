@@ -173,7 +173,7 @@ useEffect(() => {
 
 // Show face bounding boxes
 {faces.map(face => (
-    <div 
+    <div
         className="absolute border-2 border-blue-500 rounded"
         style={{
             left: `${face.bounding_box.x * 100}%`,

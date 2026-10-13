@@ -56,7 +56,7 @@ const handleTimelineClick = useCallback((date: string) => {
   const [year, month] = date.split('-');
   const monthNames = ['January', 'February', ...];
   const monthName = monthNames[parseInt(month, 10) - 1];
-  
+
   setSearchQuery(`${monthName} ${year}`);
   setSearchMode('metadata');
 }, [setSearchQuery, setSearchMode]);

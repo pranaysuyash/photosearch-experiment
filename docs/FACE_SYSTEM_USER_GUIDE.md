@@ -1,8 +1,8 @@
 # Face Recognition System User Guide
 
-**Version**: 2.0  
-**Date**: December 25, 2025  
-**Audience**: End Users & Administrators  
+**Version**: 2.0
+**Date**: December 25, 2025
+**Audience**: End Users & Administrators
 
 ---
 
@@ -366,8 +366,8 @@ For developers and advanced users:
 
 ### File Formats Supported
 
-**Images**: JPG, PNG, HEIC, TIFF, BMP, WebP  
-**Videos**: MP4, MOV, AVI, MKV, WebM  
+**Images**: JPG, PNG, HEIC, TIFF, BMP, WebP
+**Videos**: MP4, MOV, AVI, MKV, WebM
 **RAW Formats**: CR2, NEF, ARW, DNG, and others
 
 ### System Requirements
@@ -384,6 +384,6 @@ For developers and advanced users:
 
 ---
 
-**Last Updated**: December 25, 2025  
-**Version**: 2.0  
+**Last Updated**: December 25, 2025
+**Version**: 2.0
 **Next Update**: January 2026

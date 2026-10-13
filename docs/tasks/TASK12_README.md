@@ -23,7 +23,7 @@ Conduct a comprehensive "Living Museum" Audit to identify gaps between the roadm
 
 #### B. Realistic Globe Visualization
 - **Issue**: Globe used a procedural noise texture (green/blue blobs) and markers didn't rotate with the planet.
-- **Fix**: 
+- **Fix**:
     - Integrated high-res NASA Blue Marble texture.
     - grouped Photo Markers *inside* the rotating Earth mesh in `PhotoGlobe.tsx`.
 - **Result**: Realistic, immersive 3D globe where memories stay pinned to their valid geographical locations.
@@ -34,7 +34,7 @@ Conduct a comprehensive "Living Museum" Audit to identify gaps between the roadm
 - **Result**: Low-confidence matches are filtered out, significantly improving trust in the "AI" search.
 
 ### 3. Metadata Engine Enhancements
-- **Added Support**: 
+- **Added Support**:
     - **Audio**: MP3, FLAC, WAV (ID3 tags, duration, bitrate).
     - **PDF**: Page count, author, security status.
     - **SVG**: Vector paths/elements count.

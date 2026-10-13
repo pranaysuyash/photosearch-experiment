@@ -1,7 +1,7 @@
 # Next Features - Implementation Plan
 
-**Date**: 2025-12-18  
-**Status**: Updated reality-check + next set  
+**Date**: 2025-12-18
+**Status**: Updated reality-check + next set
 **Priority**: Baseline completion + differentiation (no mobile v1)
 
 ---

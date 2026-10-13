@@ -294,4 +294,3 @@ If you want, I can add a `providers/` layer (no behavior changes by default) wit
 - consistent “artifact metadata” fields (provider/model/version/input_hash)
 
 That turns “we might add segmentation/captions/restoration later” into “flip config + add key.”
-

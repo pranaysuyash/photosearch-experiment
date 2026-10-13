@@ -2,7 +2,7 @@
 
 This document inventories the features currently implemented in this repo and maps each one to:
 
-1) **What the code uses today** (Python package(s) and/or AI model(s))  
+1) **What the code uses today** (Python package(s) and/or AI model(s))
 2) **Viable alternatives** (local/open-source and/or cloud APIs), with notes on tradeoffs
 
 Scope note: many “features” are UI-first and don’t require AI. For those, this document lists the **backend/storage** packages (often stdlib `sqlite3`) plus practical alternatives.

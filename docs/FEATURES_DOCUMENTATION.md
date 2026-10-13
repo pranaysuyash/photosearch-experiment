@@ -220,11 +220,11 @@ The `ProvenanceChip.tsx` component displays source and availability status with 
 
 ### Usage Example
 ```jsx
-<ProvenanceChip 
-  status="cloud" 
-  source="Google Drive" 
-  lastSync="2023-10-15T10:30:00Z" 
-  size="md" 
+<ProvenanceChip
+  status="cloud"
+  source="Google Drive"
+  lastSync="2023-10-15T10:30:00Z"
+  size="md"
 />
 ```
 

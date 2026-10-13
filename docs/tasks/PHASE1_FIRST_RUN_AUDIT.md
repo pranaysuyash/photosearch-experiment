@@ -15,11 +15,11 @@ When a user opens "Living Museum" for the first time, they should feel:
 1.  **Welcome**: `FirstRunModal` appears. It asks "Semantic vs Metadata?"
     *   *Critique*: A cognitive load too early. A new user might not know the difference or care yet. They have 0 photos indexed, so search mode is irrelevant.
 2.  **Action**: User selects a mode -> Modal closes.
-3.  **Result**: 
+3.  **Result**:
     *   **Scenario A (Has `media/` files)**: If the user manually copied files *before* launching, they might see them (if auto-scan ran).
     *   **Scenario B (Empty)**: Most likely scenario. The user sees an empty "Story Mode" grid.
     *   **Empty State UI**: "Your Museum is Empty. Add photos to the `media/` folder or run a scan."
-4.  **Friction**: 
+4.  **Friction**:
     *   The user is told to "Add photos to `media/`" (requires file system access, moving files).
     *   The user is told to "run a scan" but there is **no button to do so**. It's a dead end.
 
@@ -38,5 +38,5 @@ When a user opens "Living Museum" for the first time, they should feel:
 3.  **Simplify Mode**: Default to "Hybrid" or "Semantic" (the "magic" one) and hide the technical choice until they are advanced users.
 
 ## 5. Next Steps (Action Items)
-*   **IMMEDIATE**: Add a "Scan Library" button to the Empty State in `StoryMode.tsx`. 
+*   **IMMEDIATE**: Add a "Scan Library" button to the Empty State in `StoryMode.tsx`.
 *   **IMMEDIATE**: Add a "Scan Now" button in the `FirstRunModal` (or replace the modal with a "Welcome wizard").

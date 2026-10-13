@@ -65,7 +65,7 @@ Task 1 of the metadata completion system has been successfully implemented and t
 ### Property Tests Results
 All 6 core properties validated with 100+ iterations each:
 - ✅ Camera make normalization consistency
-- ✅ Exposure data parsing accuracy  
+- ✅ Exposure data parsing accuracy
 - ✅ Lens information preservation
 - ✅ Exposure triangle calculation correctness
 - ✅ Migration data preservation
@@ -106,7 +106,7 @@ The enhanced database schema and migration system are now ready to support profe
 - `server/database/metadata_migration.py` - Migration system with rollback
 - `tests/test_metadata_schema_properties.py` - Comprehensive property tests
 
-### Modified Files  
+### Modified Files
 - `requirements.txt` - Added hypothesis for property-based testing
 - `.kiro/specs/metadata-completion/tasks.md` - Updated task completion status
 

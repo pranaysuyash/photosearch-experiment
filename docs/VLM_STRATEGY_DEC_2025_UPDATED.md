@@ -1,7 +1,7 @@
 # PhotoSearch VLM & Model Strategy - December 2025 Update
 ## Latest Models: GPT-5.2, Gemini 3 Flash, o3, and Browser-Based VLMs
 
-**Date:** December 21, 2025  
+**Date:** December 21, 2025
 **Context:** Major model releases in past 2 weeks - GPT-5.2, Gemini 3 Flash, SmolVLM real-time demos
 
 ---
@@ -285,7 +285,7 @@ async def analyze_photo(image_bytes: bytes, prompt: str):
         prompt,
         {"mime_type": "image/jpeg", "data": image_bytes}
     ])
-    
+
     return {
         "text": response.text,
         "confidence": 0.92,  # Based on GPQA Diamond
@@ -302,13 +302,13 @@ class VLMRouter:
     async def route(self, query: str, user_tier: str, complexity: float):
         if user_tier == "free":
             return "smolvlm-256m-browser"
-        
+
         elif user_tier == "premium":
             if complexity < 0.3:
                 return "qwen2-vl-2b-local"
             else:
                 return "upsell-to-pro"
-        
+
         elif user_tier == "pro":
             if complexity < 0.7:
                 # Use Gemini 3 Flash for 90% of queries
@@ -509,7 +509,7 @@ class PhotoSearchVLM:
         self.local = LocalVLMService()         # Qwen2-VL
         self.cloud_primary = GeminiService()   # Gemini 3 Flash
         self.cloud_premium = OpenAIService()   # GPT-5.2
-    
+
     async def analyze(self, photo, user_tier, complexity):
         # Smart routing
         if user_tier == "free":

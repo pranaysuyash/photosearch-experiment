@@ -89,11 +89,11 @@ graph TD
     B -->|Query| C[FaceClusteringDB.get_people_in_photo]
     C -->|Return associations| B
     B -->|Return people list| A
-    
+
     A -->|POST /api/photos/{path}/people| D[Server: add_person_to_photo]
     D -->|Add association| E[FaceClusteringDB.add_person_to_photo]
     E -->|Update database| C
-    
+
     A -->|DELETE /api/photos/{path}/people/{id}| F[Server: remove_person_from_photo]
     F -->|Remove association| G[FaceClusteringDB.remove_person_from_photo]
     G -->|Update database| C

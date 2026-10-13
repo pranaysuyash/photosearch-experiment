@@ -9,7 +9,7 @@ I've successfully implemented a comprehensive pricing system for the PhotoSearch
 ### 1. Pricing Tier System
 - **Free Tier**: 5,000 images, $0/month
 - **Basic Tier**: 25,000 images, $9.99/month
-- **Pro Tier**: 100,000 images, $29.99/month  
+- **Pro Tier**: 100,000 images, $29.99/month
 - **Enterprise Tier**: Unlimited images, custom pricing
 
 ### 2. Backend Implementation

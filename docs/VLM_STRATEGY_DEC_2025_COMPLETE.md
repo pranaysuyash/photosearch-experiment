@@ -1,7 +1,7 @@
 # PhotoSearch VLM & Model Strategy - December 2025
 ## Complete Analysis: GPT-5.2, Gemini 3 Flash, Browser & Local VLMs
 
-**Date:** December 21, 2025  
+**Date:** December 21, 2025
 **Status:** Latest models and pricing as of today
 
 ---
@@ -17,7 +17,7 @@
 - GPT-5.2-Codex (specialized coding)
 - GPT-Image-1.5 (4x faster generation)
 
-**Pricing:** $1.75/M input, $14/M output (40% increase from GPT-5.1)  
+**Pricing:** $1.75/M input, $14/M output (40% increase from GPT-5.1)
 **Knowledge Cutoff:** August 31, 2025
 
 ### Google - December 17, 2025
@@ -192,11 +192,11 @@ Assuming 500 tokens per image:
 class QueryRouter:
     def route(self, query: str, user_tier: str):
         complexity = self.analyze_complexity(query)
-        
+
         # Simple keyword search
         if complexity < 0.2:
             return "embedding_search"  # No VLM needed
-        
+
         # Semantic search
         elif complexity < 0.4:
             if user_tier == "free":
@@ -205,7 +205,7 @@ class QueryRouter:
                 return "qwen2-vl-2b-local"
             else:
                 return "gemini-3-flash"
-        
+
         # Complex reasoning
         elif complexity < 0.7:
             if user_tier == "free":
@@ -214,7 +214,7 @@ class QueryRouter:
                 return "qwen2-vl-2b-local"  # May struggle
             else:
                 return "gemini-3-flash"
-        
+
         # Very complex reasoning
         else:
             if user_tier in ["free", "premium"]:
@@ -307,7 +307,7 @@ async def analyze_photo(image_bytes: bytes, prompt: str):
         prompt,
         {"mime_type": "image/jpeg", "data": image_bytes}
     ])
-    
+
     return {
         "text": response.text,
         "confidence": 0.92,
@@ -382,18 +382,18 @@ import { pipeline, env } from "@huggingface/transformers";
 class BrowserVLMService {
   private embedder: any;
   private captioner: any;
-  
+
   async initialize() {
     // Enable WebGPU
     env.backends.onnx.wasm.proxy = false;
-    
+
     // Load embedding model (~350MB)
     this.embedder = await pipeline(
       "feature-extraction",
       "Xenova/siglip-base-patch16-224",
       { device: "webgpu", dtype: "fp16" }
     );
-    
+
     // Load VLM (~300MB)
     this.captioner = await pipeline(
       "image-to-text",
@@ -401,20 +401,20 @@ class BrowserVLMService {
       { device: "webgpu", dtype: "q8" }
     );
   }
-  
+
   async analyzePhoto(imageBlob: Blob) {
     // Generate embedding for search
     const embedding = await this.embedder(imageBlob, {
       pooling: "mean",
       normalize: true
     });
-    
+
     // Generate caption for display
     const caption = await this.captioner(imageBlob, {
       max_new_tokens: 50,
       temperature: 0.3
     });
-    
+
     return {
       embedding: Array.from(embedding.data),
       caption: caption.generated_text,
@@ -443,7 +443,7 @@ class CloudVLMService:
         genai.configure(api_key=os.environ["GEMINI_API_KEY"])
         self.gemini = genai.GenerativeModel('gemini-3-flash')
         self.openai = AsyncOpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    
+
     async def analyze(
         self,
         image_bytes: bytes,
@@ -454,13 +454,13 @@ class CloudVLMService:
             return await self._call_gemini(image_bytes, prompt)
         else:
             return await self._call_openai(image_bytes, prompt, provider)
-    
+
     async def _call_gemini(self, image_bytes: bytes, prompt: str):
         response = await self.gemini.generate_content_async([
             prompt,
             {"mime_type": "image/jpeg", "data": image_bytes}
         ])
-        
+
         return {
             "text": response.text,
             "confidence": 0.92,
@@ -468,7 +468,7 @@ class CloudVLMService:
             "provider": "gemini-3-flash",
             "quality_score": 9.0  # Based on GPQA Diamond
         }
-    
+
     async def _call_openai(
         self,
         image_bytes: bytes,
@@ -477,7 +477,7 @@ class CloudVLMService:
     ):
         import base64
         b64_image = base64.b64encode(image_bytes).decode()
-        
+
         response = await self.openai.chat.completions.create(
             model=provider.value,
             messages=[{
@@ -494,7 +494,7 @@ class CloudVLMService:
             }],
             max_tokens=500
         )
-        
+
         return {
             "text": response.choices[0].message.content,
             "confidence": 0.95,

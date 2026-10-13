@@ -1,10 +1,10 @@
 # 🎭 AI-Powered Storytelling: The Breakthrough Feature
 
-**Status:** Conceptual Design  
+**Status:** Conceptual Design
 **Status update:** (2025-12-13) Partial / In progress
 
 > NOTE (2025-12-13): Story Mode UI exists in the frontend (`ui/src/components/StoryMode.tsx`, `ui/src/pages/StoryModePage.tsx`) and can display outlines and a narrative surface. However, the backend server endpoints and story-building pipeline referenced in this doc (e.g., `server/story_context.py`, `server/story_generator.py`, and `/api/story/*` endpoints) are proposed and not yet implemented in the current repository. The code samples below should be treated as implementation proposals rather than already-available services.
-> **Priority:** High  
+> **Priority:** High
 > **Potential Impact:** Game-changing differentiation
 
 ## 🚀 Executive Summary

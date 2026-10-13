@@ -58,7 +58,7 @@ The duplicates system uses hash-based comparison algorithms to identify duplicat
 // Example usage in React component
 const handleResolveDuplicates = async (groupId: string) => {
   const resolution = await api.resolveDuplicateGroup(
-    groupId, 
+    groupId,
     'keep_first',  // or 'keep_all', 'delete_all', 'keep_selected'
     [firstPhotoPath]  // for 'keep_selected' option
   );
@@ -87,7 +87,7 @@ Uses non-destructive editing approach where only transformation instructions are
 const applyEdits = async (photoPath: string, editInstructions: any) => {
   // Save edit instructions to backend
   await api.setPhotoEdits(photoPath, editInstructions);
-  
+
   // Edits are automatically applied in the UI
 };
 ```

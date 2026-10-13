@@ -230,7 +230,7 @@ Use natural, descriptive language to describe what you see or want to find:
 The hybrid search engine:
 1. **Runs Both Searches**: Executes metadata and semantic searches simultaneously
 2. **Normalizes Scores**: Converts different scoring systems to comparable scales
-3. **Applies Weights**: 
+3. **Applies Weights**:
    - Metadata results: 60% weight (precision focus)
    - Semantic results: 40% weight (content relevance)
 4. **Merges Results**: Combines and ranks by weighted composite score
@@ -241,7 +241,7 @@ Use natural language that can work effectively for both search modes:
 
 **Technical + Visual Combinations:**
 ```
-"Canon portrait photography" 
+"Canon portrait photography"
 → Finds: Canon cameras + portrait compositions
 
 "macro flower photography"

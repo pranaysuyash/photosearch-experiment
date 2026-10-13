@@ -1,8 +1,8 @@
 # Face Recognition System API Documentation
 
-**Version**: 2.0  
-**Date**: December 25, 2025  
-**Status**: Production Ready  
+**Version**: 2.0
+**Date**: December 25, 2025
+**Status**: Production Ready
 
 ---
 
@@ -511,7 +511,7 @@ All API endpoints return consistent error responses:
 API endpoints are rate limited to ensure system stability:
 
 - **Face Detection**: 10 requests/minute
-- **Clustering Operations**: 5 requests/minute  
+- **Clustering Operations**: 5 requests/minute
 - **Cache Management**: 20 requests/minute
 - **Analytics**: 30 requests/minute
 

@@ -24,7 +24,7 @@ graph TB
     K[Metadata Panel UI] --> D
     J --> L[EXIF Writer]
     L --> A
-    
+
     subgraph "New Components"
         C
         H
@@ -32,7 +32,7 @@ graph TB
         J
         L
     end
-    
+
     subgraph "Enhanced Components"
         D
         E
@@ -60,18 +60,18 @@ class MetadataSchemaV2:
     Enhanced metadata database schema with searchable columns.
     Extends existing metadata table with structured fields.
     """
-    
+
     SEARCHABLE_COLUMNS = {
         # Camera Information
         'camera_make': 'TEXT',
-        'camera_model': 'TEXT', 
+        'camera_model': 'TEXT',
         'camera_serial': 'TEXT',
-        
+
         # Lens Information
         'lens_make': 'TEXT',
         'lens_model': 'TEXT',
         'lens_serial': 'TEXT',
-        
+
         # Exposure Settings
         'iso': 'INTEGER',
         'aperture': 'REAL',  # f-number (e.g., 2.8)
@@ -80,33 +80,33 @@ class MetadataSchemaV2:
         'exposure_compensation': 'REAL',
         'exposure_mode': 'TEXT',
         'metering_mode': 'TEXT',
-        
+
         # Focal Length
         'focal_length': 'REAL',  # in mm
         'focal_length_35mm': 'INTEGER',  # 35mm equivalent
-        
+
         # Flash
         'flash_used': 'BOOLEAN',
         'flash_mode': 'TEXT',
-        
+
         # White Balance
         'white_balance': 'TEXT',
         'color_temperature': 'INTEGER',
-        
+
         # Image Quality
         'image_quality': 'TEXT',  # RAW, JPEG, etc.
         'color_space': 'TEXT',  # sRGB, AdobeRGB, etc.
         'bit_depth': 'INTEGER',
-        
+
         # Software
         'software': 'TEXT',
         'edit_software': 'TEXT',
-        
+
         # Copyright & Attribution
         'copyright': 'TEXT',
         'creator': 'TEXT',
         'creator_tool': 'TEXT',
-        
+
         # Composite Fields
         'exposure_triangle': 'TEXT',  # "ISO 400, f/2.8, 1/250"
         'searchable_text': 'TEXT'  # Full-text search index
@@ -129,24 +129,24 @@ class MetadataMapper:
     Maps raw EXIF/metadata to structured database columns.
     Handles normalization, unit conversion, and composite field generation.
     """
-    
+
     def __init__(self):
         self.camera_normalizer = CameraNormalizer()
         self.lens_normalizer = LensNormalizer()
-    
+
     def map_camera_metadata(self, raw_metadata: Dict[str, Any]) -> Dict[str, Any]:
         """
         Extract and normalize camera-specific fields from raw metadata.
-        
+
         Args:
             raw_metadata: Raw metadata from metadata_extractor
-            
+
         Returns:
             Dictionary of normalized searchable fields
         """
         exif = raw_metadata.get('exif', {})
         image_exif = exif.get('image', {})
-        
+
         return {
             'camera_make': self.camera_normalizer.normalize_make(
                 image_exif.get('Make', '')
@@ -166,12 +166,12 @@ class MetadataMapper:
                 iso, aperture, shutter_speed
             )
         }
-    
+
     def _parse_shutter_speed(self, exposure_time: str) -> Tuple[str, float]:
         """Convert EXIF exposure time to display format and decimal."""
         # Implementation handles formats like "1/250", "0.004", etc.
         pass
-    
+
     def _build_exposure_triangle(self, iso: int, aperture: float, shutter: str) -> str:
         """Create human-readable exposure summary."""
         return f"ISO {iso}, f/{aperture}, {shutter}"
@@ -194,7 +194,7 @@ async def get_available_fields(
 ):
     """
     Get list of all searchable metadata fields with value counts.
-    
+
     Returns:
         {
             "camera_make": {"Canon": 5000, "Nikon": 3000, "Sony": 2000},
@@ -213,7 +213,7 @@ async def get_field_values(
 ):
     """
     Get autocomplete suggestions for a specific field.
-    
+
     Example: /api/metadata/fields/camera_make/values?query=can
     Returns: ["Canon", "Canon EOS"]
     """
@@ -245,7 +245,7 @@ async def search_by_metadata(
         focal_length_range=(focal_length_min, focal_length_max) if focal_length_min or focal_length_max else None,
         lens_model=lens_model
     )
-    
+
     return await search_service.search_by_filters(filters, limit, offset)
 
 @router.get("/stats")
@@ -322,7 +322,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               <Camera className="w-4 h-4" />
               Camera
             </h4>
-            
+
             <AutocompleteField
               label="Make"
               field="camera_make"
@@ -330,7 +330,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               onChange={(value) => updateFilter('camera_make', value)}
               placeholder="Canon, Nikon, Sony..."
             />
-            
+
             <AutocompleteField
               label="Model"
               field="camera_model"
@@ -346,7 +346,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               <Settings className="w-4 h-4" />
               Exposure
             </h4>
-            
+
             <RangeSlider
               label="ISO"
               min={100}
@@ -359,7 +359,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               }}
               formatValue={(value) => `ISO ${value}`}
             />
-            
+
             <RangeSlider
               label="Aperture"
               min={1.4}
@@ -380,7 +380,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               <Aperture className="w-4 h-4" />
               Lens
             </h4>
-            
+
             <RangeSlider
               label="Focal Length"
               min={10}
@@ -393,7 +393,7 @@ export const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               }}
               formatValue={(value) => `${value}mm`}
             />
-            
+
             <AutocompleteField
               label="Lens Model"
               field="lens_model"
@@ -583,17 +583,17 @@ CREATE TABLE metadata_enhanced (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     file_path TEXT UNIQUE NOT NULL,
     file_hash TEXT NOT NULL,
-    
+
     -- Camera Information
     camera_make TEXT,
     camera_model TEXT,
     camera_serial TEXT,
-    
-    -- Lens Information  
+
+    -- Lens Information
     lens_make TEXT,
     lens_model TEXT,
     lens_serial TEXT,
-    
+
     -- Exposure Settings
     iso INTEGER,
     aperture REAL,
@@ -602,41 +602,41 @@ CREATE TABLE metadata_enhanced (
     exposure_compensation REAL,
     exposure_mode TEXT,
     metering_mode TEXT,
-    
+
     -- Focal Length
     focal_length REAL,
     focal_length_35mm INTEGER,
-    
+
     -- Flash
     flash_used BOOLEAN,
     flash_mode TEXT,
-    
+
     -- White Balance
     white_balance TEXT,
     color_temperature INTEGER,
-    
+
     -- Image Quality
     image_quality TEXT,
     color_space TEXT,
     bit_depth INTEGER,
-    
+
     -- Software
     software TEXT,
     edit_software TEXT,
-    
+
     -- Copyright & Attribution
     copyright TEXT,
     creator TEXT,
     creator_tool TEXT,
-    
+
     -- Composite Fields
     exposure_triangle TEXT,
     searchable_text TEXT,
-    
+
     -- Timestamps
     extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+
     -- Foreign key to original metadata
     metadata_id INTEGER REFERENCES metadata(id)
 );
@@ -660,12 +660,12 @@ export interface PhotoMetadata {
   camera_make?: string;
   camera_model?: string;
   camera_serial?: string;
-  
+
   // Lens Information
   lens_make?: string;
   lens_model?: string;
   lens_serial?: string;
-  
+
   // Exposure Settings
   iso?: number;
   aperture?: number;
@@ -674,33 +674,33 @@ export interface PhotoMetadata {
   exposure_compensation?: number;
   exposure_mode?: string;
   metering_mode?: string;
-  
+
   // Focal Length
   focal_length?: number;
   focal_length_35mm?: number;
-  
+
   // Flash
   flash_used?: boolean;
   flash_mode?: string;
-  
+
   // White Balance
   white_balance?: string;
   color_temperature?: number;
-  
+
   // Image Quality
   image_quality?: string;
   color_space?: string;
   bit_depth?: number;
-  
+
   // Software
   software?: string;
   edit_software?: string;
-  
+
   // Copyright & Attribution
   copyright?: string;
   creator?: string;
   creator_tool?: string;
-  
+
   // File Information
   file_path: string;
   file_size_bytes?: number;
@@ -710,12 +710,12 @@ export interface PhotoMetadata {
   image_format?: string;
   date_created?: string;
   date_modified?: string;
-  
+
   // GPS Information
   gps_latitude?: number;
   gps_longitude?: number;
   gps_altitude?: number;
-  
+
   // Composite Fields
   exposure_triangle?: string;
 }

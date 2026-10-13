@@ -56,22 +56,22 @@ graph TD
     B --> D[AI Analysis Engine]
     B --> E[Workflow Engine]
     B --> F[Plugin System]
-    
+
     C --> C1[Basic Edits]
     C --> C2[AI Enhancements]
     C --> C3[RAW Processing]
-    
+
     D --> D1[Custom Segmentation]
     D --> D2[Custom Classification]
     D --> D3[Object Detection]
     D --> D4[Video Analysis]
     D --> D5[Audio Analysis]
-    
+
     E --> E1[Visual Builder]
     E --> E2[Conditional Logic]
     E --> E3[Parallel Processing]
     E --> E4[Script Integration]
-    
+
     F --> F1[Third-Party Plugins]
     F --> F2[Custom Models]
     F --> F3[API Integrations]

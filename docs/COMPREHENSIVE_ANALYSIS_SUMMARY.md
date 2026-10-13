@@ -121,7 +121,7 @@ This document summarizes the comprehensive analysis of PhotoSearch from both tec
 ### Pricing Strategy
 **Subscription Models:**
 - Basic Studio: $19.99/month
-- Pro Studio: $39.99/month  
+- Pro Studio: $39.99/month
 - Enterprise Studio: $99.99/month
 
 **Addon Pricing:**

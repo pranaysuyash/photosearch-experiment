@@ -7,7 +7,7 @@ This document captures key user experience decisions made for the PhotoSearch ap
 
 ### 1. User Mental Model First
 **Decision**: Default to semantic search, not metadata search
-**Reasoning**: 
+**Reasoning**:
 - When users type "people" they expect to find people in photos, not filenames containing "people"
 - Users think in concepts and visual content, not technical metadata
 - This matches the mental model of how humans naturally search for visual content

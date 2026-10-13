@@ -1,6 +1,6 @@
 # Pending Tasks - Advanced Face Features Implementation
 
-**Date**: 2025-12-27  
+**Date**: 2025-12-27
 **Status**: Phase 1 - Integration Pending
 
 ## Summary
@@ -28,8 +28,8 @@ Phase 1 (High-Performance Foundation) is **partially complete**. The core FAISS 
 
 The `PerformanceOptimizedFaceService` requires these methods in `FaceClusteringDB`:
 
-- [ ] **`get_all_cluster_prototypes()`** 
-  - Should return: `Dict[str, Dict[str, Any]]` 
+- [ ] **`get_all_cluster_prototypes()`**
+  - Should return: `Dict[str, Dict[str, Any]]`
   - Format: `{cluster_id: {"embedding": np.ndarray, "label": str}}`
   - Purpose: Load all cluster prototypes into FAISS index
 
@@ -124,15 +124,15 @@ The `PerformanceOptimizedFaceService` requires these methods in `FaceClusteringD
        # Query face_clusters table for prototype_embedding
        # Convert bytes to numpy arrays
        # Return dict format
-   
+
    def get_face_detection(self, face_id: str) -> Optional[FaceDetection]:
        """Get face detection by ID."""
        # Query face_detections table
-   
+
    def get_faces_for_cluster(self, cluster_id: str) -> List[FaceDetection]:
        """Get all faces in a cluster."""
        # Query via photo_person_associations
-   
+
    def get_cluster_count(self) -> int:
        """Get total number of clusters."""
        # Simple COUNT query
@@ -164,4 +164,3 @@ The `PerformanceOptimizedFaceService` requires these methods in `FaceClusteringD
 - The main blocker is database method integration
 - Once database methods are added, Phase 1 can be completed quickly
 - Phase 2 can start in parallel once Phase 1 database methods are done
-

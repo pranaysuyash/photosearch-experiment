@@ -113,4 +113,3 @@ Connection validation:
 - `server/tests/test_sources.py` covers source storage + redaction.
 - `server/tests/test_source_items.py` covers manifest behavior.
 - `ui/src/test/sources-ui.test.tsx` verifies we no longer expose “paste a path” UI and that Sources has a connect affordance.
-

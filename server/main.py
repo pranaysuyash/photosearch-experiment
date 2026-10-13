@@ -96,7 +96,6 @@ from server.api.routers.browse import router as browse_router
 
 if TYPE_CHECKING:
     from src.logging_config import PerformanceTracker
-    from server.embedding_generator import EmbeddingGenerator as _EmbeddingGenerator
 
 
 # Simple in-memory rate limiting counters (per-IP sliding window)
