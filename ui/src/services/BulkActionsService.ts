@@ -7,6 +7,34 @@ import { useToast } from '../components/toast/useToast';
 
 type BulkActionState = Record<string, unknown>;
 
+type TrashMoveResponse = {
+  moved: Array<{ id: string; original_path: string }>;
+  errors: string[];
+};
+
+type TrashRestoreResponse = {
+  restored: string[];
+  errors: string[];
+};
+
+const pluralize = (count: number, noun: string) =>
+  `${count} ${noun}${count === 1 ? '' : 's'}`;
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const message = (await response.text()) || response.statusText;
+    throw new Error(message || `Request failed (${response.status})`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 interface BulkAction {
   id: string;
   type: 'delete' | 'favorite' | 'tag' | 'album';
@@ -56,6 +84,7 @@ class BulkActionsService {
     }
 
     const action = this.history[actionIndex];
+    let success = false;
 
     // In a real implementation, this would use the beforeState to revert the action
     // For now, we'll implement specific undo operations per type
@@ -64,31 +93,67 @@ class BulkActionsService {
         case 'delete':
           // In the case of a delete operation, we'd need to restore from trash
           // This would involve calling an API to restore the files
-          // TODO: Implement actual trash restore functionality
+          {
+            const itemIds = (action.afterState as { itemIds?: string[] }).itemIds;
+            if (!itemIds || itemIds.length === 0) {
+              console.warn('Undo delete missing trash item IDs');
+              break;
+            }
+            const payload = await postJson<TrashRestoreResponse>(
+              '/api/trash/restore',
+              { item_ids: itemIds }
+            );
+            if (payload.errors?.length) {
+              console.warn('Trash restore errors:', payload.errors);
+            }
+            success = payload.errors?.length === 0;
+          }
           break;
 
         case 'favorite':
           // Toggle favorites back to original state
-          // TODO: Implement actual favorite toggle revert
+          {
+            const results = await Promise.allSettled(
+              action.targetIds.map(async (path) => {
+                const response = await fetch(
+                  `/api/photos/${encodeURIComponent(path)}/favorite/toggle`,
+                  { method: 'POST' }
+                );
+                return { ok: response.ok };
+              })
+            );
+            let failures = 0;
+            for (const result of results) {
+              if (result.status !== 'fulfilled' || !result.value.ok) {
+                failures += 1;
+              }
+            }
+            if (failures > 0) {
+              console.warn(`Favorite undo failed for ${failures} item(s)`);
+            }
+            success = failures === 0;
+          }
           break;
 
         case 'tag':
           // Remove tags that were added
-          // TODO: Implement actual tag removal
+          console.warn('Undo not implemented for tag actions');
           break;
 
         case 'album':
           // Remove from album
-          // TODO: Implement actual album removal
+          console.warn('Undo not implemented for album actions');
           break;
 
         default:
           console.warn(`No undo handler for action type:`, action.type);
       }
 
-      // Remove the action from history after undo
-      this.history = this.history.filter((a) => a.id !== actionId);
-      return true;
+      // Remove the action from history after a successful undo
+      if (success) {
+        this.history = this.history.filter((a) => a.id !== actionId);
+      }
+      return success;
     } catch (error) {
       console.error('Error performing undo:', error);
       return false;
@@ -109,42 +174,55 @@ export function useBulkActions() {
       const beforeState = { photoPaths, operation: 'delete' };
 
       // Perform the delete operation (move to trash)
-      await Promise.all(
-        photoPaths.map((path) =>
-          fetch('/api/trash/move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ paths: [path] }),
-          })
-        )
-      );
+      const payload = await postJson<TrashMoveResponse>('/api/trash/move', {
+        file_paths: photoPaths,
+      });
+
+      const moved = payload.moved ?? [];
+      const errors = payload.errors ?? [];
+      const movedIds = moved.map((item) => item.id);
+      const movedPaths = moved.map((item) => item.original_path);
+
+      if (movedIds.length === 0) {
+        addToast({
+          type: 'error',
+          message: 'Failed to move photos to trash',
+        });
+        return;
+      }
+
+      if (errors.length > 0) {
+        addToast({
+          type: 'warning',
+          message: `Failed to move ${pluralize(
+            errors.length,
+            'item'
+          )} to trash`,
+        });
+      }
 
       // Record the action for undo
       const actionId = bulkActionsService.storeAction({
         type: 'delete',
-        targetIds: photoPaths,
-        beforeState,
-        afterState: { paths: photoPaths, status: 'deleted' },
-        description: `Deleted ${photoPaths.length} photo${
-          photoPaths.length > 1 ? 's' : ''
-        }`,
+        targetIds: movedPaths,
+        beforeState: { ...beforeState, photoPaths: movedPaths },
+        afterState: { itemIds: movedIds, status: 'deleted' },
+        description: `Deleted ${pluralize(movedIds.length, 'photo')}`,
       });
 
       // Show notification with undo option
       addToast({
         type: 'undo',
-        message: `Moved ${photoPaths.length} photo${
-          photoPaths.length > 1 ? 's' : ''
-        } to trash`,
+        message: `Moved ${pluralize(movedIds.length, 'photo')} to trash`,
         actionLabel: 'Undo',
         onAction: async () => {
           const success = await bulkActionsService.undoAction(actionId);
-          if (success) {
-            addToast({
-              type: 'info',
-              message: 'Restore operation initiated',
-            });
-          }
+          addToast({
+            type: success ? 'info' : 'error',
+            message: success
+              ? 'Restore operation initiated'
+              : 'Failed to restore from trash',
+          });
         },
         duration: 8000, // Keep visible longer for undo
       });
@@ -163,40 +241,74 @@ export function useBulkActions() {
       const beforeState = { photoPaths, operation: 'toggle_favorite' };
 
       // Toggle favorites
-      await Promise.all(
-        photoPaths.map((path) =>
-          fetch(`/api/photos/${encodeURIComponent(path)}/favorite/toggle`, {
-            method: 'POST',
-          })
-        )
+      const results = await Promise.allSettled(
+        photoPaths.map(async (path) => {
+          const response = await fetch(
+            `/api/photos/${encodeURIComponent(path)}/favorite/toggle`,
+            {
+              method: 'POST',
+            }
+          );
+          return { path, ok: response.ok };
+        })
       );
+
+      const successfulPaths: string[] = [];
+      let failures = 0;
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value.ok) {
+          successfulPaths.push(result.value.path);
+        } else {
+          failures += 1;
+        }
+      }
+
+      if (successfulPaths.length === 0) {
+        addToast({
+          type: 'error',
+          message: 'Failed to toggle favorites',
+        });
+        return;
+      }
+
+      if (failures > 0) {
+        addToast({
+          type: 'warning',
+          message: `Failed to toggle ${pluralize(failures, 'item')}`,
+        });
+      }
 
       // Record the action for undo
       const actionId = bulkActionsService.storeAction({
         type: 'favorite',
-        targetIds: photoPaths,
-        beforeState,
-        afterState: { paths: photoPaths, status: 'toggled_favorite' },
-        description: `Toggled favorites for ${photoPaths.length} photo${
-          photoPaths.length > 1 ? 's' : ''
-        }`,
+        targetIds: successfulPaths,
+        beforeState: { ...beforeState, photoPaths: successfulPaths },
+        afterState: {
+          paths: successfulPaths,
+          status: 'toggled_favorite',
+        },
+        description: `Toggled favorites for ${pluralize(
+          successfulPaths.length,
+          'photo'
+        )}`,
       });
 
       // Show notification with undo option
       addToast({
         type: 'undo',
-        message: `Toggled favorites for ${photoPaths.length} photo${
-          photoPaths.length > 1 ? 's' : ''
-        }`,
+        message: `Toggled favorites for ${pluralize(
+          successfulPaths.length,
+          'photo'
+        )}`,
         actionLabel: 'Undo',
         onAction: async () => {
           const success = await bulkActionsService.undoAction(actionId);
-          if (success) {
-            addToast({
-              type: 'info',
-              message: 'Favorite toggle undone',
-            });
-          }
+          addToast({
+            type: success ? 'info' : 'error',
+            message: success
+              ? 'Favorite toggle undone'
+              : 'Failed to undo favorite toggle',
+          });
         },
         duration: 5000,
       });

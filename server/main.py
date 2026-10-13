@@ -32,7 +32,6 @@ from src.api_versioning import api_version_manager
 from src.logging_config import setup_logging
 
 from server.config import settings
-from server.embedding_generator import EmbeddingGenerator
 from server.core.bootstrap import build_state
 
 # Router imports
@@ -97,6 +96,7 @@ from server.api.routers.browse import router as browse_router
 
 if TYPE_CHECKING:
     from src.logging_config import PerformanceTracker
+    from server.embedding_generator import EmbeddingGenerator as _EmbeddingGenerator
 
 
 # Simple in-memory rate limiting counters (per-IP sliding window)
@@ -171,24 +171,30 @@ async def lifespan(app: FastAPI):
     # ─────────────────────────────────────────────────────────────────────────
     # Initialize Embedding Generator
     # ─────────────────────────────────────────────────────────────────────────
-    print("Initializing Embedding Model...")
-    try:
-        state.embedding_generator = EmbeddingGenerator()
-        embedding_generator = state.embedding_generator  # Backward compat
-        print("Embedding Model Loaded.")
+    if test_mode:
+        print("Test mode: skipping Embedding Model initialization.")
+    else:
+        print("Initializing Embedding Model...")
+        try:
+            # Import lazily so test mode and lightweight deployments don't require
+            # heavyweight ML deps at import time.
+            from server.embedding_generator import EmbeddingGenerator
 
-        # Auto-scan 'media' directory on startup
-        media_path = state.base_dir / "media"
-        if not test_mode and media_path.exists() and state.photo_search_engine:
-            print(f"Auto-scanning {media_path}...")
-            try:
-                state.photo_search_engine.scan(str(media_path), force=False)
-                print("Auto-scan complete.")
-            except Exception as e:
-                print(f"Auto-scan failed: {e}")
+            state.embedding_generator = EmbeddingGenerator()
+            embedding_generator = state.embedding_generator  # Backward compat
+            print("Embedding Model Loaded.")
 
-            # Start Real-time Watcher
-            if not test_mode:
+            # Auto-scan 'media' directory on startup
+            media_path = state.base_dir / "media"
+            if media_path.exists() and state.photo_search_engine:
+                print(f"Auto-scanning {media_path}...")
+                try:
+                    state.photo_search_engine.scan(str(media_path), force=False)
+                    print("Auto-scan complete.")
+                except Exception as e:
+                    print(f"Auto-scan failed: {e}")
+
+                # Start Real-time Watcher
 
                 def handle_new_file(filepath: str):
                     """Callback for new files detected by watcher"""
@@ -224,8 +230,8 @@ async def lifespan(app: FastAPI):
                 state.file_watcher = start_watcher(str(media_path), handle_new_file)
                 file_watcher = state.file_watcher  # Backward compat
 
-    except Exception as e:
-        print(f"Startup error: {e}")
+        except Exception as e:
+            print(f"Embedding model startup error: {e}")
 
     # ─────────────────────────────────────────────────────────────────────────
     # Attach state to app for Depends(get_state) access

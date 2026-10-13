@@ -13,12 +13,15 @@ This extends the existing photo search capabilities to video content,
 enabling users to search within video files using natural language.
 """
 
+from __future__ import annotations
+
 import os
 import sqlite3
 from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime, timezone
 import logging
+from fractions import Fraction
 
 try:
     import cv2
@@ -27,6 +30,7 @@ try:
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
+    np = None  # type: ignore[misc]
     import logging
 
     logger = logging.getLogger(__name__)
@@ -253,7 +257,7 @@ class VideoAnalyzer:
 
             metadata = {
                 "duration": float(probe["format"].get("duration", 0)),
-                "fps": eval(video_stream.get("r_frame_rate", "0/1")),  # Convert fraction to float
+                "fps": self._parse_fraction(video_stream.get("r_frame_rate", "0/1")),
                 "width": int(video_stream.get("width", 0)),
                 "height": int(video_stream.get("height", 0)),
                 "codec": video_stream.get("codec_name", "unknown"),
@@ -266,6 +270,14 @@ class VideoAnalyzer:
         except Exception as e:
             self.logger.error(f"Failed to extract video metadata: {str(e)}")
             raise
+
+    @staticmethod
+    def _parse_fraction(value: str) -> float:
+        """Safely parse ffprobe fraction strings like 30000/1001."""
+        try:
+            return float(Fraction(value))
+        except (ValueError, ZeroDivisionError, TypeError):
+            return 0.0
 
     def _extract_keyframes(self, video_path: str, metadata: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Extract keyframes from video at regular intervals."""

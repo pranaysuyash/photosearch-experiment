@@ -4,10 +4,13 @@ Comprehensive Metadata Extractor - Extract ALL metadata from any file
 This module extracts the MOST comprehensive metadata possible from any file:
 - Filesystem metadata (times, size, permissions, owner, extended attributes)
 - EXIF data (ALL tags including proprietary MakerNote)
+- IPTC metadata (keywords, creator, rights, location)
+- XMP metadata (Dublin Core, Photoshop, IPTC Core)
 - GPS coordinates (with decimal conversion)
 - Image properties (resolution, color space, ICC profiles)
 - Video properties (ALL ffprobe fields - format, streams, chapters)
 - File integrity (MD5, SHA256 hashes)
+- Perceptual hashes (pHash, dHash, aHash, wHash)
 - Thumbnails (embedded or generated)
 - Calculated/inferred metadata (aspect ratios, file age, time periods, etc.)
 
@@ -31,9 +34,10 @@ import stat
 import hashlib
 import logging
 import mimetypes
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 import base64
 
 # Image processing
@@ -60,6 +64,33 @@ try:
     HEIF_AVAILABLE = True
 except ImportError:
     HEIF_AVAILABLE = False
+
+# IPTC metadata
+try:
+    from iptcinfo3 import IPTCInfo
+
+    IPTC_AVAILABLE = True
+except ImportError:
+    IPTC_AVAILABLE = False
+
+# XMP metadata
+try:
+    from libxmp import ExempiLoadError, XMPFiles, XMPError, consts as xmp_consts
+
+    XMP_AVAILABLE = True
+except ImportError:
+    XMP_AVAILABLE = False
+    xmp_consts = None  # type: ignore[assignment]
+    ExempiLoadError = None  # type: ignore[assignment]
+    XMPError = None  # type: ignore[assignment]
+
+# Perceptual hashing
+try:
+    import imagehash
+
+    IMAGEHASH_AVAILABLE = True
+except ImportError:
+    IMAGEHASH_AVAILABLE = False
 
 # PDF processing
 try:
@@ -88,6 +119,8 @@ except ImportError:
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+_EXEMPI_AVAILABLE: Optional[bool] = None
 
 
 def extract_filesystem_metadata(filepath: str) -> Dict[str, Any]:
@@ -197,6 +230,365 @@ def extract_extended_attributes(filepath: str) -> Dict[str, Any]:
         return {"available": True, "attributes": attrs}
     except Exception as e:
         logger.error(f"Error extracting extended attributes: {e}")
+        return {"available": False, "error": str(e)}
+
+
+def _normalize_metadata_key(key: str) -> str:
+    """Normalize metadata keys for consistent mapping."""
+    key_clean = key.strip().lower()
+    key_clean = re.sub(r"[^a-z0-9]+", " ", key_clean)
+    return " ".join(key_clean.split())
+
+
+def _coerce_metadata_value(value: Any) -> Any:
+    """Normalize metadata values to strings or lists of strings."""
+    if value is None:
+        return None
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, (list, tuple)):
+        coerced = [_coerce_metadata_value(item) for item in value]
+        return [item for item in coerced if item not in (None, "")]
+    return str(value)
+
+
+def extract_iptc_metadata(filepath: str) -> Optional[Dict[str, Any]]:
+    """
+    Extract IPTC metadata for professional photo fields.
+
+    Args:
+        filepath: Path to image file
+
+    Returns:
+        Dictionary with IPTC data or None if not available
+    """
+    if not IPTC_AVAILABLE:
+        return {"available": False, "reason": "iptcinfo3 not installed"}
+
+    ext = Path(filepath).suffix.lower()
+    if ext not in {".jpg", ".jpeg", ".tif", ".tiff"}:
+        return None
+
+    iptc_field_map = {
+        "object name": "title",
+        "headline": "headline",
+        "caption abstract": "description",
+        "keywords": "keywords",
+        "by line": "creator",
+        "credit": "credit_line",
+        "source": "source",
+        "copyright notice": "copyright",
+        "special instructions": "instructions",
+        "city": "location_city",
+        "province state": "location_state",
+        "country primary location name": "location_country",
+        "country primary location code": "location_country_code",
+        "sublocation": "location_sublocation",
+        "intellectual genre": "intellectual_genre",
+        "scene": "scene_code",
+        "subject reference": "subject_code",
+        "event": "event",
+    }
+
+    try:
+        info = IPTCInfo(filepath, force=True)
+        raw: Dict[str, Any] = {}
+        fields: Dict[str, Any] = {}
+        data_source = getattr(info, "_data", None)
+        if data_source is None:
+            data_source = info
+
+        for key, value in data_source.items():
+            if hasattr(data_source, "_key_as_str"):
+                try:
+                    key_str = data_source._key_as_str(key)
+                except Exception:
+                    key_str = str(key)
+            else:
+                key_str = str(key)
+            cleaned = _coerce_metadata_value(value)
+            if cleaned in (None, "", []):
+                continue
+            raw[key_str] = cleaned
+
+            normalized_key = _normalize_metadata_key(key_str)
+            mapped_key = iptc_field_map.get(normalized_key)
+            if mapped_key and mapped_key not in fields:
+                fields[mapped_key] = cleaned
+
+        if not raw and not fields:
+            return None
+
+        return {"available": True, "fields": fields, "raw": raw}
+    except Exception as e:
+        logger.error(f"Error extracting IPTC metadata: {e}")
+        return {"available": False, "error": str(e)}
+
+
+def _extract_xmp_property(xmp, namespace: str, name: str) -> Optional[str]:
+    """Safely extract a single XMP property."""
+    try:
+        value = xmp.get_property(namespace, name)
+    except Exception:
+        return None
+    if value in (None, ""):
+        return None
+    return str(value).strip()
+
+
+def _extract_xmp_array(xmp, namespace: str, name: str) -> List[str]:
+    """Safely extract an XMP array property."""
+    items: List[str] = []
+    try:
+        count = xmp.count_array_items(namespace, name)
+    except Exception:
+        count = 0
+
+    for idx in range(1, count + 1):
+        try:
+            item = xmp.get_array_item(namespace, name, idx)
+        except Exception:
+            continue
+        if item not in (None, ""):
+            items.append(str(item).strip())
+
+    if not items:
+        fallback = _extract_xmp_property(xmp, namespace, name)
+        if fallback:
+            items.append(fallback)
+
+    return items
+
+
+def extract_xmp_metadata(filepath: str) -> Optional[Dict[str, Any]]:
+    """
+    Extract XMP metadata (Dublin Core, Photoshop, IPTC Core, XMP Rights).
+
+    Args:
+        filepath: Path to image file
+
+    Returns:
+        Dictionary with XMP data or None if not available
+    """
+    global _EXEMPI_AVAILABLE
+    if not XMP_AVAILABLE or xmp_consts is None:
+        return {"available": False, "reason": "python-xmp-toolkit not installed"}
+
+    if _EXEMPI_AVAILABLE is None:
+        try:
+            import ctypes.util
+            import os
+
+            lib_path = ctypes.util.find_library("exempi")
+            if not lib_path:
+                for candidate in ("/opt/homebrew/lib/libexempi.dylib", "/opt/local/lib/libexempi.dylib"):
+                    if os.path.exists(candidate):
+                        lib_path = candidate
+                        break
+            _EXEMPI_AVAILABLE = bool(lib_path)
+        except Exception:
+            _EXEMPI_AVAILABLE = False
+
+    if not _EXEMPI_AVAILABLE:
+        return {"available": False, "reason": "exempi library not found"}
+
+    xmpfile = None
+    try:
+        xmpfile = XMPFiles(file_path=filepath, open_forupdate=False)
+        xmp = xmpfile.get_xmp()
+        if xmp is None:
+            return None
+
+        raw: Dict[str, Any] = {}
+        fields: Dict[str, Any] = {}
+
+        ns_dc = getattr(xmp_consts, "XMP_NS_DC", None)
+        ns_photoshop = getattr(xmp_consts, "XMP_NS_PHOTOSHOP", None) or getattr(xmp_consts, "XMP_NS_Photoshop", None)
+        ns_xmp = getattr(xmp_consts, "XMP_NS_XMP", None)
+        ns_rights = getattr(xmp_consts, "XMP_NS_XMP_RIGHTS", None) or getattr(xmp_consts, "XMP_NS_XMP_Rights", None)
+        ns_iptc = (
+            getattr(xmp_consts, "XMP_NS_IPTCCORE", None)
+            or getattr(xmp_consts, "XMP_NS_IPTCCore", None)
+            or getattr(xmp_consts, "XMP_NS_IPTC_CORE", None)
+        )
+
+        dc_data: Dict[str, Any] = {}
+        if ns_dc:
+            dc_title = _extract_xmp_array(xmp, ns_dc, "title")
+        else:
+            dc_title = []
+        if dc_title:
+            dc_data["title"] = dc_title
+            fields["title"] = dc_title[0]
+
+        dc_description = _extract_xmp_array(xmp, ns_dc, "description") if ns_dc else []
+        if dc_description:
+            dc_data["description"] = dc_description
+            fields["description"] = dc_description[0]
+
+        dc_creator = _extract_xmp_array(xmp, ns_dc, "creator") if ns_dc else []
+        if dc_creator:
+            dc_data["creator"] = dc_creator
+            fields["creator"] = dc_creator
+
+        dc_subject = _extract_xmp_array(xmp, ns_dc, "subject") if ns_dc else []
+        if dc_subject:
+            dc_data["subject"] = dc_subject
+            fields["keywords"] = dc_subject
+
+        dc_rights = _extract_xmp_array(xmp, ns_dc, "rights") if ns_dc else []
+        if dc_rights:
+            dc_data["rights"] = dc_rights
+
+        if dc_data:
+            raw["dc"] = dc_data
+
+        photoshop_data: Dict[str, Any] = {}
+        headline = _extract_xmp_property(xmp, ns_photoshop, "Headline") if ns_photoshop else None
+        if headline:
+            photoshop_data["headline"] = headline
+            fields["headline"] = headline
+
+        credit = _extract_xmp_property(xmp, ns_photoshop, "Credit") if ns_photoshop else None
+        if credit:
+            photoshop_data["credit"] = credit
+            fields["credit_line"] = credit
+
+        source = _extract_xmp_property(xmp, ns_photoshop, "Source") if ns_photoshop else None
+        if source:
+            photoshop_data["source"] = source
+            fields["source"] = source
+
+        instructions = _extract_xmp_property(xmp, ns_photoshop, "Instructions") if ns_photoshop else None
+        if instructions:
+            photoshop_data["instructions"] = instructions
+            fields["instructions"] = instructions
+
+        city = _extract_xmp_property(xmp, ns_photoshop, "City") if ns_photoshop else None
+        if city:
+            photoshop_data["city"] = city
+            fields["location_city"] = city
+
+        state = _extract_xmp_property(xmp, ns_photoshop, "State") if ns_photoshop else None
+        if state:
+            photoshop_data["state"] = state
+            fields["location_state"] = state
+
+        country = _extract_xmp_property(xmp, ns_photoshop, "Country") if ns_photoshop else None
+        if country:
+            photoshop_data["country"] = country
+            fields["location_country"] = country
+
+        if photoshop_data:
+            raw["photoshop"] = photoshop_data
+
+        xmp_data: Dict[str, Any] = {}
+        creator_tool = _extract_xmp_property(xmp, ns_xmp, "CreatorTool") if ns_xmp else None
+        if creator_tool:
+            xmp_data["creator_tool"] = creator_tool
+            fields["creator_tool"] = creator_tool
+
+        if xmp_data:
+            raw["xmp"] = xmp_data
+
+        iptc_core: Dict[str, Any] = {}
+        if ns_iptc:
+            iptc_location = _extract_xmp_property(xmp, ns_iptc, "Location")
+            if iptc_location:
+                iptc_core["location"] = iptc_location
+                fields["location_sublocation"] = iptc_location
+
+            iptc_country_code = _extract_xmp_property(xmp, ns_iptc, "CountryCode")
+            if iptc_country_code:
+                iptc_core["country_code"] = iptc_country_code
+                fields["location_country_code"] = iptc_country_code
+
+            iptc_event = _extract_xmp_property(xmp, ns_iptc, "Event")
+            if iptc_event:
+                iptc_core["event"] = iptc_event
+                fields["event"] = iptc_event
+
+            iptc_genre = _extract_xmp_property(xmp, ns_iptc, "IntellectualGenre")
+            if iptc_genre:
+                iptc_core["intellectual_genre"] = iptc_genre
+                fields["intellectual_genre"] = iptc_genre
+
+            iptc_scene = _extract_xmp_array(xmp, ns_iptc, "Scene")
+            if iptc_scene:
+                iptc_core["scene"] = iptc_scene
+                fields["scene_code"] = iptc_scene
+
+            iptc_subject = _extract_xmp_array(xmp, ns_iptc, "SubjectCode")
+            if iptc_subject:
+                iptc_core["subject_code"] = iptc_subject
+                fields["subject_code"] = iptc_subject
+
+            if iptc_core:
+                raw["iptc_core"] = iptc_core
+
+        rights_data: Dict[str, Any] = {}
+        usage_terms = _extract_xmp_array(xmp, ns_rights, "UsageTerms") if ns_rights else []
+        if usage_terms:
+            rights_data["usage_terms"] = usage_terms
+            fields["rights_usage_terms"] = usage_terms
+
+        if rights_data:
+            raw["xmp_rights"] = rights_data
+
+        if not fields and not raw:
+            return None
+
+        return {"available": True, "fields": fields, "raw": raw}
+    except ExempiLoadError:
+        _EXEMPI_AVAILABLE = False
+        return {"available": False, "reason": "exempi library not found"}
+    except XMPError as e:
+        logger.error(f"Error extracting XMP metadata: {e}")
+        return {"available": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Error extracting XMP metadata: {e}")
+        return {"available": False, "error": str(e)}
+    finally:
+        if xmpfile is not None:
+            try:
+                xmpfile.close_file()
+            except Exception:
+                pass
+
+
+def extract_perceptual_hashes(filepath: str) -> Optional[Dict[str, Any]]:
+    """
+    Calculate perceptual hashes for visual similarity.
+
+    Args:
+        filepath: Path to image file
+
+    Returns:
+        Dictionary with perceptual hash values
+    """
+    if not IMAGEHASH_AVAILABLE:
+        return {"available": False, "reason": "imagehash not installed"}
+
+    try:
+        with Image.open(filepath) as img:
+            if img.mode != "RGB":
+                img = img.convert("RGB")
+
+            hashes: Dict[str, Any] = {
+                "available": True,
+                "phash": str(imagehash.phash(img, hash_size=8)),
+                "dhash": str(imagehash.dhash(img, hash_size=8)),
+                "ahash": str(imagehash.average_hash(img, hash_size=8)),
+            }
+
+            try:
+                hashes["whash"] = str(imagehash.whash(img, hash_size=8))
+            except Exception:
+                pass
+
+            return hashes
+    except Exception as e:
+        logger.error(f"Error calculating perceptual hashes: {e}")
         return {"available": False, "error": str(e)}
 
 
@@ -542,7 +934,7 @@ def extract_svg_properties(filepath: str) -> Optional[Dict[str, Any]]:
         Dictionary with SVG metadata
     """
     try:
-        import xml.etree.ElementTree as ET
+        from defusedxml import ElementTree as ET
 
         tree = ET.parse(filepath)
         root = tree.getroot()
@@ -785,12 +1177,15 @@ def extract_all_metadata(filepath: str) -> Dict[str, Any]:
         "extended_attributes": extract_extended_attributes(filepath),
         "image": None,
         "exif": None,
+        "iptc": None,
+        "xmp": None,
         "gps": None,
         "video": None,
         "audio": None,
         "pdf": None,
         "svg": None,
         "hashes": extract_file_hashes(filepath),
+        "perceptual_hashes": None,
         "thumbnail": None,
         "calculated": {},
     }
@@ -802,8 +1197,11 @@ def extract_all_metadata(filepath: str) -> Dict[str, Any]:
     if mime_type and mime_type.startswith("image"):
         metadata["image"] = extract_image_properties(filepath)
         metadata["exif"] = extract_exif_metadata(filepath)
+        metadata["iptc"] = extract_iptc_metadata(filepath)
+        metadata["xmp"] = extract_xmp_metadata(filepath)
         metadata["gps"] = extract_gps_metadata(filepath)
         metadata["thumbnail"] = extract_thumbnail(filepath)
+        metadata["perceptual_hashes"] = extract_perceptual_hashes(filepath)
 
     # Extract video-specific metadata
     elif mime_type and mime_type.startswith("video"):

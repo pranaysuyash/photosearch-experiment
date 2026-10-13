@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2025-12-29T14:33:25.444823",
-    "last_update_date": "2025-12-29T14:33:25.444826",
+    "first_scan_date": "2026-04-03T20:00:14.994754",
+    "last_update_date": "2026-04-03T20:00:14.994757",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1069,
-    "total_images": 1067,
+    "total_files": 1068,
+    "total_images": 1066,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -4937,12 +4937,6 @@
         "mtime": 1765124131.622959
       },
       {
-        "name": "pranay aadhaar front.png",
-        "type": "image",
-        "size": 322396,
-        "mtime": 1766335656.2104597
-      },
-      {
         "name": "benchmark_0345.png",
         "type": "image",
         "size": 4403,
@@ -6430,6 +6424,7 @@
         "size": 117675,
         "mtime": 1765162952.8804462
       }
-    ]
+    ],
+    "/Users/pranay/Projects/photosearch_experiment/media::mtime": 1768674086.224653
   }
 }

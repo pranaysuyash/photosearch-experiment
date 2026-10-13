@@ -31,6 +31,7 @@ import {
   localSetItem,
 } from '../../utils/storage';
 import { api } from '../../api';
+import { ApiStatusBanner, type ApiStatus } from '../common/ApiStatusBanner';
 import './Layout.css';
 // import { NotchBar, useNotchAware } from './NotchBar';
 
@@ -59,6 +60,8 @@ const Layout = ({ children }: LayoutProps) => {
     active_files?: number;
     deleted_files?: number;
   } | null>(null);
+
+  const [apiStatus, setApiStatus] = useState<ApiStatus>('unknown');
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -109,6 +112,24 @@ const Layout = ({ children }: LayoutProps) => {
       .getStats()
       .then(setStats)
       .catch(() => setStats(null));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const check = async () => {
+      const ok = await api.ping(1200);
+      if (cancelled) return;
+      setApiStatus(ok ? 'online' : 'offline');
+    };
+
+    // Initial probe (fast) + periodic re-check.
+    check();
+    const interval = window.setInterval(check, 15_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -168,6 +189,17 @@ const Layout = ({ children }: LayoutProps) => {
       <div className='fixed inset-0 z-0 pointer-events-none'>
         <div className='absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/5 blur-[120px] opacity-50 mix-blend-screen animate-pulse-slow' />
         <div className='absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-secondary/5 blur-[120px] opacity-50 mix-blend-screen animate-pulse-slow delay-1000' />
+      </div>
+
+      <div className='fixed top-14 sm:top-16 left-0 right-0 z-[950] pointer-events-none'>
+        <ApiStatusBanner
+          status={apiStatus}
+          apiBase={String(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')}
+          onRetry={() => {
+            setApiStatus('unknown');
+            api.ping(1200).then((ok) => setApiStatus(ok ? 'online' : 'offline'));
+          }}
+        />
       </div>
 
       {minimalMode && (

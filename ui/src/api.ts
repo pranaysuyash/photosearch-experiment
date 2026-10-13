@@ -578,6 +578,40 @@ export const api = {
     return res.data;
   },
 
+  /**
+   * Fast availability check for the backend.
+   *
+   * - Prefer `/health` (explicit probe endpoint).
+   * - Fall back to `/` for backward compatibility.
+   * - Never throws: returns boolean.
+   */
+  ping: async (timeoutMs: number = 1500): Promise<boolean> => {
+    const isNotFound = (err: unknown) =>
+      typeof err === 'object' &&
+      err !== null &&
+      // axios error shape: { response: { status: number } }
+      'response' in err &&
+      typeof (err as { response?: { status?: number } }).response?.status ===
+        'number' &&
+      (err as { response: { status: number } }).response.status === 404;
+
+    try {
+      await apiClient.get('/health', { timeout: timeoutMs });
+      return true;
+    } catch (err) {
+      if (!isNotFound(err)) {
+        return false;
+      }
+    }
+
+    try {
+      await apiClient.get('/', { timeout: timeoutMs });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
   scan: async (path: string, background: boolean = true) => {
     const res = await apiClient.post('/scan', { path, background });
     return res.data; // Returns { job_id, status } if background=true
