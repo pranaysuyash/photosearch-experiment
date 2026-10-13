@@ -1,6 +1,6 @@
 # Session Context
 
-- Generated: 2026-09-29T01:06:50Z
+- Generated: 2026-10-13T16:38:33Z
 - Project: `photosearch_experiment`
 - Provider: `ollama`
 - Model: `nomic-embed-text`
@@ -13,7 +13,7 @@
 - Operating doctrine: `OPERATING_DOCTRINE.md` v8.2 (sha256 `e14bab7b1964d8b7…`) — always applies
 - Project: `photosearch_experiment`
 - Routing mechanism: agent-start doctrine-family router v1.1 (deterministic intent-signal model)
-- Generated at: 2026-09-29T01:06:50Z
+- Generated at: 2026-10-13T16:38:34Z
 - Generator: agent-start lib/doctrine_family.py
 
 Doctrine routing for this run (task intent not supplied; deferred):
@@ -44,49 +44,49 @@ No specialist doctrine was selected for this run. The Operating Doctrine routing
 ### Architecture Decisions
 - Collection: `projects_proj_photosearch_experiment`
 - Query: `architecture decisions for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Project Management Workflow
 - Collection: `projects_proj_photosearch_experiment`
 - Query: `project management workflow for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Known Issues and Worklogs
 - Collection: `projects_proj_photosearch_experiment`
 - Query: `known issues and worklog for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Prompts and Guidelines
 - Collection: `projects_proj_photosearch_experiment`
 - Query: `prompts and guidelines for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### System Learning Graph
 - Collection: `projects_proj_photosearch_experiment`
 - Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ## Shared Cross-Project Retrieval
 
 ### Reusable Patterns
 - Collection: `projects_workspace_shared`
 - Query: `similar architecture patterns for photosearch_experiment`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Process Templates
 - Collection: `projects_workspace_shared`
 - Query: `project management templates and workflows`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### Common Failure Modes
 - Collection: `projects_workspace_shared`
 - Query: `lessons learned mistakes retrospectives postmortems`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 ### System Learning Graph
 - Collection: `projects_workspace_shared`
 - Query: `knowledge graph memory learning feedback loops autoresearch semantic taste graph`
-_Search failed for this collection/query._
+_Fast mode (--skip-index): retrieval skipped to keep startup non-blocking. Run `/Users/pranay/Projects/agent-start --project photosearch_experiment` for full retrieval, or set `AGENT_START_SKIP_INDEX_RETRIEVE=1` if you want retrieval with skip-index._
 
 
 ---
