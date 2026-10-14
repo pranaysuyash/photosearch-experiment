@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse
 
 from server.config import settings
 from server.utils.files import validate_file_path
+from server.privacy_enforcement import PhotoAccessDenied, assert_photo_access_allowed, user_id_from_request
 from server.api.deps import get_state
 from server.core.state import AppState
 
@@ -33,6 +34,15 @@ async def get_file(request: Request, path: str, download: bool = False, state: A
         client_ip = request.client.host if request.client else "unknown"
         state.ps_logger.warning(f"File access denied - IP: {client_ip}, Path: {path}")
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Privacy controls: a stored control gates this file per its owner's
+    # settings; files without a control record remain default-open.
+    try:
+        assert_photo_access_allowed(path, user_id_from_request(request))
+    except PhotoAccessDenied:
+        client_ip = request.client.host if request.client else "unknown"
+        state.ps_logger.warning(f"Photo privacy denial - IP: {client_ip}, Path: {path}")
+        raise HTTPException(status_code=403, detail="File access denied by privacy controls")
 
     # Additional security: validate file extension
     allowed_extensions = {

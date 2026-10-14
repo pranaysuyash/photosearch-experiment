@@ -11,6 +11,7 @@ from server.auth import AuthError, verify_jwt
 from server.config import settings
 from server.security_utils import hash_for_logs
 from server.signed_urls import TokenError, issue_token, verify_token
+from server.privacy_enforcement import PhotoAccessDenied, assert_photo_access_allowed, user_id_from_request
 from server.utils.http import _make_cache_headers
 from server.utils.images import _negotiate_image_format
 
@@ -91,6 +92,17 @@ async def get_thumbnail(
             )
     except ValueError:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Privacy controls: a stored control gates this photo per its owner's
+    # settings; photos without a control record remain default-open.
+    try:
+        assert_photo_access_allowed(requested_path_str, user_id_from_request(request))
+    except PhotoAccessDenied:
+        logger.warning(
+            f"Privacy denial for image: {hash_for_logs(requested_path_str)} "
+            f"ip={request.client.host if request.client else 'unknown'}"
+        )
+        raise HTTPException(status_code=403, detail="Photo access denied by privacy controls")
 
     # Stat file once for headers / validation
     if not os.path.exists(requested_path_str):
