@@ -26,19 +26,29 @@ def normalize_description(desc: str | None) -> str:
 
 
 def dump_routes(app) -> list[dict]:
-    """Extract route inventory from FastAPI app."""
+    """Extract route inventory from the resolved OpenAPI schema.
+
+    Newer FastAPI wraps included routers in lazy `_IncludedRouter` objects on
+    app.routes, which hides every nested route from an attribute walk (the
+    inventory collapsed to 4 routes). The schema is the resolved truth, so the
+    inventory is derived from it: one source, no framework internals.
+    """
+    schema = app.openapi()
     routes = []
-    for route in app.routes:
-        if hasattr(route, "path") and hasattr(route, "methods"):
-            for method in sorted(route.methods - {"HEAD", "OPTIONS"}):
-                routes.append(
-                    {
-                        "path": route.path,
-                        "method": method,
-                        "name": getattr(route, "name", None),
-                        "summary": normalize_description(getattr(route, "summary", None)),
-                    }
-                )
+    for path, path_data in schema.get("paths", {}).items():
+        for method, op_data in path_data.items():
+            if method in {"HEAD", "OPTIONS", "parameters"}:
+                continue
+            if not isinstance(op_data, dict):
+                continue
+            routes.append(
+                {
+                    "path": path,
+                    "method": method.upper(),
+                    "name": op_data.get("operationId"),
+                    "summary": normalize_description(op_data.get("summary")),
+                }
+            )
     # Sort for deterministic output
     routes.sort(key=lambda r: (r["path"], r["method"]))
     return routes
@@ -80,14 +90,14 @@ def main():
     routes_file = args.output_dir / "routes.json"
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with open(routes_file, "w") as f:
-        json.dump(routes, f, indent=2)
+        f.write(json.dumps(routes, indent=2) + "\n")
     print(f"✓ Routes dumped to {routes_file} ({len(routes)} endpoints)")
 
     # Dump OpenAPI
     openapi = dump_openapi(app)
     openapi_file = args.output_dir / "openapi.json"
     with open(openapi_file, "w") as f:
-        json.dump(openapi, f, indent=2, sort_keys=True)
+        f.write(json.dumps(openapi, indent=2, sort_keys=True) + "\n")
     print(f"✓ OpenAPI dumped to {openapi_file}")
 
     return 0

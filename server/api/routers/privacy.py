@@ -662,6 +662,54 @@ class PhotoPrivacyUpdateRequest(BaseModel):
     allowed_groups: Optional[List[str]] = None
 
 
+class PhotoPrivacyControlResponse(BaseModel):
+    """Per-photo privacy control record (mirrors PrivacyControl)."""
+
+    id: str
+    photo_path: str
+    owner_id: str
+    visibility: str
+    share_permissions: Optional[Dict[str, bool]] = None
+    encryption_enabled: bool = False
+    encryption_key_hash: Optional[str] = None
+    allowed_users: Optional[List[str]] = None
+    allowed_groups: Optional[List[str]] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+class PhotoPrivacyGetResponse(BaseModel):
+    privacy: Optional[PhotoPrivacyControlResponse] = None
+
+
+class PhotoPrivacyUpdateResponse(BaseModel):
+    status: str
+    privacy: Optional[PhotoPrivacyControlResponse] = None
+
+
+class PhotoListResponse(BaseModel):
+    photos: List[Dict[str, Any]]
+    count: int
+
+
+class PhotoAccessResponse(BaseModel):
+    has_access: bool
+
+
+class EncryptedPhotosResponse(BaseModel):
+    encrypted_photos: List[Dict[str, Any]]
+    count: int
+
+
+class PhotoPrivacyStatsResponse(BaseModel):
+    stats: Dict[str, Any]
+
+
+class RevokeAccessResponse(BaseModel):
+    status: str
+    success: bool
+
+
 def _get_privacy_controls_db() -> PrivacyControlsDB:
     """Per-photo controls live in the same privacy.db as consent records."""
     return PrivacyControlsDB(Path(settings.FACE_CLUSTERS_DB_PATH).parent / "privacy.db")
@@ -671,7 +719,7 @@ def _control_dict(control) -> Dict[str, Any]:
     return asdict(control) if is_dataclass(control) else control
 
 
-@router.post("/privacy/control/{photo_path:path}")
+@router.post("/privacy/control/{photo_path:path}", response_model=PhotoPrivacyControlResponse)
 async def set_photo_privacy_control(photo_path: str, body: PhotoPrivacyControlRequest, request: Request):
     """Set privacy controls for a photo (owner, visibility, sharing, encryption)."""
     try:
@@ -698,7 +746,7 @@ async def set_photo_privacy_control(photo_path: str, body: PhotoPrivacyControlRe
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/control/{photo_path:path}")
+@router.get("/privacy/control/{photo_path:path}", response_model=PhotoPrivacyGetResponse)
 async def get_photo_privacy_control(photo_path: str):
     """Get the privacy control settings for a photo."""
     try:
@@ -709,7 +757,7 @@ async def get_photo_privacy_control(photo_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/privacy/control/{photo_path:path}")
+@router.put("/privacy/control/{photo_path:path}", response_model=PhotoPrivacyUpdateResponse)
 async def update_photo_privacy_control(photo_path: str, body: PhotoPrivacyUpdateRequest, request: Request):
     """Update individual privacy control fields for a photo."""
     try:
@@ -748,7 +796,7 @@ async def update_photo_privacy_control(photo_path: str, body: PhotoPrivacyUpdate
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/visible/{visibility}/{owner_id}")
+@router.get("/privacy/visible/{visibility}/{owner_id}", response_model=PhotoListResponse)
 async def get_photos_by_visibility(visibility: str, owner_id: str, limit: int = 50, offset: int = 0):
     """List an owner's photos with a given visibility setting."""
     try:
@@ -759,7 +807,7 @@ async def get_photos_by_visibility(visibility: str, owner_id: str, limit: int = 
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/access/{user_id}")
+@router.get("/privacy/access/{user_id}", response_model=PhotoListResponse)
 async def get_photos_accessible_to_user(user_id: str, limit: int = 50, offset: int = 0):
     """List photos a user has permission to access."""
     try:
@@ -770,7 +818,7 @@ async def get_photos_accessible_to_user(user_id: str, limit: int = 50, offset: i
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/check-access/{photo_path:path}/{user_id}")
+@router.get("/privacy/check-access/{photo_path:path}/{user_id}", response_model=PhotoAccessResponse)
 async def check_photo_access(photo_path: str, user_id: str):
     """Check whether a user has permission to access a photo."""
     try:
@@ -781,7 +829,7 @@ async def check_photo_access(photo_path: str, user_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/encrypted/{owner_id}")
+@router.get("/privacy/encrypted/{owner_id}", response_model=EncryptedPhotosResponse)
 async def get_encrypted_photos(owner_id: str):
     """List an owner's photos that have encryption enabled."""
     try:
@@ -792,7 +840,7 @@ async def get_encrypted_photos(owner_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/privacy/stats/{owner_id}")
+@router.get("/privacy/stats/{owner_id}", response_model=PhotoPrivacyStatsResponse)
 async def get_owner_privacy_stats(owner_id: str):
     """Privacy-control statistics for an owner."""
     try:
@@ -803,7 +851,7 @@ async def get_owner_privacy_stats(owner_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/privacy/revoke-access/{photo_path:path}/{user_id}")
+@router.delete("/privacy/revoke-access/{photo_path:path}/{user_id}", response_model=RevokeAccessResponse)
 async def revoke_user_photo_access(photo_path: str, user_id: str):
     """Revoke a user's access to a photo."""
     try:

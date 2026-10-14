@@ -2,1885 +2,2773 @@
   {
     "path": "/",
     "method": "GET",
-    "name": "root",
-    "summary": ""
+    "name": "root__get",
+    "summary": "Root"
   },
   {
     "path": "/admin/unmask",
     "method": "POST",
-    "name": "admin_unmask",
-    "summary": ""
+    "name": "admin_unmask_admin_unmask_post",
+    "summary": "Admin Unmask"
   },
   {
-    "path": "/ai/analysis/{path:path}",
+    "path": "/ai/analysis/{path}",
     "method": "GET",
-    "name": "get_image_analysis",
-    "summary": ""
+    "name": "get_image_analysis_ai_analysis__path__get",
+    "summary": "Get Image Analysis"
   },
   {
     "path": "/ai/analytics/patterns",
     "method": "POST",
-    "name": "analyze_photographer_patterns",
-    "summary": ""
+    "name": "analyze_photographer_patterns_ai_analytics_patterns_post",
+    "summary": "Analyze Photographer Patterns"
   },
   {
     "path": "/ai/analyze",
     "method": "POST",
-    "name": "analyze_image",
-    "summary": ""
+    "name": "analyze_image_ai_analyze_post",
+    "summary": "Analyze Image"
   },
   {
     "path": "/ai/insights",
     "method": "GET",
-    "name": "get_all_insights",
-    "summary": ""
+    "name": "get_all_insights_ai_insights_get",
+    "summary": "Get All Insights"
   },
   {
     "path": "/ai/insights",
     "method": "POST",
-    "name": "create_ai_insight",
-    "summary": ""
+    "name": "create_ai_insight_ai_insights_post",
+    "summary": "Create Ai Insight"
   },
   {
-    "path": "/ai/insights/photo/{photo_path:path}",
+    "path": "/ai/insights/photo/{photo_path}",
     "method": "GET",
-    "name": "get_insights_for_photo",
-    "summary": ""
+    "name": "get_insights_for_photo_ai_insights_photo__photo_path__get",
+    "summary": "Get Insights For Photo"
   },
   {
     "path": "/ai/insights/stats",
     "method": "GET",
-    "name": "get_insights_stats",
-    "summary": ""
+    "name": "get_insights_stats_ai_insights_stats_get",
+    "summary": "Get Insights Stats"
   },
   {
     "path": "/ai/insights/type/{insight_type}",
     "method": "GET",
-    "name": "get_insights_by_type",
-    "summary": ""
+    "name": "get_insights_by_type_ai_insights_type__insight_type__get",
+    "summary": "Get Insights By Type"
   },
   {
     "path": "/ai/insights/{insight_id}",
     "method": "DELETE",
-    "name": "delete_insight",
-    "summary": ""
+    "name": "delete_insight_ai_insights__insight_id__delete",
+    "summary": "Delete Insight"
   },
   {
     "path": "/ai/insights/{insight_id}",
     "method": "PUT",
-    "name": "update_insight_applied_status",
-    "summary": ""
+    "name": "update_insight_applied_status_ai_insights__insight_id__put",
+    "summary": "Update Insight Applied Status"
   },
   {
     "path": "/albums",
     "method": "GET",
-    "name": "list_albums",
-    "summary": ""
+    "name": "list_albums_albums_get",
+    "summary": "List Albums"
   },
   {
     "path": "/albums",
     "method": "POST",
-    "name": "create_album",
-    "summary": ""
+    "name": "create_album_albums_post",
+    "summary": "Create Album"
   },
   {
     "path": "/albums/{album_id}",
     "method": "DELETE",
-    "name": "delete_album",
-    "summary": ""
+    "name": "delete_album_albums__album_id__delete",
+    "summary": "Delete Album"
   },
   {
     "path": "/albums/{album_id}",
     "method": "GET",
-    "name": "get_album",
-    "summary": ""
+    "name": "get_album_albums__album_id__get",
+    "summary": "Get Album"
   },
   {
     "path": "/albums/{album_id}",
     "method": "PUT",
-    "name": "update_album",
-    "summary": ""
+    "name": "update_album_albums__album_id__put",
+    "summary": "Update Album"
   },
   {
     "path": "/albums/{album_id}/photos",
     "method": "DELETE",
-    "name": "remove_photos_from_album",
-    "summary": ""
+    "name": "remove_photos_from_album_albums__album_id__photos_delete",
+    "summary": "Remove Photos From Album"
   },
   {
     "path": "/albums/{album_id}/photos",
     "method": "POST",
-    "name": "add_photos_to_album",
-    "summary": ""
+    "name": "add_photos_to_album_albums__album_id__photos_post",
+    "summary": "Add Photos To Album"
   },
   {
     "path": "/albums/{album_id}/refresh",
     "method": "POST",
-    "name": "refresh_smart_album",
-    "summary": ""
+    "name": "refresh_smart_album_albums__album_id__refresh_post",
+    "summary": "Refresh Smart Album"
   },
   {
     "path": "/api/actions/detect-apps",
     "method": "GET",
-    "name": "detect_installed_apps",
-    "summary": ""
+    "name": "detect_installed_apps_api_actions_detect_apps_get",
+    "summary": "Detect Installed Apps"
+  },
+  {
+    "path": "/api/analytics/events",
+    "method": "GET",
+    "name": "get_detected_events_api_analytics_events_get",
+    "summary": "Get Detected Events"
+  },
+  {
+    "path": "/api/analytics/person/{person_id}/insights",
+    "method": "GET",
+    "name": "get_person_insights_api_analytics_person__person_id__insights_get",
+    "summary": "Get Person Insights"
+  },
+  {
+    "path": "/api/analytics/person/{person_id}/timeline",
+    "method": "GET",
+    "name": "get_person_timeline_api_analytics_person__person_id__timeline_get",
+    "summary": "Get Person Timeline"
+  },
+  {
+    "path": "/api/analytics/relationships",
+    "method": "GET",
+    "name": "get_photo_relationships_api_analytics_relationships_get",
+    "summary": "Get Photo Relationships"
   },
   {
     "path": "/api/cache/cleanup",
     "method": "GET",
-    "name": "cleanup_cache",
-    "summary": ""
+    "name": "cleanup_cache_api_cache_cleanup_get",
+    "summary": "Cleanup Cache"
   },
   {
     "path": "/api/cache/clear",
     "method": "POST",
-    "name": "clear_api_cache",
-    "summary": ""
+    "name": "clear_api_cache_api_cache_clear_post",
+    "summary": "Clear Api Cache"
   },
   {
     "path": "/api/cache/stats",
     "method": "GET",
-    "name": "get_api_cache_stats",
-    "summary": ""
+    "name": "get_api_cache_stats_api_cache_stats_get",
+    "summary": "Get Api Cache Stats"
+  },
+  {
+    "path": "/api/captions/",
+    "method": "PUT",
+    "name": "update_caption_api_captions__put",
+    "summary": "Update Caption"
+  },
+  {
+    "path": "/api/captions/generate",
+    "method": "POST",
+    "name": "generate_caption_api_captions_generate_post",
+    "summary": "Generate Caption"
+  },
+  {
+    "path": "/api/captions/status",
+    "method": "GET",
+    "name": "get_vlm_status_api_captions_status_get",
+    "summary": "Get Vlm Status"
+  },
+  {
+    "path": "/api/captions/{photo_path}",
+    "method": "DELETE",
+    "name": "delete_caption_api_captions__photo_path__delete",
+    "summary": "Delete Caption"
+  },
+  {
+    "path": "/api/captions/{photo_path}",
+    "method": "GET",
+    "name": "get_caption_api_captions__photo_path__get",
+    "summary": "Get Caption"
   },
   {
     "path": "/api/clusters/{cluster_id}/merge",
     "method": "POST",
-    "name": "merge_clusters",
-    "summary": ""
+    "name": "merge_clusters_api_clusters__cluster_id__merge_post",
+    "summary": "Merge Clusters"
   },
   {
     "path": "/api/clusters/{cluster_id}/quality",
     "method": "GET",
-    "name": "get_cluster_quality",
-    "summary": ""
+    "name": "get_cluster_quality_api_clusters__cluster_id__quality_get",
+    "summary": "Get Cluster Quality"
   },
   {
     "path": "/api/duplicates",
     "method": "GET",
-    "name": "get_duplicates",
-    "summary": ""
+    "name": "get_duplicates_api_duplicates_get",
+    "summary": "Get Duplicates"
   },
   {
     "path": "/api/duplicates/cleanup",
     "method": "POST",
-    "name": "cleanup_duplicates",
-    "summary": ""
+    "name": "cleanup_duplicates_api_duplicates_cleanup_post",
+    "summary": "Cleanup Duplicates"
   },
   {
     "path": "/api/duplicates/scan",
     "method": "POST",
-    "name": "scan_duplicates",
-    "summary": ""
+    "name": "scan_duplicates_api_duplicates_scan_post",
+    "summary": "Scan Duplicates"
   },
   {
     "path": "/api/duplicates/stats",
     "method": "GET",
-    "name": "get_duplicates_stats",
-    "summary": ""
+    "name": "get_duplicates_stats_api_duplicates_stats_get",
+    "summary": "Get Duplicates Stats"
   },
   {
     "path": "/api/duplicates/{group_id}",
     "method": "DELETE",
-    "name": "delete_duplicate_group",
-    "summary": ""
+    "name": "delete_duplicate_group_api_duplicates__group_id__delete",
+    "summary": "Delete Duplicate Group"
   },
   {
     "path": "/api/duplicates/{group_id}/resolve",
     "method": "POST",
-    "name": "resolve_duplicates",
-    "summary": ""
+    "name": "resolve_duplicates_api_duplicates__group_id__resolve_post",
+    "summary": "Resolve Duplicates"
+  },
+  {
+    "path": "/api/faces/age-distribution",
+    "method": "GET",
+    "name": "get_age_distribution_api_faces_age_distribution_get",
+    "summary": "Get Age Distribution"
+  },
+  {
+    "path": "/api/faces/all",
+    "method": "DELETE",
+    "name": "delete_all_faces_api_faces_all_delete",
+    "summary": "Delete All Faces"
+  },
+  {
+    "path": "/api/faces/analytics",
+    "method": "GET",
+    "name": "get_face_analytics_api_faces_analytics_get",
+    "summary": "Get Face Analytics"
+  },
+  {
+    "path": "/api/faces/assign",
+    "method": "POST",
+    "name": "assign_face_by_prototype_api_faces_assign_post",
+    "summary": "Assign Face By Prototype"
+  },
+  {
+    "path": "/api/faces/backends/status",
+    "method": "GET",
+    "name": "get_face_backend_status_api_faces_backends_status_get",
+    "summary": "Get Face Backend Status"
+  },
+  {
+    "path": "/api/faces/batch-assign",
+    "method": "POST",
+    "name": "batch_assign_faces_api_faces_batch_assign_post",
+    "summary": "Batch Assign Faces"
+  },
+  {
+    "path": "/api/faces/cache/clear",
+    "method": "POST",
+    "name": "clear_face_cache_api_faces_cache_clear_post",
+    "summary": "Clear Face Cache"
+  },
+  {
+    "path": "/api/faces/cache/invalidate/{face_id}",
+    "method": "POST",
+    "name": "invalidate_face_cache_api_faces_cache_invalidate__face_id__post",
+    "summary": "Invalidate Face Cache"
+  },
+  {
+    "path": "/api/faces/cache/stats",
+    "method": "GET",
+    "name": "get_face_cache_stats_api_faces_cache_stats_get",
+    "summary": "Get Face Cache Stats"
   },
   {
     "path": "/api/faces/cluster",
     "method": "POST",
-    "name": "cluster_faces_api",
-    "summary": ""
+    "name": "cluster_faces_api_api_faces_cluster_post",
+    "summary": "Cluster Faces Api"
   },
   {
     "path": "/api/faces/clusters",
     "method": "GET",
-    "name": "get_face_clusters",
-    "summary": ""
+    "name": "get_face_clusters_api_faces_clusters_get",
+    "summary": "Get Face Clusters"
+  },
+  {
+    "path": "/api/faces/clusters/hidden",
+    "method": "GET",
+    "name": "get_hidden_clusters_endpoint_api_faces_clusters_hidden_get",
+    "summary": "Get Hidden Clusters Endpoint"
+  },
+  {
+    "path": "/api/faces/clusters/merge-suggestions",
+    "method": "GET",
+    "name": "get_merge_suggestions_api_faces_clusters_merge_suggestions_get",
+    "summary": "Get Merge Suggestions"
+  },
+  {
+    "path": "/api/faces/clusters/merge-suggestions/dismiss",
+    "method": "POST",
+    "name": "dismiss_merge_suggestion_api_faces_clusters_merge_suggestions_dismiss_post",
+    "summary": "Dismiss Merge Suggestion"
+  },
+  {
+    "path": "/api/faces/clusters/visible",
+    "method": "GET",
+    "name": "get_visible_clusters_endpoint_api_faces_clusters_visible_get",
+    "summary": "Get Visible Clusters Endpoint"
   },
   {
     "path": "/api/faces/clusters/{cluster_id}",
     "method": "DELETE",
-    "name": "delete_cluster",
-    "summary": ""
+    "name": "delete_cluster_api_faces_clusters__cluster_id__delete",
+    "summary": "Delete Cluster"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/coherence",
+    "method": "GET",
+    "name": "get_cluster_coherence_api_faces_clusters__cluster_id__coherence_get",
+    "summary": "Get Cluster Coherence"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/export",
+    "method": "GET",
+    "name": "export_cluster_api_faces_clusters__cluster_id__export_get",
+    "summary": "Export Cluster"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/hide",
+    "method": "POST",
+    "name": "hide_cluster_api_faces_clusters__cluster_id__hide_post",
+    "summary": "Hide Cluster"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/indexing",
+    "method": "GET",
+    "name": "get_person_indexing_status_api_faces_clusters__cluster_id__indexing_get",
+    "summary": "Get Person Indexing Status"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/indexing",
+    "method": "POST",
+    "name": "set_person_indexing_status_api_faces_clusters__cluster_id__indexing_post",
+    "summary": "Set Person Indexing Status"
   },
   {
     "path": "/api/faces/clusters/{cluster_id}/label",
     "method": "POST",
-    "name": "set_cluster_label",
-    "summary": ""
+    "name": "set_cluster_label_api_faces_clusters__cluster_id__label_post",
+    "summary": "Set Cluster Label"
   },
   {
     "path": "/api/faces/clusters/{cluster_id}/photos",
     "method": "GET",
-    "name": "get_cluster_photos",
-    "summary": ""
+    "name": "get_cluster_photos_api_faces_clusters__cluster_id__photos_get",
+    "summary": "Get Cluster Photos"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/rename",
+    "method": "POST",
+    "name": "rename_cluster_endpoint_api_faces_clusters__cluster_id__rename_post",
+    "summary": "Rename Cluster Endpoint"
+  },
+  {
+    "path": "/api/faces/clusters/{cluster_id}/unhide",
+    "method": "POST",
+    "name": "unhide_cluster_api_faces_clusters__cluster_id__unhide_post",
+    "summary": "Unhide Cluster"
   },
   {
     "path": "/api/faces/crop/{face_id}",
     "method": "GET",
-    "name": "get_face_crop",
-    "summary": ""
+    "name": "get_face_crop_api_faces_crop__face_id__get",
+    "summary": "Get Face Crop"
+  },
+  {
+    "path": "/api/faces/database/optimize",
+    "method": "POST",
+    "name": "optimize_face_database_api_faces_database_optimize_post",
+    "summary": "Optimize Face Database"
+  },
+  {
+    "path": "/api/faces/database/stats",
+    "method": "GET",
+    "name": "get_face_database_stats_api_faces_database_stats_get",
+    "summary": "Get Face Database Stats"
+  },
+  {
+    "path": "/api/faces/emotions",
+    "method": "GET",
+    "name": "get_emotion_distribution_api_faces_emotions_get",
+    "summary": "Get Emotion Distribution"
+  },
+  {
+    "path": "/api/faces/index/stats",
+    "method": "GET",
+    "name": "get_embedding_index_stats_api_faces_index_stats_get",
+    "summary": "Get Embedding Index Stats"
+  },
+  {
+    "path": "/api/faces/indexing/pause",
+    "method": "POST",
+    "name": "pause_global_indexing_api_faces_indexing_pause_post",
+    "summary": "Pause Global Indexing"
+  },
+  {
+    "path": "/api/faces/indexing/resume",
+    "method": "POST",
+    "name": "resume_global_indexing_api_faces_indexing_resume_post",
+    "summary": "Resume Global Indexing"
+  },
+  {
+    "path": "/api/faces/indexing/status",
+    "method": "GET",
+    "name": "get_global_indexing_status_api_faces_indexing_status_get",
+    "summary": "Get Global Indexing Status"
   },
   {
     "path": "/api/faces/low-confidence",
     "method": "GET",
-    "name": "get_low_confidence_faces",
-    "summary": ""
+    "name": "get_low_confidence_faces_api_faces_low_confidence_get",
+    "summary": "Get Low Confidence Faces"
+  },
+  {
+    "path": "/api/faces/merge",
+    "method": "POST",
+    "name": "merge_clusters_endpoint_api_faces_merge_post",
+    "summary": "Merge Clusters Endpoint"
+  },
+  {
+    "path": "/api/faces/mixed-clusters",
+    "method": "GET",
+    "name": "get_mixed_clusters_api_faces_mixed_clusters_get",
+    "summary": "Get Mixed Clusters"
+  },
+  {
+    "path": "/api/faces/move",
+    "method": "POST",
+    "name": "move_face_api_faces_move_post",
+    "summary": "Move Face"
+  },
+  {
+    "path": "/api/faces/performance/reset",
+    "method": "POST",
+    "name": "reset_performance_stats_api_faces_performance_reset_post",
+    "summary": "Reset Performance Stats"
+  },
+  {
+    "path": "/api/faces/performance/stats",
+    "method": "GET",
+    "name": "get_performance_stats_api_faces_performance_stats_get",
+    "summary": "Get Performance Stats"
   },
   {
     "path": "/api/faces/person/{person_name}",
     "method": "GET",
-    "name": "get_photos_by_person",
-    "summary": ""
+    "name": "get_photos_by_person_api_faces_person__person_name__get",
+    "summary": "Get Photos By Person"
   },
   {
     "path": "/api/faces/photos-with-faces",
     "method": "GET",
-    "name": "get_photos_with_faces",
-    "summary": ""
+    "name": "get_photos_with_faces_api_faces_photos_with_faces_get",
+    "summary": "Get Photos With Faces"
+  },
+  {
+    "path": "/api/faces/privacy/compliance/{user_id}",
+    "method": "GET",
+    "name": "check_privacy_compliance_api_faces_privacy_compliance__user_id__get",
+    "summary": "Check Privacy Compliance"
+  },
+  {
+    "path": "/api/faces/privacy/stats/{user_id}",
+    "method": "GET",
+    "name": "get_privacy_processing_statistics_api_faces_privacy_stats__user_id__get",
+    "summary": "Get Privacy Processing Statistics"
+  },
+  {
+    "path": "/api/faces/process-with-privacy",
+    "method": "POST",
+    "name": "process_faces_with_privacy_controls_api_faces_process_with_privacy_post",
+    "summary": "Process Faces With Privacy Controls"
+  },
+  {
+    "path": "/api/faces/prototypes/recompute",
+    "method": "POST",
+    "name": "recompute_prototypes_api_faces_prototypes_recompute_post",
+    "summary": "Recompute Prototypes"
+  },
+  {
+    "path": "/api/faces/review-queue",
+    "method": "GET",
+    "name": "get_review_queue_api_faces_review_queue_get",
+    "summary": "Get Review Queue"
+  },
+  {
+    "path": "/api/faces/review-queue/count",
+    "method": "GET",
+    "name": "get_review_queue_count_api_faces_review_queue_count_get",
+    "summary": "Get Review Queue Count"
+  },
+  {
+    "path": "/api/faces/review-queue/{detection_id}/resolve",
+    "method": "POST",
+    "name": "resolve_review_item_api_faces_review_queue__detection_id__resolve_post",
+    "summary": "Resolve Review Item"
   },
   {
     "path": "/api/faces/scan",
     "method": "POST",
-    "name": "scan_faces",
-    "summary": ""
+    "name": "scan_faces_api_faces_scan_post",
+    "summary": "Scan Faces"
   },
   {
     "path": "/api/faces/scan-async",
     "method": "POST",
-    "name": "scan_faces_async",
-    "summary": ""
+    "name": "scan_faces_async_api_faces_scan_async_post",
+    "summary": "Scan Faces Async"
   },
   {
     "path": "/api/faces/scan-single",
     "method": "POST",
-    "name": "scan_single_file",
-    "summary": ""
+    "name": "scan_single_file_api_faces_scan_single_post",
+    "summary": "Scan Single File"
   },
   {
     "path": "/api/faces/scan-status/{job_id}",
     "method": "GET",
-    "name": "get_scan_job_status",
-    "summary": ""
+    "name": "get_scan_job_status_api_faces_scan_status__job_id__get",
+    "summary": "Get Scan Job Status"
+  },
+  {
+    "path": "/api/faces/search/advanced",
+    "method": "POST",
+    "name": "advanced_face_search_api_faces_search_advanced_post",
+    "summary": "Advanced Face Search"
+  },
+  {
+    "path": "/api/faces/search/boolean",
+    "method": "GET",
+    "name": "boolean_face_search_api_faces_search_boolean_get",
+    "summary": "Boolean Face Search"
+  },
+  {
+    "path": "/api/faces/search/by-attributes",
+    "method": "GET",
+    "name": "search_faces_by_attributes_api_faces_search_by_attributes_get",
+    "summary": "Search Faces By Attributes"
+  },
+  {
+    "path": "/api/faces/search/explain",
+    "method": "POST",
+    "name": "explain_search_query_api_faces_search_explain_post",
+    "summary": "Explain Search Query"
+  },
+  {
+    "path": "/api/faces/search/save",
+    "method": "POST",
+    "name": "save_search_preset_api_faces_search_save_post",
+    "summary": "Save Search Preset"
+  },
+  {
+    "path": "/api/faces/search/similar",
+    "method": "POST",
+    "name": "find_similar_faces_search_api_faces_search_similar_post",
+    "summary": "Find Similar Faces Search"
+  },
+  {
+    "path": "/api/faces/search/suggestions",
+    "method": "GET",
+    "name": "get_search_suggestions_api_faces_search_suggestions_get",
+    "summary": "Get Search Suggestions"
+  },
+  {
+    "path": "/api/faces/search/temporal",
+    "method": "GET",
+    "name": "temporal_face_search_api_faces_search_temporal_get",
+    "summary": "Temporal Face Search"
   },
   {
     "path": "/api/faces/singletons",
     "method": "GET",
-    "name": "get_singleton_clusters",
-    "summary": ""
+    "name": "get_singleton_clusters_api_faces_singletons_get",
+    "summary": "Get Singleton Clusters"
+  },
+  {
+    "path": "/api/faces/split",
+    "method": "POST",
+    "name": "split_faces_api_faces_split_post",
+    "summary": "Split Faces"
   },
   {
     "path": "/api/faces/stats",
     "method": "GET",
-    "name": "get_face_stats_api",
-    "summary": ""
+    "name": "get_face_stats_api_api_faces_stats_get",
+    "summary": "Get Face Stats Api"
+  },
+  {
+    "path": "/api/faces/unassigned",
+    "method": "GET",
+    "name": "get_unassigned_faces_endpoint_api_faces_unassigned_get",
+    "summary": "Get Unassigned Faces Endpoint"
+  },
+  {
+    "path": "/api/faces/undo",
+    "method": "POST",
+    "name": "undo_operation_api_faces_undo_post",
+    "summary": "Undo Operation"
+  },
+  {
+    "path": "/api/faces/undo/status",
+    "method": "GET",
+    "name": "undo_status_api_faces_undo_status_get",
+    "summary": "Undo Status"
   },
   {
     "path": "/api/faces/unidentified",
     "method": "GET",
-    "name": "get_unidentified_clusters",
-    "summary": ""
+    "name": "get_unidentified_clusters_api_faces_unidentified_get",
+    "summary": "Get Unidentified Clusters"
+  },
+  {
+    "path": "/api/faces/video/track",
+    "method": "POST",
+    "name": "track_faces_in_video_api_faces_video_track_post",
+    "summary": "Track Faces In Video"
+  },
+  {
+    "path": "/api/faces/video/{video_path}/summary",
+    "method": "GET",
+    "name": "get_video_face_summary_api_faces_video__video_path__summary_get",
+    "summary": "Get Video Face Summary"
+  },
+  {
+    "path": "/api/faces/video/{video_path}/tracks",
+    "method": "GET",
+    "name": "get_video_face_tracks_api_faces_video__video_path__tracks_get",
+    "summary": "Get Video Face Tracks"
   },
   {
     "path": "/api/faces/{detection_id}/similar",
     "method": "GET",
-    "name": "find_similar_faces",
-    "summary": ""
+    "name": "find_similar_faces_api_faces__detection_id__similar_get",
+    "summary": "Find Similar Faces"
   },
   {
     "path": "/api/faces/{detection_id}/thumbnail",
     "method": "GET",
-    "name": "get_face_thumbnail",
-    "summary": ""
+    "name": "get_face_thumbnail_api_faces__detection_id__thumbnail_get",
+    "summary": "Get Face Thumbnail"
   },
   {
     "path": "/api/faces/{face_id}/assign",
     "method": "POST",
-    "name": "assign_face_to_cluster",
-    "summary": ""
+    "name": "assign_face_to_cluster_api_faces__face_id__assign_post",
+    "summary": "Assign Face To Cluster"
+  },
+  {
+    "path": "/api/faces/{face_id}/confirm",
+    "method": "POST",
+    "name": "confirm_face_api_faces__face_id__confirm_post",
+    "summary": "Confirm Face"
   },
   {
     "path": "/api/faces/{face_id}/create-person",
     "method": "POST",
-    "name": "create_person_from_face",
-    "summary": ""
+    "name": "create_person_from_face_api_faces__face_id__create_person_post",
+    "summary": "Create Person From Face"
+  },
+  {
+    "path": "/api/faces/{face_id}/reject",
+    "method": "POST",
+    "name": "reject_face_api_faces__face_id__reject_post",
+    "summary": "Reject Face"
   },
   {
     "path": "/api/intent/detect",
     "method": "GET",
-    "name": "detect_intent_api",
-    "summary": ""
+    "name": "detect_intent_api_api_intent_detect_get",
+    "summary": "Detect Intent Api"
   },
   {
     "path": "/api/logs/test",
     "method": "GET",
-    "name": "test_logging",
-    "summary": ""
+    "name": "test_logging_api_logs_test_get",
+    "summary": "Test Logging"
+  },
+  {
+    "path": "/api/mobile/analytics/{device_id}",
+    "method": "GET",
+    "name": "get_mobile_analytics_api_mobile_analytics__device_id__get",
+    "summary": "Get Mobile Analytics"
+  },
+  {
+    "path": "/api/mobile/cleanup/{device_id}",
+    "method": "POST",
+    "name": "cleanup_mobile_data_api_mobile_cleanup__device_id__post",
+    "summary": "Cleanup Mobile Data"
+  },
+  {
+    "path": "/api/mobile/devices/register",
+    "method": "POST",
+    "name": "register_mobile_device_api_mobile_devices_register_post",
+    "summary": "Register Mobile Device"
+  },
+  {
+    "path": "/api/mobile/devices/{device_id}/status",
+    "method": "GET",
+    "name": "get_device_status_api_mobile_devices__device_id__status_get",
+    "summary": "Get Device Status"
+  },
+  {
+    "path": "/api/mobile/faces/detect",
+    "method": "POST",
+    "name": "detect_faces_mobile_api_mobile_faces_detect_post",
+    "summary": "Detect Faces Mobile"
+  },
+  {
+    "path": "/api/mobile/faces/suggestions/{device_id}",
+    "method": "GET",
+    "name": "get_mobile_face_suggestions_api_mobile_faces_suggestions__device_id__get",
+    "summary": "Get Mobile Face Suggestions"
+  },
+  {
+    "path": "/api/mobile/faces/tag",
+    "method": "POST",
+    "name": "tag_face_mobile_api_mobile_faces_tag_post",
+    "summary": "Tag Face Mobile"
+  },
+  {
+    "path": "/api/mobile/notifications/send",
+    "method": "POST",
+    "name": "send_mobile_notification_api_mobile_notifications_send_post",
+    "summary": "Send Mobile Notification"
+  },
+  {
+    "path": "/api/mobile/notifications/{device_id}",
+    "method": "GET",
+    "name": "get_mobile_notifications_api_mobile_notifications__device_id__get",
+    "summary": "Get Mobile Notifications"
+  },
+  {
+    "path": "/api/mobile/settings/{device_id}",
+    "method": "GET",
+    "name": "get_mobile_settings_api_mobile_settings__device_id__get",
+    "summary": "Get Mobile Settings"
+  },
+  {
+    "path": "/api/mobile/settings/{device_id}",
+    "method": "PUT",
+    "name": "update_mobile_settings_api_mobile_settings__device_id__put",
+    "summary": "Update Mobile Settings"
+  },
+  {
+    "path": "/api/mobile/sync",
+    "method": "POST",
+    "name": "sync_face_data_api_mobile_sync_post",
+    "summary": "Sync Face Data"
+  },
+  {
+    "path": "/api/mobile/sync/conflicts/{conflict_id}/resolve",
+    "method": "POST",
+    "name": "resolve_sync_conflict_api_mobile_sync_conflicts__conflict_id__resolve_post",
+    "summary": "Resolve Sync Conflict"
+  },
+  {
+    "path": "/api/mobile/sync/{device_id}/conflicts",
+    "method": "GET",
+    "name": "get_sync_conflicts_api_mobile_sync__device_id__conflicts_get",
+    "summary": "Get Sync Conflicts"
   },
   {
     "path": "/api/notes/search",
     "method": "GET",
-    "name": "search_notes",
-    "summary": ""
+    "name": "search_notes_api_notes_search_get",
+    "summary": "Search Notes"
   },
   {
     "path": "/api/notes/stats",
     "method": "GET",
-    "name": "get_notes_stats",
-    "summary": ""
+    "name": "get_notes_stats_api_notes_stats_get",
+    "summary": "Get Notes Stats"
+  },
+  {
+    "path": "/api/onboarding/analytics/overview",
+    "method": "GET",
+    "name": "get_onboarding_analytics_overview_api_onboarding_analytics_overview_get",
+    "summary": "Get Onboarding Analytics Overview"
+  },
+  {
+    "path": "/api/onboarding/complete/{user_id}",
+    "method": "POST",
+    "name": "complete_onboarding_api_onboarding_complete__user_id__post",
+    "summary": "Complete Onboarding"
+  },
+  {
+    "path": "/api/onboarding/create",
+    "method": "POST",
+    "name": "create_onboarding_flow_api_onboarding_create_post",
+    "summary": "Create Onboarding Flow"
+  },
+  {
+    "path": "/api/onboarding/feedback",
+    "method": "POST",
+    "name": "submit_onboarding_feedback_api_onboarding_feedback_post",
+    "summary": "Submit Onboarding Feedback"
+  },
+  {
+    "path": "/api/onboarding/help",
+    "method": "POST",
+    "name": "get_contextual_help_api_onboarding_help_post",
+    "summary": "Get Contextual Help"
+  },
+  {
+    "path": "/api/onboarding/help/contexts",
+    "method": "GET",
+    "name": "get_help_contexts_api_onboarding_help_contexts_get",
+    "summary": "Get Help Contexts"
+  },
+  {
+    "path": "/api/onboarding/preferences",
+    "method": "PUT",
+    "name": "update_user_preferences_api_onboarding_preferences_put",
+    "summary": "Update User Preferences"
+  },
+  {
+    "path": "/api/onboarding/preferences/{user_id}",
+    "method": "GET",
+    "name": "get_user_preferences_api_onboarding_preferences__user_id__get",
+    "summary": "Get User Preferences"
+  },
+  {
+    "path": "/api/onboarding/progress",
+    "method": "POST",
+    "name": "track_step_progress_api_onboarding_progress_post",
+    "summary": "Track Step Progress"
+  },
+  {
+    "path": "/api/onboarding/progress/{user_id}",
+    "method": "GET",
+    "name": "get_progress_analytics_api_onboarding_progress__user_id__get",
+    "summary": "Get Progress Analytics"
+  },
+  {
+    "path": "/api/onboarding/start",
+    "method": "POST",
+    "name": "start_onboarding_api_onboarding_start_post",
+    "summary": "Start Onboarding"
+  },
+  {
+    "path": "/api/onboarding/status/{user_id}",
+    "method": "GET",
+    "name": "get_onboarding_status_api_onboarding_status__user_id__get",
+    "summary": "Get Onboarding Status"
+  },
+  {
+    "path": "/api/onboarding/tutorials/available",
+    "method": "GET",
+    "name": "get_available_tutorials_api_onboarding_tutorials_available_get",
+    "summary": "Get Available Tutorials"
+  },
+  {
+    "path": "/api/organization/duplicate-people",
+    "method": "GET",
+    "name": "get_duplicate_people_api_organization_duplicate_people_get",
+    "summary": "Get Duplicate People"
+  },
+  {
+    "path": "/api/organization/merge-persons",
+    "method": "POST",
+    "name": "merge_duplicate_persons_api_organization_merge_persons_post",
+    "summary": "Merge Duplicate Persons"
+  },
+  {
+    "path": "/api/organization/recommendations",
+    "method": "GET",
+    "name": "get_organization_recommendations_api_organization_recommendations_get",
+    "summary": "Get Organization Recommendations"
+  },
+  {
+    "path": "/api/organization/smart-albums",
+    "method": "GET",
+    "name": "get_smart_albums_api_organization_smart_albums_get",
+    "summary": "Get Smart Albums"
   },
   {
     "path": "/api/people/search",
     "method": "GET",
-    "name": "search_people",
-    "summary": ""
+    "name": "search_people_api_people_search_get",
+    "summary": "Search People"
   },
   {
     "path": "/api/people/{person_id}/analytics",
     "method": "GET",
-    "name": "get_person_analytics",
-    "summary": ""
+    "name": "get_person_analytics_api_people__person_id__analytics_get",
+    "summary": "Get Person Analytics"
+  },
+  {
+    "path": "/api/people/{person_id}/attributes",
+    "method": "GET",
+    "name": "get_person_attributes_api_people__person_id__attributes_get",
+    "summary": "Get Person Attributes"
+  },
+  {
+    "path": "/api/performance/cache/clear",
+    "method": "POST",
+    "name": "clear_cache_api_performance_cache_clear_post",
+    "summary": "Clear Cache"
+  },
+  {
+    "path": "/api/performance/cache/stats",
+    "method": "GET",
+    "name": "get_cache_statistics_api_performance_cache_stats_get",
+    "summary": "Get Cache Statistics"
+  },
+  {
+    "path": "/api/performance/cleanup",
+    "method": "POST",
+    "name": "cleanup_resources_api_performance_cleanup_post",
+    "summary": "Cleanup Resources"
+  },
+  {
+    "path": "/api/performance/database/analyze",
+    "method": "GET",
+    "name": "analyze_database_performance_api_performance_database_analyze_get",
+    "summary": "Analyze Database Performance"
+  },
+  {
+    "path": "/api/performance/database/optimize",
+    "method": "POST",
+    "name": "optimize_database_api_performance_database_optimize_post",
+    "summary": "Optimize Database"
+  },
+  {
+    "path": "/api/performance/health",
+    "method": "GET",
+    "name": "get_system_health_api_performance_health_get",
+    "summary": "Get System Health"
+  },
+  {
+    "path": "/api/performance/memory",
+    "method": "GET",
+    "name": "get_memory_usage_api_performance_memory_get",
+    "summary": "Get Memory Usage"
+  },
+  {
+    "path": "/api/performance/memory/optimize",
+    "method": "POST",
+    "name": "optimize_memory_api_performance_memory_optimize_post",
+    "summary": "Optimize Memory"
+  },
+  {
+    "path": "/api/performance/metrics",
+    "method": "GET",
+    "name": "get_performance_metrics_api_performance_metrics_get",
+    "summary": "Get Performance Metrics"
+  },
+  {
+    "path": "/api/performance/optimize",
+    "method": "POST",
+    "name": "optimize_system_api_performance_optimize_post",
+    "summary": "Optimize System"
+  },
+  {
+    "path": "/api/performance/process-batch",
+    "method": "POST",
+    "name": "process_batch_optimized_api_performance_process_batch_post",
+    "summary": "Process Batch Optimized"
+  },
+  {
+    "path": "/api/performance/status",
+    "method": "GET",
+    "name": "get_performance_status_api_performance_status_get",
+    "summary": "Get Performance Status"
   },
   {
     "path": "/api/photos/batch/faces/detect",
     "method": "POST",
-    "name": "detect_faces_in_batch",
-    "summary": ""
+    "name": "detect_faces_in_batch_api_photos_batch_faces_detect_post",
+    "summary": "Detect Faces In Batch"
   },
   {
-    "path": "/api/photos/{file_path:path}/edit",
-    "method": "GET",
-    "name": "get_photo_edit",
-    "summary": ""
-  },
-  {
-    "path": "/api/photos/{file_path:path}/edit",
+    "path": "/api/photos/by-face-attributes",
     "method": "POST",
-    "name": "set_photo_edit",
-    "summary": ""
+    "name": "search_photos_by_face_attributes_api_photos_by_face_attributes_post",
+    "summary": "Search Photos By Face Attributes"
   },
   {
-    "path": "/api/photos/{file_path:path}/edits",
+    "path": "/api/photos/by-face-attributes/query",
+    "method": "POST",
+    "name": "search_photos_by_face_attributes_query_api_photos_by_face_attributes_query_post",
+    "summary": "Search Photos By Face Attributes Query"
+  },
+  {
+    "path": "/api/photos/by-people",
+    "method": "POST",
+    "name": "search_photos_by_people_ids_api_photos_by_people_post",
+    "summary": "Search Photos By People Ids"
+  },
+  {
+    "path": "/api/photos/by-people-names",
+    "method": "GET",
+    "name": "search_photos_by_people_names_api_photos_by_people_names_get",
+    "summary": "Search Photos By People Names"
+  },
+  {
+    "path": "/api/photos/{file_path}/edit",
+    "method": "GET",
+    "name": "get_photo_edit_api_photos__file_path__edit_get",
+    "summary": "Get Photo Edit"
+  },
+  {
+    "path": "/api/photos/{file_path}/edit",
+    "method": "POST",
+    "name": "set_photo_edit_api_photos__file_path__edit_post",
+    "summary": "Set Photo Edit"
+  },
+  {
+    "path": "/api/photos/{file_path}/edits",
     "method": "DELETE",
-    "name": "delete_photo_edits",
-    "summary": ""
+    "name": "delete_photo_edits_api_photos__file_path__edits_delete",
+    "summary": "Delete Photo Edits"
   },
   {
-    "path": "/api/photos/{file_path:path}/edits",
+    "path": "/api/photos/{file_path}/edits",
     "method": "GET",
-    "name": "get_photo_edits",
-    "summary": ""
+    "name": "get_photo_edits_api_photos__file_path__edits_get",
+    "summary": "Get Photo Edits"
   },
   {
-    "path": "/api/photos/{file_path:path}/edits",
+    "path": "/api/photos/{file_path}/edits",
     "method": "POST",
-    "name": "set_photo_edits",
-    "summary": ""
+    "name": "set_photo_edits_api_photos__file_path__edits_post",
+    "summary": "Set Photo Edits"
   },
   {
-    "path": "/api/photos/{file_path:path}/notes",
+    "path": "/api/photos/{file_path}/notes",
     "method": "DELETE",
-    "name": "delete_photo_notes",
-    "summary": ""
+    "name": "delete_photo_notes_api_photos__file_path__notes_delete",
+    "summary": "Delete Photo Notes"
   },
   {
-    "path": "/api/photos/{file_path:path}/notes",
+    "path": "/api/photos/{file_path}/notes",
     "method": "GET",
-    "name": "get_photo_notes",
-    "summary": ""
+    "name": "get_photo_notes_api_photos__file_path__notes_get",
+    "summary": "Get Photo Notes"
   },
   {
-    "path": "/api/photos/{file_path:path}/notes",
+    "path": "/api/photos/{file_path}/notes",
     "method": "POST",
-    "name": "set_photo_notes",
-    "summary": ""
+    "name": "set_photo_notes_api_photos__file_path__notes_post",
+    "summary": "Set Photo Notes"
   },
   {
-    "path": "/api/photos/{file_path:path}/rating",
+    "path": "/api/photos/{file_path}/rating",
     "method": "GET",
-    "name": "get_photo_rating",
-    "summary": ""
+    "name": "get_photo_rating_api_photos__file_path__rating_get",
+    "summary": "Get Photo Rating"
   },
   {
-    "path": "/api/photos/{file_path:path}/rating",
+    "path": "/api/photos/{file_path}/rating",
     "method": "POST",
-    "name": "set_photo_rating",
-    "summary": ""
+    "name": "set_photo_rating_api_photos__file_path__rating_post",
+    "summary": "Set Photo Rating"
   },
   {
-    "path": "/api/photos/{photo_path:path}/faces",
+    "path": "/api/photos/{photo_path}/faces",
     "method": "GET",
-    "name": "get_faces_in_photo",
-    "summary": ""
+    "name": "get_faces_in_photo_api_photos__photo_path__faces_get",
+    "summary": "Get Faces In Photo"
   },
   {
-    "path": "/api/photos/{photo_path:path}/faces/detect",
+    "path": "/api/photos/{photo_path}/faces/detect",
     "method": "POST",
-    "name": "detect_faces_in_photo",
-    "summary": ""
+    "name": "detect_faces_in_photo_api_photos__photo_path__faces_detect_post",
+    "summary": "Detect Faces In Photo"
   },
   {
-    "path": "/api/photos/{photo_path:path}/people",
+    "path": "/api/photos/{photo_path}/people",
     "method": "GET",
-    "name": "get_people_in_photo",
-    "summary": ""
+    "name": "get_people_in_photo_api_photos__photo_path__people_get",
+    "summary": "Get People In Photo"
   },
   {
-    "path": "/api/photos/{photo_path:path}/people",
+    "path": "/api/photos/{photo_path}/people",
     "method": "POST",
-    "name": "add_person_to_photo",
-    "summary": ""
+    "name": "add_person_to_photo_api_photos__photo_path__people_post",
+    "summary": "Add Person To Photo"
   },
   {
-    "path": "/api/photos/{photo_path:path}/people/{person_id}",
+    "path": "/api/photos/{photo_path}/people/{person_id}",
     "method": "DELETE",
-    "name": "remove_person_from_photo",
-    "summary": ""
+    "name": "remove_person_from_photo_api_photos__photo_path__people__person_id__delete",
+    "summary": "Remove Person From Photo"
+  },
+  {
+    "path": "/api/privacy/anonymize/person",
+    "method": "POST",
+    "name": "anonymize_person_data_api_privacy_anonymize_person_post",
+    "summary": "Anonymize Person Data"
+  },
+  {
+    "path": "/api/privacy/audit/logs",
+    "method": "GET",
+    "name": "get_audit_logs_api_privacy_audit_logs_get",
+    "summary": "Get Audit Logs"
+  },
+  {
+    "path": "/api/privacy/cleanup",
+    "method": "POST",
+    "name": "cleanup_expired_data_api_privacy_cleanup_post",
+    "summary": "Cleanup Expired Data"
+  },
+  {
+    "path": "/api/privacy/consent/request",
+    "method": "POST",
+    "name": "request_consent_api_privacy_consent_request_post",
+    "summary": "Request Consent"
+  },
+  {
+    "path": "/api/privacy/consent/status",
+    "method": "GET",
+    "name": "get_consent_status_api_privacy_consent_status_get",
+    "summary": "Get Consent Status"
+  },
+  {
+    "path": "/api/privacy/consent/{consent_id}/grant",
+    "method": "POST",
+    "name": "grant_consent_api_privacy_consent__consent_id__grant_post",
+    "summary": "Grant Consent"
+  },
+  {
+    "path": "/api/privacy/consent/{consent_type}/withdraw",
+    "method": "POST",
+    "name": "withdraw_consent_api_privacy_consent__consent_type__withdraw_post",
+    "summary": "Withdraw Consent"
+  },
+  {
+    "path": "/api/privacy/dashboard",
+    "method": "GET",
+    "name": "get_privacy_dashboard_api_privacy_dashboard_get",
+    "summary": "Get Privacy Dashboard"
+  },
+  {
+    "path": "/api/privacy/export/request",
+    "method": "POST",
+    "name": "request_data_export_api_privacy_export_request_post",
+    "summary": "Request Data Export"
+  },
+  {
+    "path": "/api/privacy/export/{request_id}/download",
+    "method": "GET",
+    "name": "download_export_api_privacy_export__request_id__download_get",
+    "summary": "Download Export"
+  },
+  {
+    "path": "/api/privacy/export/{request_id}/status",
+    "method": "GET",
+    "name": "get_export_status_api_privacy_export__request_id__status_get",
+    "summary": "Get Export Status"
+  },
+  {
+    "path": "/api/privacy/settings",
+    "method": "PUT",
+    "name": "update_privacy_settings_api_privacy_settings_put",
+    "summary": "Update Privacy Settings"
   },
   {
     "path": "/api/ratings/photos/{rating}",
     "method": "GET",
-    "name": "get_photos_by_rating",
-    "summary": ""
+    "name": "get_photos_by_rating_api_ratings_photos__rating__get",
+    "summary": "Get Photos By Rating"
   },
   {
     "path": "/api/ratings/stats",
     "method": "GET",
-    "name": "get_rating_stats",
-    "summary": ""
+    "name": "get_rating_stats_api_ratings_stats_get",
+    "summary": "Get Rating Stats"
   },
   {
     "path": "/api/schema",
     "method": "GET",
-    "name": "get_api_schema",
-    "summary": ""
+    "name": "get_api_schema_api_schema_get",
+    "summary": "Get Api Schema"
   },
   {
     "path": "/api/search/count",
     "method": "POST",
-    "name": "get_search_count",
-    "summary": ""
+    "name": "get_search_count_api_search_count_post",
+    "summary": "Get Search Count"
+  },
+  {
+    "path": "/api/search/natural-language",
+    "method": "POST",
+    "name": "parse_natural_language_search_api_search_natural_language_post",
+    "summary": "Parse Natural Language Search"
+  },
+  {
+    "path": "/api/video/faces/process",
+    "method": "POST",
+    "name": "process_video_faces_api_video_faces_process_post",
+    "summary": "Process Video Faces"
+  },
+  {
+    "path": "/api/video/search/person/{person_id}",
+    "method": "GET",
+    "name": "search_videos_by_person_api_video_search_person__person_id__get",
+    "summary": "Search Videos By Person"
+  },
+  {
+    "path": "/api/video/stats",
+    "method": "GET",
+    "name": "get_video_processing_statistics_api_video_stats_get",
+    "summary": "Get Video Processing Statistics"
+  },
+  {
+    "path": "/api/video/{video_path}/export-highlights",
+    "method": "POST",
+    "name": "export_person_video_highlights_api_video__video_path__export_highlights_post",
+    "summary": "Export Person Video Highlights"
+  },
+  {
+    "path": "/api/video/{video_path}/face-attributes",
+    "method": "GET",
+    "name": "get_video_face_attributes_api_video__video_path__face_attributes_get",
+    "summary": "Get Video Face Attributes"
+  },
+  {
+    "path": "/api/video/{video_path}/highlights",
+    "method": "GET",
+    "name": "get_video_highlights_api_video__video_path__highlights_get",
+    "summary": "Get Video Highlights"
+  },
+  {
+    "path": "/api/video/{video_path}/screen-time",
+    "method": "GET",
+    "name": "get_video_screen_time_analytics_api_video__video_path__screen_time_get",
+    "summary": "Get Video Screen Time Analytics"
+  },
+  {
+    "path": "/api/video/{video_path}/timeline",
+    "method": "GET",
+    "name": "get_video_person_timeline_api_video__video_path__timeline_get",
+    "summary": "Get Video Person Timeline"
+  },
+  {
+    "path": "/browse",
+    "method": "GET",
+    "name": "browse_photos_browse_get",
+    "summary": "Browse Photos"
   },
   {
     "path": "/bulk/action",
     "method": "POST",
-    "name": "record_bulk_action",
-    "summary": ""
+    "name": "record_bulk_action_bulk_action_post",
+    "summary": "Record Bulk Action"
   },
   {
     "path": "/bulk/can-undo/{action_id}",
     "method": "GET",
-    "name": "can_undo_action",
-    "summary": ""
+    "name": "can_undo_action_bulk_can_undo__action_id__get",
+    "summary": "Can Undo Action"
   },
   {
     "path": "/bulk/delete",
     "method": "POST",
-    "name": "bulk_delete",
-    "summary": ""
+    "name": "bulk_delete_bulk_delete_post",
+    "summary": "Bulk Delete"
   },
   {
     "path": "/bulk/export",
     "method": "POST",
-    "name": "bulk_export",
-    "summary": ""
+    "name": "bulk_export_bulk_export_post",
+    "summary": "Bulk Export"
   },
   {
     "path": "/bulk/favorite",
     "method": "POST",
-    "name": "bulk_favorite",
-    "summary": ""
+    "name": "bulk_favorite_bulk_favorite_post",
+    "summary": "Bulk Favorite"
   },
   {
     "path": "/bulk/history/{user_id}",
     "method": "GET",
-    "name": "get_bulk_action_history",
-    "summary": ""
+    "name": "get_bulk_action_history_bulk_history__user_id__get",
+    "summary": "Get Bulk Action History"
   },
   {
     "path": "/bulk/stats/{user_id}",
     "method": "GET",
-    "name": "get_bulk_actions_stats",
-    "summary": ""
+    "name": "get_bulk_actions_stats_bulk_stats__user_id__get",
+    "summary": "Get Bulk Actions Stats"
   },
   {
     "path": "/bulk/undo/{action_id}",
     "method": "POST",
-    "name": "undo_bulk_action",
-    "summary": ""
+    "name": "undo_bulk_action_bulk_undo__action_id__post",
+    "summary": "Undo Bulk Action"
   },
   {
     "path": "/cache/clear",
     "method": "POST",
-    "name": "clear_cache",
-    "summary": ""
+    "name": "clear_cache_cache_clear_post",
+    "summary": "Clear Cache"
   },
   {
     "path": "/cache/health",
     "method": "GET",
-    "name": "cache_health_check",
-    "summary": ""
+    "name": "cache_health_check_cache_health_get",
+    "summary": "Cache Health Check"
   },
   {
     "path": "/cache/stats",
     "method": "GET",
-    "name": "get_cache_stats",
-    "summary": ""
+    "name": "get_cache_stats_cache_stats_get",
+    "summary": "Get Cache Stats"
   },
   {
     "path": "/code-splitting/api-endpoints",
     "method": "GET",
-    "name": "get_api_endpoints",
-    "summary": ""
+    "name": "get_api_endpoints_code_splitting_api_endpoints_get",
+    "summary": "Get Api Endpoints"
   },
   {
     "path": "/code-splitting/chunk/{chunk_name}",
     "method": "GET",
-    "name": "get_chunk_config",
-    "summary": ""
+    "name": "get_chunk_config_code_splitting_chunk__chunk_name__get",
+    "summary": "Get Chunk Config"
   },
   {
     "path": "/code-splitting/chunk/{chunk_name}",
     "method": "POST",
-    "name": "set_chunk_config",
-    "summary": ""
+    "name": "set_chunk_config_code_splitting_chunk__chunk_name__post",
+    "summary": "Set Chunk Config"
   },
   {
     "path": "/code-splitting/config",
     "method": "GET",
-    "name": "get_code_splitting_config",
-    "summary": ""
+    "name": "get_code_splitting_config_code_splitting_config_get",
+    "summary": "Get Code Splitting Config"
   },
   {
     "path": "/code-splitting/enabled",
     "method": "GET",
-    "name": "get_code_splitting_enabled",
-    "summary": ""
+    "name": "get_code_splitting_enabled_code_splitting_enabled_get",
+    "summary": "Get Code Splitting Enabled"
   },
   {
     "path": "/code-splitting/enabled",
     "method": "POST",
-    "name": "set_code_splitting_enabled",
-    "summary": ""
+    "name": "set_code_splitting_enabled_code_splitting_enabled_post",
+    "summary": "Set Code Splitting Enabled"
   },
   {
     "path": "/code-splitting/integration-guide",
     "method": "GET",
-    "name": "get_frontend_integration_guide",
-    "summary": ""
+    "name": "get_frontend_integration_guide_code_splitting_integration_guide_get",
+    "summary": "Get Frontend Integration Guide"
   },
   {
     "path": "/code-splitting/performance",
     "method": "GET",
-    "name": "get_lazy_load_performance",
-    "summary": ""
+    "name": "get_lazy_load_performance_code_splitting_performance_get",
+    "summary": "Get Lazy Load Performance"
   },
   {
     "path": "/code-splitting/performance",
     "method": "POST",
-    "name": "record_lazy_load_performance",
-    "summary": ""
+    "name": "record_lazy_load_performance_code_splitting_performance_post",
+    "summary": "Record Lazy Load Performance"
   },
   {
     "path": "/code-splitting/performance/chunks",
     "method": "GET",
-    "name": "get_chunk_performance",
-    "summary": ""
+    "name": "get_chunk_performance_code_splitting_performance_chunks_get",
+    "summary": "Get Chunk Performance"
   },
   {
     "path": "/collaborative/spaces",
     "method": "POST",
-    "name": "create_collaborative_space",
-    "summary": ""
+    "name": "create_collaborative_space_collaborative_spaces_post",
+    "summary": "Create Collaborative Space"
   },
   {
     "path": "/collaborative/spaces/user/{user_id}",
     "method": "GET",
-    "name": "get_user_spaces",
-    "summary": ""
+    "name": "get_user_spaces_collaborative_spaces_user__user_id__get",
+    "summary": "Get User Spaces"
   },
   {
     "path": "/collaborative/spaces/{space_id}",
     "method": "GET",
-    "name": "get_collaborative_space",
-    "summary": ""
+    "name": "get_collaborative_space_collaborative_spaces__space_id__get",
+    "summary": "Get Collaborative Space"
   },
   {
     "path": "/collaborative/spaces/{space_id}/members",
     "method": "GET",
-    "name": "get_space_members",
-    "summary": ""
+    "name": "get_space_members_collaborative_spaces__space_id__members_get",
+    "summary": "Get Space Members"
   },
   {
     "path": "/collaborative/spaces/{space_id}/members",
     "method": "POST",
-    "name": "add_member_to_space",
-    "summary": ""
+    "name": "add_member_to_space_collaborative_spaces__space_id__members_post",
+    "summary": "Add Member To Space"
   },
   {
     "path": "/collaborative/spaces/{space_id}/members/{user_id}",
     "method": "DELETE",
-    "name": "remove_member_from_space",
-    "summary": ""
+    "name": "remove_member_from_space_collaborative_spaces__space_id__members__user_id__delete",
+    "summary": "Remove Member From Space"
   },
   {
     "path": "/collaborative/spaces/{space_id}/photos",
     "method": "GET",
-    "name": "get_space_photos",
-    "summary": ""
+    "name": "get_space_photos_collaborative_spaces__space_id__photos_get",
+    "summary": "Get Space Photos"
   },
   {
     "path": "/collaborative/spaces/{space_id}/photos",
     "method": "POST",
-    "name": "add_photo_to_space",
-    "summary": ""
+    "name": "add_photo_to_space_collaborative_spaces__space_id__photos_post",
+    "summary": "Add Photo To Space"
   },
   {
-    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}",
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path}",
     "method": "DELETE",
-    "name": "remove_photo_from_space",
-    "summary": ""
+    "name": "remove_photo_from_space_collaborative_spaces__space_id__photos__photo_path__delete",
+    "summary": "Remove Photo From Space"
   },
   {
-    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments",
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path}/comments",
     "method": "GET",
-    "name": "get_photo_comments",
-    "summary": ""
+    "name": "get_photo_comments_collaborative_spaces__space_id__photos__photo_path__comments_get",
+    "summary": "Get Photo Comments"
   },
   {
-    "path": "/collaborative/spaces/{space_id}/photos/{photo_path:path}/comments",
+    "path": "/collaborative/spaces/{space_id}/photos/{photo_path}/comments",
     "method": "POST",
-    "name": "add_comment_to_space_photo",
-    "summary": ""
+    "name": "add_comment_to_space_photo_collaborative_spaces__space_id__photos__photo_path__comments_post",
+    "summary": "Add Comment To Space Photo"
   },
   {
     "path": "/collaborative/spaces/{space_id}/stats",
     "method": "GET",
-    "name": "get_space_stats",
-    "summary": ""
+    "name": "get_space_stats_collaborative_spaces__space_id__stats_get",
+    "summary": "Get Space Stats"
   },
   {
     "path": "/collections/smart",
     "method": "GET",
-    "name": "get_smart_collections",
-    "summary": ""
+    "name": "get_smart_collections_collections_smart_get",
+    "summary": "Get Smart Collections"
   },
   {
     "path": "/collections/smart",
     "method": "POST",
-    "name": "create_smart_collection",
-    "summary": ""
+    "name": "create_smart_collection_collections_smart_post",
+    "summary": "Create Smart Collection"
   },
   {
     "path": "/collections/smart/by-rule/{rule_type}",
     "method": "GET",
-    "name": "get_collections_by_rule_type",
-    "summary": ""
+    "name": "get_collections_by_rule_type_collections_smart_by_rule__rule_type__get",
+    "summary": "Get Collections By Rule Type"
   },
   {
     "path": "/collections/smart/stats",
     "method": "GET",
-    "name": "get_smart_collections_stats",
-    "summary": ""
+    "name": "get_smart_collections_stats_collections_smart_stats_get",
+    "summary": "Get Smart Collections Stats"
   },
   {
     "path": "/collections/smart/{collection_id}",
     "method": "DELETE",
-    "name": "delete_smart_collection",
-    "summary": ""
+    "name": "delete_smart_collection_collections_smart__collection_id__delete",
+    "summary": "Delete Smart Collection"
   },
   {
     "path": "/collections/smart/{collection_id}",
     "method": "GET",
-    "name": "get_smart_collection",
-    "summary": ""
+    "name": "get_smart_collection_collections_smart__collection_id__get",
+    "summary": "Get Smart Collection"
   },
   {
     "path": "/collections/smart/{collection_id}",
     "method": "PUT",
-    "name": "update_smart_collection",
-    "summary": ""
+    "name": "update_smart_collection_collections_smart__collection_id__put",
+    "summary": "Update Smart Collection"
   },
   {
     "path": "/collections/smart/{collection_id}/photos",
     "method": "GET",
-    "name": "get_photos_for_collection",
-    "summary": ""
+    "name": "get_photos_for_collection_collections_smart__collection_id__photos_get",
+    "summary": "Get Photos For Collection"
   },
   {
     "path": "/dialogs/active",
     "method": "GET",
-    "name": "get_active_dialogs",
-    "summary": ""
+    "name": "get_active_dialogs_dialogs_active_get",
+    "summary": "Get Active Dialogs"
   },
   {
     "path": "/dialogs/confirmation",
     "method": "POST",
-    "name": "create_confirmation_dialog",
-    "summary": ""
+    "name": "create_confirmation_dialog_dialogs_confirmation_post",
+    "summary": "Create Confirmation Dialog"
   },
   {
     "path": "/dialogs/create",
     "method": "POST",
-    "name": "create_dialog",
-    "summary": ""
+    "name": "create_dialog_dialogs_create_post",
+    "summary": "Create Dialog"
   },
   {
     "path": "/dialogs/error",
     "method": "POST",
-    "name": "create_error_dialog",
-    "summary": ""
+    "name": "create_error_dialog_dialogs_error_post",
+    "summary": "Create Error Dialog"
   },
   {
     "path": "/dialogs/history",
     "method": "GET",
-    "name": "get_dialog_history",
-    "summary": ""
+    "name": "get_dialog_history_dialogs_history_get",
+    "summary": "Get Dialog History"
   },
   {
     "path": "/dialogs/input",
     "method": "POST",
-    "name": "create_input_dialog",
-    "summary": ""
+    "name": "create_input_dialog_dialogs_input_post",
+    "summary": "Create Input Dialog"
   },
   {
     "path": "/dialogs/progress",
     "method": "POST",
-    "name": "create_progress_dialog",
-    "summary": ""
+    "name": "create_progress_dialog_dialogs_progress_post",
+    "summary": "Create Progress Dialog"
   },
   {
     "path": "/dialogs/progress/{dialog_id}",
     "method": "POST",
-    "name": "update_progress_dialog",
-    "summary": ""
+    "name": "update_progress_dialog_dialogs_progress__dialog_id__post",
+    "summary": "Update Progress Dialog"
   },
   {
     "path": "/dialogs/progress/{dialog_id}/complete",
     "method": "POST",
-    "name": "complete_progress_dialog",
-    "summary": ""
+    "name": "complete_progress_dialog_dialogs_progress__dialog_id__complete_post",
+    "summary": "Complete Progress Dialog"
   },
   {
     "path": "/dialogs/stats",
     "method": "GET",
-    "name": "get_dialog_stats",
-    "summary": ""
+    "name": "get_dialog_stats_dialogs_stats_get",
+    "summary": "Get Dialog Stats"
   },
   {
     "path": "/dialogs/{dialog_id}",
     "method": "GET",
-    "name": "get_dialog",
-    "summary": ""
+    "name": "get_dialog_dialogs__dialog_id__get",
+    "summary": "Get Dialog"
   },
   {
     "path": "/dialogs/{dialog_id}/action",
     "method": "POST",
-    "name": "dialog_action",
-    "summary": ""
+    "name": "dialog_action_dialogs__dialog_id__action_post",
+    "summary": "Dialog Action"
   },
   {
     "path": "/dialogs/{dialog_id}/close",
     "method": "POST",
-    "name": "close_dialog",
-    "summary": ""
+    "name": "close_dialog_dialogs__dialog_id__close_post",
+    "summary": "Close Dialog"
   },
   {
     "path": "/dialogs/{dialog_id}/dismiss",
     "method": "POST",
-    "name": "dismiss_dialog",
-    "summary": ""
-  },
-  {
-    "path": "/docs",
-    "method": "GET",
-    "name": "swagger_ui_html",
-    "summary": ""
-  },
-  {
-    "path": "/docs/oauth2-redirect",
-    "method": "GET",
-    "name": "swagger_ui_redirect",
-    "summary": ""
+    "name": "dismiss_dialog_dialogs__dialog_id__dismiss_post",
+    "summary": "Dismiss Dialog"
   },
   {
     "path": "/export",
     "method": "POST",
-    "name": "export_photos",
-    "summary": ""
+    "name": "export_photos_export_post",
+    "summary": "Export Photos"
   },
   {
     "path": "/export/presets",
     "method": "GET",
-    "name": "get_export_presets",
-    "summary": ""
+    "name": "get_export_presets_export_presets_get",
+    "summary": "Get Export Presets"
   },
   {
     "path": "/export/presets",
     "method": "POST",
-    "name": "create_export_preset",
-    "summary": ""
+    "name": "create_export_preset_export_presets_post",
+    "summary": "Create Export Preset"
   },
   {
     "path": "/faces/cluster",
     "method": "POST",
-    "name": "cluster_faces_v1",
-    "summary": ""
+    "name": "cluster_faces_v1_faces_cluster_post",
+    "summary": "Cluster Faces V1"
   },
   {
     "path": "/faces/clusters",
     "method": "GET",
-    "name": "get_all_clusters",
-    "summary": ""
+    "name": "get_all_clusters_faces_clusters_get",
+    "summary": "Get All Clusters"
   },
   {
     "path": "/faces/clusters/{cluster_id}",
     "method": "DELETE",
-    "name": "delete_cluster",
-    "summary": ""
+    "name": "delete_cluster_faces_clusters__cluster_id__delete",
+    "summary": "Delete Cluster"
   },
   {
     "path": "/faces/clusters/{cluster_id}",
     "method": "GET",
-    "name": "get_cluster_details",
-    "summary": ""
+    "name": "get_cluster_details_faces_clusters__cluster_id__get",
+    "summary": "Get Cluster Details"
   },
   {
     "path": "/faces/clusters/{cluster_id}/label",
     "method": "PUT",
-    "name": "update_cluster_label",
-    "summary": ""
+    "name": "update_cluster_label_faces_clusters__cluster_id__label_put",
+    "summary": "Update Cluster Label"
   },
   {
-    "path": "/faces/image/{image_path:path}",
+    "path": "/faces/image/{image_path}",
     "method": "GET",
-    "name": "get_image_clusters",
-    "summary": ""
+    "name": "get_image_clusters_faces_image__image_path__get",
+    "summary": "Get Image Clusters"
   },
   {
     "path": "/faces/stats",
     "method": "GET",
-    "name": "get_face_stats_v1",
-    "summary": ""
+    "name": "get_face_stats_v1_faces_stats_get",
+    "summary": "Get Face Stats V1"
   },
   {
     "path": "/favorites",
     "method": "DELETE",
-    "name": "remove_favorite",
-    "summary": ""
+    "name": "remove_favorite_favorites_delete",
+    "summary": "Remove Favorite"
   },
   {
     "path": "/favorites",
     "method": "GET",
-    "name": "get_favorites",
-    "summary": ""
+    "name": "get_favorites_favorites_get",
+    "summary": "Get Favorites"
   },
   {
     "path": "/favorites/check",
     "method": "GET",
-    "name": "check_favorite",
-    "summary": ""
+    "name": "check_favorite_favorites_check_get",
+    "summary": "Check Favorite"
   },
   {
     "path": "/favorites/toggle",
     "method": "POST",
-    "name": "toggle_favorite",
-    "summary": ""
+    "name": "toggle_favorite_favorites_toggle_post",
+    "summary": "Toggle Favorite"
   },
   {
     "path": "/file",
     "method": "GET",
-    "name": "get_file",
-    "summary": ""
+    "name": "get_file_file_get",
+    "summary": "Get File"
+  },
+  {
+    "path": "/health",
+    "method": "GET",
+    "name": "health_health_get",
+    "summary": "Health"
   },
   {
     "path": "/image/thumbnail",
     "method": "GET",
-    "name": "get_thumbnail",
-    "summary": ""
+    "name": "get_thumbnail_image_thumbnail_get",
+    "summary": "Get Thumbnail"
   },
   {
     "path": "/image/token",
     "method": "POST",
-    "name": "issue_image_token",
-    "summary": ""
+    "name": "issue_image_token_image_token_post",
+    "summary": "Issue Image Token"
   },
   {
     "path": "/index",
     "method": "POST",
-    "name": "force_indexing",
-    "summary": ""
+    "name": "force_indexing_index_post",
+    "summary": "Force Indexing"
   },
   {
     "path": "/intent/all",
     "method": "GET",
-    "name": "get_all_intents",
-    "summary": ""
+    "name": "get_all_intents_intent_all_get",
+    "summary": "Get All Intents"
   },
   {
     "path": "/intent/badges",
     "method": "GET",
-    "name": "get_search_badges",
-    "summary": ""
+    "name": "get_search_badges_intent_badges_get",
+    "summary": "Get Search Badges"
   },
   {
     "path": "/intent/detect",
     "method": "GET",
-    "name": "detect_intent_v2",
-    "summary": ""
+    "name": "detect_intent_v2_intent_detect_get",
+    "summary": "Detect Intent V2"
   },
   {
     "path": "/intent/suggestions",
     "method": "GET",
-    "name": "get_search_suggestions",
-    "summary": ""
+    "name": "get_search_suggestions_intent_suggestions_get",
+    "summary": "Get Search Suggestions"
   },
   {
     "path": "/jobs/{job_id}",
     "method": "GET",
-    "name": "get_job_status",
-    "summary": ""
+    "name": "get_job_status_jobs__job_id__get",
+    "summary": "Get Job Status"
   },
   {
     "path": "/library/remove",
     "method": "POST",
-    "name": "remove_from_library",
-    "summary": ""
+    "name": "remove_from_library_library_remove_post",
+    "summary": "Remove From Library"
   },
   {
     "path": "/locations-legacy",
     "method": "POST",
-    "name": "add_photo_location_legacy",
-    "summary": ""
+    "name": "add_photo_location_legacy_locations_legacy_post",
+    "summary": "Add Photo Location Legacy"
   },
   {
-    "path": "/locations-legacy/photo/{photo_path:path}",
+    "path": "/locations-legacy/photo/{photo_path}",
     "method": "GET",
-    "name": "get_photo_location_legacy",
-    "summary": ""
+    "name": "get_photo_location_legacy_locations_legacy_photo__photo_path__get",
+    "summary": "Get Photo Location Legacy"
   },
   {
-    "path": "/locations-legacy/photo/{photo_path:path}",
+    "path": "/locations-legacy/photo/{photo_path}",
     "method": "PUT",
-    "name": "update_photo_location_legacy",
-    "summary": ""
+    "name": "update_photo_location_legacy_locations_legacy_photo__photo_path__put",
+    "summary": "Update Photo Location Legacy"
   },
   {
     "path": "/locations-legacy/stats",
     "method": "GET",
-    "name": "get_location_stats_legacy",
-    "summary": ""
+    "name": "get_location_stats_legacy_locations_legacy_stats_get",
+    "summary": "Get Location Stats Legacy"
   },
   {
     "path": "/locations/clusterize",
     "method": "POST",
-    "name": "create_location_clusters",
-    "summary": ""
+    "name": "create_location_clusters_locations_clusterize_post",
+    "summary": "Create Location Clusters"
   },
   {
     "path": "/locations/clusters",
     "method": "GET",
-    "name": "get_place_clusters",
-    "summary": ""
-  },
-  {
-    "path": "/locations/clusters",
-    "method": "GET",
-    "name": "get_location_clusters",
-    "summary": ""
+    "name": "get_location_clusters_locations_clusters_get",
+    "summary": "Get Location Clusters"
   },
   {
     "path": "/locations/clusters/{cluster_id}/photos",
     "method": "GET",
-    "name": "get_photos_in_cluster",
-    "summary": ""
+    "name": "get_photos_in_cluster_locations_clusters__cluster_id__photos_get",
+    "summary": "Get Photos In Cluster"
   },
   {
     "path": "/locations/correct-bulk",
     "method": "POST",
-    "name": "bulk_correct_place_names",
-    "summary": ""
+    "name": "bulk_correct_place_names_locations_correct_bulk_post",
+    "summary": "Bulk Correct Place Names"
   },
   {
-    "path": "/locations/correct/{photo_path:path}",
+    "path": "/locations/correct/{photo_path}",
     "method": "POST",
-    "name": "correct_photo_location",
-    "summary": ""
+    "name": "correct_photo_location_locations_correct__photo_path__post",
+    "summary": "Correct Photo Location"
   },
   {
     "path": "/locations/nearby",
     "method": "GET",
-    "name": "get_nearby_locations",
-    "summary": ""
+    "name": "get_photos_near_location_locations_nearby_get",
+    "summary": "Get Photos Near Location"
   },
   {
-    "path": "/locations/nearby",
+    "path": "/locations/photo/{photo_path}",
     "method": "GET",
-    "name": "get_photos_near_location",
-    "summary": ""
+    "name": "get_photo_location_locations_photo__photo_path__get",
+    "summary": "Get Photo Location"
   },
   {
-    "path": "/locations/photo/{photo_path:path}",
+    "path": "/locations/photo/{photo_path}/cluster",
     "method": "GET",
-    "name": "get_photo_location",
-    "summary": ""
-  },
-  {
-    "path": "/locations/photo/{photo_path:path}/cluster",
-    "method": "GET",
-    "name": "get_photo_cluster",
-    "summary": ""
+    "name": "get_photo_cluster_locations_photo__photo_path__cluster_get",
+    "summary": "Get Photo Cluster"
   },
   {
     "path": "/locations/places/{place_name}",
     "method": "GET",
-    "name": "get_photos_by_place",
-    "summary": ""
+    "name": "get_photos_by_place_locations_places__place_name__get",
+    "summary": "Get Photos By Place"
   },
   {
     "path": "/locations/stats",
     "method": "GET",
-    "name": "get_location_stats",
-    "summary": ""
+    "name": "get_location_stats_locations_stats_get",
+    "summary": "Get Location Stats"
+  },
+  {
+    "path": "/locations/{photo_path}",
+    "method": "POST",
+    "name": "legacy_set_location_locations__photo_path__post",
+    "summary": "Legacy Set Location"
+  },
+  {
+    "path": "/notes/{photo_path}",
+    "method": "DELETE",
+    "name": "legacy_delete_note_notes__photo_path__delete",
+    "summary": "Legacy Delete Note"
+  },
+  {
+    "path": "/notes/{photo_path}",
+    "method": "GET",
+    "name": "legacy_get_note_notes__photo_path__get",
+    "summary": "Legacy Get Note"
+  },
+  {
+    "path": "/notes/{photo_path}",
+    "method": "POST",
+    "name": "legacy_set_note_notes__photo_path__post",
+    "summary": "Legacy Set Note"
   },
   {
     "path": "/oauth/google/callback",
     "method": "GET",
-    "name": "google_oauth_callback",
-    "summary": ""
+    "name": "google_oauth_callback_oauth_google_callback_get",
+    "summary": "Google Oauth Callback"
   },
   {
     "path": "/ocr/all",
     "method": "DELETE",
-    "name": "clear_all_ocr_data",
-    "summary": ""
+    "name": "clear_all_ocr_data_ocr_all_delete",
+    "summary": "Clear All Ocr Data"
   },
   {
     "path": "/ocr/extract",
     "method": "POST",
-    "name": "extract_text_from_images",
-    "summary": ""
+    "name": "extract_text_from_images_ocr_extract_post",
+    "summary": "Extract Text From Images"
   },
   {
-    "path": "/ocr/image/{image_path:path}",
+    "path": "/ocr/image/{image_path}",
     "method": "DELETE",
-    "name": "delete_image_ocr_data",
-    "summary": ""
+    "name": "delete_image_ocr_data_ocr_image__image_path__delete",
+    "summary": "Delete Image Ocr Data"
   },
   {
-    "path": "/ocr/image/{image_path:path}",
+    "path": "/ocr/image/{image_path}",
     "method": "GET",
-    "name": "get_image_ocr_stats",
-    "summary": ""
+    "name": "get_image_ocr_stats_ocr_image__image_path__get",
+    "summary": "Get Image Ocr Stats"
   },
   {
     "path": "/ocr/search",
     "method": "GET",
-    "name": "search_ocr_text",
-    "summary": ""
+    "name": "search_ocr_text_ocr_search_get",
+    "summary": "Search Ocr Text"
   },
   {
     "path": "/ocr/stats",
     "method": "GET",
-    "name": "get_ocr_stats",
-    "summary": ""
+    "name": "get_ocr_stats_ocr_stats_get",
+    "summary": "Get Ocr Stats"
   },
   {
-    "path": "/openapi.json",
+    "path": "/people/{photo_path}",
     "method": "GET",
-    "name": "openapi",
-    "summary": ""
+    "name": "legacy_people_get_people__photo_path__get",
+    "summary": "Legacy People Get"
+  },
+  {
+    "path": "/people/{photo_path}",
+    "method": "POST",
+    "name": "legacy_people_tag_people__photo_path__post",
+    "summary": "Legacy People Tag"
+  },
+  {
+    "path": "/people/{video_id}",
+    "method": "GET",
+    "name": "get_video_people_people__video_id__get",
+    "summary": "Get Video People"
   },
   {
     "path": "/photos/by-tags",
     "method": "GET",
-    "name": "get_photos_by_tags",
-    "summary": ""
+    "name": "get_photos_by_tags_photos_by_tags_get",
+    "summary": "Get Photos By Tags"
   },
   {
     "path": "/photos/by-tags/legacy2",
     "method": "GET",
-    "name": "get_photos_by_tags_legacy2",
-    "summary": ""
+    "name": "get_photos_by_tags_legacy2_photos_by_tags_legacy2_get",
+    "summary": "Get Photos By Tags Legacy2"
   },
   {
     "path": "/photos/flip",
     "method": "POST",
-    "name": "flip_photo",
-    "summary": ""
+    "name": "flip_photo_photos_flip_post",
+    "summary": "Flip Photo"
   },
   {
     "path": "/photos/rotate",
     "method": "POST",
-    "name": "rotate_photo",
-    "summary": ""
+    "name": "rotate_photo_photos_rotate_post",
+    "summary": "Rotate Photo"
   },
   {
-    "path": "/photos/{path:path}/albums",
+    "path": "/photos/{path}/albums",
     "method": "GET",
-    "name": "get_photo_albums",
-    "summary": ""
+    "name": "get_photo_albums_photos__path__albums_get",
+    "summary": "Get Photo Albums"
   },
   {
-    "path": "/photos/{path:path}/tags",
+    "path": "/photos/{path}/tags",
     "method": "GET",
-    "name": "get_photo_tags",
-    "summary": ""
+    "name": "get_photo_tags_photos__path__tags_get",
+    "summary": "Get Photo Tags"
   },
   {
     "path": "/pricing",
     "method": "GET",
-    "name": "get_pricing_tiers",
-    "summary": ""
+    "name": "get_pricing_tiers_pricing_get",
+    "summary": "Get Pricing Tiers"
   },
   {
     "path": "/pricing/recommend",
     "method": "GET",
-    "name": "recommend_pricing_tier",
-    "summary": ""
+    "name": "recommend_pricing_tier_pricing_recommend_get",
+    "summary": "Recommend Pricing Tier"
   },
   {
     "path": "/pricing/{tier_name}",
     "method": "GET",
-    "name": "get_pricing_tier",
-    "summary": ""
+    "name": "get_pricing_tier_pricing__tier_name__get",
+    "summary": "Get Pricing Tier"
   },
   {
     "path": "/privacy/access/{user_id}",
     "method": "GET",
-    "name": "get_photos_accessible_to_user",
-    "summary": ""
+    "name": "get_photos_accessible_to_user_privacy_access__user_id__get",
+    "summary": "Get Photos Accessible To User"
   },
   {
-    "path": "/privacy/check-access/{photo_path:path}/{user_id}",
+    "path": "/privacy/check-access/{photo_path}/{user_id}",
     "method": "GET",
-    "name": "check_photo_access",
-    "summary": ""
+    "name": "check_photo_access_privacy_check_access__photo_path___user_id__get",
+    "summary": "Check Photo Access"
   },
   {
-    "path": "/privacy/control/{photo_path:path}",
+    "path": "/privacy/control/{photo_path}",
     "method": "GET",
-    "name": "get_photo_privacy",
-    "summary": ""
+    "name": "get_photo_privacy_control_privacy_control__photo_path__get",
+    "summary": "Get Photo Privacy Control"
   },
   {
-    "path": "/privacy/control/{photo_path:path}",
+    "path": "/privacy/control/{photo_path}",
     "method": "POST",
-    "name": "set_photo_privacy",
-    "summary": ""
+    "name": "set_photo_privacy_control_privacy_control__photo_path__post",
+    "summary": "Set Photo Privacy Control"
   },
   {
-    "path": "/privacy/control/{photo_path:path}",
+    "path": "/privacy/control/{photo_path}",
     "method": "PUT",
-    "name": "update_photo_privacy",
-    "summary": ""
+    "name": "update_photo_privacy_control_privacy_control__photo_path__put",
+    "summary": "Update Photo Privacy Control"
   },
   {
     "path": "/privacy/encrypted/{owner_id}",
     "method": "GET",
-    "name": "get_encrypted_photos",
-    "summary": ""
+    "name": "get_encrypted_photos_privacy_encrypted__owner_id__get",
+    "summary": "Get Encrypted Photos"
   },
   {
-    "path": "/privacy/revoke-access/{photo_path:path}/{user_id}",
+    "path": "/privacy/revoke-access/{photo_path}/{user_id}",
     "method": "DELETE",
-    "name": "revoke_user_access",
-    "summary": ""
+    "name": "revoke_user_photo_access_privacy_revoke_access__photo_path___user_id__delete",
+    "summary": "Revoke User Photo Access"
   },
   {
     "path": "/privacy/stats/{owner_id}",
     "method": "GET",
-    "name": "get_privacy_stats",
-    "summary": ""
+    "name": "get_owner_privacy_stats_privacy_stats__owner_id__get",
+    "summary": "Get Owner Privacy Stats"
   },
   {
     "path": "/privacy/visible/{visibility}/{owner_id}",
     "method": "GET",
-    "name": "get_photos_by_visibility",
-    "summary": ""
+    "name": "get_photos_by_visibility_privacy_visible__visibility___owner_id__get",
+    "summary": "Get Photos By Visibility"
   },
   {
-    "path": "/redoc",
-    "method": "GET",
-    "name": "redoc_html",
-    "summary": ""
+    "path": "/process",
+    "method": "POST",
+    "name": "process_video_process_post",
+    "summary": "Process Video"
   },
   {
     "path": "/scan",
     "method": "POST",
-    "name": "scan_directory",
-    "summary": ""
+    "name": "scan_directory_scan_post",
+    "summary": "Scan Directory"
   },
   {
     "path": "/search",
     "method": "GET",
-    "name": "search_photos",
-    "summary": ""
+    "name": "search_photos_search_get",
+    "summary": "Search Photos"
+  },
+  {
+    "path": "/search/feedback",
+    "method": "POST",
+    "name": "submit_search_feedback_search_feedback_post",
+    "summary": "Submit Search Feedback"
   },
   {
     "path": "/search/intent",
     "method": "POST",
-    "name": "search_with_intent",
-    "summary": ""
+    "name": "search_with_intent_search_intent_post",
+    "summary": "Search With Intent"
   },
   {
     "path": "/search/refine",
     "method": "POST",
-    "name": "refine_search",
-    "summary": ""
+    "name": "refine_search_search_refine_post",
+    "summary": "Refine Search"
   },
   {
     "path": "/search/semantic",
     "method": "GET",
-    "name": "search_semantic",
-    "summary": ""
+    "name": "search_semantic_search_semantic_get",
+    "summary": "Search Semantic"
   },
   {
     "path": "/searches",
     "method": "GET",
-    "name": "get_saved_searches",
-    "summary": ""
+    "name": "get_saved_searches_searches_get",
+    "summary": "Get Saved Searches"
   },
   {
     "path": "/searches/analytics",
     "method": "GET",
-    "name": "get_search_analytics",
-    "summary": ""
+    "name": "get_search_analytics_searches_analytics_get",
+    "summary": "Get Search Analytics"
   },
   {
     "path": "/searches/analytics/detailed",
     "method": "GET",
-    "name": "get_detailed_analytics",
-    "summary": ""
+    "name": "get_detailed_analytics_searches_analytics_detailed_get",
+    "summary": "Get Detailed Analytics"
   },
   {
     "path": "/searches/analytics/export",
     "method": "GET",
-    "name": "export_analytics",
-    "summary": ""
+    "name": "export_analytics_searches_analytics_export_get",
+    "summary": "Export Analytics"
   },
   {
     "path": "/searches/analytics/trends",
     "method": "GET",
-    "name": "get_search_trends",
-    "summary": ""
+    "name": "get_search_trends_searches_analytics_trends_get",
+    "summary": "Get Search Trends"
   },
   {
     "path": "/searches/history",
     "method": "GET",
-    "name": "get_search_history",
-    "summary": ""
+    "name": "get_search_history_searches_history_get",
+    "summary": "Get Search History"
   },
   {
     "path": "/searches/history/clear",
     "method": "POST",
-    "name": "clear_search_history",
-    "summary": ""
+    "name": "clear_search_history_searches_history_clear_post",
+    "summary": "Clear Search History"
   },
   {
     "path": "/searches/performance",
     "method": "GET",
-    "name": "get_search_performance",
-    "summary": ""
+    "name": "get_search_performance_searches_performance_get",
+    "summary": "Get Search Performance"
   },
   {
     "path": "/searches/recurring",
     "method": "GET",
-    "name": "get_recurring_searches",
-    "summary": ""
+    "name": "get_recurring_searches_searches_recurring_get",
+    "summary": "Get Recurring Searches"
   },
   {
     "path": "/searches/save",
     "method": "POST",
-    "name": "save_search",
-    "summary": ""
+    "name": "save_search_searches_save_post",
+    "summary": "Save Search"
   },
   {
     "path": "/searches/{search_id}",
     "method": "DELETE",
-    "name": "delete_saved_search",
-    "summary": ""
+    "name": "delete_saved_search_searches__search_id__delete",
+    "summary": "Delete Saved Search"
   },
   {
     "path": "/searches/{search_id}",
     "method": "GET",
-    "name": "get_saved_search",
-    "summary": ""
+    "name": "get_saved_search_searches__search_id__get",
+    "summary": "Get Saved Search"
   },
   {
     "path": "/searches/{search_id}",
     "method": "PUT",
-    "name": "update_saved_search",
-    "summary": ""
+    "name": "update_saved_search_searches__search_id__put",
+    "summary": "Update Saved Search"
   },
   {
     "path": "/searches/{search_id}/execute",
     "method": "POST",
-    "name": "execute_saved_search",
-    "summary": ""
+    "name": "execute_saved_search_searches__search_id__execute_post",
+    "summary": "Execute Saved Search"
   },
   {
     "path": "/server/config",
     "method": "GET",
-    "name": "server_config",
-    "summary": ""
+    "name": "server_config_server_config_get",
+    "summary": "Server Config"
   },
   {
     "path": "/share",
     "method": "POST",
-    "name": "create_share_link",
-    "summary": ""
+    "name": "create_share_link_share_post",
+    "summary": "Create Share Link"
   },
   {
     "path": "/shared/{share_id}",
     "method": "GET",
-    "name": "get_shared_content",
-    "summary": ""
+    "name": "get_shared_content_shared__share_id__get",
+    "summary": "Get Shared Content"
   },
   {
     "path": "/shared/{share_id}/download",
     "method": "GET",
-    "name": "download_shared_content",
-    "summary": ""
+    "name": "download_shared_content_shared__share_id__download_get",
+    "summary": "Download Shared Content"
+  },
+  {
+    "path": "/smart-collections",
+    "method": "POST",
+    "name": "legacy_create_smart_collection_smart_collections_post",
+    "summary": "Legacy Create Smart Collection"
+  },
+  {
+    "path": "/smart-collections/{collection_id}/photos",
+    "method": "GET",
+    "name": "legacy_get_collection_photos_smart_collections__collection_id__photos_get",
+    "summary": "Legacy Get Collection Photos"
   },
   {
     "path": "/sources",
     "method": "GET",
-    "name": "list_sources",
-    "summary": ""
+    "name": "list_sources_sources_get",
+    "summary": "List Sources"
   },
   {
     "path": "/sources/google-drive",
     "method": "POST",
-    "name": "add_google_drive_source",
-    "summary": ""
+    "name": "add_google_drive_source_sources_google_drive_post",
+    "summary": "Add Google Drive Source"
   },
   {
     "path": "/sources/local-folder",
     "method": "POST",
-    "name": "add_local_folder_source",
-    "summary": ""
+    "name": "add_local_folder_source_sources_local_folder_post",
+    "summary": "Add Local Folder Source"
   },
   {
     "path": "/sources/s3",
     "method": "POST",
-    "name": "add_s3_source",
-    "summary": ""
+    "name": "add_s3_source_sources_s3_post",
+    "summary": "Add S3 Source"
   },
   {
     "path": "/sources/{source_id}",
     "method": "DELETE",
-    "name": "delete_source",
-    "summary": ""
+    "name": "delete_source_sources__source_id__delete",
+    "summary": "Delete Source"
   },
   {
     "path": "/sources/{source_id}/rescan",
     "method": "POST",
-    "name": "rescan_source",
-    "summary": ""
+    "name": "rescan_source_sources__source_id__rescan_post",
+    "summary": "Rescan Source"
   },
   {
     "path": "/sources/{source_id}/sync",
     "method": "POST",
-    "name": "sync_source",
-    "summary": ""
+    "name": "sync_source_sources__source_id__sync_post",
+    "summary": "Sync Source"
   },
   {
     "path": "/stats",
     "method": "GET",
-    "name": "get_stats",
-    "summary": ""
+    "name": "get_stats_stats_get",
+    "summary": "Get Stats"
+  },
+  {
+    "path": "/status/{video_id}",
+    "method": "GET",
+    "name": "get_video_status_status__video_id__get",
+    "summary": "Get Video Status"
   },
   {
     "path": "/stories",
     "method": "POST",
-    "name": "create_story",
-    "summary": ""
+    "name": "create_story_stories_post",
+    "summary": "Create Story"
   },
   {
     "path": "/stories/owner/{owner_id}",
     "method": "GET",
-    "name": "get_stories_by_owner",
-    "summary": ""
+    "name": "get_stories_by_owner_stories_owner__owner_id__get",
+    "summary": "Get Stories By Owner"
   },
   {
     "path": "/stories/user/{user_id}/stats",
     "method": "GET",
-    "name": "get_user_story_stats",
-    "summary": ""
+    "name": "get_user_story_stats_stories_user__user_id__stats_get",
+    "summary": "Get User Story Stats"
   },
   {
     "path": "/stories/{story_id}",
     "method": "GET",
-    "name": "get_story",
-    "summary": ""
+    "name": "get_story_stories__story_id__get",
+    "summary": "Get Story"
   },
   {
     "path": "/stories/{story_id}",
     "method": "PUT",
-    "name": "update_story",
-    "summary": ""
+    "name": "update_story_stories__story_id__put",
+    "summary": "Update Story"
   },
   {
     "path": "/stories/{story_id}/photos",
     "method": "POST",
-    "name": "add_photo_to_story",
-    "summary": ""
+    "name": "add_photo_to_story_stories__story_id__photos_post",
+    "summary": "Add Photo To Story"
   },
   {
     "path": "/stories/{story_id}/publish",
     "method": "POST",
-    "name": "toggle_story_publish",
-    "summary": ""
+    "name": "toggle_story_publish_stories__story_id__publish_post",
+    "summary": "Toggle Story Publish"
   },
   {
     "path": "/stories/{story_id}/stats",
     "method": "GET",
-    "name": "get_story_stats",
-    "summary": ""
+    "name": "get_story_stats_stories__story_id__stats_get",
+    "summary": "Get Story Stats"
   },
   {
     "path": "/stories/{story_id}/timeline",
     "method": "GET",
-    "name": "get_story_timeline",
-    "summary": ""
+    "name": "get_story_timeline_stories__story_id__timeline_get",
+    "summary": "Get Story Timeline"
   },
   {
     "path": "/tag-filters",
     "method": "GET",
-    "name": "get_tag_filters",
-    "summary": ""
+    "name": "get_tag_filters_tag_filters_get",
+    "summary": "Get Tag Filters"
   },
   {
     "path": "/tag-filters",
     "method": "POST",
-    "name": "create_tag_filter",
-    "summary": ""
+    "name": "create_tag_filter_tag_filters_post",
+    "summary": "Create Tag Filter"
   },
   {
     "path": "/tag-filters/apply",
     "method": "POST",
-    "name": "apply_tag_filter",
-    "summary": ""
+    "name": "apply_tag_filter_tag_filters_apply_post",
+    "summary": "Apply Tag Filter"
   },
   {
     "path": "/tag-filters/legacy2",
     "method": "GET",
-    "name": "get_tag_filters_legacy2",
-    "summary": ""
+    "name": "get_tag_filters_legacy2_tag_filters_legacy2_get",
+    "summary": "Get Tag Filters Legacy2"
   },
   {
     "path": "/tag-filters/legacy2",
     "method": "POST",
-    "name": "create_tag_filter_legacy2",
-    "summary": ""
+    "name": "create_tag_filter_legacy2_tag_filters_legacy2_post",
+    "summary": "Create Tag Filter Legacy2"
   },
   {
     "path": "/tag-filters/legacy2/apply",
     "method": "POST",
-    "name": "apply_tag_filter_legacy2",
-    "summary": ""
+    "name": "apply_tag_filter_legacy2_tag_filters_legacy2_apply_post",
+    "summary": "Apply Tag Filter Legacy2"
   },
   {
     "path": "/tag-filters/legacy2/{filter_id}",
     "method": "DELETE",
-    "name": "delete_tag_filter_legacy2",
-    "summary": ""
+    "name": "delete_tag_filter_legacy2_tag_filters_legacy2__filter_id__delete",
+    "summary": "Delete Tag Filter Legacy2"
   },
   {
     "path": "/tag-filters/legacy2/{filter_id}",
     "method": "GET",
-    "name": "get_tag_filter_legacy2",
-    "summary": ""
+    "name": "get_tag_filter_legacy2_tag_filters_legacy2__filter_id__get",
+    "summary": "Get Tag Filter Legacy2"
   },
   {
     "path": "/tag-filters/legacy2/{filter_id}",
     "method": "PUT",
-    "name": "update_tag_filter_legacy2",
-    "summary": ""
+    "name": "update_tag_filter_legacy2_tag_filters_legacy2__filter_id__put",
+    "summary": "Update Tag Filter Legacy2"
   },
   {
     "path": "/tag-filters/{filter_id}",
     "method": "DELETE",
-    "name": "delete_tag_filter",
-    "summary": ""
+    "name": "delete_tag_filter_tag_filters__filter_id__delete",
+    "summary": "Delete Tag Filter"
   },
   {
     "path": "/tag-filters/{filter_id}",
     "method": "GET",
-    "name": "get_tag_filter",
-    "summary": ""
+    "name": "get_tag_filter_tag_filters__filter_id__get",
+    "summary": "Get Tag Filter"
   },
   {
     "path": "/tag-filters/{filter_id}",
     "method": "PUT",
-    "name": "update_tag_filter",
-    "summary": ""
+    "name": "update_tag_filter_tag_filters__filter_id__put",
+    "summary": "Update Tag Filter"
   },
   {
     "path": "/tags",
     "method": "GET",
-    "name": "list_tags",
-    "summary": ""
+    "name": "list_tags_tags_get",
+    "summary": "List Tags"
   },
   {
     "path": "/tags",
     "method": "POST",
-    "name": "create_tag",
-    "summary": ""
+    "name": "create_tag_tags_post",
+    "summary": "Create Tag"
+  },
+  {
+    "path": "/tags/add",
+    "method": "POST",
+    "name": "legacy_tags_add_tags_add_post",
+    "summary": "Legacy Tags Add"
   },
   {
     "path": "/tags/common",
     "method": "GET",
-    "name": "get_common_tags",
-    "summary": ""
+    "name": "get_common_tags_tags_common_get",
+    "summary": "Get Common Tags"
   },
   {
     "path": "/tags/common/legacy2",
     "method": "GET",
-    "name": "get_common_tags_legacy2",
-    "summary": ""
+    "name": "get_common_tags_legacy2_tags_common_legacy2_get",
+    "summary": "Get Common Tags Legacy2"
+  },
+  {
+    "path": "/tags/multi-filter",
+    "method": "POST",
+    "name": "legacy_multi_tag_filter_tags_multi_filter_post",
+    "summary": "Legacy Multi Tag Filter"
+  },
+  {
+    "path": "/tags/photo/{photo_path}",
+    "method": "GET",
+    "name": "legacy_get_tags_for_photo_tags_photo__photo_path__get",
+    "summary": "Legacy Get Tags For Photo"
+  },
+  {
+    "path": "/tags/photos/{tag_name}",
+    "method": "GET",
+    "name": "legacy_get_photos_for_tag_tags_photos__tag_name__get",
+    "summary": "Legacy Get Photos For Tag"
   },
   {
     "path": "/tags/search",
     "method": "GET",
-    "name": "search_tags",
-    "summary": ""
+    "name": "search_tags_tags_search_get",
+    "summary": "Search Tags"
   },
   {
     "path": "/tags/search/legacy2",
     "method": "GET",
-    "name": "search_tags_legacy2",
-    "summary": ""
+    "name": "search_tags_legacy2_tags_search_legacy2_get",
+    "summary": "Search Tags Legacy2"
   },
   {
     "path": "/tags/stats",
     "method": "GET",
-    "name": "get_tag_stats",
-    "summary": ""
+    "name": "get_tag_stats_tags_stats_get",
+    "summary": "Get Tag Stats"
   },
   {
     "path": "/tags/stats/legacy2",
     "method": "GET",
-    "name": "get_tag_stats_legacy2",
-    "summary": ""
+    "name": "get_tag_stats_legacy2_tags_stats_legacy2_get",
+    "summary": "Get Tag Stats Legacy2"
   },
   {
     "path": "/tags/{tag_name}",
     "method": "DELETE",
-    "name": "delete_tag",
-    "summary": ""
+    "name": "delete_tag_tags__tag_name__delete",
+    "summary": "Delete Tag"
   },
   {
     "path": "/tags/{tag_name}",
     "method": "GET",
-    "name": "get_tag",
-    "summary": ""
+    "name": "get_tag_tags__tag_name__get",
+    "summary": "Get Tag"
   },
   {
     "path": "/tags/{tag_name}/photos",
     "method": "DELETE",
-    "name": "remove_photos_from_tag",
-    "summary": ""
+    "name": "remove_photos_from_tag_tags__tag_name__photos_delete",
+    "summary": "Remove Photos From Tag"
   },
   {
     "path": "/tags/{tag_name}/photos",
     "method": "POST",
-    "name": "add_photos_to_tag",
-    "summary": ""
+    "name": "add_photos_to_tag_tags__tag_name__photos_post",
+    "summary": "Add Photos To Tag"
   },
   {
     "path": "/tauri/checklist",
     "method": "GET",
-    "name": "get_integration_checklist",
-    "summary": ""
+    "name": "get_integration_checklist_tauri_checklist_get",
+    "summary": "Get Integration Checklist"
   },
   {
     "path": "/tauri/commands",
     "method": "GET",
-    "name": "get_tauri_commands",
-    "summary": ""
+    "name": "get_tauri_commands_tauri_commands_get",
+    "summary": "Get Tauri Commands"
   },
   {
     "path": "/tauri/commands/{command_name}",
     "method": "GET",
-    "name": "get_tauri_command",
-    "summary": ""
+    "name": "get_tauri_command_tauri_commands__command_name__get",
+    "summary": "Get Tauri Command"
   },
   {
     "path": "/tauri/config",
     "method": "GET",
-    "name": "get_tauri_config",
-    "summary": ""
+    "name": "get_tauri_config_tauri_config_get",
+    "summary": "Get Tauri Config"
   },
   {
     "path": "/tauri/frontend-hooks",
     "method": "GET",
-    "name": "get_frontend_hooks",
-    "summary": ""
+    "name": "get_frontend_hooks_tauri_frontend_hooks_get",
+    "summary": "Get Frontend Hooks"
   },
   {
     "path": "/tauri/performance",
     "method": "GET",
-    "name": "get_performance_tips",
-    "summary": ""
+    "name": "get_performance_tips_tauri_performance_get",
+    "summary": "Get Performance Tips"
   },
   {
     "path": "/tauri/rust-skeleton",
     "method": "GET",
-    "name": "get_rust_skeleton",
-    "summary": ""
+    "name": "get_rust_skeleton_tauri_rust_skeleton_get",
+    "summary": "Get Rust Skeleton"
   },
   {
     "path": "/tauri/security",
     "method": "GET",
-    "name": "get_security_recommendations",
-    "summary": ""
+    "name": "get_security_recommendations_tauri_security_get",
+    "summary": "Get Security Recommendations"
   },
   {
     "path": "/tauri/setup-guide",
     "method": "GET",
-    "name": "get_setup_guide",
-    "summary": ""
+    "name": "get_setup_guide_tauri_setup_guide_get",
+    "summary": "Get Setup Guide"
   },
   {
     "path": "/timeline",
     "method": "GET",
-    "name": "get_timeline",
-    "summary": ""
+    "name": "get_timeline_timeline_get",
+    "summary": "Get Timeline"
   },
   {
     "path": "/timeline/entries/{entry_id}",
     "method": "DELETE",
-    "name": "remove_photo_from_timeline",
-    "summary": ""
+    "name": "remove_photo_from_timeline_timeline_entries__entry_id__delete",
+    "summary": "Remove Photo From Timeline"
   },
   {
     "path": "/timeline/entries/{entry_id}",
     "method": "PUT",
-    "name": "update_timeline_entry",
-    "summary": ""
+    "name": "update_timeline_entry_timeline_entries__entry_id__put",
+    "summary": "Update Timeline Entry"
+  },
+  {
+    "path": "/tracks/{video_id}",
+    "method": "GET",
+    "name": "get_video_tracks_tracks__video_id__get",
+    "summary": "Get Video Tracks"
   },
   {
     "path": "/trash",
     "method": "GET",
-    "name": "list_trash",
-    "summary": ""
+    "name": "list_trash_trash_get",
+    "summary": "List Trash"
   },
   {
     "path": "/trash/empty",
     "method": "POST",
-    "name": "empty_trash",
-    "summary": ""
+    "name": "empty_trash_trash_empty_post",
+    "summary": "Empty Trash"
   },
   {
     "path": "/trash/move",
     "method": "POST",
-    "name": "trash_move",
-    "summary": ""
+    "name": "trash_move_trash_move_post",
+    "summary": "Trash Move"
   },
   {
     "path": "/trash/restore",
     "method": "POST",
-    "name": "restore_from_trash",
-    "summary": ""
+    "name": "restore_from_trash_trash_restore_post",
+    "summary": "Restore From Trash"
   },
   {
     "path": "/usage/check/{user_id}",
     "method": "GET",
-    "name": "check_usage_limit",
-    "summary": ""
+    "name": "check_usage_limit_usage_check__user_id__get",
+    "summary": "Check Usage Limit"
   },
   {
     "path": "/usage/company-analytics",
     "method": "GET",
-    "name": "get_company_usage_analytics",
-    "summary": ""
+    "name": "get_company_usage_analytics_usage_company_analytics_get",
+    "summary": "Get Company Usage Analytics"
   },
   {
     "path": "/usage/growth/{user_id}",
     "method": "GET",
-    "name": "get_user_growth_rate",
-    "summary": ""
+    "name": "get_user_growth_rate_usage_growth__user_id__get",
+    "summary": "Get User Growth Rate"
   },
   {
     "path": "/usage/history/{user_id}",
     "method": "GET",
-    "name": "get_user_usage_history",
-    "summary": ""
+    "name": "get_user_usage_history_usage_history__user_id__get",
+    "summary": "Get User Usage History"
   },
   {
     "path": "/usage/tier-averages",
     "method": "GET",
-    "name": "get_tier_usage_averages",
-    "summary": ""
+    "name": "get_tier_usage_averages_usage_tier_averages_get",
+    "summary": "Get Tier Usage Averages"
   },
   {
     "path": "/usage/upgrade/{user_id}",
     "method": "POST",
-    "name": "upgrade_user_tier",
-    "summary": ""
+    "name": "upgrade_user_tier_usage_upgrade__user_id__post",
+    "summary": "Upgrade User Tier"
   },
   {
     "path": "/usage/{user_id}",
     "method": "GET",
-    "name": "get_usage_stats",
-    "summary": ""
+    "name": "get_usage_stats_usage__user_id__get",
+    "summary": "Get Usage Stats"
   },
   {
     "path": "/versions",
     "method": "POST",
-    "name": "create_photo_version",
-    "summary": ""
+    "name": "create_photo_version_versions_post",
+    "summary": "Create Photo Version"
   },
   {
     "path": "/versions-legacy",
     "method": "POST",
-    "name": "create_photo_version_legacy",
-    "summary": ""
+    "name": "create_photo_version_legacy_versions_legacy_post",
+    "summary": "Create Photo Version Legacy"
   },
   {
-    "path": "/versions-legacy/original/{original_path:path}",
+    "path": "/versions-legacy/original/{original_path}",
     "method": "GET",
-    "name": "get_versions_for_original_legacy",
-    "summary": ""
+    "name": "get_versions_for_original_legacy_versions_legacy_original__original_path__get",
+    "summary": "Get Versions For Original Legacy"
   },
   {
-    "path": "/versions-legacy/stack/{version_path:path}",
+    "path": "/versions-legacy/stack/{version_path}",
     "method": "GET",
-    "name": "get_version_stack_legacy",
-    "summary": ""
+    "name": "get_version_stack_legacy_versions_legacy_stack__version_path__get",
+    "summary": "Get Version Stack Legacy"
   },
   {
     "path": "/versions-legacy/stats",
     "method": "GET",
-    "name": "get_version_stats_legacy",
-    "summary": ""
+    "name": "get_version_stats_legacy_versions_legacy_stats_get",
+    "summary": "Get Version Stats Legacy"
   },
   {
     "path": "/versions-legacy/{version_id}",
     "method": "DELETE",
-    "name": "delete_photo_version_legacy",
-    "summary": ""
+    "name": "delete_photo_version_legacy_versions_legacy__version_id__delete",
+    "summary": "Delete Photo Version Legacy"
   },
   {
-    "path": "/versions-legacy/{version_path:path}",
+    "path": "/versions-legacy/{version_path}",
     "method": "PUT",
-    "name": "update_version_metadata_legacy",
-    "summary": ""
+    "name": "update_version_metadata_legacy_versions_legacy__version_path__put",
+    "summary": "Update Version Metadata Legacy"
   },
   {
     "path": "/versions/merge-stacks",
     "method": "POST",
-    "name": "merge_version_stacks",
-    "summary": ""
+    "name": "merge_version_stacks_versions_merge_stacks_post",
+    "summary": "Merge Version Stacks"
   },
   {
-    "path": "/versions/photo/{photo_path:path}",
+    "path": "/versions/photo/{photo_path}",
     "method": "GET",
-    "name": "get_photo_versions",
-    "summary": ""
+    "name": "get_photo_versions_versions_photo__photo_path__get",
+    "summary": "Get Photo Versions"
   },
   {
-    "path": "/versions/stack/{original_path:path}",
+    "path": "/versions/stack/{original_path}",
     "method": "GET",
-    "name": "get_version_stack",
-    "summary": ""
+    "name": "get_version_stack_versions_stack__original_path__get",
+    "summary": "Get Version Stack"
   },
   {
     "path": "/versions/stacks",
     "method": "GET",
-    "name": "get_all_version_stacks",
-    "summary": ""
+    "name": "get_all_version_stacks_versions_stacks_get",
+    "summary": "Get All Version Stacks"
   },
   {
     "path": "/versions/stats",
     "method": "GET",
-    "name": "get_version_stats",
-    "summary": ""
+    "name": "get_version_stats_versions_stats_get",
+    "summary": "Get Version Stats"
   },
   {
     "path": "/versions/{version_id}",
     "method": "DELETE",
-    "name": "delete_photo_version",
-    "summary": ""
+    "name": "delete_photo_version_versions__version_id__delete",
+    "summary": "Delete Photo Version"
   },
   {
-    "path": "/versions/{version_path:path}",
+    "path": "/versions/{version_path}",
     "method": "PUT",
-    "name": "update_version_metadata",
-    "summary": ""
+    "name": "update_version_metadata_versions__version_path__put",
+    "summary": "Update Version Metadata"
   },
   {
     "path": "/video",
     "method": "GET",
-    "name": "get_video",
-    "summary": ""
+    "name": "get_video_video_get",
+    "summary": "Get Video"
   },
   {
-    "path": "/video/analysis/{video_path:path}",
+    "path": "/video/analysis/{video_path}",
     "method": "DELETE",
-    "name": "delete_video_analysis",
-    "summary": ""
+    "name": "delete_video_analysis_video_analysis__video_path__delete",
+    "summary": "Delete Video Analysis"
   },
   {
-    "path": "/video/analysis/{video_path:path}",
+    "path": "/video/analysis/{video_path}",
     "method": "GET",
-    "name": "get_video_analysis_results",
-    "summary": ""
+    "name": "get_video_analysis_results_video_analysis__video_path__get",
+    "summary": "Get Video Analysis Results"
   },
   {
     "path": "/video/analyze",
     "method": "POST",
-    "name": "analyze_video_content",
-    "summary": ""
+    "name": "analyze_video_content_video_analyze_post",
+    "summary": "Analyze Video Content"
   },
   {
     "path": "/video/batch-analyze",
     "method": "POST",
-    "name": "batch_analyze_videos",
-    "summary": ""
+    "name": "batch_analyze_videos_video_batch_analyze_post",
+    "summary": "Batch Analyze Videos"
   },
   {
-    "path": "/video/keyframes/{video_path:path}",
+    "path": "/video/keyframes/{video_path}",
     "method": "GET",
-    "name": "get_video_keyframes",
-    "summary": ""
+    "name": "get_video_keyframes_video_keyframes__video_path__get",
+    "summary": "Get Video Keyframes"
   },
   {
-    "path": "/video/ocr/{video_path:path}",
+    "path": "/video/ocr/{video_path}",
     "method": "GET",
-    "name": "get_video_ocr_results",
-    "summary": ""
+    "name": "get_video_ocr_results_video_ocr__video_path__get",
+    "summary": "Get Video Ocr Results"
   },
   {
-    "path": "/video/scenes/{video_path:path}",
+    "path": "/video/scenes/{video_path}",
     "method": "GET",
-    "name": "get_video_scenes",
-    "summary": ""
+    "name": "get_video_scenes_video_scenes__video_path__get",
+    "summary": "Get Video Scenes"
   },
   {
     "path": "/video/search",
     "method": "POST",
-    "name": "search_video_content",
-    "summary": ""
+    "name": "search_video_content_video_search_post",
+    "summary": "Search Video Content"
   },
   {
     "path": "/video/stats",
     "method": "GET",
-    "name": "get_video_analysis_stats",
-    "summary": ""
+    "name": "get_video_analysis_stats_video_stats_get",
+    "summary": "Get Video Analysis Stats"
   },
   {
-    "path": "/video/thumbnail/{video_path:path}",
+    "path": "/video/thumbnail/{video_path}",
     "method": "GET",
-    "name": "get_video_thumbnail",
-    "summary": ""
+    "name": "get_video_thumbnail_video_thumbnail__video_path__get",
+    "summary": "Get Video Thumbnail"
+  },
+  {
+    "path": "/{video_id}",
+    "method": "DELETE",
+    "name": "delete_video_faces__video_id__delete",
+    "summary": "Delete Video Faces"
   }
 ]
