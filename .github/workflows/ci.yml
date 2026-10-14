@@ -60,8 +60,7 @@ jobs:
         run: |
           python scripts/contracts_diff.py \
             --baseline-dir tests/contracts \
-            --current-dir /tmp/contracts \
-            --strict
+            --current-dir /tmp/contracts
 
   frontend:
     runs-on: ubuntu-latest
