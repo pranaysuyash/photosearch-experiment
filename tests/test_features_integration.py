@@ -7,6 +7,7 @@ works with the search functionality.
 """
 
 import pytest
+import uuid
 import tempfile
 from pathlib import Path
 import shutil
@@ -268,6 +269,84 @@ class TestFeatureIntegrations:
         # Withdraw consent — the privacy control that revokes the basis
         withdraw_response = client.post("/api/privacy/consent/face_recognition/withdraw")
         assert withdraw_response.status_code == 200
+
+    def test_photo_privacy_control_round_trip(self, client):
+        """Original spec restored: the /privacy/control surface is real.
+
+        Set, read, update, and enforcement (check-access) against the
+        PrivacyControlsDB-backed routes the UI privacy panel calls.
+        """
+        photo_path = f"/test/privacy_round_trip_{uuid.uuid4().hex[:8]}.jpg"
+
+        set_response = client.post(
+            f"/privacy/control/{photo_path}",
+            json={
+                "owner_id": "test_user",
+                "visibility": "private",
+                "encryption_enabled": False,
+                "allowed_users": ["test_user"],
+            },
+        )
+        assert set_response.status_code == 200
+        control = set_response.json()
+        assert control["visibility"] == "private"
+        assert control["owner_id"] == "test_user"
+
+        get_response = client.get(f"/privacy/control/{photo_path}")
+        assert get_response.status_code == 200
+        assert get_response.json()["privacy"]["visibility"] == "private"
+
+        update_response = client.put(
+            f"/privacy/control/{photo_path}",
+            json={"visibility": "friends_only"},
+        )
+        assert update_response.status_code == 200
+        assert update_response.json()["privacy"]["visibility"] == "friends_only"
+
+        # Enforcement: the owner keeps access, a stranger does not.
+        owner_access = client.get(f"/privacy/check-access/{photo_path}/test_user")
+        assert owner_access.status_code == 200
+        assert owner_access.json()["has_access"] is True
+
+        stranger_access = client.get(f"/privacy/check-access/{photo_path}/stranger_user")
+        assert stranger_access.status_code == 200
+        assert stranger_access.json()["has_access"] is False
+
+    def test_encryption_integration_with_sharing(self, client):
+        """Original spec restored: an encrypted photo can be shared while its
+        privacy control still gates who has access."""
+        photo_path = f"/test/encrypted_share_test_{uuid.uuid4().hex[:8]}.jpg"
+
+        privacy_response = client.post(
+            f"/privacy/control/{photo_path}",
+            json={
+                "owner_id": "test_user",
+                "visibility": "private",
+                "encryption_enabled": True,
+                "encryption_key_hash": "sha256:testhash",
+                "allowed_users": ["test_user"],
+            },
+        )
+        assert privacy_response.status_code == 200
+        assert privacy_response.json()["encryption_enabled"] is True
+
+        # Share creation is allowed even for encrypted photos; the share link
+        # serves the controlled version.
+        share_response = client.post("/share", json={"paths": [photo_path], "expiration_hours": 24})
+        assert share_response.status_code in (200, 403)
+        if share_response.status_code == 200:
+            share_data = share_response.json()
+            assert "share_id" in share_data
+            assert "share_url" in share_data
+
+        # The encryption state is queryable and counted for the owner.
+        encrypted = client.get("/privacy/encrypted/test_user")
+        assert encrypted.status_code == 200
+        assert any(p["photo_path"] == photo_path for p in encrypted.json()["encrypted_photos"])
+
+        stats = client.get("/privacy/stats/test_user")
+        assert stats.status_code == 200
+        assert "stats" in stats.json()
 
     def test_bulk_actions_with_various_photo_states(self, client):
         """Test bulk actions work with photos in different states (tagged, noted, location-marked)."""
