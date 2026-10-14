@@ -6,6 +6,8 @@ export const glass = {
   buttonDanger: 'btn-glass btn-glass--danger',
   buttonMuted: 'btn-glass btn-glass--muted',
   card: 'glass-card',
+  light: 'glass-light',
+  border: 'glass-border',
 } as const;
 
 export type GlassVariant = keyof typeof glass;

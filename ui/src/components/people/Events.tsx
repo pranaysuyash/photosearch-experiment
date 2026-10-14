@@ -48,17 +48,17 @@ export default function Events({ onClose }: EventsProps) {
       setLoading(true);
       setError(null);
 
-      const response = await api.get('/api/analytics/events', {
+      const response = await api.get<{ success: boolean; events: DetectedEvent[]; count: number; detail?: string }>('/api/analytics/events', {
         params: {
           min_people: minPeople,
           time_window_hours: timeWindowHours,
         },
       });
 
-      if (response.data.success) {
-        setEvents(response.data.events || []);
+      if (response.success) {
+        setEvents(response.events || []);
       } else {
-        setError(response.data.detail || 'Failed to fetch events');
+        setError(response.detail || 'Failed to fetch events');
       }
     } catch (err) {
       if (err instanceof Error) {

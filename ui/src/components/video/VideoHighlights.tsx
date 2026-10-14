@@ -55,22 +55,17 @@ export default function VideoHighlights({
       setLoading(true);
       setError(null);
 
-      const response = await api.get(
+      const response = await api.get<{ highlights: Highlight[]; total_highlights: number }>(
         `/api/video/${encodeURIComponent(videoPath)}/highlights`,
         {
           params: { max_per_person: maxPerPerson },
         }
       );
 
-      if (response.data.highlights && Array.isArray(response.data.highlights)) {
-        setHighlights(response.data.highlights);
-      } else if (
-        !response.data.highlights ||
-        response.data.highlights.length === 0
-      ) {
-        setHighlights([]);
+      if (Array.isArray(response.highlights) && response.highlights.length > 0) {
+        setHighlights(response.highlights);
       } else {
-        setError('Invalid highlights data received');
+        setHighlights([]);
       }
     } catch (err) {
       let errorMessage = 'Failed to load highlights';
@@ -110,15 +105,15 @@ export default function VideoHighlights({
   const handleExportHighlights = async (personId: string) => {
     try {
       setExportingPersonId(personId);
-      const response = await api.post(
+      const response = await api.post<{ status: string; message?: string; error?: string }>(
         `/api/video/${encodeURIComponent(videoPath)}/export-highlights`,
         { person_id: personId }
       );
 
-      if (response.data.success) {
+      if (response.status === 'completed') {
         alert(`Highlights for ${personId} exported successfully!`);
       } else {
-        alert('Failed to export highlights');
+        alert(response.message || response.error || 'Failed to export highlights');
       }
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Export failed');

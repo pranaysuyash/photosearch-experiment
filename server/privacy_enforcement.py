@@ -32,8 +32,18 @@ class PhotoAccessDenied(PermissionError):
 
 
 def user_id_from_request(request) -> str:
-    """Identity convention shared with the privacy router's consent endpoints."""
-    return request.headers.get("X-User-ID") or DEFAULT_USER
+    """Identity convention shared with the privacy router's consent endpoints.
+
+    Header first (axios interceptor sets it on all API calls); query param as
+    the fallback for <img src> URLs, which cannot carry headers."""
+    header_id = request.headers.get("X-User-ID")
+    if header_id:
+        return header_id
+    try:
+        query_id = request.query_params.get("user_id")
+    except AttributeError:
+        query_id = None
+    return query_id or DEFAULT_USER
 
 
 def _candidate_keys(path_str: str) -> Iterator[str]:

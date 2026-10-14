@@ -47,3 +47,27 @@ stranger-403/owner-200, friends_only allowed user, 403-before-404 ordering,
 A control record whose owner cannot fetch their own photo, or a stranger
 fetching a controlled photo through any serving endpoint, invalidates this
 record.
+
+## Update (same day): UI identity wiring + the build repair it surfaced
+
+- **Identity plumbing (frontend):** `ui/src/api.ts` gains `getCurrentUserId` /
+  `setCurrentUserId` (localStorage, default `default_user`), an axios request
+  interceptor setting `X-User-ID` on every API call, and `user_id` params on all
+  five `<img>`-targeted thumbnail URL builders (img tags cannot send headers).
+- **Server accepts the query param:** enforcement identity resolution is now
+  header → `user_id` query param → default.
+- **PUT creates on first save:** `/privacy/control` PUT now upserts when no
+  control exists, owned by the requester identity — the panel's first save on an
+  uncontrolled photo used to 404, and a created control is owned by the same
+  identity serve-time enforcement evaluates.
+- **Latent frontend bugs fixed (found because the toolchain finally worked):**
+  restoring `npm install` + the real TS build exposed that `VideoHighlights.tsx`
+  and `Events.tsx` read `response.data.X` from the *unwrapping* api wrapper —
+  always `undefined`, so highlights and events silently rendered empty. Payload
+  accesses fixed against the verified backend shapes; missing `glass.light` /
+  `glass.border` design tokens added (additive CSS) so the project builds.
+
+Validation: frontend `npm run build` green; python full suite **445 passed / 0
+failed**; enforcement tests extended to 8 (query-param identity, PUT-upsert
+ownership). Falsifier unchanged, plus: a highlights/events panel that renders
+empty against a populated library would invalidate the double-`.data` diagnosis.

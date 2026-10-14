@@ -710,10 +710,11 @@ async def get_photo_privacy_control(photo_path: str):
 
 
 @router.put("/privacy/control/{photo_path:path}")
-async def update_photo_privacy_control(photo_path: str, body: PhotoPrivacyUpdateRequest):
+async def update_photo_privacy_control(photo_path: str, body: PhotoPrivacyUpdateRequest, request: Request):
     """Update individual privacy control fields for a photo."""
     try:
-        updated = _get_privacy_controls_db().update_photo_privacy(
+        db = _get_privacy_controls_db()
+        updated = db.update_photo_privacy(
             photo_path=photo_path,
             visibility=body.visibility,
             share_permissions=body.share_permissions,
@@ -723,7 +724,21 @@ async def update_photo_privacy_control(photo_path: str, body: PhotoPrivacyUpdate
             allowed_groups=body.allowed_groups,
         )
         if not updated:
-            raise HTTPException(status_code=404, detail=f"No privacy control for {photo_path}")
+            # No control yet: create one owned by the requester so the panel's
+            # first save on an uncontrolled photo works and the new control is
+            # owned by the same identity serve-time enforcement evaluates.
+            from server.privacy_enforcement import user_id_from_request
+
+            db.set_photo_privacy(
+                photo_path=photo_path,
+                owner_id=user_id_from_request(request),
+                visibility=body.visibility or "private",
+                share_permissions=body.share_permissions,
+                encryption_enabled=body.encryption_enabled or False,
+                encryption_key_hash=body.encryption_key_hash,
+                allowed_users=body.allowed_users,
+                allowed_groups=body.allowed_groups,
+            )
         control = _get_privacy_controls_db().get_photo_privacy(photo_path)
         return {"status": "updated", "privacy": _control_dict(control) if control else None}
     except HTTPException:

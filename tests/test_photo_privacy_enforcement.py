@@ -109,3 +109,37 @@ def test_default_identity_without_header(isolated_media_and_privacy):
     _set_private_control(privacy_db, photo, owner="default_user")
 
     assert client.get(f"/image/thumbnail?path={photo}").status_code == 200
+
+
+def test_query_param_identity_for_img_tags(isolated_media_and_privacy):
+    """<img src> cannot send headers; user_id query param must work."""
+    media_dir, privacy_db = isolated_media_and_privacy
+    photo = _make_photo(media_dir, "headerless.png")
+    _set_private_control(privacy_db, photo, owner="alice")
+
+    stranger = client.get(f"/image/thumbnail?path={photo}&user_id=stranger")
+    assert stranger.status_code == 403
+
+    owner = client.get(f"/image/thumbnail?path={photo}&user_id=alice")
+    assert owner.status_code == 200
+
+
+def test_put_upsert_owns_control_for_requester(isolated_media_and_privacy):
+    """Panel first-save on an uncontrolled photo creates a control owned by
+    the requester identity, so serve-time enforcement allows the same user."""
+    media_dir, privacy_db = isolated_media_and_privacy
+    photo = _make_photo(media_dir, "panel_first_save.png")
+
+    put_response = client.put(
+        f"/privacy/control/{photo}",
+        json={"visibility": "friends_only", "allowed_users": ["alice"]},
+        headers={"X-User-ID": "panel_user"},
+    )
+    assert put_response.status_code == 200
+    assert put_response.json()["privacy"]["visibility"] == "friends_only"
+    assert put_response.json()["privacy"]["owner_id"] == "panel_user"
+
+    # The authored control now governs bytes: the authoring identity gets
+    # served, strangers do not.
+    assert client.get(f"/image/thumbnail?path={photo}&user_id=panel_user").status_code == 200
+    assert client.get(f"/image/thumbnail?path={photo}&user_id=alice").status_code == 200

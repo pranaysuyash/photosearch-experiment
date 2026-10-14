@@ -15,6 +15,27 @@ const favoriteCache = new Map<
   { is_favorited: boolean; expiresAt: number }
 >();
 
+// Local user identity for privacy controls. The desktop app is single-user
+// ('default_user') until account identity lands; persisted so the user can
+// name themselves for privacy-control ownership.
+export const USER_ID_STORAGE_KEY = 'photosearch.user_id';
+
+export function getCurrentUserId(): string {
+  try {
+    return localStorage.getItem(USER_ID_STORAGE_KEY) || 'default_user';
+  } catch {
+    return 'default_user';
+  }
+}
+
+export function setCurrentUserId(userId: string): void {
+  try {
+    localStorage.setItem(USER_ID_STORAGE_KEY, userId);
+  } catch {
+    // storage unavailable (private mode); identity stays in-memory default
+  }
+}
+
 // Create axios instance with proper configuration
 const apiClient = axios.create({
   baseURL: API_BASE,
@@ -24,6 +45,13 @@ const apiClient = axios.create({
   },
   // Enable connection reuse (browser handles this automatically)
   maxRedirects: 5,
+});
+
+// Attach the local user identity to every API call so privacy controls
+// evaluate against the same identity that authored them.
+apiClient.interceptors.request.use((config) => {
+  config.headers['X-User-ID'] = getCurrentUserId();
+  return config;
 });
 
 // Add request interceptor for consistent configuration
@@ -814,9 +842,9 @@ export const api = {
 
   getImageUrl: (path: string, size?: number) => {
     const encodedPath = encodeURIComponent(path);
-    return `${API_BASE}/image/thumbnail?path=${encodedPath}${
-      size ? `&size=${size}` : ''
-    }`;
+    return `${API_BASE}/image/thumbnail?path=${encodedPath}&user_id=${encodeURIComponent(
+      getCurrentUserId()
+    )}${size ? `&size=${size}` : ''}`;
   },
 
   getServerConfig: async (): Promise<Record<string, unknown>> => {
@@ -870,7 +898,7 @@ export const api = {
 
     // If local, no need to request a token
     if (isLocal) {
-      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}&user_id=${encodeURIComponent(getCurrentUserId())}${
         size ? `&size=${size}` : ''
       }`;
     }
@@ -906,7 +934,7 @@ export const api = {
     const signedEnabled = Boolean(api._signedUrlEnabledCache);
     if (!signedEnabled) {
       // Signed URLs are disabled, fall back to direct path
-      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}&user_id=${encodeURIComponent(getCurrentUserId())}${
         size ? `&size=${size}` : ''
       }`;
     }
@@ -940,12 +968,12 @@ export const api = {
       }
 
       // Fallback
-      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}&user_id=${encodeURIComponent(getCurrentUserId())}${
         size ? `&size=${size}` : ''
       }`;
     } catch {
       // On error, return path-based URL
-      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}&user_id=${encodeURIComponent(getCurrentUserId())}${
         size ? `&size=${size}` : ''
       }`;
     }
