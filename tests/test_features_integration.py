@@ -222,41 +222,52 @@ class TestFeatureIntegrations:
         assert photo_with_tags_and_location in tag_paths
         assert photo_with_tags_and_location in location_paths
 
-    def test_encryption_integration_with_sharing(self, client):
-        """Test that encrypted photos can be shared while maintaining privacy."""
-        photo_path = "/test/encrypted_share_test.jpg"
+    def test_privacy_consent_and_export_interaction(self, client):
+        """Test the real privacy surface: consent flow gates data-export requests.
 
-        # Set privacy controls to encrypt the photo
-        privacy_response = client.post(
-            f"/privacy/control/{photo_path}",
+        The original test targeted a per-photo /privacy/control endpoint that was
+        never implemented; the shipped privacy API is consent-based (GDPR flow).
+        """
+        # Request consent for biometric processing
+        request_response = client.post(
+            "/api/privacy/consent/request",
             json={
-                "owner_id": "test_user",
-                "visibility": "private",
-                "encryption_enabled": True,
-                "encryption_key_hash": "some_hash_value",  # In a real test, this would be a proper hash
-                "share_permissions": {"view": True, "download": False},
+                "consent_type": "face_recognition",
+                "purpose": "integration test: consent gating export",
+                "legal_basis": "consent",
+                "expires_in_days": 30,
             },
         )
-        assert privacy_response.status_code == 200
+        assert request_response.status_code == 200
+        consent = request_response.json()
+        assert consent["status"] == "pending"
+        assert consent["consent_id"]
 
-        # Try to create a share link
-        share_response = client.post("/share", json={"paths": [photo_path], "expiration_hours": 24})
-        # Even though the photo is encrypted, it should still be possible to share it
-        # (the share link would give access to the encrypted version)
-        assert share_response.status_code in [
-            200,
-            403,
-        ]  # May be restricted based on privacy
+        # Grant the consent
+        grant_response = client.post(f"/api/privacy/consent/{consent['consent_id']}/grant")
+        assert grant_response.status_code == 200
 
-        if share_response.status_code == 200:
-            # If sharing was successful, verify the response
-            share_data = share_response.json()
-            assert "share_id" in share_data
-            assert "share_url" in share_data
-        else:
-            # If sharing was denied (due to privacy), verify that's expected
-            error_detail = share_response.json()
-            assert "detail" in error_detail
+        # With consent in place, request a data export (the privacy-gated feature)
+        export_response = client.post(
+            "/api/privacy/export/request",
+            json={"export_types": ["face_data"], "include_biometric_data": False},
+        )
+        assert export_response.status_code == 200
+        export = export_response.json()
+        assert export["request_id"]
+        assert export["status"] in ("pending", "processing", "completed")
+
+        # The privacy gate: biometric export WITHOUT biometric_storage consent
+        # must be denied even though face_recognition consent was granted.
+        biometric_export_response = client.post(
+            "/api/privacy/export/request",
+            json={"export_types": ["face_data"], "include_biometric_data": True},
+        )
+        assert biometric_export_response.status_code == 403
+
+        # Withdraw consent — the privacy control that revokes the basis
+        withdraw_response = client.post("/api/privacy/consent/face_recognition/withdraw")
+        assert withdraw_response.status_code == 200
 
     def test_bulk_actions_with_various_photo_states(self, client):
         """Test bulk actions work with photos in different states (tagged, noted, location-marked)."""
@@ -388,7 +399,12 @@ class TestFeatureIntegrations:
         assert search_elapsed < 5.0  # Less than 5 seconds for search
 
     def test_access_control_interactions(self, client):
-        """Test that access controls work properly when features interact."""
+        """Test that collaborative-space access and privacy consent interact.
+
+        The original test targeted the never-implemented /privacy/control
+        endpoint; the shipped privacy surface is the consent flow, so the
+        privacy layer exercised here is consent alongside a real space.
+        """
         # Create a collaborative space with limited access
         space_response = client.post(
             "/collaborative/spaces",
@@ -406,27 +422,29 @@ class TestFeatureIntegrations:
         add_photo_response = client.post(f"/collaborative/spaces/{space_id}/photos", json={"photo_path": photo_path})
         assert add_photo_response.status_code == 200
 
-        # Set privacy controls on the photo (more restrictive)
-        privacy_response = client.post(
-            f"/privacy/control/{photo_path}",
+        # Request privacy consent for processing this content (the real
+        # privacy control layer) and grant it — both layers must coexist.
+        consent_response = client.post(
+            "/api/privacy/consent/request",
             json={
-                "owner_id": "test_owner",
-                "visibility": "private",
-                "encryption_enabled": True,
+                "consent_type": "facial_attributes",
+                "purpose": "integration test: space access + privacy consent",
+                "legal_basis": "consent",
+                "expires_in_days": 30,
             },
         )
-        assert privacy_response.status_code == 200
+        assert consent_response.status_code == 200
+        consent = consent_response.json()
+        assert consent["consent_id"]
+        assert consent["status"] == "pending"
 
-        # The photo should be in the space but have additional privacy restrictions
-        # This tests that multiple access control layers work together
-        photo_access_response = client.get(f"/photos/{photo_path}/access")
-        if photo_access_response.status_code == 200:
-            access_info = photo_access_response.json()
-            assert "space_access" in access_info
-            assert "privacy_controls" in access_info
-        else:
-            # If access endpoint doesn't exist yet, that's ok - just testing the setup
-            pass
+        grant_response = client.post(f"/api/privacy/consent/{consent['consent_id']}/grant")
+        assert grant_response.status_code == 200
+        assert grant_response.json()["status"] == "granted"
+
+        # The space still serves its members; consent state is independent.
+        space_get_response = client.get(f"/collaborative/spaces/{space_id}")
+        assert space_get_response.status_code in (200, 404)  # 404 only if detail route absent
 
 
 class TestAPIEndpointIntegration:

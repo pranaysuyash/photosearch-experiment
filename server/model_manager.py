@@ -31,6 +31,7 @@ import logging
 import shutil
 import sqlite3
 import time
+import uuid
 import urllib.request
 from dataclasses import dataclass, asdict
 from datetime import datetime
@@ -496,8 +497,9 @@ class ModelManager:
             Migration job information
         """
         try:
-            # Generate migration job ID
-            job_id = f"migration_{int(time.time())}"
+            # Generate migration job ID. Timestamp alone collides when two
+            # migrations start in the same second; uuid suffix makes IDs unique.
+            job_id = f"migration_{int(time.time())}_{uuid.uuid4().hex[:8]}"
 
             # Count embeddings to migrate
             with sqlite3.connect(str(self.db_path)) as conn:

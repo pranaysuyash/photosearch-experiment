@@ -262,6 +262,8 @@ class PrivacyControlsManager:
             Consent ID for tracking
         """
         try:
+            if not isinstance(consent_type, ConsentType):
+                raise ValueError(f"Invalid consent type: {consent_type!r}")
             consent_id = str(uuid.uuid4())
             expires_at = None
 

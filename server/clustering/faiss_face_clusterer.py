@@ -259,7 +259,10 @@ class FAISSFaceClusterer:
         Returns:
             List of (index, similarity) tuples
         """
-        if self.index.ntotal == 0:
+        # Guard k<=0 (e.g. callers computing k dynamically) and the empty index:
+        # both must return empty results rather than reaching faiss, which
+        # asserts k > 0.
+        if k <= 0 or self.index.ntotal == 0:
             return []
 
         # Normalize query embedding
