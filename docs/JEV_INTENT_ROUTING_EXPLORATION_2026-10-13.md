@@ -207,7 +207,16 @@ Four synthetic user-lens personas were created for this experiment — full mand
 
 The personas convert routing from single-model classification into an *owner-perspective adjudication* with three practical properties: (1) disagreement is data — a split vote flags a genuinely ambiguous query for the product's "did you mean" UX instead of silently picking; (2) SIM-PRIYA makes privacy sensitivity a first-class vote, surfacing person-adjacent queries the router routed away from `people`; (3) the aggregation weights are a product knob (a family-photos release can weight SIM-AVA up). None of this requires the personas to be real; it requires them to be explicit, documented, and measured — which is what `personas.json` is for.
 
-## 10. Artifacts and provenance (updated)
+## 10. Real-query availability check (2026-10-14) — Tier-3 replay resolved: no corpus exists yet
+
+The one remaining "Unknown" from §4 — accuracy on real user queries — was chased to ground:
+
+- **Capture is wired**: the search route logs every query to `saved_searches.db:search_history` by default (`server/api/routers/search.py:155,863`), and it logs through the state's detector, so once the advisor is enabled, recorded intents reflect Jev routing.
+- **The corpus is effectively empty**: 5 rows total, 3 usable, all single words (`sunset`, `food`, `people`), from December 2025. No meaningful replay is possible; the synthetic corpus remains the evidence base.
+- **The tiny history still paid off**: `food` was recorded with `intent=camera` on 2025-12-15 — the pre-fix no-signal fallthrough bug, confirmed in real recorded data. Replayed through the fixed router: `food` → `generic` (changed), `sunset` → `scene` and `people` → `people` (both unchanged, both correct).
+- **Path forward**: let `search_history` accumulate real traffic (≥50 distinct non-trivial queries), then replay offline through the deterministic layer (free) and run a capped live pass. Until then, real-query accuracy stays Unknown — not by omission but by absence of data.
+
+## 11. Artifacts and provenance (updated)
 
 - Intent-routing experiment: `/Users/pranay/Projects/exploration_maps/jev/experiments/photo_intent_router/` (fixture, probe, pre-fix and post-fix result files, live results, order-check receipt)
 - Persona-council experiment: `/Users/pranay/Projects/exploration_maps/jev/experiments/photo_persona_council/` (personas.json, corpus generator + 2,290-case corpus, probe, offline and live council results)
