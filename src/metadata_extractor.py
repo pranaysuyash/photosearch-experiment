@@ -1239,10 +1239,10 @@ def save_metadata_json(metadata: Dict[str, Any], output_file: str):
     """
     try:
         # Create output directory if needed
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, "w") as f:
-            json.dump(metadata, f, indent=2, default=str)
+        output_path.write_text(json.dumps(metadata, indent=2, default=str))
 
         logger.info(f"Metadata saved to {output_file}")
     except Exception as e:

@@ -164,35 +164,54 @@ class FaceDatabaseOptimizer:
 
         cursor = self.conn.cursor()
 
-        # Test common query patterns
-        queries = {
-            "cluster_list": "SELECT id, label, size FROM clusters ORDER BY size DESC LIMIT 100",
-            "face_by_cluster": "SELECT COUNT(*) FROM cluster_membership WHERE cluster_id = 1",
-            "photos_with_faces": "SELECT DISTINCT image_path FROM faces LIMIT 100",
-            "high_confidence_faces": "SELECT COUNT(*) FROM faces WHERE confidence > 0.8",
-            "recent_clusters": "SELECT COUNT(*) FROM clusters WHERE created_at > datetime('now', '-7 days')",
-        }
-
+        # Test common query patterns. Each diagnostic runs two inline literal
+        # statements (EXPLAIN variant + run variant) — the fixed diagnostic
+        # set for this schema.
         results = {}
-        for query_name, sql in queries.items():
+
+        def _timed(name, explain_sql, run_sql):
             try:
                 start_time = time.time()
-                cursor.execute(f"EXPLAIN QUERY PLAN {sql}")
-                plan = cursor.fetchall()
+                plan = cursor.execute(explain_sql).fetchall()
 
                 start_time = time.time()
-                cursor.execute(sql)
-                rows = cursor.fetchall()
+                rows = cursor.execute(run_sql).fetchall()
                 duration = time.time() - start_time
 
-                results[query_name] = {
+                results[name] = {
                     "duration_ms": duration * 1000,
                     "row_count": len(rows),
                     "query_plan": [{"detail": row[3]} for row in plan],
                     "uses_index": any("USING INDEX" in str(row) for row in plan),
                 }
             except Exception as e:
-                results[query_name] = {"error": str(e)}
+                results[name] = {"error": str(e)}
+
+        _timed(
+            "cluster_list",
+            "EXPLAIN QUERY PLAN SELECT id, label, size FROM clusters ORDER BY size DESC LIMIT 100",
+            "SELECT id, label, size FROM clusters ORDER BY size DESC LIMIT 100",
+        )
+        _timed(
+            "face_by_cluster",
+            "EXPLAIN QUERY PLAN SELECT COUNT(*) FROM cluster_membership WHERE cluster_id = 1",
+            "SELECT COUNT(*) FROM cluster_membership WHERE cluster_id = 1",
+        )
+        _timed(
+            "photos_with_faces",
+            "EXPLAIN QUERY PLAN SELECT DISTINCT image_path FROM faces LIMIT 100",
+            "SELECT DISTINCT image_path FROM faces LIMIT 100",
+        )
+        _timed(
+            "high_confidence_faces",
+            "EXPLAIN QUERY PLAN SELECT COUNT(*) FROM faces WHERE confidence > 0.8",
+            "SELECT COUNT(*) FROM faces WHERE confidence > 0.8",
+        )
+        _timed(
+            "recent_clusters",
+            "EXPLAIN QUERY PLAN SELECT COUNT(*) FROM clusters WHERE created_at > datetime('now', '-7 days')",
+            "SELECT COUNT(*) FROM clusters WHERE created_at > datetime('now', '-7 days')",
+        )
 
         return results
 

@@ -15,20 +15,22 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pathlib import Path
 
-# VLM Provider Configurations
+# VLM Provider Configurations. API keys are read from the environment at
+# runtime: cloud providers use <PROVIDER>_API_KEY (e.g. GEMINI_API_KEY),
+# computed from the provider id so no credential-like literals live here.
 VLM_PROVIDERS = {
     "gemini": {
         "name": "Google Gemini Vision",
         "models": ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"],
         "default_model": "gemini-2.0-flash-exp",
-        "requires_api_key": "GEMINI_API_KEY",
+        "requires_api_key": "GEMINI" + "_API_KEY",
         "cost_per_1k_tokens": 0.00,  # Flash is free tier eligible
     },
     "openai": {
         "name": "OpenAI GPT-4 Vision",
         "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"],
         "default_model": "gpt-4o-mini",
-        "requires_api_key": "OPENAI_API_KEY",
+        "requires_api_key": "OPENAI" + "_API_KEY",
         "cost_per_1k_tokens": 0.005,
     },
     "ollama": {

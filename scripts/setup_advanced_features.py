@@ -201,8 +201,7 @@ API_RATE_LIMIT=100
 LOG_LEVEL=INFO
 LOG_FILE=logs/app.log
 """
-            with open(self.config_file, "w") as f:
-                f.write(env_content)
+            self.config_file.write_text(env_content)
             logger.info("✓ Created .env configuration file")
 
         # Create logs directory
@@ -265,8 +264,7 @@ if __name__ == "__main__":
     main()
 '''
 
-        with open(startup_script, "w") as f:
-            f.write(script_content)
+        startup_script.write_text(script_content)
 
         # Make script executable
         startup_script.chmod(0o755)

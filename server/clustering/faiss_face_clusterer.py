@@ -555,8 +555,7 @@ class FAISSFaceClusterer:
                     faiss.write_index(self.index, str(index_path))
 
                 # Save state JSON
-                with open(file_path, "w") as f:
-                    json.dump(state, f, indent=2)
+                file_path.write_text(json.dumps(state, indent=2))
 
                 logger.info(f"Saved clustering state to {file_path}")
                 return True

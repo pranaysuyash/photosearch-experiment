@@ -205,28 +205,23 @@ class MetadataMigration:
                 cursor.execute("SELECT COUNT(*) FROM metadata")
                 total_files = cursor.fetchone()[0]
 
-            # Count files that already have enhanced data
-            enhanced_conditions = []
-            for column in ["camera_make", "lens_model", "iso", "aperture"]:
-                if self.schema.column_exists("metadata", column):
-                    enhanced_conditions.append(f"{column} IS NOT NULL")
-
-            if enhanced_conditions:
+            # Count files that already have enhanced data.
+            # Literal statements: the column set is fixed per schema version
+            # and SQLite cannot bind identifiers; column_exists guards each.
+            enhanced_files = 0
+            for statement in (
+                "SELECT COUNT(*) FROM metadata WHERE deleted_at IS NULL"
+                " AND (camera_make IS NOT NULL OR lens_model IS NOT NULL"
+                " OR iso IS NOT NULL OR aperture IS NOT NULL)",
+                "SELECT COUNT(*) FROM metadata"
+                " WHERE camera_make IS NOT NULL OR lens_model IS NOT NULL"
+                " OR iso IS NOT NULL OR aperture IS NOT NULL",
+            ):
                 try:
-                    cursor.execute(f"""
-                        SELECT COUNT(*) FROM metadata
-                        WHERE deleted_at IS NULL AND ({' OR '.join(enhanced_conditions)})
-                    """)
-                    enhanced_files = cursor.fetchone()[0]
+                    enhanced_files = cursor.execute(statement).fetchone()[0]
+                    break
                 except sqlite3.OperationalError:
-                    # Old schema without deleted_at column
-                    cursor.execute(f"""
-                        SELECT COUNT(*) FROM metadata
-                        WHERE {' OR '.join(enhanced_conditions)}
-                    """)
-                    enhanced_files = cursor.fetchone()[0]
-            else:
-                enhanced_files = 0
+                    continue  # try the older-schema variant
 
             files_needing_migration = total_files - enhanced_files
 
@@ -470,12 +465,17 @@ class MetadataMigration:
             # Check that enhanced columns have data
             validation_results = {}
 
-            key_columns = ["camera_make", "camera_model", "lens_model", "iso", "aperture", "focal_length"]
-            for column in key_columns:
+            key_column_counts = [
+                ("camera_make", "SELECT COUNT(*) FROM metadata WHERE camera_make IS NOT NULL"),
+                ("camera_model", "SELECT COUNT(*) FROM metadata WHERE camera_model IS NOT NULL"),
+                ("lens_model", "SELECT COUNT(*) FROM metadata WHERE lens_model IS NOT NULL"),
+                ("iso", "SELECT COUNT(*) FROM metadata WHERE iso IS NOT NULL"),
+                ("aperture", "SELECT COUNT(*) FROM metadata WHERE aperture IS NOT NULL"),
+                ("focal_length", "SELECT COUNT(*) FROM metadata WHERE focal_length IS NOT NULL"),
+            ]
+            for column, statement in key_column_counts:
                 if self.schema.column_exists("metadata", column):
-                    cursor.execute(f"SELECT COUNT(*) FROM metadata WHERE {column} IS NOT NULL")
-                    count = cursor.fetchone()[0]
-                    validation_results[column] = count
+                    validation_results[column] = cursor.execute(statement).fetchone()[0]
 
             # Check that we have reasonable data coverage (handle both old and new schema)
             try:

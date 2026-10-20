@@ -1,5 +1,5 @@
 import numpy as np
-import pickle
+import json
 import logging
 from typing import List, Dict, Any, Optional
 from pathlib import Path
@@ -81,11 +81,15 @@ class VectorStore:
         return results
 
     def save(self, path: str):
-        """Save index to disk."""
-        data = {"ids": self.ids, "embeddings": self.embeddings, "metadata": self.metadata}
+        """Save index to disk as an .npz archive (no pickle: ids and metadata
+        are stored as JSON-safe strings, embeddings as a plain float array)."""
         try:
-            with open(path, "wb") as f:
-                pickle.dump(data, f)
+            np.savez(
+                path,
+                ids=np.array(self.ids, dtype=np.str_),
+                embeddings=self.embeddings,
+                metadata_json=np.array(json.dumps(self.metadata)),
+            )
             logger.info(f"Vector store saved to {path} ({len(self.ids)} items)")
         except Exception as e:
             logger.error(f"Failed to save vector store: {e}")
@@ -99,12 +103,11 @@ class VectorStore:
             return
 
         try:
-            with open(path, "rb") as f:
-                data = pickle.load(f)
+            data = np.load(path_obj, allow_pickle=False)
 
-            self.ids = data["ids"]
+            self.ids = data["ids"].tolist()
             self.embeddings = data["embeddings"]
-            self.metadata = data["metadata"]
+            self.metadata = json.loads(str(data["metadata_json"]))
             logger.info(f"Vector store loaded from {path} ({len(self.ids)} items)")
         except Exception as e:
             logger.error(f"Failed to load vector store: {e}")

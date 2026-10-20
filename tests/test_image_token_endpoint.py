@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from fastapi.testclient import TestClient
 from server.main import app
 from server.config import settings
@@ -9,8 +10,9 @@ client = TestClient(app)
 
 def test_issue_token_and_fetch_thumbnail(monkeypatch):
     # Prepare settings
-    monkeypatch.setattr(settings, "SIGNED_URL_SECRET", "test_secret")
-    monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", "issuer-key")
+    issuer_key = f"issuer-key-{uuid.uuid4().hex}"
+    monkeypatch.setattr(settings, "SIGNED_URL_SECRET", f"test_secret_{uuid.uuid4().hex}")
+    monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", issuer_key)
 
     # Create a temporary media dir with an image file
     with tempfile.TemporaryDirectory() as td:
@@ -28,7 +30,7 @@ def test_issue_token_and_fetch_thumbnail(monkeypatch):
         assert res.status_code == 401
 
         # Issue token with API key
-        res = client.post("/image/token", headers={"x-api-key": "issuer-key"}, json={"path": str(img_path), "ttl": 60})
+        res = client.post("/image/token", headers={"x-api-key": issuer_key}, json={"path": str(img_path), "ttl": 60})
         assert res.status_code == 200
         token = res.json().get("token")
         assert token
@@ -40,13 +42,14 @@ def test_issue_token_and_fetch_thumbnail(monkeypatch):
 
 
 def test_issue_token_path_outside_media(monkeypatch):
-    monkeypatch.setattr(settings, "SIGNED_URL_SECRET", "test_secret")
-    monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", "issuer-key")
+    issuer_key = f"issuer-key-{uuid.uuid4().hex}"
+    monkeypatch.setattr(settings, "SIGNED_URL_SECRET", f"test_secret_{uuid.uuid4().hex}")
+    monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", issuer_key)
 
     with tempfile.TemporaryDirectory() as td:
         media_dir = Path(td)
         monkeypatch.setattr(settings, "MEDIA_DIR", media_dir)
 
         outside_path = Path("/etc/passwd")
-        res = client.post("/image/token", headers={"x-api-key": "issuer-key"}, json={"path": str(outside_path)})
+        res = client.post("/image/token", headers={"x-api-key": issuer_key}, json={"path": str(outside_path)})
         assert res.status_code == 403

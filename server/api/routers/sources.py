@@ -13,6 +13,7 @@ from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 
 from server.config import settings
+from server.security.url_guard import PublicUrlRequired, assert_public_http_url
 from server.models.schemas.sources import (
     GoogleDriveSourceCreate,
     LocalFolderSourceCreate,
@@ -205,6 +206,32 @@ def _aws_sigv4_headers(
     return headers
 
 
+def _validate_s3_endpoint(endpoint_url: str, allow_private: bool) -> None:
+    """Guard against SSRF through user-configured S3 endpoints.
+
+    endpoint_url is stored per source and flows into outbound requests, so
+    without a guard it could probe internal services or the cloud metadata
+    address. Delegates to the shared outbound guard (canonical policy:
+    https, no embedded credentials, public resolved host); S3 differs from
+    the default only in allowing http for self-hosted endpoints and in the
+    explicit allow_private_endpoints opt-in for MinIO-style LAN setups.
+    """
+    parsed = urlparse(endpoint_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("endpoint_url scheme must be http or https")
+    if parsed.username or parsed.password:
+        raise ValueError("endpoint_url must not embed credentials; use keys")
+    if not parsed.hostname:
+        raise ValueError("endpoint_url must include a hostname")
+    try:
+        assert_public_http_url(
+            f"https://{parsed.hostname}" + (f":{parsed.port}" if parsed.port else ""),
+            allow_private=allow_private,
+        )
+    except PublicUrlRequired as exc:
+        raise ValueError(f'{exc}; set "allow_private_endpoints": true in the source config to allow') from exc
+
+
 def _s3_urls(
     endpoint_url: str,
     bucket: str,
@@ -236,6 +263,7 @@ def _s3_list_objects(cfg: Dict[str, object]) -> List[Dict[str, object]]:
     from defusedxml import ElementTree as ET
 
     endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    _validate_s3_endpoint(endpoint_url, bool(cfg.get("allow_private_endpoints")))
     region = str(cfg.get("region", "")).strip()
     bucket = str(cfg.get("bucket", "")).strip()
     prefix = str(cfg.get("prefix", "") or "").strip()
@@ -291,8 +319,19 @@ def _s3_list_objects(cfg: Dict[str, object]) -> List[Dict[str, object]]:
     return out
 
 
+def _safe_rel_key(key: str) -> Path:
+    """Flatten a remote object key to a relative path that cannot escape the mirror root.
+
+    Keys are remote-controlled strings: absolute markers, ".", "..", and empty
+    segments are dropped before joining, so "../"-style keys stay under root.
+    """
+    parts = [p for p in key.replace("\\", "/").split("/") if p not in ("", ".", "..")]
+    return Path(*parts) if parts else Path("object")
+
+
 def _s3_download_object(cfg: Dict[str, object], key: str, dest: Path) -> None:
     endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    _validate_s3_endpoint(endpoint_url, bool(cfg.get("allow_private_endpoints")))
     region = str(cfg.get("region", "")).strip()
     bucket = str(cfg.get("bucket", "")).strip()
     access_key_id = str(cfg.get("access_key_id", "")).strip()
@@ -320,6 +359,7 @@ def _s3_download_object(cfg: Dict[str, object], key: str, dest: Path) -> None:
 
 def _test_s3_connection(cfg: Dict[str, object]) -> None:
     endpoint_url = str(cfg.get("endpoint_url", "")).strip()
+    _validate_s3_endpoint(endpoint_url, bool(cfg.get("allow_private_endpoints")))
     region = str(cfg.get("region", "")).strip()
     bucket = str(cfg.get("bucket", "")).strip()
     access_key_id = str(cfg.get("access_key_id", "")).strip()
@@ -404,9 +444,9 @@ def _sync_s3_source(state: AppState, source_id: str, job_id: str) -> None:
         if prev and prev.status in ("trashed", "removed"):
             continue
 
-        # Mirror path under root, preserving prefix structure.
-        rel = Path(key)
-        dest = root / rel
+        # Mirror path under root, preserving prefix structure. The key is
+        # remote-controlled, so flatten it before joining (blocks ../ escape).
+        dest = root / _safe_rel_key(key)
         needs_download = not dest.exists()
         if prev and prev.etag and etag and prev.etag != str(etag):
             needs_download = True

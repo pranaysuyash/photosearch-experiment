@@ -146,10 +146,10 @@ class TestPhotoVersionsDB:
 
         with sqlite3.connect(db_path) as conn:
             for table_name in ["photo_versions", "version_stacks"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='{table_name}'
-                """)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table_name,),
+                )
                 assert cursor.fetchone() is not None
 
     def test_create_and_get_version(self):
@@ -257,10 +257,10 @@ class TestLocationClustersDB:
 
         with sqlite3.connect(db_path) as conn:
             for table_name in ["photo_locations", "location_clusters"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='{table_name}'
-                """)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table_name,),
+                )
                 assert cursor.fetchone() is not None
 
     def test_add_and_get_photo_location(self):
@@ -367,10 +367,10 @@ class TestMultiTagFilterDB:
 
         with sqlite3.connect(db_path) as conn:
             for table_name in ["tag_filters", "photo_tags"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='{table_name}'
-                """)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table_name,),
+                )
                 assert cursor.fetchone() is not None
 
     def test_create_and_get_tag_filter(self):
@@ -442,10 +442,10 @@ class TestCollaborativeSpacesDB:
 
         with sqlite3.connect(db_path) as conn:
             for table_name in ["collaborative_spaces", "space_members", "space_photos"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='{table_name}'
-                """)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table_name,),
+                )
                 assert cursor.fetchone() is not None
 
     def test_create_and_get_collaborative_space(self):
@@ -513,10 +513,10 @@ class TestAIInsightsDB:
 
         with sqlite3.connect(db_path) as conn:
             for table_name in ["ai_insights", "insight_templates", "model_performance"]:
-                cursor = conn.execute(f"""
-                    SELECT name FROM sqlite_master
-                    WHERE type='table' AND name='{table_name}'
-                """)
+                cursor = conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                    (table_name,),
+                )
                 assert cursor.fetchone() is not None
 
     def test_create_and_get_insight(self):

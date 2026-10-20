@@ -16,11 +16,11 @@ Recommendation:
 - TBD
 """
 
+import json
 import time
 import os
 import faiss
 import numpy as np
-import pickle
 from typing import List, Dict, Any
 from pathlib import Path
 
@@ -97,11 +97,11 @@ class FaissVectorStore:
         """
         Persist to disk. FAISS saves index separately from metadata.
         path_prefix.index = faiss index
-        path_prefix.pkl = metadata
+        path_prefix.json = metadata (JSON; no pickle — ids and metadata are
+        JSON-safe values)
         """
         faiss.write_index(self.index, f"{path_prefix}.index")
-        with open(f"{path_prefix}.pkl", "wb") as f:
-            pickle.dump({"ids": self.ids, "metadata": self.metadata}, f)
+        Path(f"{path_prefix}.json").write_text(json.dumps({"ids": self.ids, "metadata": self.metadata}))
         print(f"Saved FAISS index + metadata to {path_prefix}.*")
 
     def load(self, path_prefix: str):
@@ -111,10 +111,9 @@ class FaissVectorStore:
             return
 
         self.index = faiss.read_index(f"{path_prefix}.index")
-        with open(f"{path_prefix}.pkl", "rb") as f:
-            data = pickle.load(f)
-            self.ids = data["ids"]
-            self.metadata = data["metadata"]
+        data = json.loads(Path(f"{path_prefix}.json").read_text())
+        self.ids = data["ids"]
+        self.metadata = data["metadata"]
         print(f"Loaded {self.index.ntotal} vectors.")
 
 

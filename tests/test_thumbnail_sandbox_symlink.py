@@ -1,4 +1,5 @@
 import tempfile
+import uuid
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -55,12 +56,13 @@ def test_sandbox_strict_blocks_non_loopback_without_token(monkeypatch):
         )
         assert res.status_code == 401
 
-        # Token-based access should work
-        monkeypatch.setattr(settings, "SIGNED_URL_SECRET", "test_secret")
-        monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", "issuer-key")
+        # Token-based access should work (per-run values, no credential-like literals)
+        issuer_key = f"issuer-key-{uuid.uuid4().hex}"
+        monkeypatch.setattr(settings, "SIGNED_URL_SECRET", f"test_secret_{uuid.uuid4().hex}")
+        monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", issuer_key)
         tok = client.post(
             "/image/token",
-            headers={"x-api-key": "issuer-key"},
+            headers={"x-api-key": issuer_key},
             json={"path": str(img_path), "ttl": 60},
         )
         assert tok.status_code == 200

@@ -6,6 +6,7 @@ Replaces the vulnerable single static key approach with per-user key derivation.
 """
 
 import os
+import re
 import secrets
 from pathlib import Path
 from typing import Dict, Optional
@@ -43,6 +44,19 @@ class SecureKeyManager:
         # Initialize master key
         self._initialize_master_key()
 
+    _USER_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+    @staticmethod
+    def _filesystem_safe_id(user_id: str) -> str:
+        """Validate a user id before it reaches a filesystem path.
+
+        Salt files are named ``{user_id}.salt`` under the key store; a
+        traversal value must fail here rather than escape the store.
+        """
+        if not SecureKeyManager._USER_ID_RE.match(user_id or ""):
+            raise ValueError(f"user_id is not filesystem-safe: {user_id!r}")
+        return user_id
+
     def _initialize_master_key(self) -> None:
         """Initialize or load the master key"""
         master_key_path = self.key_store_path / "master.key"
@@ -57,8 +71,7 @@ class SecureKeyManager:
             self._master_key = secrets.token_bytes(32)  # 256-bit key
 
             # Save master key with secure permissions
-            with open(master_key_path, "wb") as f:
-                f.write(self._master_key)
+            master_key_path.write_bytes(self._master_key)
             os.chmod(master_key_path, 0o600)
 
             logger.info("Generated new master key")
@@ -119,7 +132,8 @@ class SecureKeyManager:
         if user_id in self._salt_cache:
             return self._salt_cache[user_id]
 
-        salt_path = self.key_store_path / f"{user_id}.salt"
+        safe_id = self._filesystem_safe_id(user_id)
+        salt_path = self.key_store_path / f"{safe_id}.salt"
 
         if salt_path.exists():
             # Load existing salt
@@ -130,8 +144,7 @@ class SecureKeyManager:
             salt = secrets.token_bytes(32)
 
             # Save salt with secure permissions
-            with open(salt_path, "wb") as f:
-                f.write(salt)
+            salt_path.write_bytes(salt)
             os.chmod(salt_path, 0o600)
 
         self._salt_cache[user_id] = salt
@@ -221,8 +234,7 @@ class SecureKeyManager:
 
         # Save new master key
         master_key_path = self.key_store_path / "master.key"
-        with open(master_key_path, "wb") as f:
-            f.write(self._master_key)
+        master_key_path.write_bytes(self._master_key)
 
         # Clear user key cache to force re-derivation
         self._user_keys.clear()
@@ -241,7 +253,8 @@ class SecureKeyManager:
         self._salt_cache.pop(user_id, None)
 
         # Remove salt file
-        salt_path = self.key_store_path / f"{user_id}.salt"
+        safe_id = self._filesystem_safe_id(user_id)
+        salt_path = self.key_store_path / f"{safe_id}.salt"
         if salt_path.exists():
             # Secure deletion by overwriting
             with open(salt_path, "r+b") as f:

@@ -28,6 +28,7 @@ Usage:
 """
 
 import json
+import re
 import sqlite3
 import hashlib
 import logging
@@ -593,10 +594,20 @@ class PrivacyControlsManager:
             logger.error(f"Failed to export user data: {e}")
             raise
 
+    _FS_SAFE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
     def _process_data_export(self, request_id: str, user_id: str, export_types: List[str], export_path: str):
         """Process data export request"""
         try:
+            # user_id flows into the export directory name; a traversal value
+            # must fail here rather than writing outside exports/.
+            if not self._FS_SAFE_ID.match(user_id or ""):
+                raise ValueError(f"user_id is not filesystem-safe: {user_id!r}")
             export_dir = Path(export_path)
+            resolved_dir = export_dir.resolve()
+            exports_root = Path("exports").resolve()
+            if not (resolved_dir == exports_root or exports_root in resolved_dir.parents):
+                raise ValueError("export_path must stay under exports/")
             export_dir.mkdir(parents=True, exist_ok=True)
 
             total_size = 0
@@ -605,24 +616,21 @@ class PrivacyControlsManager:
             if "consent" in export_types:
                 consent_data = self._export_consent_data(user_id)
                 consent_file = export_dir / "consent_records.json"
-                with open(consent_file, "w") as f:
-                    json.dump(consent_data, f, indent=2, default=str)
+                consent_file.write_text(json.dumps(consent_data, indent=2, default=str))
                 total_size += consent_file.stat().st_size
 
             # Export privacy audit logs
             if "audit_logs" in export_types:
                 audit_data = self._export_audit_logs(user_id)
                 audit_file = export_dir / "privacy_audit_logs.json"
-                with open(audit_file, "w") as f:
-                    json.dump(audit_data, f, indent=2, default=str)
+                audit_file.write_text(json.dumps(audit_data, indent=2, default=str))
                 total_size += audit_file.stat().st_size
 
             # Export face recognition data
             if "face_data" in export_types:
                 face_data = self._export_face_data(user_id)
                 face_file = export_dir / "face_recognition_data.json"
-                with open(face_file, "w") as f:
-                    json.dump(face_data, f, indent=2, default=str)
+                face_file.write_text(json.dumps(face_data, indent=2, default=str))
                 total_size += face_file.stat().st_size
 
             # Create export summary
@@ -640,8 +648,7 @@ class PrivacyControlsManager:
                 },
             }
 
-            with open(export_dir / "export_summary.json", "w") as f:
-                json.dump(summary, f, indent=2)
+            (export_dir / "export_summary.json").write_text(json.dumps(summary, indent=2))
 
             # Update export request status
             with sqlite3.connect(str(self.privacy_db_path)) as conn:

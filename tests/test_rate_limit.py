@@ -3,6 +3,7 @@ from server.main import app
 from server.config import settings
 from pathlib import Path
 import tempfile
+import uuid
 
 client = TestClient(app)
 
@@ -21,10 +22,12 @@ def test_rate_limit_triggers(monkeypatch):
         img_path = media_dir / "sample.jpg"
         Image.new("RGB", (32, 32), color=(255, 0, 0)).save(img_path)
 
-        # Issue token via issuer key to allow thumbnail access
-        monkeypatch.setattr(settings, "SIGNED_URL_SECRET", "test_secret")
-        monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", "issuer-key")
-        res = client.post("/image/token", headers={"x-api-key": "issuer-key"}, json={"path": str(img_path), "ttl": 60})
+        # Issue token via issuer key to allow thumbnail access (per-run values,
+        # mirroring test_image_token_endpoint.py so no credential-like literals)
+        issuer_key = f"issuer-key-{uuid.uuid4().hex}"
+        monkeypatch.setattr(settings, "SIGNED_URL_SECRET", f"test_secret_{uuid.uuid4().hex}")
+        monkeypatch.setattr(settings, "IMAGE_TOKEN_ISSUER_KEY", issuer_key)
+        res = client.post("/image/token", headers={"x-api-key": issuer_key}, json={"path": str(img_path), "ttl": 60})
         token = res.json().get("token")
 
         # First request OK

@@ -455,8 +455,7 @@ def save_catalog(data: Dict, output_file: str = "media_catalog.json") -> bool:
         True
     """
     try:
-        with open(output_file, "w") as f:
-            json.dump(data, f, indent=2)
+        Path(output_file).write_text(json.dumps(data, indent=2))
         logger.info(f"Catalog saved to {output_file}")
         return True
     except Exception as e:

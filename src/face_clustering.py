@@ -47,6 +47,8 @@ from dataclasses import dataclass
 from cryptography.fernet import Fernet
 import requests  # type: ignore[import-untyped]
 
+from server.security.url_guard import assert_public_http_url
+
 from src.face_backends import (
     FaceBackendConfig,
     InsightFaceBackend,
@@ -277,6 +279,9 @@ class FaceClusterer:
     def _download_model(self, url: str, dest_path: Path):
         """Download model with progress tracking"""
         try:
+            # Model URLs come from the registry; enforce the outbound policy
+            # (https, public host) before any bytes are fetched or written.
+            assert_public_http_url(url)
             response = requests.get(url, stream=True)
             response.raise_for_status()
             total_size = int(response.headers.get("content-length", 0))

@@ -175,8 +175,7 @@ class FaceBlurProcessor:
         try:
             blurred_bytes = self.blur_image(image_path, blur_strength)
             if blurred_bytes:
-                with open(image_path, "wb") as f:
-                    f.write(blurred_bytes)
+                Path(image_path).write_bytes(blurred_bytes)
                 return True
             return False
         except Exception as e:

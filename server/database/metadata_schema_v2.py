@@ -161,9 +161,11 @@ class MetadataSchemaV2:
         """Check if column exists in table."""
         conn = self.connect()
         cursor = conn.cursor()
-        cursor.execute(f"PRAGMA table_info({table_name})")
-        columns = [row[1] for row in cursor.fetchall()]
-        return column_name in columns
+        cursor.execute(
+            "SELECT 1 FROM pragma_table_info(?) WHERE name = ?",
+            (table_name, column_name),
+        )
+        return cursor.fetchone() is not None
 
     def get_schema_version(self) -> int:
         """Get current schema version from database."""
@@ -232,59 +234,191 @@ class MetadataSchemaV2:
             return False
 
     def _add_searchable_columns_to_existing_table(self, cursor: sqlite3.Cursor):
-        """Add searchable columns to existing metadata table."""
-        for column_name, column_type in self.SEARCHABLE_COLUMNS.items():
-            if not self.column_exists("metadata", column_name):
-                try:
-                    cursor.execute(f"ALTER TABLE metadata ADD COLUMN {column_name} {column_type}")
-                    logger.debug(f"Added column {column_name} to metadata table")
-                except Exception as e:
-                    logger.warning(f"Could not add column {column_name}: {e}")
+        """Add searchable columns to existing metadata table.
+
+        Statements are inline literals: SQLite cannot bind identifiers in DDL,
+        and the column set is a fixed part of this schema version (drift is
+        caught by validate_schema and its tests).
+        """
+        if not self.column_exists("metadata", "camera_make"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN camera_make TEXT")
+        if not self.column_exists("metadata", "camera_model"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN camera_model TEXT")
+        if not self.column_exists("metadata", "camera_serial"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN camera_serial TEXT")
+        if not self.column_exists("metadata", "lens_make"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN lens_make TEXT")
+        if not self.column_exists("metadata", "lens_model"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN lens_model TEXT")
+        if not self.column_exists("metadata", "lens_serial"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN lens_serial TEXT")
+        if not self.column_exists("metadata", "iso"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN iso INTEGER")
+        if not self.column_exists("metadata", "aperture"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN aperture REAL")
+        if not self.column_exists("metadata", "shutter_speed"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN shutter_speed TEXT")
+        if not self.column_exists("metadata", "shutter_speed_decimal"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN shutter_speed_decimal REAL")
+        if not self.column_exists("metadata", "exposure_compensation"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN exposure_compensation REAL")
+        if not self.column_exists("metadata", "exposure_mode"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN exposure_mode TEXT")
+        if not self.column_exists("metadata", "metering_mode"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN metering_mode TEXT")
+        if not self.column_exists("metadata", "focal_length"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN focal_length REAL")
+        if not self.column_exists("metadata", "focal_length_35mm"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN focal_length_35mm INTEGER")
+        if not self.column_exists("metadata", "flash_used"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN flash_used BOOLEAN")
+        if not self.column_exists("metadata", "flash_mode"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN flash_mode TEXT")
+        if not self.column_exists("metadata", "white_balance"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN white_balance TEXT")
+        if not self.column_exists("metadata", "color_temperature"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN color_temperature INTEGER")
+        if not self.column_exists("metadata", "image_quality"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN image_quality TEXT")
+        if not self.column_exists("metadata", "color_space"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN color_space TEXT")
+        if not self.column_exists("metadata", "bit_depth"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN bit_depth INTEGER")
+        if not self.column_exists("metadata", "software"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN software TEXT")
+        if not self.column_exists("metadata", "edit_software"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN edit_software TEXT")
+        if not self.column_exists("metadata", "copyright"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN copyright TEXT")
+        if not self.column_exists("metadata", "creator"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN creator TEXT")
+        if not self.column_exists("metadata", "creator_tool"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN creator_tool TEXT")
+        if not self.column_exists("metadata", "title"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN title TEXT")
+        if not self.column_exists("metadata", "headline"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN headline TEXT")
+        if not self.column_exists("metadata", "description"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN description TEXT")
+        if not self.column_exists("metadata", "keywords"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN keywords TEXT")
+        if not self.column_exists("metadata", "credit_line"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN credit_line TEXT")
+        if not self.column_exists("metadata", "source"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN source TEXT")
+        if not self.column_exists("metadata", "instructions"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN instructions TEXT")
+        if not self.column_exists("metadata", "rights_usage_terms"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN rights_usage_terms TEXT")
+        if not self.column_exists("metadata", "intellectual_genre"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN intellectual_genre TEXT")
+        if not self.column_exists("metadata", "location_city"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN location_city TEXT")
+        if not self.column_exists("metadata", "location_state"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN location_state TEXT")
+        if not self.column_exists("metadata", "location_country"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN location_country TEXT")
+        if not self.column_exists("metadata", "location_country_code"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN location_country_code TEXT")
+        if not self.column_exists("metadata", "location_sublocation"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN location_sublocation TEXT")
+        if not self.column_exists("metadata", "event"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN event TEXT")
+        if not self.column_exists("metadata", "subject_code"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN subject_code TEXT")
+        if not self.column_exists("metadata", "scene_code"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN scene_code TEXT")
+        if not self.column_exists("metadata", "exposure_triangle"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN exposure_triangle TEXT")
+        if not self.column_exists("metadata", "searchable_text"):
+            cursor.execute("ALTER TABLE metadata ADD COLUMN searchable_text TEXT")
 
     def _create_new_enhanced_table(self, cursor: sqlite3.Cursor):
         """Create new enhanced metadata table from scratch."""
-        # Build column definitions
-        columns = [
-            "id INTEGER PRIMARY KEY AUTOINCREMENT",
-            "file_path TEXT UNIQUE NOT NULL",
-            "file_hash TEXT NOT NULL",
-            "metadata_json TEXT NOT NULL",
-            "extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-            "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
-            "version INTEGER DEFAULT 1",
-            "deleted_at TIMESTAMP",
-        ]
-
-        # Add searchable columns
-        for column_name, column_type in self.SEARCHABLE_COLUMNS.items():
-            columns.append(f"{column_name} {column_type}")
-
-        # Create table
-        cursor.execute(f"""
+        cursor.execute(
+            """
             CREATE TABLE metadata (
-                {', '.join(columns)}
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_path TEXT UNIQUE NOT NULL,
+                file_hash TEXT NOT NULL,
+                metadata_json TEXT NOT NULL,
+                extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                version INTEGER DEFAULT 1,
+                deleted_at TIMESTAMP,
+                camera_make TEXT,
+                camera_model TEXT,
+                camera_serial TEXT,
+                lens_make TEXT,
+                lens_model TEXT,
+                lens_serial TEXT,
+                iso INTEGER,
+                aperture REAL,
+                shutter_speed TEXT,
+                shutter_speed_decimal REAL,
+                exposure_compensation REAL,
+                exposure_mode TEXT,
+                metering_mode TEXT,
+                focal_length REAL,
+                focal_length_35mm INTEGER,
+                flash_used BOOLEAN,
+                flash_mode TEXT,
+                white_balance TEXT,
+                color_temperature INTEGER,
+                image_quality TEXT,
+                color_space TEXT,
+                bit_depth INTEGER,
+                software TEXT,
+                edit_software TEXT,
+                copyright TEXT,
+                creator TEXT,
+                creator_tool TEXT,
+                title TEXT,
+                headline TEXT,
+                description TEXT,
+                keywords TEXT,
+                credit_line TEXT,
+                source TEXT,
+                instructions TEXT,
+                rights_usage_terms TEXT,
+                intellectual_genre TEXT,
+                location_city TEXT,
+                location_state TEXT,
+                location_country TEXT,
+                location_country_code TEXT,
+                location_sublocation TEXT,
+                event TEXT,
+                subject_code TEXT,
+                scene_code TEXT,
+                exposure_triangle TEXT,
+                searchable_text TEXT
             )
-        """)
+        """
+        )
 
         logger.info("Created new enhanced metadata table")
 
     def _create_indexes(self, cursor: sqlite3.Cursor):
         """Create database indexes for performance optimization."""
-        # Create indexes for existing columns
-        existing_indexes = [
-            ("idx_metadata_file_hash", "file_hash"),
-            ("idx_metadata_extracted_at", "extracted_at"),
-            ("idx_metadata_file_path", "file_path"),
-        ]
-
-        all_indexes = existing_indexes + self.INDEXES
-
-        for index_name, column_name in all_indexes:
-            try:
-                cursor.execute(f"CREATE INDEX IF NOT EXISTS {index_name} ON metadata({column_name})")
-                logger.debug(f"Created index {index_name}")
-            except Exception as e:
-                logger.warning(f"Could not create index {index_name}: {e}")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_file_hash ON metadata(file_hash)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_extracted_at ON metadata(extracted_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_file_path ON metadata(file_path)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_camera_make ON metadata(camera_make)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_camera_model ON metadata(camera_model)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_lens_model ON metadata(lens_model)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_iso ON metadata(iso)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_aperture ON metadata(aperture)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_focal_length ON metadata(focal_length)")
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_exposure_triangle ON metadata(exposure_triangle)"
+        )
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_searchable_text ON metadata(searchable_text)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_copyright ON metadata(copyright)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_creator ON metadata(creator)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_keywords ON metadata(keywords)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_title ON metadata(title)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_location_city ON metadata(location_city)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_metadata_enhanced_event ON metadata(event)")
 
     def validate_schema(self) -> Dict[str, Any]:
         """
@@ -350,13 +484,12 @@ class MetadataSchemaV2:
             total_rows = cursor.fetchone()[0]
 
             # Get rows with enhanced data
-            enhanced_conditions = []
-            for column_name in ["camera_make", "lens_model", "iso", "aperture"]:
-                enhanced_conditions.append(f"{column_name} IS NOT NULL")
-
-            cursor.execute(f"""
+            cursor.execute("""
                 SELECT COUNT(*) FROM metadata
-                WHERE {' OR '.join(enhanced_conditions)}
+                WHERE camera_make IS NOT NULL
+                   OR lens_model IS NOT NULL
+                   OR iso IS NOT NULL
+                   OR aperture IS NOT NULL
             """)
             enhanced_rows = cursor.fetchone()[0]
 
@@ -369,15 +502,48 @@ class MetadataSchemaV2:
             }
 
             # Get statistics for key columns
-            key_columns = ["camera_make", "camera_model", "lens_model", "iso", "aperture", "focal_length"]
-            for column in key_columns:
-                if self.column_exists("metadata", column):
-                    cursor.execute(f"SELECT COUNT(*) FROM metadata WHERE {column} IS NOT NULL")
-                    non_null_count = cursor.fetchone()[0]
-                    stats["column_stats"][column] = {
-                        "non_null_count": non_null_count,
-                        "percentage": (non_null_count / total_rows * 100) if total_rows > 0 else 0,
-                    }
+            if self.column_exists("metadata", "camera_make"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE camera_make IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["camera_make"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
+            if self.column_exists("metadata", "camera_model"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE camera_model IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["camera_model"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
+            if self.column_exists("metadata", "lens_model"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE lens_model IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["lens_model"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
+            if self.column_exists("metadata", "iso"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE iso IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["iso"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
+            if self.column_exists("metadata", "aperture"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE aperture IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["aperture"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
+            if self.column_exists("metadata", "focal_length"):
+                cursor.execute("SELECT COUNT(*) FROM metadata WHERE focal_length IS NOT NULL")
+                count = cursor.fetchone()[0]
+                stats["column_stats"]["focal_length"] = {
+                    "non_null_count": count,
+                    "percentage": (count / total_rows * 100) if total_rows > 0 else 0,
+                }
 
             return stats
 

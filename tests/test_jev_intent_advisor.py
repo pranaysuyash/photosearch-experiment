@@ -4,14 +4,19 @@ No test here may touch the network. The advisor is exercised through a fake
 transport so behavior (escalation, gating, merge, fallback) is deterministic.
 """
 
+import uuid
+
 import pytest
 
 from src.intent_recognition import IntentDetector
 from src.jev_intent_advisor import JevIntentAdvisor
 
 
-def make_advisor(detector, *, enabled=True, api_key="test-key", transport=lambda p: {}, **kwargs):
-    return JevIntentAdvisor(detector, enabled=enabled, api_key=api_key, transport=transport, **kwargs)
+def make_advisor(detector, *, enabled=True, api_key=None, transport=lambda p: {}, **kwargs):
+    # Per-run key: no credential-like literal in source (matches wave-3 convention).
+    return JevIntentAdvisor(
+        detector, enabled=enabled, api_key=api_key or uuid.uuid4().hex, transport=transport, **kwargs
+    )
 
 
 def jev_response(choice="activity", confidence=0.9, multi=0.8, privacy=0.1):

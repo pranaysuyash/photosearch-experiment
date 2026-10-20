@@ -102,8 +102,7 @@ class FaceCropCache:
             # Convert CacheEntry objects to dicts
             data = {key: asdict(entry) for key, entry in self.metadata.items()}
 
-            with open(self.metadata_file, "w") as f:
-                json.dump(data, f, indent=2)
+            self.metadata_file.write_text(json.dumps(data, indent=2))
 
         except Exception as e:
             logger.error(f"Failed to save cache metadata: {e}")
@@ -236,8 +235,7 @@ class FaceCropCache:
 
         try:
             # Write crop data to file
-            with open(cache_path, "wb") as f:
-                f.write(crop_data)
+            cache_path.write_bytes(crop_data)
 
             # Get source photo modification time for invalidation
             source_mtime = None

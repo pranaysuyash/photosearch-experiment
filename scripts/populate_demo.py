@@ -1,6 +1,7 @@
 import os
 import asyncio
 import aiohttp
+from pathlib import Path
 
 # Config
 TARGET_DIR = "media"
@@ -22,8 +23,7 @@ async def download_image(session, idx, category):
         async with session.get(url) as response:
             if response.status == 200:
                 filename = f"{TARGET_DIR}/{category}_{idx}.jpg"
-                with open(filename, "wb") as f:
-                    f.write(await response.read())
+                Path(filename).write_bytes(await response.read())
                 print(f"Downloaded {filename}")
             else:
                 print(f"Failed {url}")

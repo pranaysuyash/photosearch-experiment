@@ -129,8 +129,7 @@ class LazyLoadMonitor:
 
     def _save_performance_data(self) -> None:
         """Save performance data to storage."""
-        with open(self.storage_path, "w") as f:
-            json.dump(self.load_times, f, indent=2)
+        self.storage_path.write_text(json.dumps(self.load_times, indent=2))
 
     def record_lazy_load(
         self,

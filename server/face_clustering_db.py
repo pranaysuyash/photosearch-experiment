@@ -88,7 +88,7 @@ class FaceClusteringDB:
     @staticmethod
     def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         try:
-            rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+            rows = conn.execute("SELECT name FROM pragma_table_info(?)", (table,)).fetchall()
         except sqlite3.OperationalError:
             return set()
         return {row[1] for row in rows}

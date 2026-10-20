@@ -6,6 +6,7 @@ Replaces 'from server import main as main_module' pattern with Depends(get_state
 
 import re
 import sys
+from pathlib import Path
 
 
 def migrate_router(filepath: str) -> tuple[bool, int]:
@@ -105,8 +106,7 @@ def migrate_router(filepath: str) -> tuple[bool, int]:
     content = "\n".join(new_lines)
 
     if content != original:
-        with open(filepath, "w") as f:
-            f.write(content)
+        Path(filepath).write_text(content)
         return True, lazy_count
 
     return False, 0

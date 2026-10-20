@@ -89,15 +89,13 @@ def main():
     routes = dump_routes(app)
     routes_file = args.output_dir / "routes.json"
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    with open(routes_file, "w") as f:
-        f.write(json.dumps(routes, indent=2) + "\n")
+    routes_file.write_text(json.dumps(routes, indent=2) + "\n")
     print(f"✓ Routes dumped to {routes_file} ({len(routes)} endpoints)")
 
     # Dump OpenAPI
     openapi = dump_openapi(app)
     openapi_file = args.output_dir / "openapi.json"
-    with open(openapi_file, "w") as f:
-        f.write(json.dumps(openapi, indent=2, sort_keys=True) + "\n")
+    openapi_file.write_text(json.dumps(openapi, indent=2, sort_keys=True) + "\n")
     print(f"✓ OpenAPI dumped to {openapi_file}")
 
     return 0

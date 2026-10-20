@@ -958,40 +958,37 @@ class QueryEngine:
             format: 'json' or 'csv'
         """
         if format == "json":
-            with open(output_path, "w") as f:
-                json.dump(results, f, indent=2, default=str)
+            Path(output_path).write_text(json.dumps(results, indent=2, default=str))
             logger.info(f"Exported {len(results)} results to {output_path}")
 
         elif format == "csv":
             import csv
+            import io
 
             if not results:
                 logger.warning("No results to export")
                 return
 
-            # Flatten metadata for CSV
-            with open(output_path, "w", newline="") as f:
-                # Get all unique fields
-                all_fields = set(["file_path"])
-                for result in results:
-                    metadata = result["metadata"]
-                    # Add top-level fields
-                    for key in metadata.keys():
-                        all_fields.add(key)
+            # Flatten metadata for CSV (built in memory, written in one pass)
+            buffer = io.StringIO()
+            all_fields = set(["file_path"])
+            for result in results:
+                for key in result["metadata"].keys():
+                    all_fields.add(key)
 
-                writer = csv.DictWriter(f, fieldnames=sorted(all_fields))
-                writer.writeheader()
+            writer = csv.DictWriter(buffer, fieldnames=sorted(all_fields))
+            writer.writeheader()
 
-                for result in results:
-                    row = {"file_path": result["file_path"]}
-                    # Add metadata fields (simplified)
-                    for key, value in result["metadata"].items():
-                        if isinstance(value, (str, int, float, bool)):
-                            row[key] = value
-                        else:
-                            row[key] = json.dumps(value, default=str)
-                    writer.writerow(row)
+            for result in results:
+                row = {"file_path": result["file_path"]}
+                for key, value in result["metadata"].items():
+                    if isinstance(value, (str, int, float, bool)):
+                        row[key] = value
+                    else:
+                        row[key] = json.dumps(value, default=str)
+                writer.writerow(row)
 
+            Path(output_path).write_text(buffer.getvalue())
             logger.info(f"Exported {len(results)} results to {output_path}")
 
     def get_field_values(self, field: str) -> List[Any]:
