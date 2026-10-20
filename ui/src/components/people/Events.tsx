@@ -27,11 +27,7 @@ interface DetectedEvent {
   confidence_score: number;
 }
 
-interface EventsProps {
-  onClose?: () => void;
-}
-
-export default function Events({ onClose }: EventsProps) {
+export default function Events() {
   const [events, setEvents] = useState<DetectedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +60,7 @@ export default function Events({ onClose }: EventsProps) {
       if (err instanceof Error) {
         setError(err.message);
       } else if (typeof err === 'object' && err !== null && 'response' in err) {
-        const httpError = err as any;
+        const httpError = err as { response?: { data?: { detail?: string } } };
         setError(httpError.response?.data?.detail || 'Failed to fetch events');
       } else {
         setError('Failed to fetch events');
@@ -115,7 +111,7 @@ export default function Events({ onClose }: EventsProps) {
         <div className='space-y-4'>
           <div className='flex items-center justify-center gap-3 text-gray-600'>
             <Loader className='w-5 h-5 animate-spin' />
-            <span>Loading events...</span>
+            <span>Loading events…</span>
           </div>
           <div className='animate-pulse space-y-3'>
             {[1, 2, 3].map((i) => (
@@ -133,7 +129,7 @@ export default function Events({ onClose }: EventsProps) {
   if (error) {
     return (
       <div className={`p-6 rounded-xl ${glass.light} border ${glass.border}`}>
-        <div className='text-red-600 text-sm'>{error}</div>
+        <div role='alert' className='text-red-600 text-sm'>{error}</div>
         <button
           onClick={fetchEvents}
           className='mt-3 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors'
@@ -160,25 +156,28 @@ export default function Events({ onClose }: EventsProps) {
         <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
           {/* Min People */}
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>
+            <label htmlFor='events-min-people' className='block text-sm font-medium text-gray-700 mb-2'>
               Minimum People: {minPeople}
             </label>
             <input
+              id='events-min-people'
               type='range'
               min='2'
               max='10'
               value={minPeople}
               onChange={(e) => setMinPeople(Number(e.target.value))}
+              aria-valuetext={`${minPeople} people`}
               className='w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer'
             />
           </div>
 
           {/* Time Window */}
           <div>
-            <label className='block text-sm font-medium text-gray-700 mb-2'>
+            <label htmlFor='events-time-window' className='block text-sm font-medium text-gray-700 mb-2'>
               Time Window: {timeWindowHours} hours
             </label>
             <select
+              id='events-time-window'
               value={timeWindowHours}
               onChange={(e) => setTimeWindowHours(Number(e.target.value))}
               className={`w-full px-3 py-2 rounded-lg ${glass.light} border ${glass.border} text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500`}
@@ -209,7 +208,7 @@ export default function Events({ onClose }: EventsProps) {
       ) : (
         <div className='space-y-4'>
           <div className='flex items-center justify-between'>
-            <h3 className='text-lg font-semibold text-gray-900'>
+            <h3 className='text-lg font-semibold text-gray-900' role='status' aria-live='polite'>
               Detected Events ({events.length})
             </h3>
           </div>
@@ -218,12 +217,23 @@ export default function Events({ onClose }: EventsProps) {
             {events.map((event) => (
               <div
                 key={event.event_id}
-                className={`p-4 rounded-xl ${glass.light} border ${glass.border} hover:border-indigo-300 transition-all cursor-pointer`}
+                className={`p-4 rounded-xl ${glass.light} border ${glass.border} hover:border-indigo-300 transition cursor-pointer`}
+                role='button'
+                tabIndex={0}
+                aria-expanded={expandedEvent === event.event_id}
                 onClick={() =>
                   setExpandedEvent(
                     expandedEvent === event.event_id ? null : event.event_id
                   )
                 }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setExpandedEvent(
+                      expandedEvent === event.event_id ? null : event.event_id
+                    );
+                  }
+                }}
               >
                 {/* Event Header */}
                 <div className='flex items-start justify-between gap-4'>
@@ -266,6 +276,7 @@ export default function Events({ onClose }: EventsProps) {
 
                   {/* Expand Arrow */}
                   <div
+                    aria-hidden='true'
                     className={`text-gray-400 transition-transform ${
                       expandedEvent === event.event_id ? 'rotate-180' : ''
                     }`}
@@ -312,7 +323,7 @@ export default function Events({ onClose }: EventsProps) {
                                 src={`/api/photo/thumbnail?path=${encodeURIComponent(
                                   photoPath
                                 )}`}
-                                alt={`Event photo ${idx + 1}`}
+                                alt={`Event thumbnail ${idx + 1}: ${photoPath.split('/').pop()}`}
                                 className='w-full h-full object-cover'
                                 onError={(e) => {
                                   e.currentTarget.src =

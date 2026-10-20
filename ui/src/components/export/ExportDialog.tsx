@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api, type ExportOptions } from '../api';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface ExportDialogProps {
   isOpen: boolean;
@@ -52,7 +53,6 @@ export function ExportDialog({
   const [blurFaces, setBlurFaces] = useState(false);
   const [blurStrength, setBlurStrength] = useState(10);
   const [isExporting, setIsExporting] = useState(false);
-  const [exportProgress, setExportProgress] = useState(0);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [shareLink, setShareLink] = useState<ShareLink | null>(null);
@@ -111,7 +111,6 @@ export function ExportDialog({
     if (photoPaths.length === 0) return;
 
     setIsExporting(true);
-    setExportProgress(0);
     setExportError(null);
     setExportSuccess(false);
 
@@ -133,22 +132,28 @@ export function ExportDialog({
         throw new Error('Blur strength must be between 1 and 50');
       }
 
-      // Simulate progress
-      for (let i = 0; i <= 100; i += 10) {
-        setExportProgress(i);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // The export endpoint returns the finished zip in one response, so
+      // progress is an honest indeterminate state — no fake percentages.
+      const blob = await api.exportPhotos(photoPaths, exportOptions);
 
-      // Actually perform the export
-      await api.exportPhotos(photoPaths, exportOptions);
+      // Save the zip to disk
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute(
+        'download',
+        `photos_export_${photoPaths.length}_files.zip`
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
 
       // Show success state
-      setExportProgress(100);
       setExportSuccess(true);
 
       setTimeout(() => {
         setIsExporting(false);
-        setExportProgress(0);
         onClose();
       }, 2000);
     } catch (error) {
@@ -159,7 +164,6 @@ export function ExportDialog({
           : 'Export failed. Please try again.';
       setExportError(errorMessage);
       setIsExporting(false);
-      setExportProgress(0);
     }
   };
 
@@ -195,16 +199,25 @@ export function ExportDialog({
     }
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
     <div className='fixed inset-0 z-[1400] flex items-center justify-center p-4'>
       <div
         className='absolute inset-0 bg-black/80 backdrop-blur-sm'
-        onClick={onClose}
+        onClick={() => {
+          // Don't close mid-export from a stray backdrop click.
+          if (!isExporting) onClose();
+        }}
       />
 
       <div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Export photos'
         className={`relative w-full max-w-2xl ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden`}
       >
         {/* Header */}
@@ -227,7 +240,7 @@ export function ExportDialog({
         </div>
 
         {/* Tabs */}
-        <div className='flex border-b border-white/10'>
+        <div className='flex border-b border-white/10' role='tablist' aria-label='Export or share'>
           <button
             className={`flex-1 py-3 text-center text-sm font-medium ${
               activeTab === 'export'
@@ -235,6 +248,8 @@ export function ExportDialog({
                 : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setActiveTab('export')}
+            role='tab'
+            aria-selected={activeTab === 'export'}
           >
             Export
           </button>
@@ -245,6 +260,8 @@ export function ExportDialog({
                 : 'text-muted-foreground hover:text-foreground'
             }`}
             onClick={() => setActiveTab('share')}
+            role='tab'
+            aria-selected={activeTab === 'share'}
           >
             Share
           </button>
@@ -261,10 +278,11 @@ export function ExportDialog({
 
                 {/* Preset Selection */}
                 <div className='mb-4'>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='ed-export-preset' className='block text-sm font-medium text-foreground mb-2'>
                     Export Preset
                   </label>
                   <select
+                    id='ed-export-preset'
                     value={selectedPreset}
                     onChange={(e) => handlePresetChange(e.target.value)}
                     className='w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground'
@@ -286,11 +304,9 @@ export function ExportDialog({
                       onChange={(e) => setIncludeMetadata(e.target.checked)}
                       className='w-4 h-4 rounded border-white/10 bg-white/5 text-primary'
                     />
-                    <div>
-                      <div className='font-medium text-foreground'>
-                        Include metadata
-                      </div>
-                      <div className='text-xs text-muted-foreground'>
+                    <div className='font-medium text-foreground'>
+                      Include metadata
+                      <div className='font-normal text-xs text-muted-foreground'>
                         Include JSON files with photo information
                       </div>
                     </div>
@@ -303,11 +319,9 @@ export function ExportDialog({
                       onChange={(e) => setIncludeThumbnails(e.target.checked)}
                       className='w-4 h-4 rounded border-white/10 bg-white/5 text-primary'
                     />
-                    <div>
-                      <div className='font-medium text-foreground'>
-                        Include thumbnails
-                      </div>
-                      <div className='text-xs text-muted-foreground'>
+                    <div className='font-medium text-foreground'>
+                      Include thumbnails
+                      <div className='font-normal text-xs text-muted-foreground'>
                         Include small preview images
                       </div>
                     </div>
@@ -320,11 +334,9 @@ export function ExportDialog({
                       onChange={(e) => setBlurFaces(e.target.checked)}
                       className='w-4 h-4 rounded border-white/10 bg-white/5 text-primary'
                     />
-                    <div>
-                      <div className='font-medium text-foreground'>
-                        Blur faces
-                      </div>
-                      <div className='text-xs text-muted-foreground'>
+                    <div className='font-medium text-foreground'>
+                      Blur faces
+                      <div className='font-normal text-xs text-muted-foreground'>
                         Blur detected faces for privacy
                       </div>
                     </div>
@@ -352,10 +364,11 @@ export function ExportDialog({
                   )}
 
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='ed-max-resolution' className='block text-sm font-medium text-foreground mb-2'>
                       Max Resolution (pixels)
                     </label>
                     <select
+                      id='ed-max-resolution'
                       value={maxResolution || ''}
                       onChange={(e) =>
                         setMaxResolution(
@@ -415,24 +428,25 @@ export function ExportDialog({
               {/* Export Status */}
               {isExporting ? (
                 <div className='space-y-4'>
-                  <div className='text-center'>
-                    <div className='text-4xl font-bold text-foreground mb-2'>
-                      {exportProgress}%
+                  <div className='text-center' role='status' aria-live='polite'>
+                    {exportSuccess ? (
+                      <div className='text-4xl mb-2' aria-hidden='true'>
+                        ✓
+                      </div>
+                    ) : (
+                      <div
+                        className='w-10 h-10 mx-auto mb-3 border-[3px] border-primary/30 border-t-primary rounded-full animate-spin'
+                        aria-hidden='true'
+                      />
+                    )}
+                    <div className='text-sm font-medium text-foreground'>
+                      {exportSuccess ? 'Export complete!' : 'Preparing your zip…'}
                     </div>
-                    <div className='text-sm text-muted-foreground'>
+                    <div className='text-xs text-muted-foreground mt-1'>
                       {exportSuccess
-                        ? 'Export complete!'
-                        : 'Exporting your photos...'}
+                        ? 'Download started'
+                        : 'Large exports can take a little while'}
                     </div>
-                  </div>
-
-                  <div className='w-full bg-white/10 rounded-full h-3'>
-                    <div
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        exportSuccess ? 'bg-green-500' : 'bg-primary'
-                      }`}
-                      style={{ width: `${exportProgress}%` }}
-                    />
                   </div>
                 </div>
               ) : (
@@ -476,10 +490,11 @@ export function ExportDialog({
 
                 <div className='space-y-4'>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='ed-link-expiration' className='block text-sm font-medium text-foreground mb-2'>
                       Link Expiration
                     </label>
                     <select
+                      id='ed-link-expiration'
                       value={expirationHours}
                       onChange={(e) =>
                         setExpirationHours(parseInt(e.target.value))
@@ -502,11 +517,9 @@ export function ExportDialog({
                         onChange={(e) => setUsePassword(e.target.checked)}
                         className='w-4 h-4 rounded border-white/10 bg-white/5 text-primary'
                       />
-                      <div>
-                        <div className='font-medium text-foreground'>
-                          Add Password Protection
-                        </div>
-                        <div className='text-xs text-muted-foreground'>
+                      <div className='font-medium text-foreground'>
+                        Add Password Protection
+                        <div className='font-normal text-xs text-muted-foreground'>
                           Require password to access shared photos
                         </div>
                       </div>

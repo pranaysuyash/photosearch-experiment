@@ -129,6 +129,8 @@ export const IntuitivePhotoInterface: React.FC<IntuitivePhotoInterfaceProps> = (
             onClick={() => updateSetting('smartSelectionEnabled', !settings.smartSelectionEnabled)}
             className={`btn-glass ${settings.smartSelectionEnabled ? 'btn-glass--primary' : 'btn-glass--muted'} w-10 h-10 p-0 justify-center`}
             title="Smart selection"
+            aria-label="Smart selection"
+            aria-pressed={settings.smartSelectionEnabled}
           >
             <Zap size={16} />
           </button>
@@ -138,6 +140,8 @@ export const IntuitivePhotoInterface: React.FC<IntuitivePhotoInterfaceProps> = (
             onClick={() => setShowSettings(!showSettings)}
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
             title="Interface settings"
+            aria-label="Interface settings"
+            aria-expanded={showSettings}
           >
             <Settings size={16} />
           </button>
@@ -159,11 +163,15 @@ export const IntuitivePhotoInterface: React.FC<IntuitivePhotoInterfaceProps> = (
               <div className="space-y-3">
                 {Object.entries(settings).map(([key, value]) => (
                   <div key={key} className="flex items-center justify-between">
-                    <label className="text-white/70 text-sm capitalize">
+                    <label htmlFor={`interface-setting-${key}`} className="text-white/70 text-sm capitalize">
                       {key.replace(/([A-Z])/g, ' $1').toLowerCase()}
                     </label>
                     <button
+                      id={`interface-setting-${key}`}
                       onClick={() => updateSetting(key as keyof InterfaceSettings, !value)}
+                      role="switch"
+                      aria-checked={value}
+                      aria-label={key.replace(/([A-Z])/g, ' $1').toLowerCase()}
                       className={`w-10 h-6 rounded-full transition-colors ${
                         value ? 'bg-blue-500' : 'bg-white/20'
                       } relative`}

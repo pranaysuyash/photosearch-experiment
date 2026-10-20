@@ -42,6 +42,7 @@ import FaceAttributeSearch from '../components/people/FaceAttributeSearch';
 import AdvancedFaceSearch from '../components/search/AdvancedFaceSearch';
 import PersonAnalytics from '../components/people/PersonAnalytics';
 import Events from '../components/people/Events';
+import { useModalBehavior } from '../hooks/useModalBehavior';
 
 interface FaceCluster {
   id: string;
@@ -190,6 +191,16 @@ export function People() {
   const [newLabel, setNewLabel] = useState('');
   const [renameLoading, setRenameLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const closeRenameModal = () =>
+    setRenameModal({ open: false, clusterId: '', currentLabel: '' });
+  const closeDeleteModal = () =>
+    setDeleteModal({ open: false, clusterId: '', label: '' });
+  const renamePanelRef = useModalBehavior(
+    renameModal.open,
+    closeRenameModal
+  );
+  const deletePanelRef = useModalBehavior(deleteModal.open, closeDeleteModal);
 
   // Undo functionality
   const [canUndo, setCanUndo] = useState(false);
@@ -459,7 +470,7 @@ export function People() {
 
     try {
       setScanning(true);
-      setScanProgress({ progress: 0, message: 'Starting scan...' });
+      setScanProgress({ progress: 0, message: 'Starting scan…' });
 
       // Start async scan
       const startResponse = await fetch(`${apiUrl}/api/faces/scan-async`, {
@@ -484,7 +495,7 @@ export function People() {
 
           setScanProgress({
             progress: statusData.progress || 0,
-            message: statusData.message || 'Scanning...',
+            message: statusData.message || 'Scanning…',
           });
 
           if (
@@ -842,7 +853,7 @@ export function People() {
                   <Undo2 size={14} />
                 )}
                 <span className='hidden sm:inline'>
-                  {undoLoading ? 'Undoing...' : 'Undo'}
+                  {undoLoading ? 'Undoing…' : 'Undo'}
                 </span>
               </button>
 
@@ -881,7 +892,7 @@ export function People() {
                 {scanning ? (
                   <div className='flex items-center gap-2'>
                     <RefreshCw size={16} className='animate-spin' />
-                    Scanning...
+                    Scanning…
                   </div>
                 ) : (
                   <div className='flex items-center gap-2'>
@@ -898,9 +909,11 @@ export function People() {
       {/* Tabs */}
       <div className='border-b border-white/10'>
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8'>
-          <div className='flex gap-1'>
+          <div className='flex gap-1' role='tablist' aria-label='People sections'>
             <button
               onClick={() => setActiveTab('inbox')}
+              role='tab'
+              aria-selected={activeTab === 'inbox'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'inbox'
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -911,6 +924,8 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('people')}
+              role='tab'
+              aria-selected={activeTab === 'people'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'people'
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -921,6 +936,8 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('analytics')}
+              role='tab'
+              aria-selected={activeTab === 'analytics'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'analytics'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -931,6 +948,8 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('events')}
+              role='tab'
+              aria-selected={activeTab === 'events'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'events'
                   ? 'border-primary text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -941,6 +960,8 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('hidden')}
+              role='tab'
+              aria-selected={activeTab === 'hidden'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'hidden'
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -956,6 +977,8 @@ export function People() {
             </button>
             <button
               onClick={() => setActiveTab('review')}
+              role='tab'
+              aria-selected={activeTab === 'review'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'review'
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -972,6 +995,8 @@ export function People() {
 
             <button
               onClick={() => setActiveTab('merge')}
+              role='tab'
+              aria-selected={activeTab === 'merge'}
               className={`px-4 py-3 text-sm font-medium transition-colors border-b-2 flex items-center gap-2 ${activeTab === 'merge'
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1027,7 +1052,7 @@ export function People() {
         <>
           {/* Stats and Search */}
           <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-6'>
+            <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 tabular-nums'>
               {/* Stats Cards */}
               {stats && (
                 <>
@@ -1051,11 +1076,21 @@ export function People() {
 
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-primary/50 cursor-pointer transition-colors`}
+                    role='button'
+                    tabIndex={0}
                     onClick={() =>
                       document
                         .getElementById('clusters-section')
                         ?.scrollIntoView({ behavior: 'smooth' })
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        document
+                          .getElementById('clusters-section')
+                          ?.scrollIntoView({ behavior: 'smooth' });
+                      }
+                    }}
                   >
                     <div className='flex items-center gap-3'>
                       <div className='w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center'>
@@ -1074,7 +1109,15 @@ export function People() {
 
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-primary/50 cursor-pointer transition-colors`}
+                    role='button'
+                    tabIndex={0}
                     onClick={() => navigate('/people/all-photos')}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate('/people/all-photos');
+                      }
+                    }}
                   >
                     <div className='flex items-center gap-3'>
                       <div className='w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center'>
@@ -1093,10 +1136,20 @@ export function People() {
 
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-orange-500/50 cursor-pointer transition-colors`}
+                    role='button'
+                    tabIndex={0}
                     onClick={() =>
                       (stats.unidentified_faces ?? 0) > 0 &&
                       navigate('/people/unidentified')
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if ((stats.unidentified_faces ?? 0) > 0) {
+                          navigate('/people/unidentified');
+                        }
+                      }
+                    }}
                   >
                     <div className='flex items-center gap-3'>
                       <div className='w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center'>
@@ -1115,9 +1168,19 @@ export function People() {
 
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-yellow-500/50 cursor-pointer transition-colors`}
+                    role='button'
+                    tabIndex={0}
                     onClick={() =>
                       stats.singletons > 0 && navigate('/people/singletons')
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (stats.singletons > 0) {
+                          navigate('/people/singletons');
+                        }
+                      }
+                    }}
                   >
                     <div className='flex items-center gap-3'>
                       <div className='w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center'>
@@ -1136,10 +1199,20 @@ export function People() {
 
                   <div
                     className={`${glass.surface} rounded-xl p-4 border border-white/10 hover:border-red-500/50 cursor-pointer transition-colors`}
+                    role='button'
+                    tabIndex={0}
                     onClick={() =>
                       stats.low_confidence > 0 &&
                       navigate('/people/low-confidence')
                     }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (stats.low_confidence > 0) {
+                          navigate('/people/low-confidence');
+                        }
+                      }
+                    }}
                   >
                     <div className='flex items-center gap-3'>
                       <div className='w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center'>
@@ -1168,10 +1241,11 @@ export function People() {
                   <Search className='text-muted-foreground' size={16} />
                   <input
                     type='text'
-                    placeholder='Search people...'
+                    placeholder='Search people…'
+                    aria-label='Search people'
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className='flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground'
+                    className='flex-1 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary text-sm placeholder:text-muted-foreground'
                   />
                 </div>
               </div>
@@ -1180,12 +1254,14 @@ export function People() {
             {/* Scan Progress */}
             {scanProgress && (
               <div
+                role='status'
+                aria-live='polite'
                 className={`${glass.surface} rounded-xl p-4 border border-white/10 mb-6`}
               >
                 <div className='flex items-center gap-3 mb-2'>
                   <RefreshCw size={16} className='animate-spin text-primary' />
                   <span className='text-sm text-foreground'>
-                    Scanning for faces...
+                    Scanning for faces…
                   </span>
                 </div>
                 <progress
@@ -1266,6 +1342,7 @@ export function People() {
                         value={personNameLookup}
                         onChange={(e) => setPersonNameLookup(e.target.value)}
                         placeholder='Exact label (e.g. “John”)'
+                        aria-label='Person name lookup'
                         className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                       />
                       <button
@@ -1283,13 +1360,20 @@ export function People() {
                       </button>
                     </div>
                     {personLookupError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {personLookupError}
                       </div>
                     )}
                     {personLookupResult && (
                       <div className='mt-3 space-y-2'>
-                        <div className='text-xs text-muted-foreground'>
+                        <div
+                          role='status'
+                          aria-live='polite'
+                          className='text-xs text-muted-foreground'
+                        >
                           Found {personLookupResult?.total ?? 0} photo(s)
                         </div>
                         <div className='flex items-center gap-2'>
@@ -1336,6 +1420,7 @@ export function People() {
                       placeholder={
                         'Enter absolute file paths, one per line\n(e.g. /Users/you/Pictures/img.jpg)'
                       }
+                      aria-label='Absolute file paths to scan, one per line'
                       className='w-full min-h-[84px] bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                     />
                     <div className='mt-2 flex gap-2'>
@@ -1357,7 +1442,10 @@ export function People() {
                       </button>
                     </div>
                     {scanSingleError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {scanSingleError}
                       </div>
                     )}
@@ -1387,6 +1475,7 @@ export function People() {
                         value={scanStatusJobId}
                         onChange={(e) => setScanStatusJobId(e.target.value)}
                         placeholder='Job ID (UUID)'
+                        aria-label='Scan job ID'
                         className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                       />
                       <button
@@ -1402,7 +1491,10 @@ export function People() {
                       </button>
                     </div>
                     {scanStatusError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {scanStatusError}
                       </div>
                     )}
@@ -1454,7 +1546,10 @@ export function People() {
                       </button>
                     </div>
                     {mixedError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {mixedError}
                       </div>
                     )}
@@ -1523,7 +1618,10 @@ export function People() {
                       </button>
                     </div>
                     {indexStatsError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {indexStatsError}
                       </div>
                     )}
@@ -1579,7 +1677,10 @@ export function People() {
                       </button>
                     </div>
                     {backendStatusError && (
-                      <div className='mt-2 text-xs text-red-400'>
+                      <div
+                        role='alert'
+                        className='mt-2 text-xs text-red-400'
+                      >
                         {backendStatusError}
                       </div>
                     )}
@@ -1637,7 +1738,11 @@ export function People() {
                       </button>
                     </div>
                     {recomputeMessage && (
-                      <div className='mt-2 text-xs text-muted-foreground'>
+                      <div
+                        role='status'
+                        aria-live='polite'
+                        className='mt-2 text-xs text-muted-foreground'
+                      >
                         {recomputeMessage}
                       </div>
                     )}
@@ -1648,7 +1753,10 @@ export function People() {
 
             {/* Error State */}
             {error && (
-              <div className='mb-6 text-sm text-destructive glass-surface rounded-xl p-4 border border-white/10'>
+              <div
+                role='alert'
+                className='mb-6 text-sm text-destructive glass-surface rounded-xl p-4 border border-white/10'
+              >
                 {error}
               </div>
             )}
@@ -1662,7 +1770,7 @@ export function People() {
                     className='animate-spin text-muted-foreground'
                   />
                   <span className='text-muted-foreground'>
-                    Loading face clusters...
+                    Loading face clusters…
                   </span>
                 </div>
               </div>
@@ -1699,7 +1807,7 @@ export function People() {
                     {scanning ? (
                       <div className='flex items-center gap-2'>
                         <RefreshCw size={16} className='animate-spin' />
-                        Scanning...
+                        Scanning…
                       </div>
                     ) : (
                       <div className='flex items-center gap-2'>
@@ -1834,6 +1942,7 @@ export function People() {
                             }
                             className='btn-glass btn-glass--muted text-xs px-2 py-1.5'
                             title='Rename'
+                            aria-label='Rename'
                           >
                             <Tag size={12} />
                           </button>
@@ -1844,6 +1953,7 @@ export function People() {
                               disabled={hideLoading}
                               className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-green-400'
                               title='Unhide this person'
+                              aria-label='Unhide this person'
                             >
                               {hideLoading ? (
                                 <RefreshCw size={12} className='animate-spin' />
@@ -1869,6 +1979,7 @@ export function People() {
                               disabled={hideLoading}
                               className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400'
                               title='Hide this person'
+                              aria-label='Hide this person'
                             >
                               {hideLoading ? (
                                 <RefreshCw size={12} className='animate-spin' />
@@ -1895,6 +2006,7 @@ export function People() {
                               onClick={() => openSplitModal(cluster)}
                               className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-blue-400'
                               title='Split this person into separate people'
+                              aria-label='Split this person into separate people'
                             >
                               <Users size={12} />
                             </button>
@@ -1909,6 +2021,11 @@ export function People() {
                             disabled={hideLoading}
                             className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-yellow-400 disabled:opacity-50'
                             title={
+                              showHidden
+                                ? 'Unhide this person'
+                                : 'Hide this person'
+                            }
+                            aria-label={
                               showHidden
                                 ? 'Unhide this person'
                                 : 'Hide this person'
@@ -1941,6 +2058,7 @@ export function People() {
                             }
                             className='btn-glass btn-glass--muted text-xs px-2 py-1.5 hover:text-red-400'
                             title='Delete this person group'
+                            aria-label='Delete this person group'
                           >
                             <Trash2 size={12} />
                           </button>
@@ -1967,11 +2085,13 @@ export function People() {
       {renameModal.open && (
         <div
           className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'
-          onClick={() =>
-            setRenameModal({ open: false, clusterId: '', currentLabel: '' })
-          }
+          onClick={closeRenameModal}
         >
           <div
+            ref={renamePanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Rename person'
             className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1982,20 +2102,15 @@ export function People() {
               type='text'
               value={newLabel}
               onChange={(e) => setNewLabel(e.target.value)}
-              placeholder='Enter person name...'
+              placeholder='Enter person name…'
+              aria-label='Person name'
               className='w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 mb-4'
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && confirmRename()}
             />
             <div className='flex gap-3 justify-end'>
               <button
-                onClick={() =>
-                  setRenameModal({
-                    open: false,
-                    clusterId: '',
-                    currentLabel: '',
-                  })
-                }
+                onClick={closeRenameModal}
                 className='btn-glass btn-glass--muted px-4 py-2'
                 disabled={renameLoading}
               >
@@ -2009,7 +2124,7 @@ export function People() {
                 {renameLoading && (
                   <RefreshCw size={14} className='animate-spin' />
                 )}
-                {renameLoading ? 'Saving...' : 'Save'}
+                {renameLoading ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
@@ -2020,11 +2135,13 @@ export function People() {
       {deleteModal.open && (
         <div
           className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'
-          onClick={() =>
-            setDeleteModal({ open: false, clusterId: '', label: '' })
-          }
+          onClick={closeDeleteModal}
         >
           <div
+            ref={deletePanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Delete person'
             className={`${glass.surface} border border-white/20 rounded-xl p-6 max-w-md w-full shadow-2xl`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2037,9 +2154,7 @@ export function People() {
             </p>
             <div className='flex gap-3 justify-end'>
               <button
-                onClick={() =>
-                  setDeleteModal({ open: false, clusterId: '', label: '' })
-                }
+                onClick={closeDeleteModal}
                 className='btn-glass btn-glass--muted px-4 py-2'
                 disabled={deleteLoading}
               >
@@ -2053,7 +2168,7 @@ export function People() {
                 {deleteLoading && (
                   <RefreshCw size={14} className='animate-spin' />
                 )}
-                {deleteLoading ? 'Deleting...' : 'Delete'}
+                {deleteLoading ? 'Deleting…' : 'Delete'}
               </button>
             </div>
           </div>

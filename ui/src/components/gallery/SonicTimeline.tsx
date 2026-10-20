@@ -197,6 +197,7 @@ export function SonicTimeline({ onDateClick }: SonicTimelineProps) {
             onClick={() => setPinnedOpen((v) => !v)}
             className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center text-white/80'
             aria-label={pinnedOpen ? 'Auto-hide timeline' : 'Pin timeline open'}
+            aria-pressed={pinnedOpen}
             title={pinnedOpen ? 'Auto-hide timeline' : 'Pin timeline open'}
           >
             {pinnedOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
@@ -271,7 +272,7 @@ export function SonicTimeline({ onDateClick }: SonicTimelineProps) {
                     onDateClick?.(item.date);
                   }}
                   className={`
-                w-3 min-w-[12px] rounded-t-md cursor-pointer transition-all duration-200 relative
+                w-3 min-w-[12px] rounded-t-md cursor-pointer transition duration-200 relative
                 ${
                   isHovered
                     ? 'bg-gradient-to-t from-blue-400 via-purple-400 to-pink-400 scale-110 shadow-lg shadow-purple-500/30'
@@ -281,6 +282,16 @@ export function SonicTimeline({ onDateClick }: SonicTimelineProps) {
                 }
               `}
                   title={`${formattedDate}: ${item.count} photos`}
+                  role='button'
+                  tabIndex={0}
+                  aria-label={`${formattedDate}: ${item.count} photos. Press to filter.`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setDateRange(item.date, item.date);
+                      onDateClick?.(item.date);
+                    }
+                  }}
                 >
                   {/* Hover tooltip */}
                   {isHovered && (

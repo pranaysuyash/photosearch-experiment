@@ -157,6 +157,10 @@ export const PerformanceDashboard: React.FC = () => {
 
   // Clear cache
   const clearCache = async () => {
+    const confirmed = window.confirm(
+      'Clear the server-side cache? Cached thumbnails and computed results will be rebuilt on demand.'
+    );
+    if (!confirmed) return;
     try {
       const response = await fetch('/api/performance/cache/clear', {
         method: 'POST'
@@ -220,7 +224,7 @@ export const PerformanceDashboard: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center space-x-2">
           <RefreshCw className="w-5 h-5 animate-spin" />
-          <span>Loading performance data...</span>
+          <span>Loading performance data…</span>
         </div>
       </div>
     );
@@ -263,14 +267,14 @@ export const PerformanceDashboard: React.FC = () => {
             className="flex items-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
           >
             <Zap className="w-4 h-4" />
-            <span>{optimizing ? 'Optimizing...' : 'Optimize'}</span>
+            <span>{optimizing ? 'Optimizing…' : 'Optimize'}</span>
           </button>
         </div>
       </div>
 
       {/* System Health Overview */}
       {health && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 tabular-nums">
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">System Health</h3>
@@ -344,7 +348,7 @@ export const PerformanceDashboard: React.FC = () => {
           </div>
 
           {/* Cache Performance */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
+          <div className="bg-white rounded-lg shadow-sm border p-6 tabular-nums">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Cache Performance</h3>
               <Database className="w-5 h-5 text-green-600" />
@@ -390,7 +394,7 @@ export const PerformanceDashboard: React.FC = () => {
 
       {/* Performance Metrics */}
       {metrics && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 tabular-nums">
           {/* Processing Statistics */}
           <div className="bg-white rounded-lg shadow-sm border p-6">
             <div className="flex items-center justify-between mb-4">

@@ -47,6 +47,7 @@ const AppItem: React.FC<AppItemProps> = ({ app, onSelect, isExecuting }) => {
     <button
       onClick={() => onSelect(app)}
       disabled={isExecuting}
+      role="menuitem"
       className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50 text-left"
     >
       <div className="flex-shrink-0">
@@ -158,7 +159,7 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
   };
 
   const baseClasses = `
-    inline-flex items-center gap-2 font-medium transition-all duration-200
+    inline-flex items-center gap-2 font-medium transition duration-200
     disabled:opacity-50 disabled:cursor-not-allowed
     ${sizeClasses[size]}
     ${variantClasses[variant]}
@@ -176,6 +177,8 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
         className={baseClasses}
         whileHover={{ scale: isDisabled ? 1 : 1.02 }}
         whileTap={{ scale: isDisabled ? 1 : 0.98 }}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
         title={
           availableApps.length === 0
             ? 'No compatible applications found'
@@ -204,6 +207,8 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
             className="absolute top-full left-0 mt-2 min-w-64 glass-surface rounded-lg border border-white/10 py-1 shadow-2xl z-50"
+            role="menu"
+            aria-label="Open with application"
           >
             {/* Header */}
             <div className="px-3 py-2 border-b border-white/10">
@@ -217,7 +222,7 @@ export const OpenWithSubmenu: React.FC<OpenWithSubmenuProps> = ({
 
             {/* Error Message */}
             {error && (
-              <div className="px-3 py-2 border-b border-white/10">
+              <div className="px-3 py-2 border-b border-white/10" role="alert">
                 <div className="flex items-center gap-2 text-xs text-red-400">
                   <AlertCircle size={14} />
                   <span>{error}</span>

@@ -125,6 +125,10 @@ const ActionItem: React.FC<ActionItemProps> = ({
         <button
           className='w-full flex items-center justify-between px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors'
           disabled={isExecuting}
+          role='menuitem'
+          aria-haspopup='menu'
+          aria-expanded={showSubmenu}
+          onClick={() => setShowSubmenu((v) => !v)}
         >
           <div className='flex items-center gap-3'>
             {isExecuting ? (
@@ -144,11 +148,14 @@ const ActionItem: React.FC<ActionItemProps> = ({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               className='absolute left-full top-0 ml-1 min-w-48 glass-surface rounded-lg border border-white/10 py-1 z-50'
+              role='menu'
+              aria-label='Open with application'
             >
               {compatibleApps.map((app) => (
                 <button
                   key={app.id}
                   onClick={() => handleAppSelect(app)}
+                  role='menuitem'
                   className='w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors'
                 >
                   <div className='w-4 h-4 bg-white/20 rounded flex-shrink-0' />
@@ -166,6 +173,7 @@ const ActionItem: React.FC<ActionItemProps> = ({
     <button
       onClick={() => handleExecute()}
       disabled={isExecuting}
+      role='menuitem'
       className='w-full flex items-center gap-3 px-3 py-2 text-sm text-white/90 hover:bg-white/10 transition-colors disabled:opacity-50'
     >
       {isExecuting ? (
@@ -315,6 +323,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       exit={{ opacity: 0, scale: 0.95, y: -10 }}
       transition={{ duration: 0.15, ease: 'easeOut' }}
       className='fixed z-[200] min-w-56 glass-surface rounded-lg border border-white/10 py-1 shadow-2xl'
+      role='menu'
+      aria-label={`Actions for ${photo.filename}`}
       style={{
         left: adjustedPosition.x,
         top: adjustedPosition.y,
@@ -332,7 +342,7 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
       {loading && (
         <div className='px-3 py-4 text-center'>
           <Loader2 size={20} className='animate-spin mx-auto text-white/50' />
-          <div className='text-xs text-white/50 mt-2'>Loading actions...</div>
+          <div className='text-xs text-white/50 mt-2'>Loading actions…</div>
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Folder } from 'lucide-react';
 import { api, type Album } from '../../api';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface CreateAlbumDialogProps {
   isOpen: boolean;
@@ -76,6 +77,8 @@ export function CreateAlbumDialog({
     }
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -88,6 +91,10 @@ export function CreateAlbumDialog({
         onClick={handleBackdropClick}
       >
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Create album"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -127,7 +134,7 @@ export function CreateAlbumDialog({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., Summer 2024"
                 disabled={isSubmitting}
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all disabled:opacity-50"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition disabled:opacity-50"
                 maxLength={100}
                 autoFocus
               />
@@ -142,10 +149,10 @@ export function CreateAlbumDialog({
                 id="album-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description for this album..."
+                placeholder="Add a description for this album…"
                 disabled={isSubmitting}
                 rows={3}
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all resize-none disabled:opacity-50"
+                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition resize-none disabled:opacity-50"
                 maxLength={500}
               />
               <div className="text-xs text-white/40 mt-1">
@@ -182,7 +189,7 @@ export function CreateAlbumDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    <span>{isEditMode ? 'Saving...' : 'Creating...'}</span>
+                    <span>{isEditMode ? 'Saving…' : 'Creating…'}</span>
                   </>
                 ) : (
                   <span>{isEditMode ? 'Save Changes' : 'Create Album'}</span>

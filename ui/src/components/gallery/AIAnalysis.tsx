@@ -93,8 +93,17 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
   return (
     <div className='mb-4 glass-surface rounded-xl overflow-hidden'>
       <div
+        role='button'
+        tabIndex={0}
+        aria-expanded={!isCollapsed}
         className='flex justify-between items-center p-4 cursor-pointer hover:bg-white/5 transition-colors'
         onClick={() => setIsCollapsed(!isCollapsed)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setIsCollapsed(!isCollapsed);
+          }
+        }}
       >
         <div className='flex items-center gap-3'>
           <div className='glass-surface rounded-lg p-2'>
@@ -121,7 +130,7 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
             title='Analyze image'
           >
             {loading ? (
-              <span>Analyzing...</span>
+              <span>Analyzing…</span>
             ) : (
               <>
                 <RotateCcw size={12} />
@@ -143,7 +152,10 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
       {!isCollapsed && (
         <div className='px-4 pb-4 border-t border-white/5'>
           {error && (
-            <div className='mt-3 p-3 glass-surface rounded-lg border border-red-500/20 bg-red-500/10'>
+            <div
+              role='alert'
+              className='mt-3 p-3 glass-surface rounded-lg border border-red-500/20 bg-red-500/10'
+            >
               <p className='text-red-400 text-xs'>{error}</p>
             </div>
           )}
@@ -177,6 +189,7 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
                       onClick={() => copyToClipboard(analysis.caption || '')}
                       className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center flex-shrink-0'
                       title='Copy caption'
+                      aria-label='Copy caption'
                     >
                       <Copy size={12} />
                     </button>
@@ -279,7 +292,7 @@ const ImageAnalysis: React.FC<ImageAnalysisProps> = ({ photo, isOpen }) => {
                   <div className='flex items-center gap-3'>
                     <div className='flex-1 glass-surface rounded-full h-2 overflow-hidden'>
                       <div
-                        className='bg-gradient-to-r from-primary/60 to-primary h-full rounded-full transition-all duration-300'
+                        className='bg-gradient-to-r from-primary/60 to-primary h-full rounded-full transition-[width] duration-300'
                         style={{ width: `${(analysis.quality / 5) * 100}%` }}
                       />
                     </div>

@@ -245,6 +245,7 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
         onClick={onToggle}
         className="fixed bottom-4 right-4 btn-glass btn-glass--primary w-12 h-12 p-0 justify-center z-50"
         title="Smart selection"
+        aria-label="Smart selection"
       >
         <Wand2 size={20} />
       </button>
@@ -270,6 +271,8 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
             onClick={() => setSelectionMode('lasso')}
             className={`btn-glass ${selectionMode === 'lasso' ? 'btn-glass--primary' : 'btn-glass--muted'} w-10 h-10 p-0 justify-center`}
             title="Lasso selection"
+            aria-label="Lasso selection"
+            aria-pressed={selectionMode === 'lasso'}
           >
             <MousePointer size={16} />
           </button>
@@ -278,6 +281,8 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
             onClick={() => setSelectionMode('rectangle')}
             className={`btn-glass ${selectionMode === 'rectangle' ? 'btn-glass--primary' : 'btn-glass--muted'} w-10 h-10 p-0 justify-center`}
             title="Rectangle selection"
+            aria-label="Rectangle selection"
+            aria-pressed={selectionMode === 'rectangle'}
           >
             <Square size={16} />
           </button>
@@ -286,6 +291,8 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
             onClick={() => setSelectionMode('circle')}
             className={`btn-glass ${selectionMode === 'circle' ? 'btn-glass--primary' : 'btn-glass--muted'} w-10 h-10 p-0 justify-center`}
             title="Circle selection"
+            aria-label="Circle selection"
+            aria-pressed={selectionMode === 'circle'}
           >
             <Circle size={16} />
           </button>
@@ -294,6 +301,8 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
             onClick={() => setSelectionMode('smart')}
             className={`btn-glass ${selectionMode === 'smart' ? 'btn-glass--primary' : 'btn-glass--muted'} w-10 h-10 p-0 justify-center`}
             title="Smart selection"
+            aria-label="Smart selection"
+            aria-pressed={selectionMode === 'smart'}
           >
             <Zap size={16} />
           </button>
@@ -304,6 +313,7 @@ export const SmartSelectionCanvas: React.FC<SmartSelectionCanvasProps> = ({
             onClick={onToggle}
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
             title="Exit selection mode"
+            aria-label="Exit selection mode"
           >
             <X size={16} />
           </button>

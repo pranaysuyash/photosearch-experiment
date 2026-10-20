@@ -20,6 +20,7 @@ import {
   type Photo,
 } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 
@@ -280,11 +281,17 @@ export function FaceAttributeSearch({
     void executeSearch(suggestion);
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
     <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'>
       <div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Face attribute search'
         className={`${glass.surface} border border-white/20 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -303,6 +310,7 @@ export function FaceAttributeSearch({
           </div>
           <button
             onClick={onClose}
+            aria-label='Close'
             className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center'
           >
             <X size={16} />
@@ -312,17 +320,18 @@ export function FaceAttributeSearch({
         {/* Content */}
         <div className='p-6 overflow-y-auto max-h-[calc(90vh-200px)] space-y-6'>
           {error && (
-            <div className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
+            <div role='alert' className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
               {error}
             </div>
           )}
 
           {/* Natural Language Query */}
           <div className='space-y-2'>
-            <label className='block text-sm font-medium text-foreground'>
+            <label htmlFor='fas-query' className='block text-sm font-medium text-foreground'>
               Natural language (optional)
             </label>
             <input
+              id='fas-query'
               type='text'
               placeholder="e.g. happy kids under 10, profile shots"
               value={queryText}
@@ -357,11 +366,12 @@ export function FaceAttributeSearch({
           <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
             <div className='space-y-4'>
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='fas-age-min' className='block text-sm font-medium text-foreground mb-2'>
                   Age Range
                 </label>
                 <div className='grid grid-cols-2 gap-2'>
                   <input
+                    id='fas-age-min'
                     type='number'
                     min={0}
                     max={120}
@@ -376,6 +386,7 @@ export function FaceAttributeSearch({
                     className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                   />
                   <input
+                    id='fas-age-max'
                     type='number'
                     min={0}
                     max={120}
@@ -393,10 +404,11 @@ export function FaceAttributeSearch({
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='fas-gender' className='block text-sm font-medium text-foreground mb-2'>
                   Gender
                 </label>
                 <select
+                  id='fas-gender'
                   value={filters.gender}
                   onChange={(e) =>
                     setFilters((prev) => ({
@@ -413,10 +425,11 @@ export function FaceAttributeSearch({
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='fas-pose' className='block text-sm font-medium text-foreground mb-2'>
                   Pose
                 </label>
                 <select
+                  id='fas-pose'
                   value={filters.poseType}
                   onChange={(e) =>
                     setFilters((prev) => ({
@@ -438,9 +451,9 @@ export function FaceAttributeSearch({
 
             <div className='space-y-4 lg:col-span-2'>
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <span className='block text-sm font-medium text-foreground mb-2'>
                   Emotions
-                </label>
+                </span>
                 <div className='flex flex-wrap gap-2'>
                   {EMOTIONS.map((emotion) => {
                     const active = filters.emotions.includes(emotion);
@@ -463,10 +476,11 @@ export function FaceAttributeSearch({
 
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='fas-min-quality' className='block text-sm font-medium text-foreground mb-2'>
                     Min Quality ({Math.round(filters.minQuality * 100)}%)
                   </label>
                   <input
+                    id='fas-min-quality'
                     type='range'
                     min={0}
                     max={1}
@@ -478,14 +492,16 @@ export function FaceAttributeSearch({
                         minQuality: Number(e.target.value),
                       }))
                     }
+                    aria-valuetext={`${Math.round(filters.minQuality * 100)} percent`}
                     className='w-full'
                   />
                 </div>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='fas-min-match' className='block text-sm font-medium text-foreground mb-2'>
                     Min Match ({Math.round(filters.minConfidence * 100)}%)
                   </label>
                   <input
+                    id='fas-min-match'
                     type='range'
                     min={0}
                     max={1}
@@ -497,6 +513,7 @@ export function FaceAttributeSearch({
                         minConfidence: Number(e.target.value),
                       }))
                     }
+                    aria-valuetext={`${Math.round(filters.minConfidence * 100)} percent`}
                     className='w-full'
                   />
                 </div>
@@ -520,10 +537,11 @@ export function FaceAttributeSearch({
               {filters.showConfidence && (
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                   <div>
-                    <label className='block text-xs text-muted-foreground mb-1'>
+                    <label htmlFor='fas-age-confidence' className='block text-xs text-muted-foreground mb-1'>
                       Age confidence ({Math.round(filters.minAgeConfidence * 100)}%)
                     </label>
                     <input
+                      id='fas-age-confidence'
                       type='range'
                       min={0}
                       max={1}
@@ -535,14 +553,16 @@ export function FaceAttributeSearch({
                           minAgeConfidence: Number(e.target.value),
                         }))
                       }
+                      aria-valuetext={`${Math.round(filters.minAgeConfidence * 100)} percent`}
                       className='w-full'
                     />
                   </div>
                   <div>
-                    <label className='block text-xs text-muted-foreground mb-1'>
+                    <label htmlFor='fas-emotion-confidence' className='block text-xs text-muted-foreground mb-1'>
                       Emotion confidence ({Math.round(filters.minEmotionConfidence * 100)}%)
                     </label>
                     <input
+                      id='fas-emotion-confidence'
                       type='range'
                       min={0}
                       max={1}
@@ -554,14 +574,16 @@ export function FaceAttributeSearch({
                           minEmotionConfidence: Number(e.target.value),
                         }))
                       }
+                      aria-valuetext={`${Math.round(filters.minEmotionConfidence * 100)} percent`}
                       className='w-full'
                     />
                   </div>
                   <div>
-                    <label className='block text-xs text-muted-foreground mb-1'>
+                    <label htmlFor='fas-pose-confidence' className='block text-xs text-muted-foreground mb-1'>
                       Pose confidence ({Math.round(filters.minPoseConfidence * 100)}%)
                     </label>
                     <input
+                      id='fas-pose-confidence'
                       type='range'
                       min={0}
                       max={1}
@@ -573,14 +595,16 @@ export function FaceAttributeSearch({
                           minPoseConfidence: Number(e.target.value),
                         }))
                       }
+                      aria-valuetext={`${Math.round(filters.minPoseConfidence * 100)} percent`}
                       className='w-full'
                     />
                   </div>
                   <div>
-                    <label className='block text-xs text-muted-foreground mb-1'>
+                    <label htmlFor='fas-gender-confidence' className='block text-xs text-muted-foreground mb-1'>
                       Gender confidence ({Math.round(filters.minGenderConfidence * 100)}%)
                     </label>
                     <input
+                      id='fas-gender-confidence'
                       type='range'
                       min={0}
                       max={1}
@@ -592,6 +616,7 @@ export function FaceAttributeSearch({
                           minGenderConfidence: Number(e.target.value),
                         }))
                       }
+                      aria-valuetext={`${Math.round(filters.minGenderConfidence * 100)} percent`}
                       className='w-full'
                     />
                   </div>
@@ -610,7 +635,11 @@ export function FaceAttributeSearch({
           {/* Results */}
           {results.length > 0 && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <div
+                className='flex items-center gap-2 text-sm text-muted-foreground'
+                role='status'
+                aria-live='polite'
+              >
                 <Camera size={16} />
                 <span>
                   Found {total || results.length} photo
@@ -713,7 +742,7 @@ export function FaceAttributeSearch({
               disabled={loading}
             >
               {loading && <RefreshCw size={14} className='animate-spin' />}
-              {loading ? 'Searching...' : 'Search Photos'}
+              {loading ? 'Searching…' : 'Search Photos'}
             </button>
           </div>
         </div>

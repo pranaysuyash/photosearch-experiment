@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface TimelineEntry {
   id: string;
@@ -64,6 +65,22 @@ export function StoryCreator({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setPrivacyLevel('private');
+    setCreating(false);
+    setError(null);
+    setSuccess(false);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    onClose();
+  };
+
+  const panelRef = useModalBehavior(isOpen, handleCancel);
 
   if (!isOpen) return null;
 
@@ -110,28 +127,23 @@ export function StoryCreator({
     }
   };
 
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setPrivacyLevel('private');
-    setCreating(false);
-    setError(null);
-    setSuccess(false);
-  };
-
-  const handleCancel = () => {
-    resetForm();
-    onClose();
-  };
-
   return (
     <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={() => {
+          // Don't close mid-create from a stray backdrop click.
+          if (!creating) handleCancel();
+        }}
       />
 
-      <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Create story"
+        className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}
+      >
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <BookOpen size={24} className="text-foreground" />
@@ -174,10 +186,11 @@ export function StoryCreator({
           ) : (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="story-title" className="block text-sm font-medium text-foreground mb-2">
                   Story Title
                 </label>
                 <input
+                  id="story-title"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -187,22 +200,23 @@ export function StoryCreator({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="story-description" className="block text-sm font-medium text-foreground mb-2">
                   Description
                 </label>
                 <textarea
+                  id="story-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell the story of these photos..."
+                  placeholder="Tell the story of these photos…"
                   rows={3}
                   className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <p className="block text-sm font-medium text-foreground mb-2">
                   Privacy Level
-                </label>
+                </p>
                 <div className="grid grid-cols-3 gap-2">
                   {([
                     { value: 'private', label: 'Private', icon: Lock, desc: 'Only visible to you' },
@@ -286,7 +300,7 @@ export function StoryCreator({
             ) : (
               <Plus size={16} />
             )}
-            {creating ? 'Creating...' : 'Create Story'}
+            {creating ? 'Creating…' : 'Create Story'}
           </button>
         </div>
       </div>
@@ -479,20 +493,24 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                               type="text"
                               value={newCaption}
                               onChange={(e) => setNewCaption(e.target.value)}
-                              placeholder="Add a caption..."
+                              placeholder="Add a caption…"
                               className="flex-1 px-2 py-1 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                               autoFocus
                               onBlur={() => {
                                 setEditingCaption(null);
                               }}
-                              onKeyPress={(e) => {
+                              onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   updateCaption(entry.id, newCaption);
                                 }
                               }}
                             />
+                            {/* preventDefault on mousedown keeps input focus
+                                so the blur-cancel doesn't swallow this click */}
                             <button
+                              onMouseDown={(e) => e.preventDefault()}
                               onClick={() => updateCaption(entry.id, newCaption)}
+                              aria-label="Save caption"
                               className="btn-glass btn-glass--primary px-2 py-1"
                             >
                               <Check size={14} />
@@ -501,15 +519,23 @@ export function StoryTimeline({ storyId }: { storyId: string }) {
                         ) : (
                           <div
                             className="text-sm text-foreground min-h-6 cursor-text"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => {
                               setEditingCaption(entry.id);
                               setNewCaption(entry.caption || '');
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                setEditingCaption(entry.id);
+                                setNewCaption(entry.caption || '');
+                              }
                             }}
                           >
                             {entry.caption ? (
                               entry.caption
                             ) : (
-                              <span className="text-muted-foreground italic">Click to add caption...</span>
+                              <span className="text-muted-foreground italic">Click to add caption…</span>
                             )}
                           </div>
                         )}

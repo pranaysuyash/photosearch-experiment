@@ -155,7 +155,8 @@
 
   /* Transform states */
   transform: translateZ(0);
-  transition: all 0.4s var(--ease-smooth);
+  transition: transform 0.4s var(--ease-smooth),
+    box-shadow 0.4s var(--ease-smooth);
 
   /* Perspective for 3D effects */
   perspective: 1000px;
@@ -166,7 +167,8 @@
   /* Enhanced hover state with 3D transform */
   transform: translateY(-8px) rotateX(2deg) rotateY(2deg);
   box-shadow: var(--shadow-strong);
-  transition: all 0.6s var(--ease-elastic);
+  transition: transform 0.6s var(--ease-elastic),
+    box-shadow 0.6s var(--ease-elastic);
 }
 
 .preserve-3d {
@@ -196,7 +198,8 @@
   object-fit: cover;
 
   /* Smooth loading and hover transitions */
-  transition: all 0.5s var(--ease-sharp);
+  transition: transform 0.5s var(--ease-sharp),
+    filter 0.5s var(--ease-sharp);
 
   /* Optimize for rendering */
   will-change: transform;
@@ -290,7 +293,7 @@
 
   /* Transform for entrance animation */
   transform: translateY(20px);
-  transition: all 0.5s var(--ease-bounce);
+  transition: transform 0.5s var(--ease-bounce);
 }
 
 .gallery-item:hover .gallery-metadata {
@@ -425,7 +428,8 @@
   color: white;
   opacity: 0;
   transform: scale(0.8);
-  transition: all 0.3s var(--ease-bounce);
+  transition: opacity 0.3s var(--ease-bounce),
+    transform 0.3s var(--ease-bounce);
 }
 
 .gallery-item:hover .gallery-video-badge {
@@ -465,7 +469,10 @@
 
   opacity: 0;
   transform: scale(0.8);
-  transition: all 0.3s var(--ease-bounce);
+  transition: opacity 0.3s var(--ease-bounce),
+    transform 0.3s var(--ease-bounce),
+    background-color 0.3s var(--ease-bounce),
+    border-color 0.3s var(--ease-bounce);
 }
 
 .gallery-select:hover {
@@ -555,6 +562,32 @@
 
   .gallery-item:hover {
     transform: translateY(-2px);
+  }
+
+  .gallery-video-badge,
+  .gallery-item:hover .gallery-video-badge {
+    transform: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .gallery-select,
+  .gallery-select:hover,
+  .gallery-item:hover .gallery-select,
+  .gallery-item.selected .gallery-select,
+  .gallery-select.selected {
+    transform: none;
+  }
+
+  .score-fill {
+    transition: none;
+  }
+
+  .path-auto-scroll {
+    animation: none;
+  }
+
+  .gallery-skeleton {
+    animation: none;
   }
 }
 

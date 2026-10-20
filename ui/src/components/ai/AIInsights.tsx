@@ -185,7 +185,7 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
       </div>
 
       {/* Tab Navigation */}
-      <div className='flex border-b border-white/10'>
+      <div className='flex border-b border-white/10' role='tablist' aria-label='Insight categories'>
         <button
           className={`pb-2 px-4 text-sm font-medium ${
             activeTab === 'insights'
@@ -193,6 +193,8 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
               : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={() => setActiveTab('insights')}
+          role='tab'
+          aria-selected={activeTab === 'insights'}
         >
           <div className='flex items-center gap-2'>
             <Lightbulb size={16} />
@@ -206,6 +208,8 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
               : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={() => setActiveTab('patterns')}
+          role='tab'
+          aria-selected={activeTab === 'patterns'}
         >
           <div className='flex items-center gap-2'>
             <ChartBar size={16} />
@@ -219,6 +223,8 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
               : 'text-muted-foreground hover:text-foreground'
           }`}
           onClick={() => setActiveTab('recommendations')}
+          role='tab'
+          aria-selected={activeTab === 'recommendations'}
         >
           <div className='flex items-center gap-2'>
             <Wrench size={16} />

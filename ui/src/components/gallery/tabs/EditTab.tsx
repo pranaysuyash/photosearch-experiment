@@ -140,13 +140,23 @@ export function EditTab({
           <button
             onClick={onUndo}
             disabled={!canUndo}
+            aria-label='Undo'
             className='p-2 hover:bg-white/10 rounded-full disabled:opacity-30 transition-colors'
             title='Undo'
           >
             <Undo size={18} />
           </button>
           <button
-            onClick={onReset}
+            onClick={() => {
+              if (
+                window.confirm(
+                  'Reset all adjustments? Unsaved edit history for this photo will be discarded.'
+                )
+              ) {
+                onReset();
+              }
+            }}
+            aria-label='Reset all adjustments'
             className='p-2 hover:bg-white/10 rounded-full text-red-300 hover:text-red-200 transition-colors'
             title='Reset All'
           >
@@ -155,6 +165,7 @@ export function EditTab({
           <button
             onClick={onRedo}
             disabled={!canRedo}
+            aria-label='Redo'
             className='p-2 hover:bg-white/10 rounded-full disabled:opacity-30 transition-colors'
             title='Redo'
           >
@@ -168,7 +179,7 @@ export function EditTab({
           className='w-full btn-glass btn-glass--primary py-3 rounded-xl font-semibold flex items-center justify-center gap-2'
         >
           <Save size={18} />
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          {isSaving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
     </div>

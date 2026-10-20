@@ -23,7 +23,7 @@
 }
 
 .intent-icon {
-  @apply flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg font-medium transition-all duration-200;
+  @apply flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg font-medium transition-colors duration-200;
 }
 
 .intent-icon.intent-find-person {
@@ -127,6 +127,13 @@
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* Reduced motion: disable entrance animation */
+@media (prefers-reduced-motion: reduce) {
+  .intent-recognition {
+    animation: none;
   }
 }
 

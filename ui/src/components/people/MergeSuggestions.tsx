@@ -51,6 +51,10 @@ export default function MergeSuggestions({ onMerge }: MergeSuggestionsProps) {
 
     const handleMerge = async (suggestion: MergeSuggestion) => {
         const pairKey = `${suggestion.cluster_a_id}-${suggestion.cluster_b_id}`;
+        const confirmed = window.confirm(
+            'Merge these two people into one? Their faces and photos will be combined. This cannot be undone automatically.'
+        );
+        if (!confirmed) return;
         setProcessingPair(pairKey);
         try {
             if (onMerge) {
@@ -109,14 +113,18 @@ export default function MergeSuggestions({ onMerge }: MergeSuggestionsProps) {
         return (
             <div className={glass.surface} style={{ padding: '2rem', textAlign: 'center' }}>
                 <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 1rem' }} />
-                <p>Finding potential duplicates...</p>
+                <p>Finding potential duplicates…</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className={glass.surface} style={{ padding: '2rem', textAlign: 'center' }}>
+            <div
+                role='alert'
+                className={glass.surface}
+                style={{ padding: '2rem', textAlign: 'center' }}
+            >
                 <AlertCircle size={24} style={{ margin: '0 auto 1rem', color: 'var(--color-error)' }} />
                 <p>{error}</p>
                 <button
@@ -147,10 +155,10 @@ export default function MergeSuggestions({ onMerge }: MergeSuggestionsProps) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ margin: 0 }}>
+                <h3 style={{ margin: 0 }} className='tabular-nums'>
                     Merge Suggestions <span style={{ opacity: 0.6 }}>({suggestions.length})</span>
                 </h3>
-                <button onClick={fetchSuggestions} className={glass.button} disabled={loading}>
+                <button onClick={fetchSuggestions} className={glass.button} disabled={loading} aria-label='Refresh merge suggestions'>
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                 </button>
             </div>

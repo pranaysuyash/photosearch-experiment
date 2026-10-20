@@ -166,7 +166,11 @@ const JobMonitor = () => {
             </button>
 
             <button
-              onClick={() => writeRecentJobIds([])}
+              onClick={() => {
+                if (window.confirm('Clear the list of recent jobs?')) {
+                  writeRecentJobIds([]);
+                }
+              }}
               className='btn-glass btn-glass--danger text-xs px-3 py-2 min-h-[44px]'
               title='Clear recent jobs'
               aria-label='Clear all recent jobs'
@@ -206,6 +210,13 @@ const JobMonitor = () => {
           >
             Track
           </button>
+        </div>
+
+        {/* Tracked job count summary (announced politely when it changes) */}
+        <div role='status' aria-live='polite' className='sr-only'>
+          {jobIds.length === 0
+            ? 'No tracked jobs'
+            : `${jobIds.length} tracked job${jobIds.length === 1 ? '' : 's'}`}
         </div>
 
         {jobIds.length === 0 ? (

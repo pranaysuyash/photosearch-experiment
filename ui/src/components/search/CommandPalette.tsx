@@ -95,13 +95,14 @@ function CommandPalette({ isOpen, onClose, commands }: CommandPaletteProps) {
             <Search size={20} className='text-muted-foreground' />
             <input
               type='text'
-              placeholder='Type a command or search...'
+              placeholder='Type a command or search…'
+              aria-label='Search commands'
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 setSelectedIndex(0);
               }}
-              className='flex-1 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground'
+              className='flex-1 bg-transparent border-0 outline-none focus-visible:ring-2 focus-visible:ring-primary text-foreground placeholder:text-muted-foreground'
               autoFocus
             />
             <div className='flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded'>

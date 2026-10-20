@@ -101,7 +101,15 @@ export function Import() {
               <div
                 key={index}
                 className={`${glass.surface} rounded-xl p-6 border border-white/10 hover:border-white/20 transition-colors cursor-pointer group`}
+                role="button"
+                tabIndex={0}
                 onClick={() => setShowWizard(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setShowWizard(true);
+                  }
+                }}
               >
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">

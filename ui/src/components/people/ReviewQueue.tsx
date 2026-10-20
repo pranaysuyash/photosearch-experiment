@@ -101,6 +101,11 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
             return;
         }
 
+        const confirmed = window.confirm(
+            `${action === 'confirm' ? 'Confirm' : 'Reject'} all ${selectedItems.length} selected ${selectedItems.length === 1 ? 'face' : 'faces'}?`
+        );
+        if (!confirmed) return;
+
         setBatchProcessing(true);
         try {
             for (const item of selectedItems) {
@@ -152,14 +157,18 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
         return (
             <div className={glass.surface} style={{ padding: '2rem', textAlign: 'center' }}>
                 <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 1rem' }} />
-                <p>Loading review queue...</p>
+                <p>Loading review queue…</p>
             </div>
         );
     }
 
     if (error) {
         return (
-            <div className={glass.surface} style={{ padding: '2rem', textAlign: 'center' }}>
+            <div
+                role='alert'
+                className={glass.surface}
+                style={{ padding: '2rem', textAlign: 'center' }}
+            >
                 <AlertCircle size={24} style={{ margin: '0 auto 1rem', color: 'var(--color-error)' }} />
                 <p>{error}</p>
                 <button onClick={() => { setError(null); fetchQueue(); }} className={glass.button} style={{ marginTop: '1rem' }}>
@@ -189,10 +198,12 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                         className={glass.button}
                         style={{ padding: '0.5rem' }}
                         title={selectedIds.size === items.length ? 'Deselect all' : 'Select all'}
+                        aria-label={selectedIds.size === items.length ? 'Deselect all' : 'Select all'}
+                        aria-pressed={selectedIds.size === items.length && items.length > 0}
                     >
                         {selectedIds.size === items.length ? <CheckSquare size={16} /> : <Square size={16} />}
                     </button>
-                    <h3 style={{ margin: 0 }}>
+                    <h3 style={{ margin: 0 }} className='tabular-nums'>
                         Needs Review <span style={{ opacity: 0.6 }}>({total})</span>
                     </h3>
                 </div>
@@ -229,7 +240,7 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                             </button>
                         </>
                     )}
-                    <button onClick={fetchQueue} className={glass.button} disabled={loading}>
+                    <button onClick={fetchQueue} className={glass.button} disabled={loading} aria-label='Refresh review queue'>
                         <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
                     </button>
                 </div>
@@ -257,6 +268,8 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                             onClick={() => toggleSelection(item.detection_id)}
                             className={glass.button}
                             style={{ padding: '0.25rem', background: 'transparent' }}
+                            aria-label='Select face'
+                            aria-pressed={selectedIds.has(item.detection_id)}
                         >
                             {selectedIds.has(item.detection_id) ? <CheckSquare size={18} /> : <Square size={18} />}
                         </button>
@@ -304,6 +317,7 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                                 className={glass.button}
                                 disabled={processingId === item.detection_id || batchProcessing}
                                 title="Confirm this match"
+                                aria-label="Confirm this match"
                                 style={{ background: 'var(--color-success)', color: 'white', padding: '0.5rem' }}
                             >
                                 <Check size={18} />
@@ -313,6 +327,7 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                                 className={glass.button}
                                 disabled={processingId === item.detection_id || batchProcessing}
                                 title="Not this person"
+                                aria-label="Not this person"
                                 style={{ background: 'var(--color-error)', color: 'white', padding: '0.5rem' }}
                             >
                                 <X size={18} />
@@ -322,6 +337,7 @@ export default function ReviewQueue({ onCountChange }: ReviewQueueProps) {
                                 className={glass.button}
                                 disabled={processingId === item.detection_id || batchProcessing}
                                 title="Skip for now"
+                                aria-label="Skip for now"
                                 style={{ padding: '0.5rem' }}
                             >
                                 <SkipForward size={18} />

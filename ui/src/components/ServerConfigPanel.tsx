@@ -108,6 +108,9 @@ export function ServerConfigPanel() {
         </div>
         <button
           onClick={togglePreferSigned}
+          role='switch'
+          aria-checked={preferSigned}
+          aria-label='Prefer signed images'
           className={`btn-glass ${
             preferSigned ? 'btn-glass--primary' : 'btn-glass--muted'
           } text-xs px-3 py-2`}
@@ -118,15 +121,18 @@ export function ServerConfigPanel() {
 
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
         <div className='space-y-1'>
-          <div className='text-xs font-medium'>
+          <label htmlFor='scp-issuer-key' className='text-xs font-medium'>
             Image Token Issuer Key (dev)
-          </div>
+          </label>
           <div className='flex gap-2'>
             <input
+              id='scp-issuer-key'
               className='input w-full text-sm'
               value={issuerKey}
               onChange={(e) => setIssuerKey(e.target.value)}
               placeholder='Issuer API key'
+              spellCheck={false}
+              autoComplete='off'
             />
             <button
               className='btn-glass btn-glass--muted text-xs'
@@ -138,13 +144,18 @@ export function ServerConfigPanel() {
         </div>
 
         <div className='space-y-1'>
-          <div className='text-xs font-medium'>Auth Token (Bearer JWT)</div>
+          <label htmlFor='scp-auth-token' className='text-xs font-medium'>
+            Auth Token (Bearer JWT)
+          </label>
           <div className='flex gap-2'>
             <input
+              id='scp-auth-token'
               className='input w-full text-sm'
               value={authToken}
               onChange={(e) => setAuthToken(e.target.value)}
               placeholder='Bearer token'
+              spellCheck={false}
+              autoComplete='off'
             />
             <button
               className='btn-glass btn-glass--muted text-xs'

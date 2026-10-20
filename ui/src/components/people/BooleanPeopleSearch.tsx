@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, X, User, Camera, RefreshCw } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Person {
   id: string;
@@ -204,11 +205,17 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
     return description;
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Advanced people search"
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -227,6 +234,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
           >
             <X size={16} />
@@ -236,7 +244,10 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div
+              role='alert'
+              className='mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'
+            >
               {error}
             </div>
           )}
@@ -245,9 +256,9 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
           <div className="space-y-6 mb-6">
             {/* Include People */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-3">
+              <span className="block text-sm font-medium text-foreground mb-3">
                 Include People
-              </label>
+              </span>
 
               {query.includePeople.length > 0 && (
                 <div className="mb-3">
@@ -274,6 +285,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                         <button
                           onClick={() => removePersonFromInclude(personId)}
                           className="hover:text-green-300"
+                          aria-label={`Remove ${getPersonName(personId)} from include list`}
                         >
                           <X size={12} />
                         </button>
@@ -286,9 +298,9 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
 
             {/* Exclude People */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-3">
+              <span className="block text-sm font-medium text-foreground mb-3">
                 Exclude People (Optional)
-              </label>
+              </span>
 
               {query.excludePeople.length > 0 && (
                 <div className="mb-3">
@@ -303,6 +315,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                         <button
                           onClick={() => removePersonFromExclude(personId)}
                           className="hover:text-red-300"
+                          aria-label={`Remove ${getPersonName(personId)} from exclude list`}
                         >
                           <X size={12} />
                         </button>
@@ -315,7 +328,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
 
             {/* People Selector */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-3">
+              <label htmlFor="bps-available-people-search" className="block text-sm font-medium text-foreground mb-3">
                 Available People
               </label>
 
@@ -323,8 +336,9 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
               <div className="relative mb-3">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                 <input
+                  id="bps-available-people-search"
                   type="text"
-                  placeholder="Search people..."
+                  placeholder="Search people…"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
@@ -360,6 +374,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                           onClick={() => addPersonToInclude(person.id)}
                           className="btn-glass btn-glass--muted text-xs px-2 py-1 hover:text-green-400"
                           title="Include this person"
+                          aria-label={`Include ${person.label}`}
                         >
                           <Plus size={12} />
                         </button>
@@ -367,6 +382,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
                           onClick={() => addPersonToExclude(person.id)}
                           className="btn-glass btn-glass--muted text-xs px-2 py-1 hover:text-red-400"
                           title="Exclude this person"
+                          aria-label={`Exclude ${person.label}`}
                         >
                           <X size={12} />
                         </button>
@@ -393,7 +409,11 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
           {/* Search Results */}
           {results.length > 0 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div
+                role='status'
+                aria-live='polite'
+                className="flex items-center gap-2 text-sm text-muted-foreground"
+              >
                 <Camera size={16} />
                 <span>Found {results.length} photo{results.length === 1 ? '' : 's'}</span>
               </div>
@@ -459,7 +479,7 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
               disabled={searching || query.includePeople.length === 0}
             >
               {searching && <RefreshCw size={14} className="animate-spin" />}
-              {searching ? 'Searching...' : 'Search Photos'}
+              {searching ? 'Searching…' : 'Search Photos'}
             </button>
           </div>
         </div>

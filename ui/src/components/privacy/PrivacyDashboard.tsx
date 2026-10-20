@@ -28,6 +28,7 @@ import {
   Lock,
   RefreshCw
 } from 'lucide-react';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface ConsentStatus {
   [key: string]: {
@@ -76,6 +77,15 @@ export const PrivacyDashboard: React.FC = () => {
   const [showAnonymizeModal, setShowAnonymizeModal] = useState(false);
   const [anonymizePersonId, setAnonymizePersonId] = useState('');
   const [anonymizeReason, setAnonymizeReason] = useState('');
+
+  const closeAnonymize = () => {
+    setShowAnonymizeModal(false);
+    setAnonymizePersonId('');
+    setAnonymizeReason('');
+  };
+
+  const exportPanelRef = useModalBehavior(showExportModal, () => setShowExportModal(false));
+  const anonymizePanelRef = useModalBehavior(showAnonymizeModal, closeAnonymize);
 
   // Fetch privacy dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -187,6 +197,11 @@ export const PrivacyDashboard: React.FC = () => {
   const anonymizePersonData = async () => {
     if (!anonymizePersonId || !anonymizeReason) return;
 
+    const confirmed = window.confirm(
+      `Permanently anonymize person "${anonymizePersonId}"? Their face data and identifying metadata will be irreversibly removed.`
+    );
+    if (!confirmed) return;
+
     try {
       const response = await fetch('/api/privacy/anonymize/person', {
         method: 'POST',
@@ -239,7 +254,7 @@ export const PrivacyDashboard: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center space-x-2">
           <RefreshCw className="w-5 h-5 animate-spin" />
-          <span>Loading privacy dashboard...</span>
+          <span>Loading privacy dashboard…</span>
         </div>
       </div>
     );
@@ -432,7 +447,13 @@ export const PrivacyDashboard: React.FC = () => {
       {/* Export Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div
+            ref={exportPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Export your data"
+            className="bg-white rounded-lg p-6 w-full max-w-md"
+          >
             <h3 className="text-lg font-semibold mb-4">Export Your Data</h3>
 
             <div className="space-y-3 mb-4">
@@ -471,7 +492,7 @@ export const PrivacyDashboard: React.FC = () => {
                 disabled={exportLoading || selectedExportTypes.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {exportLoading ? 'Requesting...' : 'Request Export'}
+                {exportLoading ? 'Requesting…' : 'Request Export'}
               </button>
             </div>
           </div>
@@ -481,7 +502,13 @@ export const PrivacyDashboard: React.FC = () => {
       {/* Anonymize Modal */}
       {showAnonymizeModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div
+            ref={anonymizePanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Anonymize person"
+            className="bg-white rounded-lg p-6 w-full max-w-md"
+          >
             <h3 className="text-lg font-semibold mb-4 flex items-center space-x-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <span>Anonymize Person Data</span>
@@ -489,8 +516,9 @@ export const PrivacyDashboard: React.FC = () => {
 
             <div className="space-y-4 mb-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Person ID</label>
+                <label htmlFor="pd-anonymize-person-id" className="block text-sm font-medium mb-1">Person ID</label>
                 <input
+                  id="pd-anonymize-person-id"
                   type="text"
                   value={anonymizePersonId}
                   onChange={(e) => setAnonymizePersonId(e.target.value)}
@@ -500,8 +528,9 @@ export const PrivacyDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Reason</label>
+                <label htmlFor="pd-anonymize-reason" className="block text-sm font-medium mb-1">Reason</label>
                 <textarea
+                  id="pd-anonymize-reason"
                   value={anonymizeReason}
                   onChange={(e) => setAnonymizeReason(e.target.value)}
                   placeholder="Reason for anonymization (required for audit)"
@@ -520,11 +549,7 @@ export const PrivacyDashboard: React.FC = () => {
 
             <div className="flex items-center justify-end space-x-3">
               <button
-                onClick={() => {
-                  setShowAnonymizeModal(false);
-                  setAnonymizePersonId('');
-                  setAnonymizeReason('');
-                }}
+                onClick={closeAnonymize}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800"
               >
                 Cancel

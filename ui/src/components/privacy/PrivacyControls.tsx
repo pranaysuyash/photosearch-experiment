@@ -138,6 +138,10 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
   };
 
   const removeUserFromAccessList = (user: string) => {
+    const confirmed = window.confirm(
+      `Revoke ${user}'s access to this photo? They will no longer be able to view it.`
+    );
+    if (!confirmed) return;
     setSettings(prev => ({
       ...prev,
       allowedUsers: prev.allowedUsers.filter(u => u !== user)
@@ -180,7 +184,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
           {saving ? (
             <>
               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Saving...
+              Saving…
             </>
           ) : (
             <>
@@ -260,18 +264,16 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                     }))}
                     className="mt-0.5"
                   />
-                  <div className="flex items-start gap-2 flex-1">
-                    <div className={`p-1.5 rounded ${
+                  <div className={`p-1.5 rounded ${
                       settings.visibility === option.value
                         ? 'text-primary'
                         : 'text-muted-foreground'
                     }`}>
-                      {option.icon}
-                    </div>
-                    <div>
-                      <div className="font-medium text-foreground">{option.label}</div>
-                      <div className="text-sm text-muted-foreground">{option.desc}</div>
-                    </div>
+                    {option.icon}
+                  </div>
+                  <div className="flex-1 font-medium text-foreground">
+                    {option.label}
+                    <div className="font-normal text-sm text-muted-foreground">{option.desc}</div>
                   </div>
                 </label>
               ))}
@@ -301,9 +303,9 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                     onChange={() => toggleSharePermission(permission.key)}
                     className="rounded"
                   />
-                  <div>
-                    <div className="font-medium text-foreground">{permission.label}</div>
-                    <div className="text-sm text-muted-foreground">{permission.desc}</div>
+                  <div className="flex-1 font-medium text-foreground">
+                    {permission.label}
+                    <div className="font-normal text-sm text-muted-foreground">{permission.desc}</div>
                   </div>
                 </label>
               ))}
@@ -351,6 +353,7 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
                       </div>
                       <button
                         onClick={() => removeUserFromAccessList(user)}
+                        aria-label={`Revoke access for ${user}`}
                         className="btn-glass btn-glass--muted p-1.5"
                         title="Revoke access"
                       >
@@ -441,11 +444,12 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
               {settings.encryptionEnabled && (
                 <div className="space-y-3 p-3 rounded-lg bg-white/5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
+                    <label htmlFor="pc-encryption-key" className="block text-sm font-medium text-foreground mb-2">
                       Encryption Key
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="pc-encryption-key"
                         type="password"
                         value={settings.encryptionKey}
                         onChange={(e) => setSettings(prev => ({

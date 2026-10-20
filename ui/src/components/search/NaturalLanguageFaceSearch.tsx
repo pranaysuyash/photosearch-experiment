@@ -11,6 +11,7 @@ import { api, type NaturalLanguageFaceSearchResult, type Photo } from '../../api
 import { glass } from '../../design/glass';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface NaturalLanguageFaceSearchProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export function NaturalLanguageFaceSearch({
   onClose,
 }: NaturalLanguageFaceSearchProps) {
   const photoViewer = usePhotoViewer();
+  const panelRef = useModalBehavior(isOpen, onClose);
   const [queryText, setQueryText] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<
@@ -165,8 +167,15 @@ export function NaturalLanguageFaceSearch({
   if (!isOpen) return null;
 
   return (
-    <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'>
+    <div
+      className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'
+      onClick={onClose}
+    >
       <div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Natural language face search'
         className={`${glass.surface} border border-white/20 rounded-xl max-w-5xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -184,6 +193,7 @@ export function NaturalLanguageFaceSearch({
           </div>
           <button
             onClick={onClose}
+            aria-label='Close'
             className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center'
           >
             <X size={16} />
@@ -192,17 +202,18 @@ export function NaturalLanguageFaceSearch({
 
         <div className='p-6 overflow-y-auto max-h-[calc(90vh-200px)] space-y-5'>
           {error && (
-            <div className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
+            <div role='alert' className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
               {error}
             </div>
           )}
 
           <div className='space-y-2'>
-            <label className='block text-sm font-medium text-foreground'>
+            <label htmlFor='nlfs-query' className='block text-sm font-medium text-foreground'>
               Natural language query
             </label>
             <input
-              type='text'
+              id='nlfs-query'
+              type='search'
               placeholder="e.g. happy photos with John"
               value={queryText}
               onChange={(e) => setQueryText(e.target.value)}
@@ -249,7 +260,11 @@ export function NaturalLanguageFaceSearch({
 
           {results.length > 0 && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <div
+                className='flex items-center gap-2 text-sm text-muted-foreground'
+                role='status'
+                aria-live='polite'
+              >
                 <Camera size={16} />
                 <span>
                   Found {total || results.length} photo
@@ -342,7 +357,7 @@ export function NaturalLanguageFaceSearch({
               disabled={loading}
             >
               {loading && <RefreshCw size={14} className='animate-spin' />}
-              {loading ? 'Searching...' : 'Run Search'}
+              {loading ? 'Searching…' : 'Run Search'}
             </button>
           </div>
         </div>

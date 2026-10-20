@@ -200,6 +200,7 @@ export const PhotoRelationshipGraph: React.FC<PhotoRelationshipGraphProps> = ({
             onClick={() => setIsExpanded(true)}
             className="glass-surface rounded-full w-12 h-12 flex items-center justify-center hover:bg-white/10 transition-colors"
             title="Show photo connections"
+            aria-label="Show photo connections"
           >
             <Link size={20} className="text-white/80" />
             {relationships.length > 0 && (
@@ -231,6 +232,8 @@ export const PhotoRelationshipGraph: React.FC<PhotoRelationshipGraphProps> = ({
               <button
                 onClick={() => setIsExpanded(false)}
                 className="btn-glass btn-glass--muted w-8 h-8 p-0 justify-center"
+                title="Hide photo connections"
+                aria-label="Hide photo connections"
               >
                 <EyeOff size={14} />
               </button>
@@ -277,7 +280,15 @@ export const PhotoRelationshipGraph: React.FC<PhotoRelationshipGraphProps> = ({
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                       className="glass-surface rounded-lg p-3 hover:bg-white/5 transition-colors cursor-pointer"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => onRelationshipExplore(relationship)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onRelationshipExplore(relationship);
+                        }
+                      }}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center ${colorClass}`}>
@@ -292,7 +303,7 @@ export const PhotoRelationshipGraph: React.FC<PhotoRelationshipGraphProps> = ({
                             <div className="flex items-center gap-1">
                               <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-white/60 rounded-full transition-all"
+                                  className="h-full bg-white/60 rounded-full transition-[width]"
                                   style={{ width: `${relationship.strength * 100}%` }}
                                 />
                               </div>

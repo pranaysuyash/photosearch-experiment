@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, FolderPlus, Check, Folder, Plus } from 'lucide-react';
 import { api, type Album } from '../../api';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface AddToAlbumDialogProps {
   isOpen: boolean;
@@ -87,6 +88,8 @@ export function AddToAlbumDialog({
     }
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -99,6 +102,10 @@ export function AddToAlbumDialog({
         onClick={handleBackdropClick}
       >
         <motion.div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add to album"
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -151,7 +158,7 @@ export function AddToAlbumDialog({
                       key={album.id}
                       onClick={() => toggleAlbum(album.id)}
                       disabled={isSubmitting}
-                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${isSelected
+                      className={`w-full px-4 py-3 rounded-lg border transition text-left flex items-center gap-3 ${isSelected
                           ? 'bg-blue-500/20 border-blue-500/50'
                           : 'bg-white/5 border-white/10 hover:bg-white/10'
                         } disabled:opacity-50`}
@@ -221,7 +228,7 @@ export function AddToAlbumDialog({
               {isSubmitting ? (
                 <>
                   <Loader2 size={18} className="animate-spin" />
-                  <span>Adding...</span>
+                  <span>Adding…</span>
                 </>
               ) : (
                 <>

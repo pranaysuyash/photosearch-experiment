@@ -27,7 +27,31 @@ import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { ContextMenu } from '../actions/ContextMenu';
 import { AddToAlbumDialog } from '../albums/AddToAlbumDialog';
 import { AddToTagDialog } from '../tags/AddToTagDialog';
+import { ExportDialog } from '../export/ExportDialog';
 import './modern-gallery.css';
+
+/**
+ * Stable string hash — masonry row spans must not be derived from
+ * Math.random() during render, or the layout re-shuffles on every re-render.
+ */
+const hashString = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+  }
+  return h >>> 0;
+};
+
+/** Signed 96px URLs are fetched on every grid hover — cache them per path. */
+const signedAccentUrlCache = new Map<string, string>();
+const getCachedAccentUrl = async (path: string): Promise<string> => {
+  const cached = signedAccentUrlCache.get(path);
+  if (cached !== undefined) return cached;
+  const url =
+    (await api.getSignedImageUrl(path, 96)) || api.getImageUrl(path, 96);
+  signedAccentUrlCache.set(path, url);
+  return url;
+};
 
 interface PhotoGridProps {
   photos: Photo[];
@@ -63,11 +87,11 @@ export function PhotoGrid({
   const observerTarget = useRef<HTMLDivElement>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-  const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [favoriting, setFavoriting] = useState(false);
   const [showAddToAlbum, setShowAddToAlbum] = useState(false);
   const [showAddToTag, setShowAddToTag] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
     photo: Photo;
@@ -157,29 +181,15 @@ export function PhotoGrid({
     setSelectMode(false);
   }, []);
 
-  const handleExport = useCallback(async () => {
-    if (selectedPaths.size === 0) return;
-    setExporting(true);
-    try {
-      const response = await api.bulkExportPhotos(Array.from(selectedPaths));
-      // Create download link for the ZIP file
-      const url = window.URL.createObjectURL(new Blob([response]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute(
-        'download',
-        `photos_export_${selectedPaths.size}_files.zip`
-      );
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error('Export failed:', e);
-    } finally {
-      setExporting(false);
-    }
-  }, [selectedPaths]);
+  // Escape exits select mode while the mode is active
+  useEffect(() => {
+    if (!selectMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') clearSelection();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectMode, clearSelection]);
 
   const handleBulkDelete = useCallback(async () => {
     if (selectedPaths.size === 0) return;
@@ -419,7 +429,7 @@ export function PhotoGrid({
             } text-sm px-3 py-1.5 flex items-center gap-2`}
           >
             <div
-              className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+              className={`w-4 h-4 rounded border-2 flex items-center justify-center transition ${
                 selectedPaths.size > 0
                   ? 'bg-white border-white'
                   : 'border-current'
@@ -443,8 +453,14 @@ export function PhotoGrid({
 
           {/* Dropdown Menu */}
           {selectMode && (
-            <div className='absolute top-full left-0 mt-1 w-40 bg-background/95 backdrop-blur-lg border border-white/10 rounded-lg shadow-xl z-50 py-1'>
+            /* Escape exits select mode from anywhere while the mode is on */
+            <div
+              role='menu'
+              aria-label='Selection options'
+              className='absolute top-full left-0 mt-1 w-40 bg-background/95 backdrop-blur-lg border border-white/10 rounded-lg shadow-xl z-50 py-1'
+            >
               <button
+                role='menuitem'
                 onClick={() => selectAll()}
                 className='w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors'
               >
@@ -452,6 +468,7 @@ export function PhotoGrid({
               </button>
               {selectedPaths.size > 0 && (
                 <button
+                  role='menuitem'
                   onClick={() => setSelectedPaths(new Set())}
                   className='w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors'
                 >
@@ -460,6 +477,7 @@ export function PhotoGrid({
               )}
               <hr className='border-white/10 my-1' />
               <button
+                role='menuitem'
                 onClick={() => clearSelection()}
                 className='w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 transition-colors'
               >
@@ -501,13 +519,12 @@ export function PhotoGrid({
                 transition={{ duration: 0.2 }}
               >
                 <button
-                  onClick={handleExport}
-                  disabled={exporting}
+                  onClick={() => setShowExport(true)}
                   className='btn-glass btn-glass--primary text-sm font-medium'
-                  title='Export selected photos as ZIP'
+                  title='Export selected photos'
                 >
                   <Download size={14} />
-                  {exporting ? 'Exporting...' : 'Export'}
+                  Export
                 </button>
 
                 <button
@@ -603,9 +620,7 @@ export function PhotoGrid({
       >
         {photos.map((photo, i) => {
           const isSelected = selectedPaths.has(photo.path);
-          const rowSpan = useUniformSpan
-            ? 2
-            : Math.floor(Math.random() * 2) + 2;
+          const rowSpan = useUniformSpan ? 2 : 2 + (hashString(photo.path) % 2);
           return (
             <motion.div
               key={photo.path}
@@ -623,7 +638,7 @@ export function PhotoGrid({
               animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.5,
-                delay: i * 0.05,
+                delay: Math.min(i, 12) * 0.05,
                 ease: 'easeOut',
                 type: 'spring',
                 stiffness: 100,
@@ -633,18 +648,16 @@ export function PhotoGrid({
               }
               onContextMenu={(e) => handleContextMenu(e, photo)}
               onMouseEnter={async () => {
-                const url = await api.getSignedImageUrl(photo.path, 96);
                 setOverrideAccentUrl(
                   'gridHover',
-                  url || api.getImageUrl(photo.path, 96)
+                  await getCachedAccentUrl(photo.path)
                 );
               }}
               onMouseLeave={() => clearOverrideAccent('gridHover')}
               onFocus={async () => {
-                const url = await api.getSignedImageUrl(photo.path, 96);
                 setOverrideAccentUrl(
                   'gridHover',
-                  url || api.getImageUrl(photo.path, 96)
+                  await getCachedAccentUrl(photo.path)
                 );
               }}
               onBlur={() => clearOverrideAccent('gridHover')}
@@ -700,7 +713,7 @@ export function PhotoGrid({
               )}
 
               {/* Favorites Toggle */}
-              <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+              <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                 <FavoritesToggle
                   isFavorited={favorites.has(photo.path)}
                   onToggle={() => handleToggleFavorite(photo.path)}
@@ -711,7 +724,6 @@ export function PhotoGrid({
               {photo.matchExplanation && (
                 <div
                   onClick={(e) => {
-                    console.log('Wrapper div clicked - stopping propagation');
                     e.preventDefault();
                     e.stopPropagation();
                   }}
@@ -758,23 +770,13 @@ export function PhotoGrid({
           className='fixed bottom-28 right-6 z-50'
         >
           <motion.button
-            onClick={handleExport}
-            disabled={exporting}
-            className='btn-glass btn-glass--primary flex items-center gap-3 px-6 py-3 font-semibold disabled:opacity-50'
+            onClick={() => setShowExport(true)}
+            className='btn-glass btn-glass--primary flex items-center gap-3 px-6 py-3 font-semibold'
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
           >
-            {exporting ? (
-              <>
-                <div className='w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin' />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download size={18} />
-                Export {selectedPaths.size} Photos
-              </>
-            )}
+            <Download size={18} />
+            Export {selectedPaths.size} Photos
           </motion.button>
         </motion.div>
       )}
@@ -836,6 +838,12 @@ export function PhotoGrid({
           setShowAddToTag(false);
           clearSelection();
         }}
+      />
+
+      <ExportDialog
+        isOpen={showExport}
+        photoPaths={Array.from(selectedPaths)}
+        onClose={() => setShowExport(false)}
       />
     </div>
   );

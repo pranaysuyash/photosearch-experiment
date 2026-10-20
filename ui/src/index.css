@@ -54,6 +54,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -99,6 +100,14 @@
   /* Ensure images auto-rotate based on EXIF orientation */
   img {
     image-orientation: from-image;
+  }
+
+  /* Balanced heading line breaks */
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
   }
 }
 
@@ -156,7 +165,8 @@
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 500;
-    transition: all 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    transition: background-color 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      box-shadow 0.18s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .btn-glass:hover,

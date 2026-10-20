@@ -62,7 +62,11 @@
 .floating-search {
   flex: 1;
   min-width: 0;
-  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: background-color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    border-color 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .floating-search.expanded {
@@ -189,7 +193,9 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   color: hsl(var(--foreground));
   text-decoration: none;
-  transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    box-shadow 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    background-color 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
 }
 
@@ -302,5 +308,20 @@
   .icon-btn {
     width: 36px;
     height: 36px;
+  }
+}
+
+/* Reduced motion: disable decorative animations and hover transforms */
+@media (prefers-reduced-motion: reduce) {
+  .topbar-left:hover {
+    animation: none;
+  }
+
+  .floating-search.expanded {
+    animation: none;
+  }
+
+  .icon-btn:hover {
+    transform: none;
   }
 }

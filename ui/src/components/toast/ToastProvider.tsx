@@ -30,7 +30,11 @@ export function ToastProvider({ children }: ToastProviderProps) {
   return (
     <ToastContext.Provider value={{ addToast, removeToast }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-[2000] max-w-sm w-full">
+      <div
+        className="fixed bottom-4 right-4 z-[2000] max-w-sm w-full"
+        role="status"
+        aria-live="polite"
+      >
         {toasts.map((toast) => (
           <Toast
             key={toast.id}

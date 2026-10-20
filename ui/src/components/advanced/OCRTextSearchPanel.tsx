@@ -229,6 +229,31 @@ export function OCRTextSearchPanel() {
     void loadStats();
   }, [loadStats]);
 
+  // "Clear OCR Data" — destructive: wipes all extracted text via DELETE /ocr/all
+  const [clearingOcr, setClearingOcr] = useState(false);
+  const [clearOcrError, setClearOcrError] = useState<string | null>(null);
+  const handleClearOcrData = useCallback(async () => {
+    if (
+      !window.confirm(
+        'Delete ALL extracted OCR text? This cannot be undone.'
+      )
+    ) {
+      return;
+    }
+    setClearingOcr(true);
+    setClearOcrError(null);
+    try {
+      await api.deleteOcrAll();
+      await loadStats();
+    } catch (err) {
+      setClearOcrError(
+        err instanceof Error ? err.message : 'Failed to clear OCR data'
+      );
+    } finally {
+      setClearingOcr(false);
+    }
+  }, [loadStats]);
+
   const searchText = useCallback(
     async (query: string, language?: string) => {
       try {
@@ -507,7 +532,7 @@ export function OCRTextSearchPanel() {
                 </span>
                 <div className='w-20 h-2 bg-black/30 rounded-full overflow-hidden'>
                   <div
-                    className='h-full bg-blue-500 transition-all duration-300'
+                    className='h-full bg-blue-500 transition-[width] duration-300'
                     style={{ width: `${job.progress}%` }}
                   />
                 </div>
@@ -524,7 +549,7 @@ export function OCRTextSearchPanel() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
+              className={`flex-1 px-4 py-2 rounded-md capitalize transition ${
                 activeTab === tab
                   ? 'bg-blue-600 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-white/10'
@@ -554,8 +579,9 @@ export function OCRTextSearchPanel() {
 
               <div className='flex gap-2 mb-4'>
                 <input
-                  type='text'
-                  placeholder='Search for text in images...'
+                  type='search'
+                  placeholder='Search for text in images…'
+                  aria-label='Search for text in images'
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
@@ -568,6 +594,7 @@ export function OCRTextSearchPanel() {
                 <button
                   onClick={() => searchQuery.trim() && searchText(searchQuery)}
                   disabled={!searchQuery.trim() || loading}
+                  aria-label='Search text in images'
                   className='px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed'
                 >
                   {loading ? (
@@ -583,6 +610,7 @@ export function OCRTextSearchPanel() {
                 <div className='flex items-center gap-2'>
                   <span className='text-gray-400'>Language:</span>
                   <select
+                    aria-label='OCR language filter'
                     value=''
                     onChange={(e) =>
                       e.target.value && searchText(searchQuery, e.target.value)
@@ -604,6 +632,8 @@ export function OCRTextSearchPanel() {
                   <span className='text-gray-400'>Min Confidence:</span>
                   <input
                     type='range'
+                    aria-label='Minimum confidence'
+                    aria-valuetext={`${(minConfidence * 100).toFixed(0)} percent`}
                     min='0'
                     max='1'
                     step='0.1'
@@ -620,6 +650,7 @@ export function OCRTextSearchPanel() {
 
                 <button
                   onClick={() => setShowHighlighting(!showHighlighting)}
+                  aria-pressed={showHighlighting}
                   className={`flex items-center gap-1 px-2 py-1 rounded ${
                     showHighlighting
                       ? 'bg-blue-600 text-white'
@@ -634,7 +665,8 @@ export function OCRTextSearchPanel() {
 
             {/* Search Results */}
             {searchResults.length > 0 && (
-              <div className={`${glass.card} p-6`}>
+              /* Result count is announced to assistive tech as results arrive */
+              <div className={`${glass.card} p-6`} role='status' aria-live='polite'>
                 <h3 className='text-xl font-semibold text-white mb-4'>
                   Found {searchResults.length} results for "{searchQuery}"
                 </h3>
@@ -671,6 +703,7 @@ export function OCRTextSearchPanel() {
                         </div>
                         <button
                           onClick={() => getTextRegions(region.photo_path)}
+                          aria-label='View text regions on photo'
                           className='text-gray-400 hover:text-white'
                         >
                           <Eye className='w-4 h-4' />
@@ -698,7 +731,16 @@ export function OCRTextSearchPanel() {
                               Full text
                             </span>
                           )}
-                          <button className='px-2 py-1 bg-white/10 text-gray-300 text-xs rounded hover:bg-white/20'>
+                          <button
+                            onClick={() =>
+                              window.open(
+                                api.getImageUrl(region.photo_path),
+                                '_blank',
+                                'noopener'
+                              )
+                            }
+                            className='px-2 py-1 bg-white/10 text-gray-300 text-xs rounded hover:bg-white/20'
+                          >
                             View Image
                           </button>
                         </div>
@@ -805,7 +847,12 @@ export function OCRTextSearchPanel() {
                           Automatically detect text languages
                         </p>
                       </div>
-                      <button className='w-12 h-6 bg-blue-600 rounded-full relative'>
+                      <button
+                        disabled
+                        title='Not supported by the current OCR backend'
+                        aria-label='Auto Language Detection (not supported by the current OCR backend)'
+                        className='w-12 h-6 bg-blue-600 rounded-full relative opacity-50 cursor-not-allowed'
+                      >
                         <div className='absolute right-1 top-1 w-4 h-4 bg-white rounded-full' />
                       </button>
                     </div>
@@ -821,6 +868,9 @@ export function OCRTextSearchPanel() {
                       </div>
                       <input
                         type='range'
+                        disabled
+                        title='Not supported by the current OCR backend'
+                        aria-label='Confidence threshold (not supported by the current OCR backend)'
                         min='0'
                         max='1'
                         step='0.1'
@@ -1037,7 +1087,12 @@ export function OCRTextSearchPanel() {
                         Use GPU for faster text processing
                       </p>
                     </div>
-                    <button className='w-12 h-6 bg-blue-600 rounded-full relative'>
+                    <button
+                      disabled
+                      title='Not supported by the current OCR backend'
+                      aria-label='GPU Acceleration (not supported by the current OCR backend)'
+                      className='w-12 h-6 bg-blue-600 rounded-full relative opacity-50 cursor-not-allowed'
+                    >
                       <div className='absolute right-1 top-1 w-4 h-4 bg-white rounded-full' />
                     </button>
                   </div>
@@ -1051,7 +1106,12 @@ export function OCRTextSearchPanel() {
                         Process multiple images simultaneously
                       </p>
                     </div>
-                    <button className='w-12 h-6 bg-blue-600 rounded-full relative'>
+                    <button
+                      disabled
+                      title='Not supported by the current OCR backend'
+                      aria-label='Parallel Processing (not supported by the current OCR backend)'
+                      className='w-12 h-6 bg-blue-600 rounded-full relative opacity-50 cursor-not-allowed'
+                    >
                       <div className='absolute right-1 top-1 w-4 h-4 bg-white rounded-full' />
                     </button>
                   </div>
@@ -1065,7 +1125,12 @@ export function OCRTextSearchPanel() {
                         Improve image quality before OCR
                       </p>
                     </div>
-                    <button className='w-12 h-6 bg-blue-600 rounded-full relative'>
+                    <button
+                      disabled
+                      title='Not supported by the current OCR backend'
+                      aria-label='Auto-enhance Images (not supported by the current OCR backend)'
+                      className='w-12 h-6 bg-blue-600 rounded-full relative opacity-50 cursor-not-allowed'
+                    >
                       <div className='absolute right-1 top-1 w-4 h-4 bg-white rounded-full' />
                     </button>
                   </div>
@@ -1078,10 +1143,18 @@ export function OCRTextSearchPanel() {
                 </h4>
                 <div className='space-y-4'>
                   <div>
-                    <label className='block text-gray-300 text-sm mb-2'>
+                    <label
+                      htmlFor='ocr-threads'
+                      className='block text-gray-300 text-sm mb-2'
+                    >
                       Processing Threads
                     </label>
-                    <select className='w-full px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500'>
+                    <select
+                      id='ocr-threads'
+                      disabled
+                      title='Not supported by the current OCR backend'
+                      className='w-full px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500 opacity-50 cursor-not-allowed'
+                    >
                       <option>Auto (Recommended)</option>
                       <option>1 Thread</option>
                       <option>2 Threads</option>
@@ -1091,11 +1164,17 @@ export function OCRTextSearchPanel() {
                   </div>
 
                   <div>
-                    <label className='block text-gray-300 text-sm mb-2'>
+                    <label
+                      htmlFor='ocr-quality-threshold'
+                      className='block text-gray-300 text-sm mb-2'
+                    >
                       Image Quality Threshold
                     </label>
                     <input
+                      id='ocr-quality-threshold'
                       type='range'
+                      disabled
+                      title='Not supported by the current OCR backend'
                       min='0'
                       max='100'
                       defaultValue='50'
@@ -1104,13 +1183,19 @@ export function OCRTextSearchPanel() {
                   </div>
 
                   <div>
-                    <label className='block text-gray-300 text-sm mb-2'>
+                    <label
+                      htmlFor='ocr-cache-size'
+                      className='block text-gray-300 text-sm mb-2'
+                    >
                       Cache Size (MB)
                     </label>
                     <input
+                      id='ocr-cache-size'
                       type='number'
+                      disabled
+                      title='Not supported by the current OCR backend'
                       defaultValue='512'
-                      className='w-full px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500'
+                      className='w-full px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-500 opacity-50 cursor-not-allowed'
                     />
                   </div>
                 </div>
@@ -1118,13 +1203,29 @@ export function OCRTextSearchPanel() {
             </div>
 
             <div className='pt-4 border-t border-white/10 space-y-2'>
-              <button className='w-full px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 flex items-center justify-center gap-2'>
+              {clearOcrError && (
+                <div
+                  role='alert'
+                  className='text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg p-3'
+                >
+                  {clearOcrError}
+                </div>
+              )}
+              <button
+                disabled
+                title='Not available yet'
+                className='w-full px-4 py-2 bg-white/10 text-white rounded-lg flex items-center justify-center gap-2 opacity-50 cursor-not-allowed'
+              >
                 <Download className='w-4 h-4' />
                 Export OCR Settings
               </button>
-              <button className='w-full px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 flex items-center justify-center gap-2'>
+              <button
+                onClick={handleClearOcrData}
+                disabled={clearingOcr}
+                className='w-full px-4 py-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 flex items-center justify-center gap-2 disabled:opacity-50'
+              >
                 <Trash2 className='w-4 h-4' />
-                Clear OCR Cache
+                {clearingOcr ? 'Clearing…' : 'Clear OCR Data'}
               </button>
             </div>
           </motion.div>

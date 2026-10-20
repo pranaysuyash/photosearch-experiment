@@ -81,13 +81,14 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
     }
   }, [query]);
 
+  // Debounced — detectIntent fires network requests on every keystroke otherwise
   useEffect(() => {
     if (query.trim().length > 2) {
-      detectIntent();
-    } else {
-      setIntent(null);
-      setSuggestions([]);
+      const t = window.setTimeout(() => detectIntent(), 300);
+      return () => window.clearTimeout(t);
     }
+    setIntent(null);
+    setSuggestions([]);
   }, [detectIntent, query]);
 
   const handleSearch = async (searchQuery: string = query) => {
@@ -189,7 +190,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
                   handleSearch();
                 }
               }}
-              placeholder="Search photos by describing what you're looking for..."
+              placeholder="Search photos by describing what you're looking for…"
               className={`w-full pl-12 pr-12 py-3 rounded-lg border border-white/10 bg-white/5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${glass.surface}`}
             />
             {query && (
@@ -273,31 +274,35 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
           <div className={`${glass.surfaceStrong} rounded-lg p-4 border border-white/10`}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Date Range</label>
+                <label htmlFor="ibs-date-from" className="block text-xs text-muted-foreground mb-1">Date Range</label>
                 <div className="grid grid-cols-2 gap-2">
                   <input
+                    id="ibs-date-from"
                     type="date"
                     className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                   <input
+                    id="ibs-date-to"
                     type="date"
+                    aria-label="End date"
                     className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Location</label>
+                <label htmlFor="ibs-location" className="block text-xs text-muted-foreground mb-1">Location</label>
                 <input
+                  id="ibs-location"
                   type="text"
-                  placeholder="City, country..."
+                  placeholder="City, country…"
                   className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">Camera Type</label>
-                <select className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                <label htmlFor="ibs-camera-type" className="block text-xs text-muted-foreground mb-1">Camera Type</label>
+                <select id="ibs-camera-type" className="w-full px-2 py-1.5 rounded border border-white/10 bg-white/5 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
                   <option value="">Any camera</option>
                   <option value="canon">Canon</option>
                   <option value="nikon">Nikon</option>
@@ -326,7 +331,7 @@ export function IntentBasedSearch({ onResults, initialQuery = '' }: IntentBasedS
                     handleRefine();
                   }
                 }}
-                placeholder="e.g., only photos from 2023, only beach photos..."
+                placeholder="e.g., only photos from 2023, only beach photos…"
                 className="flex-1 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <button

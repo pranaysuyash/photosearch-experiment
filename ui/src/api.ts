@@ -566,6 +566,80 @@ export interface TrashItem {
   created_at: string;
 }
 
+// Location place clusters (GET /locations/clusters, first registered route →
+// locations_db.get_place_clusters: grouped by COALESCE(corrected_place_name, city, region, country))
+export interface PlaceCluster {
+  corrected_place_name?: string | null;
+  city?: string | null;
+  region?: string | null;
+  country?: string | null;
+  photo_count: number;
+  avg_latitude?: number | null;
+  avg_longitude?: number | null;
+  min_latitude?: number | null;
+  max_latitude?: number | null;
+  min_longitude?: number | null;
+  max_longitude?: number | null;
+}
+
+// OCR summary (GET /ocr/stats → { status, stats: get_ocr_summary() })
+export interface OcrStatsSummary {
+  total_images_processed: number;
+  images_with_text: number;
+  images_without_text: number;
+  total_words_extracted: number;
+  language_distribution: Record<string, number>;
+  images_with_most_text: Array<{ image_path: string; word_count: number }>;
+  recent_ocr_processing: Array<{
+    image_path: string;
+    extracted_at: string;
+    word_count: number;
+  }>;
+  avg_words_per_image: number;
+}
+
+// Face pipeline performance metrics (GET /api/performance/metrics; duration is seconds)
+export interface PerformanceMetricsEntry {
+  operation: string;
+  timestamp: number | string;
+  duration: number;
+  memory_usage_mb: number;
+  items_processed: number;
+  cache_hits: number;
+  cache_misses: number;
+  success: boolean;
+  error_message?: string | null;
+}
+
+// Face pipeline cache stats (GET /api/performance/cache/stats)
+export interface PerformanceCacheStats {
+  hit_rate: number;
+  total_requests: number;
+  cache_size_mb: number;
+  entries: number;
+  hits: number;
+  misses: number;
+  evictions: number;
+}
+
+// Face recognition statistics
+// (server/api/routers/face_recognition.py GET /api/faces/stats; status may be
+// 'unavailable' or 'error', in which case the numeric fields are absent)
+export interface FaceStatsSummary {
+  status: 'available' | 'unavailable' | 'error';
+  models_loaded?: boolean;
+  total_photos?: number;
+  faces_detected?: number;
+  clusters_found?: number;
+  unidentified_faces?: number;
+  singletons?: number;
+  low_confidence?: number;
+  message?: string;
+  error?: string;
+  attribute_coverage?: Record<string, number>;
+  quality_distribution?: Record<string, number>;
+}
+
 export const api = {
   /**
    * Raw axios client (rarely needed).
@@ -1538,6 +1612,18 @@ export const api = {
     return res.data.stats;
   },
 
+  // OCR statistics (server/api/routers/ocr.py GET /ocr/stats)
+  getOcrStats: async () => {
+    const res = await apiClient.get('/ocr/stats');
+    return res.data as { status: string; stats: OcrStatsSummary };
+  },
+
+  // Delete ALL extracted OCR data (server/api/routers/ocr.py DELETE /ocr/all)
+  deleteOcrAll: async () => {
+    const res = await apiClient.delete('/ocr/all');
+    return res.data;
+  },
+
   // Editing
   getPhotoEdits: async (path: string) => {
     const res = await apiClient.get(
@@ -1602,6 +1688,14 @@ export const api = {
       params: { min_photos: minPhotos },
     });
     return res.data.clusters;
+  },
+
+  // Photos for a corrected place name (server GET /locations/places/{place_name})
+  getPlacePhotos: async (place: string) => {
+    const res = await apiClient.get(
+      `/locations/places/${encodeURIComponent(place)}`
+    );
+    return res.data as { place_name: string; photos: string[] };
   },
 
   // Intent-based search
@@ -1725,6 +1819,30 @@ export const api = {
   },
 
   // Performance and caching (getCacheStats already defined above)
+
+  // Face pipeline performance metrics history
+  // (server/api/routers/performance.py GET /api/performance/metrics, mounted via face_recognition router)
+  getPerformanceMetrics: async (limit: number = 100) => {
+    const res = await apiClient.get('/api/performance/metrics', {
+      params: { limit },
+    });
+    return res.data as {
+      status: string;
+      metrics: PerformanceMetricsEntry[];
+      total_metrics: number;
+      returned_metrics: number;
+    };
+  },
+
+  // Face pipeline intelligent cache statistics
+  // (server/api/routers/performance.py GET /api/performance/cache/stats)
+  getPerformanceCacheStats: async () => {
+    const res = await apiClient.get('/api/performance/cache/stats');
+    return res.data as {
+      status: string;
+      cache_statistics?: PerformanceCacheStats;
+    };
+  },
 
   clearCache: async () => {
     // Backend route is API-prefixed (see server/api/routers/system.py @ /api/cache/clear)

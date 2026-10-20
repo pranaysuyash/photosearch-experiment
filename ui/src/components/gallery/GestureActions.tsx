@@ -120,7 +120,10 @@ export const GestureActions: React.FC<GestureActionsProps> = ({
     if (disabled) return;
 
     if (activeGesture && gestureProgress >= 1) {
-      onAction(activeGesture.action);
+      const isDelete = activeGesture.action === 'delete';
+      if (!isDelete || window.confirm('Move this photo to trash?')) {
+        onAction(activeGesture.action);
+      }
     }
 
     setActiveGesture(null);

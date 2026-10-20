@@ -63,11 +63,23 @@ export function BulkActions({
     setBusy(true);
     setError(null);
 
+    let trashItemIds: string[] | null = null;
+
     try {
       switch (opType) {
-        case 'delete':
-          await api.deletePhotos(selectedPhotos);
+        case 'delete': {
+          const res = (await api.trashMove(selectedPhotos)) as {
+            moved?: { id: string }[];
+            errors?: string[];
+          };
+          trashItemIds = (res.moved ?? []).map((m) => m.id);
+          if (trashItemIds.length === 0) {
+            throw new Error(
+              res.errors?.join('; ') || 'No files were moved to Trash'
+            );
+          }
           break;
+        }
         case 'favorite': {
           const favorite =
             (data as { favorite?: boolean } | undefined)?.favorite ?? true;
@@ -105,7 +117,8 @@ export function BulkActions({
         id: Date.now().toString(),
         action: opType,
         targetPaths: [...selectedPhotos],
-        operationData: data || {},
+        operationData:
+          opType === 'delete' ? { trashItemIds } : (data || {}),
         timestamp: new Date().toISOString(),
         status: 'completed',
       };
@@ -151,11 +164,13 @@ export function BulkActions({
     try {
       switch (operation.action) {
         case 'delete': {
-          // Placeholder: no restore API available
-          console.log(
-            'Undo delete – restore from trash:',
-            operation.targetPaths
-          );
+          const opData = operation.operationData as {
+            trashItemIds?: string[];
+          };
+          if (!opData.trashItemIds?.length) {
+            throw new Error('No Trash items recorded for this operation');
+          }
+          await api.trashRestore(opData.trashItemIds);
           break;
         }
         case 'favorite': {
@@ -258,6 +273,7 @@ export function BulkActions({
         </div>
         <button
           onClick={() => onSelectionChange([])}
+          aria-label='Clear selection'
           className='btn-glass btn-glass--muted w-8 h-8 p-0 flex items-center justify-center'
         >
           <X size={16} />
@@ -297,7 +313,8 @@ export function BulkActions({
             type='text'
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
-            placeholder='Add tag...'
+            placeholder='Add tag…'
+            aria-label='Add tag'
             className='flex-1 px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm'
             onKeyDown={(e) => {
               if (e.key === 'Enter' && newTag.trim()) {
@@ -308,6 +325,7 @@ export function BulkActions({
           <button
             onClick={performBulkTag}
             disabled={busy || !newTag.trim()}
+            aria-label='Add tag to selected photos'
             className='btn-glass btn-glass--primary px-3 py-2 text-sm'
           >
             <Tag size={16} />
@@ -319,15 +337,20 @@ export function BulkActions({
       <div className='mt-3 pt-3 border-t border-white/10'>
         <div className='grid grid-cols-2 gap-2'>
           <div>
-            <label className='block text-xs text-muted-foreground mb-1'>
+            <label
+              htmlFor='bulk-move-dest'
+              className='block text-xs text-muted-foreground mb-1'
+            >
               Move to
             </label>
             <div className='flex gap-1'>
               <input
+                id='bulk-move-dest'
                 type='text'
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                placeholder='Destination path'
+                placeholder='Destination path…'
+                spellCheck={false}
                 className='flex-1 px-2 py-1.5 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs'
               />
               <button
@@ -341,15 +364,20 @@ export function BulkActions({
           </div>
 
           <div>
-            <label className='block text-xs text-muted-foreground mb-1'>
+            <label
+              htmlFor='bulk-copy-dest'
+              className='block text-xs text-muted-foreground mb-1'
+            >
               Copy to
             </label>
             <div className='flex gap-1'>
               <input
+                id='bulk-copy-dest'
                 type='text'
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
-                placeholder='Destination path'
+                placeholder='Destination path…'
+                spellCheck={false}
                 className='flex-1 px-2 py-1.5 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs'
               />
               <button
@@ -378,9 +406,9 @@ export function BulkActions({
             </div>
 
             <p className='text-sm text-muted-foreground mb-6'>
-              Are you sure you want to delete {selectedPhotos.length} photo
-              {selectedPhotos.length !== 1 ? 's' : ''}? This action can be
-              undone.
+              Move {selectedPhotos.length} photo
+              {selectedPhotos.length !== 1 ? 's' : ''} to Trash? You can
+              restore them from the Trash page afterwards.
             </p>
 
             <div className='flex justify-end gap-2'>
@@ -401,7 +429,7 @@ export function BulkActions({
                 ) : (
                   <>
                     <Trash2 size={16} />
-                    Delete
+                    Move to Trash
                   </>
                 )}
               </button>
@@ -442,6 +470,7 @@ export function BulkActions({
             </button>
             <button
               onClick={() => setShowUndoToast(false)}
+              aria-label='Dismiss undo notification'
               className='btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center'
             >
               <X size={16} />
@@ -480,11 +509,11 @@ export function BulkActions({
                         : op.action === 'favorite'
                         ? 'bg-primary/20 text-primary'
                         : op.action === 'tag'
-                        ? 'bg-green/20 text-green-400'
+                        ? 'bg-green-500/20 text-green-400'
                         : op.action === 'move'
-                        ? 'bg-blue/20 text-blue-400'
+                        ? 'bg-blue-500/20 text-blue-400'
                         : op.action === 'copy'
-                        ? 'bg-purple/20 text-purple-400'
+                        ? 'bg-purple-500/20 text-purple-400'
                         : 'bg-muted/20 text-foreground'
                     }`}
                   >
@@ -505,7 +534,8 @@ export function BulkActions({
                   </span>
                   {op.status === 'completed' &&
                     op.action !== 'move' &&
-                    op.action !== 'copy' && (
+                    op.action !== 'copy' &&
+                    op.action !== 'archive' && (
                       <button
                         onClick={() => handleUndo(op)}
                         disabled={busy}
@@ -524,7 +554,11 @@ export function BulkActions({
       {error && (
         <div className='mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3'>
           {error}
-          <button className='ml-2' onClick={() => setError(null)}>
+          <button
+            className='ml-2'
+            onClick={() => setError(null)}
+            aria-label='Dismiss error'
+          >
             <X size={16} />
           </button>
         </div>

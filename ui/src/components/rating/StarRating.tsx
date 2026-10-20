@@ -78,7 +78,7 @@ export function StarRating({
               onMouseLeave={() => !readonly && setHoverRating(0)}
               disabled={readonly || isUpdating}
               className={`
-                transition-all duration-150 ease-in-out p-0.5
+                transition duration-150 ease-in-out p-0.5
                 ${readonly ? 'cursor-default' : 'hover:scale-110'}
                 ${isUpdating ? 'opacity-50 cursor-wait' : ''}
                 ${!readonly && !isUpdating ? 'active:scale-95' : ''}

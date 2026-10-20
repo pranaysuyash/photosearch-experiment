@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, User, Users, CheckCircle, RefreshCw } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
   id: string;
@@ -175,11 +176,17 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
     onClose();
   };
 
+  const panelRef = useModalBehavior(isOpen, handleClose);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Split person"
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -198,6 +205,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
           </div>
           <button
             onClick={handleClose}
+            aria-label="Close"
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
           >
             <X size={16} />
@@ -207,7 +215,10 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div
+              role='alert'
+              className='mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'
+            >
               {error}
             </div>
           )}
@@ -216,7 +227,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
             <div className="flex items-center justify-center py-12">
               <div className="flex items-center gap-3">
                 <RefreshCw size={20} className="animate-spin text-muted-foreground" />
-                <span className="text-muted-foreground">Loading faces...</span>
+                <span className="text-muted-foreground">Loading faces…</span>
               </div>
             </div>
           ) : (
@@ -234,14 +245,15 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
 
               {/* New Person Name Input */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="scm-new-person-name" className="block text-sm font-medium text-foreground mb-2">
                   Name for new person (optional)
                 </label>
                 <input
+                  id="scm-new-person-name"
                   type="text"
                   value={newPersonName}
                   onChange={(e) => setNewPersonName(e.target.value)}
-                  placeholder="Enter person name (optional)..."
+                  placeholder="Enter person name (optional)…"
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
                 />
               </div>
@@ -253,12 +265,22 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
                   return (
                     <div
                       key={face.id}
-                      className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+                      role='button'
+                      tabIndex={0}
+                      aria-pressed={isSelected}
+                      aria-label={`Select face${face.quality_score ? ` (quality ${Math.round(face.quality_score * 100)}%)` : ''}`}
+                      className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition ${
                         isSelected
                           ? 'border-primary shadow-lg shadow-primary/20'
                           : 'border-white/10 hover:border-white/20'
                       }`}
                       onClick={() => toggleFaceSelection(face.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleFaceSelection(face.id);
+                        }
+                      }}
                     >
                       {/* Face Image */}
                       <div className="aspect-square bg-black/20">
@@ -334,7 +356,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
               disabled={splitting || selectedFaces.size === 0 || !newPersonName.trim()}
             >
               {splitting && <RefreshCw size={14} className="animate-spin" />}
-              {splitting ? 'Splitting...' : `Split ${selectedFaces.size} Face${selectedFaces.size === 1 ? '' : 's'}`}
+              {splitting ? 'Splitting…' : `Split ${selectedFaces.size} Face${selectedFaces.size === 1 ? '' : 's'}`}
             </button>
           </div>
         </div>

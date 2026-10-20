@@ -120,7 +120,7 @@ export function ProvenanceChips({
     return (
       <div className={`${glass.surface} rounded-lg px-2 py-1 inline-flex items-center gap-1.5`}>
         <div className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
-        <span className="text-xs text-muted-foreground">Loading...</span>
+        <span className="text-xs text-muted-foreground">Loading…</span>
       </div>
     );
   }

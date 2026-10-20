@@ -31,6 +31,9 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCluster, setActiveCluster] = useState<PlaceCluster | null>(null);
+  const [viewedPhotos, setViewedPhotos] = useState<string[]>([]);
+  const [viewingPlace, setViewingPlace] = useState<string | null>(null);
+  const [viewError, setViewError] = useState<string | null>(null);
 
   // Load place clusters
   const loadClusters = useCallback(async () => {
@@ -56,10 +59,21 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
     setActiveCluster(cluster);
   };
 
-  const viewCluster = (cluster: PlaceCluster) => {
-    // In a real implementation, this would navigate to a map view or search
-    // For now, we'll just log the action
-    console.log('Viewing cluster:', cluster);
+  const viewCluster = async (cluster: PlaceCluster) => {
+    const placeName = cluster.corrected_place_name || cluster.city;
+    if (!placeName) return;
+    setViewingPlace(placeName);
+    setViewError(null);
+    try {
+      const res = await api.getPlacePhotos(placeName);
+      setViewedPhotos(res.photos ?? []);
+      setActiveCluster(cluster);
+    } catch (err) {
+      console.error('Failed to load place photos:', err);
+      setViewError(`Couldn't load photos for ${placeName}`);
+    } finally {
+      setViewingPlace(null);
+    }
   };
 
   if (loading) {
@@ -69,7 +83,7 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
           <Globe size={16} className="text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Place Clusters</span>
         </div>
-        <div className="text-xs text-muted-foreground">Loading place clusters...</div>
+        <div className="text-xs text-muted-foreground">Loading place clusters…</div>
       </div>
     );
   }
@@ -109,6 +123,18 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
           {clusters.map((cluster, index) => (
             <div
               key={index}
+              role='button'
+              tabIndex={0}
+              aria-pressed={
+                activeCluster?.avg_latitude === cluster.avg_latitude &&
+                activeCluster?.avg_longitude === cluster.avg_longitude
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleClusterClick(cluster);
+                }
+              }}
               className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                 activeCluster?.avg_latitude === cluster.avg_latitude &&
                 activeCluster?.avg_longitude === cluster.avg_longitude
@@ -138,13 +164,16 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    viewCluster(cluster);
+                    void viewCluster(cluster);
                   }}
-                  className="btn-glass btn-glass--primary text-xs px-2 py-1 flex items-center gap-1"
-                  title="View cluster on map"
+                  disabled={viewingPlace !== null}
+                  className="btn-glass btn-glass--primary text-xs px-2 py-1 flex items-center gap-1 disabled:opacity-50"
+                  title="View photos from this place"
                 >
                   <Eye size={12} />
-                  View
+                  {viewingPlace === (cluster.corrected_place_name || cluster.city)
+                    ? 'Loading…'
+                    : 'View'}
                 </button>
               </div>
             </div>
@@ -158,9 +187,33 @@ export function PlaceClustering({ minPhotos = 2 }: PlaceClusterProps) {
           <div className="text-sm font-medium text-foreground truncate">
             {activeCluster.corrected_place_name || activeCluster.city}
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground mb-2">
             {activeCluster.photo_count} photos
           </div>
+          {viewError && (
+            <div role='alert' className="text-xs text-destructive mb-2">
+              {viewError}
+            </div>
+          )}
+          {viewedPhotos.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {viewedPhotos.slice(0, 12).map((photoPath) => (
+                <img
+                  key={photoPath}
+                  src={api.getImageUrl(photoPath, 200)}
+                  alt=''
+                  loading='lazy'
+                  className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                />
+              ))}
+            </div>
+          ) : (
+            !viewingPlace && (
+              <div className="text-xs text-muted-foreground">
+                No photos found for this place
+              </div>
+            )
+          )}
         </div>
       )}
     </div>

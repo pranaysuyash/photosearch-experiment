@@ -68,11 +68,12 @@ export function PrivacyPanel() {
                     </div>
 
                     <div className="space-y-3 pt-2">
-                        <label className="block text-sm font-medium text-muted-foreground">
+                        <label htmlFor="privacy-confirm-input" className="block text-sm font-medium text-muted-foreground">
                             Type <strong>DELETE</strong> to confirm
                         </label>
                         <div className="flex gap-2">
                             <input
+                                id="privacy-confirm-input"
                                 type="text"
                                 value={confirmInput}
                                 onChange={e => setConfirmInput(e.target.value)}
@@ -92,13 +93,13 @@ export function PrivacyPanel() {
                 </div>
 
                 {error && (
-                    <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm">
+                    <div role="alert" className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded text-green-400 text-sm flex items-center gap-2">
+                    <div role="status" className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded text-green-400 text-sm flex items-center gap-2">
                         <Check size={16} />
                         {success}
                     </div>

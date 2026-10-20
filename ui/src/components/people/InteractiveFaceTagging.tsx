@@ -192,7 +192,7 @@ export function InteractiveFaceTagging({
       <div className="relative">
         <img
           src={imageUrl}
-          alt="Photo"
+          alt="Face tagging canvas showing detected face overlays"
           className="w-full h-auto max-h-[600px] object-contain"
         />
 
@@ -201,7 +201,7 @@ export function InteractiveFaceTagging({
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
             <div className={`${glass.surface} p-4 rounded-lg flex items-center gap-2`}>
               <Loader2 className="animate-spin text-blue-400" size={20} />
-              <span className="text-foreground">Detecting faces...</span>
+              <span className="text-foreground">Detecting faces…</span>
             </div>
           </div>
         )}
@@ -209,7 +209,7 @@ export function InteractiveFaceTagging({
         {/* Error state */}
         {error && !loading && (
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-            <div className={`${glass.surface} p-4 rounded-lg flex items-center gap-2 text-yellow-400`}>
+            <div role='alert' className={`${glass.surface} p-4 rounded-lg flex items-center gap-2 text-yellow-400`}>
               <AlertTriangle size={20} />
               <span>{error}</span>
             </div>
@@ -224,7 +224,16 @@ export function InteractiveFaceTagging({
               key={face.detection_id}
               className="absolute border-2 border-blue-500 rounded-lg cursor-pointer hover:border-blue-400 transition-colors"
               style={getFaceBoxStyle(face)}
+              role='button'
+              tabIndex={0}
+              aria-label={`Select face${taggedFace.person_label ? ` of ${taggedFace.person_label}` : ''} for tagging`}
               onClick={() => setSelectedFace(face)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectedFace(face);
+                }
+              }}
             >
               {/* Show person label if available */}
               {taggedFace.person_id && (
@@ -256,6 +265,7 @@ export function InteractiveFaceTagging({
             <button
               onClick={() => setSelectedFace(null)}
               className="text-muted-foreground hover:text-foreground"
+              aria-label='Close face tagging panel'
             >
               <X size={18} />
             </button>
@@ -307,15 +317,16 @@ export function InteractiveFaceTagging({
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Search people..."
+                placeholder="Search people…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white/10 rounded text-sm outline-none"
+                className="flex-1 px-3 py-2 bg-white/10 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
               <button
                 onClick={searchPeople}
                 disabled={tagging}
                 className={`btn-glass ${tagging ? 'btn-glass--muted' : 'btn-glass--primary'} px-3 py-2`}
+                aria-label='Search people'
               >
                 <Search size={16} />
               </button>
@@ -359,7 +370,7 @@ export function InteractiveFaceTagging({
                 placeholder="Person name"
                 value={newPersonName}
                 onChange={(e) => setNewPersonName(e.target.value)}
-                className="flex-1 px-3 py-2 bg-white/10 rounded text-sm outline-none"
+                className="flex-1 px-3 py-2 bg-white/10 rounded text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
               <button
                 onClick={() => {
@@ -379,7 +390,7 @@ export function InteractiveFaceTagging({
           {tagging && (
             <div className="mt-3 p-2 bg-white/5 rounded-lg flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="animate-spin" size={16} />
-              <span>Tagging face...</span>
+              <span>Tagging face…</span>
             </div>
           )}
         </div>

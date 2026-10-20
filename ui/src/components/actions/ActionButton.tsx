@@ -116,7 +116,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
   };
 
   const baseClasses = `
-    inline-flex items-center gap-2 font-medium transition-all duration-200
+    inline-flex items-center gap-2 font-medium transition duration-200
     disabled:opacity-50 disabled:cursor-not-allowed
     relative group
     ${sizeClasses[size]}
@@ -134,6 +134,8 @@ export const ActionButton: React.FC<ActionButtonProps> = ({
         whileTap={{ scale: disabled ? 1 : 0.98 }}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
+        onFocus={() => setShowTooltip(true)}
+        onBlur={() => setShowTooltip(false)}
         title={action.description || action.label}
       >
         {isExecuting ? (

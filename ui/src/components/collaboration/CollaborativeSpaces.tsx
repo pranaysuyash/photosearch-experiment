@@ -17,8 +17,9 @@ import {
   Share2,
   X,
 } from 'lucide-react';
-import { api } from '../../api';
+import { api, getCurrentUserId } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface CollaborativeSpace {
   id: string;
@@ -91,6 +92,22 @@ export function CollaborativeSpaces() {
   const [showAddPhotoForm, setShowAddPhotoForm] = useState(false);
   const [newComment, setNewComment] = useState('');
 
+  // Modal close helpers (shared by backdrops, X buttons, Cancel buttons and ESC)
+  const closeCreate = () => setShowCreateForm(false);
+  // Don't close the details modal while a stacked child modal (invite / add photo) is open,
+  // otherwise a single ESC press fired through both modals' key handlers would close both.
+  const closeDetails = () => {
+    if (showInviteForm || showAddPhotoForm) return;
+    setSelectedSpace(null);
+  };
+  const closeInvite = () => setShowInviteForm(false);
+  const closePhoto = () => setShowAddPhotoForm(false);
+
+  const createPanelRef = useModalBehavior(showCreateForm, closeCreate);
+  const detailsPanelRef = useModalBehavior(!!selectedSpace, closeDetails);
+  const invitePanelRef = useModalBehavior(showInviteForm && !!selectedSpace, closeInvite);
+  const photoPanelRef = useModalBehavior(showAddPhotoForm && !!selectedSpace, closePhoto);
+
   // Load user's spaces
   useEffect(() => {
     loadCurrentUserSpaces();
@@ -101,10 +118,9 @@ export function CollaborativeSpaces() {
       setLoading(true);
       setError(null);
 
-      // In a real app, the user_id would come from authentication
-      // For this example, we'll use a placeholder user ID
+      // Load spaces accessible to the current user (identity from api.ts)
       const response = await api.get<{ spaces?: CollaborativeSpace[] }>(
-        '/collaborative/spaces/user/user-placeholder-id'
+        `/collaborative/spaces/user/${encodeURIComponent(getCurrentUserId())}`
       );
       setCurrentUserSpaces(response.spaces || []);
     } catch (err) {
@@ -312,14 +328,21 @@ export function CollaborativeSpaces() {
       {/* Create Space Modal */}
       {showCreateForm && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateForm(false)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeCreate} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+          <div
+            ref={createPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create space"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Create Collaborative Space</h3>
                 <button
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={closeCreate}
+                  aria-label="Close"
                   className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                 >
                   <X size={18} />
@@ -328,8 +351,9 @@ export function CollaborativeSpaces() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Space Name</label>
+                  <label htmlFor="cs-space-name" className="block text-sm font-medium text-foreground mb-1">Space Name</label>
                   <input
+                    id="cs-space-name"
                     type="text"
                     value={createSpaceForm.name}
                     onChange={(e) => setCreateSpaceForm({...createSpaceForm, name: e.target.value})}
@@ -339,8 +363,9 @@ export function CollaborativeSpaces() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+                  <label htmlFor="cs-space-description" className="block text-sm font-medium text-foreground mb-1">Description</label>
                   <textarea
+                    id="cs-space-description"
                     value={createSpaceForm.description}
                     onChange={(e) => setCreateSpaceForm({...createSpaceForm, description: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -351,8 +376,9 @@ export function CollaborativeSpaces() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Privacy</label>
+                    <label htmlFor="cs-space-privacy" className="block text-sm font-medium text-foreground mb-1">Privacy</label>
                     <select
+                      id="cs-space-privacy"
                       value={createSpaceForm.privacy_level}
                       onChange={(e) => setCreateSpaceForm({...createSpaceForm, privacy_level: e.target.value})}
                       className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -364,8 +390,9 @@ export function CollaborativeSpaces() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Max Members</label>
+                    <label htmlFor="cs-space-max-members" className="block text-sm font-medium text-foreground mb-1">Max Members</label>
                     <input
+                      id="cs-space-max-members"
                       type="number"
                       min="1"
                       max="100"
@@ -379,7 +406,7 @@ export function CollaborativeSpaces() {
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={closeCreate}
                   className="btn-glass btn-glass--muted px-4 py-2"
                 >
                   Cancel
@@ -399,9 +426,15 @@ export function CollaborativeSpaces() {
       {/* Space Details Modal */}
       {selectedSpace && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedSpace(null)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeDetails} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
+          <div
+            ref={detailsPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Space details"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}
+          >
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <div>
@@ -413,7 +446,8 @@ export function CollaborativeSpaces() {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setSelectedSpace(null)}
+                    onClick={closeDetails}
+                    aria-label="Close"
                     className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                   >
                     <X size={18} />
@@ -517,6 +551,7 @@ export function CollaborativeSpaces() {
                               onClick={() => removePhoto(photo.photo_path)}
                               className="btn-glass btn-glass--muted p-1.5"
                               title="Remove photo"
+                              aria-label="Remove photo"
                             >
                               <X size={12} />
                             </button>
@@ -556,7 +591,7 @@ export function CollaborativeSpaces() {
                                   type="text"
                                   value={newComment}
                                   onChange={(e) => setNewComment(e.target.value)}
-                                  placeholder="Add a comment..."
+                                  placeholder="Add a comment…"
                                   className="flex-1 bg-white/5 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') {
@@ -588,14 +623,21 @@ export function CollaborativeSpaces() {
       {/* Invite Member Modal */}
       {showInviteForm && selectedSpace && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInviteForm(false)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeInvite} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+          <div
+            ref={invitePanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Invite member"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Invite to "{selectedSpace.name}"</h3>
                 <button
-                  onClick={() => setShowInviteForm(false)}
+                  onClick={closeInvite}
+                  aria-label="Close"
                   className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                 >
                   <X size={18} />
@@ -604,8 +646,9 @@ export function CollaborativeSpaces() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">User ID or Email</label>
+                  <label htmlFor="cs-invite-user" className="block text-sm font-medium text-foreground mb-1">User ID or Email</label>
                   <input
+                    id="cs-invite-user"
                     type="text"
                     value={inviteForm.user_id}
                     onChange={(e) => setInviteForm({...inviteForm, user_id: e.target.value})}
@@ -615,8 +658,9 @@ export function CollaborativeSpaces() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Role</label>
+                  <label htmlFor="cs-invite-role" className="block text-sm font-medium text-foreground mb-1">Role</label>
                   <select
+                    id="cs-invite-role"
                     value={inviteForm.role}
                     onChange={(e) => setInviteForm({...inviteForm, role: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -630,7 +674,7 @@ export function CollaborativeSpaces() {
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
-                  onClick={() => setShowInviteForm(false)}
+                  onClick={closeInvite}
                   className="btn-glass btn-glass--muted px-4 py-2"
                 >
                   Cancel
@@ -650,14 +694,21 @@ export function CollaborativeSpaces() {
       {/* Add Photo Modal */}
       {showAddPhotoForm && selectedSpace && (
         <div className="fixed inset-0 z-[1500] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowAddPhotoForm(false)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closePhoto} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+          <div
+            ref={photoPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add photo to space"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Add Photo to "{selectedSpace.name}"</h3>
                 <button
-                  onClick={() => setShowAddPhotoForm(false)}
+                  onClick={closePhoto}
+                  aria-label="Close"
                   className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                 >
                   <X size={18} />
@@ -666,8 +717,9 @@ export function CollaborativeSpaces() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Photo Path</label>
+                  <label htmlFor="cs-add-photo-path" className="block text-sm font-medium text-foreground mb-1">Photo Path</label>
                   <input
+                    id="cs-add-photo-path"
                     type="text"
                     value={addPhotoForm.photo_path}
                     onChange={(e) => setAddPhotoForm({...addPhotoForm, photo_path: e.target.value})}
@@ -677,12 +729,13 @@ export function CollaborativeSpaces() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Caption (Optional)</label>
+                  <label htmlFor="cs-add-photo-caption" className="block text-sm font-medium text-foreground mb-1">Caption (Optional)</label>
                   <textarea
+                    id="cs-add-photo-caption"
                     value={addPhotoForm.caption}
                     onChange={(e) => setAddPhotoForm({...addPhotoForm, caption: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="Add a description for this photo..."
+                    placeholder="Add a description for this photo…"
                     rows={3}
                   />
                 </div>
@@ -690,7 +743,7 @@ export function CollaborativeSpaces() {
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
-                  onClick={() => setShowAddPhotoForm(false)}
+                  onClick={closePhoto}
                   className="btn-glass btn-glass--muted px-4 py-2"
                 >
                   Cancel

@@ -16,7 +16,7 @@ export function AlbumCard({ album, onClick }: AlbumCardProps) {
   return (
     <motion.button
       onClick={onClick}
-      className='relative group w-full aspect-square overflow-hidden rounded-2xl glass-panel hover:scale-[1.02] transition-all duration-200'
+      className='relative group w-full aspect-square overflow-hidden rounded-2xl glass-panel hover:scale-[1.02] transition duration-200'
       whileHover={{ y: -4 }}
       whileTap={{ scale: 0.98 }}
     >

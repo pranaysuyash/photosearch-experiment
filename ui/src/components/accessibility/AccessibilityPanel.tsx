@@ -32,7 +32,11 @@ export function AccessibilityPanel() {
     // Load settings from localStorage or defaults
     const saved = localStorage.getItem('accessibility-settings');
     if (saved) {
-      return JSON.parse(saved);
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Corrupted storage: fall through to defaults
+      }
     }
     return {
       highContrast: false,
@@ -49,7 +53,11 @@ export function AccessibilityPanel() {
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('accessibility-settings', JSON.stringify(settings));
+    try {
+      localStorage.setItem('accessibility-settings', JSON.stringify(settings));
+    } catch {
+      // Storage may be unavailable (quota/private mode); settings still apply this session
+    }
 
     // Apply settings to document
     document.body.classList.toggle('high-contrast', settings.highContrast);

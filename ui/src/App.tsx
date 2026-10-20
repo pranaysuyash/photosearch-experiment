@@ -4,6 +4,7 @@
  * Integrates all components with routing and state management
  */
 
+import { MotionConfig } from 'framer-motion';
 import MainRouter from './router/MainRouter';
 import { PhotoSearchProvider } from './contexts/PhotoSearchContext';
 import { PhotoViewerProvider } from './contexts/PhotoViewerContext';
@@ -15,13 +16,15 @@ function App() {
   useActionSystem();
 
   return (
-    <PhotoSearchProvider>
-      <AmbientThemeProvider>
-        <PhotoViewerProvider>
-          <MainRouter />
-        </PhotoViewerProvider>
-      </AmbientThemeProvider>
-    </PhotoSearchProvider>
+    <MotionConfig reducedMotion='user'>
+      <PhotoSearchProvider>
+        <AmbientThemeProvider>
+          <PhotoViewerProvider>
+            <MainRouter />
+          </PhotoViewerProvider>
+        </AmbientThemeProvider>
+      </PhotoSearchProvider>
+    </MotionConfig>
   );
 }
 

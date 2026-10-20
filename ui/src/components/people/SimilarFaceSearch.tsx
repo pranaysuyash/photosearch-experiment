@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { Search, X, RefreshCw, User, Camera } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
   id: string;
@@ -64,11 +65,17 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
     onClose();
   };
 
+  const panelRef = useModalBehavior(isOpen, handleClose);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Find similar faces"
         className={`${glass.surface} border border-white/20 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -87,6 +94,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
           </div>
           <button
             onClick={handleClose}
+            aria-label="Close"
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
           >
             <X size={16} />
@@ -98,11 +106,12 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
           {/* Search Controls */}
           <div className="mb-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="sfs-similarity-threshold" className="block text-sm font-medium text-foreground mb-2">
                 Similarity Threshold
               </label>
               <div className="flex items-center gap-4">
                 <input
+                  id="sfs-similarity-threshold"
                   type="range"
                   min="0.5"
                   max="0.95"
@@ -128,7 +137,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
               {loading ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
-                  Searching...
+                  Searching…
                 </>
               ) : (
                 <>

@@ -66,6 +66,15 @@ export function Spotlight({
     };
   }, []);
 
+  // Stop job polling when the palette closes (job keeps running server-side;
+  // JobMonitor still tracks it via lm:recentJobs)
+  useEffect(() => {
+    if (!open && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, [open]);
+
   const handleScan = useCallback(async () => {
     setStatus({ message: 'Choose a folder…', type: 'info' });
     const picked = await pickDirectory();
@@ -100,7 +109,7 @@ export function Spotlight({
         // ignore
       }
 
-      setStatus({ message: 'Scan started. Processing...', type: 'info' });
+      setStatus({ message: 'Scan started. Processing…', type: 'info' });
 
       // Clear any existing poll
       if (pollRef.current) {
@@ -127,7 +136,7 @@ export function Spotlight({
             setStatus({ message: `Failed: ${job.message}`, type: 'error' });
           } else {
             setStatus({
-              message: job.message || 'Processing...',
+              message: job.message || 'Processing…',
               type: 'info',
             });
           }
@@ -249,8 +258,8 @@ export function Spotlight({
                 <Command.Input
                   value={query}
                   onValueChange={setQuery}
-                  placeholder="Search photos... try 'filename:sunset' or 'size:>5MB'"
-                  className='w-full h-14 bg-transparent outline-none text-lg placeholder:text-muted-foreground/50'
+                  placeholder="Search photos… try 'filename:sunset' or 'size:>5MB'"
+                  className='w-full h-14 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary text-lg placeholder:text-muted-foreground/50'
                 />
                 {loading && (
                   <div className='animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full' />
@@ -337,11 +346,10 @@ export function Spotlight({
                 {/* Photo Results Group */}
                 {results.length > 0 && (
                   <Command.Group heading='Photos'>
-                    {results.map((photo) => (
+                    {results.slice(0, 50).map((photo) => (
                       <Command.Item
                         key={photo.path}
                         onSelect={() => {
-                          console.log('Selected:', photo.filename);
                           if (onPhotoSelect) {
                             onPhotoSelect(photo);
                           }

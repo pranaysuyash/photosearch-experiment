@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface SmartCollection {
   id: string;
@@ -59,6 +60,13 @@ export function SmartCollections() {
     ruleParams: {},
   });
   const [selectedCollection, setSelectedCollection] = useState<SmartCollection | null>(null);
+
+  // Modal close helpers (shared by backdrops, X buttons, Cancel buttons and ESC)
+  const closeCreate = () => setShowCreateModal(false);
+  const closeDetails = () => setSelectedCollection(null);
+
+  const createPanelRef = useModalBehavior(showCreateModal, closeCreate);
+  const detailsPanelRef = useModalBehavior(!!selectedCollection, closeDetails);
 
   // Load smart collections
   useEffect(() => {
@@ -233,7 +241,7 @@ export function SmartCollections() {
               </div>
               <div className="flex items-center gap-1">
                 <FolderPlus size={10} />
-                <span>{collection.photo_count}</span>
+                <span className="tabular-nums">{collection.photo_count}</span>
               </div>
             </div>
 
@@ -274,14 +282,21 @@ export function SmartCollections() {
       {/* Create Collection Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeCreate} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}>
+          <div
+            ref={createPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Create smart collection"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-md`}
+          >
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-foreground">Create Smart Collection</h3>
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={closeCreate}
+                  aria-label="Close"
                   className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                 >
                   <X size={18} />
@@ -290,8 +305,9 @@ export function SmartCollections() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Collection Name</label>
+                  <label htmlFor="sc-collection-name" className="block text-sm font-medium text-foreground mb-1">Collection Name</label>
                   <input
+                    id="sc-collection-name"
                     type="text"
                     value={newCollection.name}
                     onChange={(e) => setNewCollection({...newCollection, name: e.target.value})}
@@ -301,8 +317,9 @@ export function SmartCollections() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Description</label>
+                  <label htmlFor="sc-collection-description" className="block text-sm font-medium text-foreground mb-1">Description</label>
                   <textarea
+                    id="sc-collection-description"
                     value={newCollection.description}
                     onChange={(e) => setNewCollection({...newCollection, description: e.target.value})}
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -312,8 +329,9 @@ export function SmartCollections() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Rule Type</label>
+                  <label htmlFor="sc-collection-rule-type" className="block text-sm font-medium text-foreground mb-1">Rule Type</label>
                   <select
+                    id="sc-collection-rule-type"
                     value={newCollection.ruleType}
                     onChange={(e) =>
                       setNewCollection({
@@ -335,7 +353,7 @@ export function SmartCollections() {
 
                 {/* Rule-specific parameters would go here */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Rule Parameters</label>
+                  <span className="block text-sm font-medium text-foreground mb-1">Rule Parameters</span>
                   <div className="text-xs text-muted-foreground p-2 bg-white/5 rounded-lg">
                     Rule parameters would be configurable based on the selected rule type
                   </div>
@@ -344,7 +362,7 @@ export function SmartCollections() {
 
               <div className="flex justify-end gap-2 mt-6">
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={closeCreate}
                   className="btn-glass btn-glass--muted px-4 py-2"
                 >
                   Cancel
@@ -365,9 +383,15 @@ export function SmartCollections() {
       {/* View Collection Modal */}
       {selectedCollection && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedCollection(null)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={closeDetails} />
 
-          <div className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}>
+          <div
+            ref={detailsPanelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Smart collection details"
+            className={`${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden`}
+          >
             <div className="p-6 border-b border-white/10">
               <div className="flex items-center justify-between">
                 <div>
@@ -378,7 +402,8 @@ export function SmartCollections() {
                   <p className="text-sm text-muted-foreground">{selectedCollection.description}</p>
                 </div>
                 <button
-                  onClick={() => setSelectedCollection(null)}
+                  onClick={closeDetails}
+                  aria-label="Close"
                   className="btn-glass btn-glass--muted w-9 h-9 p-0 flex items-center justify-center"
                 >
                   <X size={18} />

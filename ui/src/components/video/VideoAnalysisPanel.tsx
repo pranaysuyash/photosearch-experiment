@@ -9,7 +9,7 @@
  * - Batch video processing
  */
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface VideoMetadata {
   duration: number;
@@ -132,6 +133,24 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'analyze' | 'search' | 'stats'>('analyze');
 
+  // Modal behavior: ESC closes, Tab cycles inside the panel.
+  const panelRef = useModalBehavior(true, () => onClose?.());
+
+  // Polling lifecycle: stop the analysis poll chain on unmount so no
+  // pending setTimeout re-arms or calls setState after the panel is gone.
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollCancelledRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      pollCancelledRef.current = true;
+      if (pollTimeoutRef.current !== null) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   const getApiErrorMessage = (err: unknown, fallback: string) => {
     return (err as ApiError)?.response?.data?.detail ?? fallback;
   };
@@ -167,23 +186,33 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
         force_reprocess: forceReprocess
       });
 
+      // Reset the poll lifecycle for this run
+      pollCancelledRef.current = false;
+      if (pollTimeoutRef.current !== null) {
+        clearTimeout(pollTimeoutRef.current);
+        pollTimeoutRef.current = null;
+      }
+
       // Poll for results (in a real app, you might use WebSockets)
       let attempts = 0;
       const maxAttempts = 30; // 30 seconds timeout
 
       const pollResults = async (): Promise<void> => {
+        if (pollCancelledRef.current) return;
         try {
           const response = await api.get<VideoAnalysisResult>(
             `/video/analysis/${encodeURIComponent(videoPath)}`
           );
+          if (pollCancelledRef.current) return;
           const data = response as VideoAnalysisResult;
           setAnalysisResult(data);
           setIsAnalyzing(false);
           await loadVideoStats(); // Refresh stats
         } catch (err: unknown) {
+          if (pollCancelledRef.current) return;
           attempts++;
           if (attempts < maxAttempts) {
-            setTimeout(pollResults, 1000); // Poll every second
+            pollTimeoutRef.current = setTimeout(pollResults, 1000); // Poll every second
           } else {
             setError(getApiErrorMessage(err, 'Analysis timeout - please check the video file and try again'));
             setIsAnalyzing(false);
@@ -192,7 +221,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
       };
 
       // Start polling after a short delay
-      setTimeout(pollResults, 2000);
+      pollTimeoutRef.current = setTimeout(pollResults, 2000);
 
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Failed to start video analysis'));
@@ -286,8 +315,9 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Video Path</label>
+            <label htmlFor="video-path" className="block text-sm font-medium mb-2">Video Path</label>
             <input
+              id="video-path"
               type="text"
               value={selectedVideoPath}
               onChange={(e) => setSelectedVideoPath(e.target.value)}
@@ -306,7 +336,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               {isAnalyzing ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Analyzing...
+                  Analyzing…
                 </>
               ) : (
                 <>
@@ -385,7 +415,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               Analysis Summary
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 tabular-nums">
               <div className={`${glass.card} p-4 rounded-md`}>
                 <div className="flex items-center gap-3">
                   <Grid3X3 className="w-8 h-8 text-blue-400" />
@@ -430,7 +460,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 {analysisResult.scenes.map((scene) => (
                   <div
                     key={scene.id}
-                    className={`${glass.card} p-4 rounded-md cursor-pointer transition-all ${
+                    className={`${glass.card} p-4 rounded-md cursor-pointer transition ${
                       selectedScene === scene.scene_number ? 'ring-2 ring-blue-400' : ''
                     }`}
                     onClick={() => setSelectedScene(
@@ -474,7 +504,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                   .map((keyframe) => (
                     <div
                       key={keyframe.id}
-                      className={`${glass.card} p-2 rounded-md cursor-pointer transition-all ${
+                      className={`${glass.card} p-2 rounded-md cursor-pointer transition ${
                         selectedKeyframe?.id === keyframe.id ? 'ring-2 ring-blue-400' : ''
                       }`}
                       onClick={() => setSelectedKeyframe(keyframe)}
@@ -505,8 +535,9 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
                 </h3>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm">Min Confidence:</label>
+                    <label htmlFor="ocr-min-confidence" className="text-sm">Min Confidence:</label>
                     <input
+                      id="ocr-min-confidence"
                       type="range"
                       min="0"
                       max="1"
@@ -569,7 +600,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for text in videos..."
+            placeholder="Search for text in videos…"
             className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyPress={(e) => e.key === 'Enter' && searchVideoContent(searchQuery)}
           />
@@ -635,7 +666,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             Video Analysis Statistics
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 tabular-nums">
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="flex items-center gap-3">
                 <Video className="w-8 h-8 text-blue-400" />
@@ -677,7 +708,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 tabular-nums">
             <div className={`${glass.card} p-4 rounded-md`}>
               <div className="text-sm text-gray-400">Total Duration Processed</div>
               <div className="text-xl font-semibold">{videoStats.total_duration_hours}h</div>
@@ -701,6 +732,10 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <motion.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Video analysis details"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
@@ -718,7 +753,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             <div className="flex bg-white/5 rounded-lg p-1">
               <button
                 onClick={() => setActiveTab('analyze')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   activeTab === 'analyze'
                     ? 'bg-blue-500/20 text-blue-400'
                     : 'text-gray-400 hover:text-white'
@@ -728,7 +763,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               </button>
               <button
                 onClick={() => setActiveTab('search')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   activeTab === 'search'
                     ? 'bg-blue-500/20 text-blue-400'
                     : 'text-gray-400 hover:text-white'
@@ -738,7 +773,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               </button>
               <button
                 onClick={() => setActiveTab('stats')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                   activeTab === 'stats'
                     ? 'bg-blue-500/20 text-blue-400'
                     : 'text-gray-400 hover:text-white'
@@ -751,6 +786,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
             {onClose && (
               <button
                 onClick={onClose}
+                aria-label="Close"
                 className={`${glass.button} p-2 rounded-md`}
               >
                 <X className="w-5 h-5" />
@@ -767,6 +803,7 @@ export const VideoAnalysisPanel: React.FC<VideoAnalysisPanelProps> = memo(({ onC
               <span className="text-red-400">{error}</span>
               <button
                 onClick={() => setError(null)}
+                aria-label="Dismiss error"
                 className="ml-auto text-red-400 hover:text-red-300"
               >
                 <X className="w-4 h-4" />

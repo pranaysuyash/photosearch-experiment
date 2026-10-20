@@ -143,7 +143,7 @@ export default function UnidentifiedFaces() {
                 <h1 className='text-xl font-semibold text-foreground'>
                   Name These
                 </h1>
-                <p className='text-sm text-muted-foreground'>
+                <p className='text-sm text-muted-foreground tabular-nums'>
                   {faces.length} faces waiting to be identified
                 </p>
               </div>
@@ -160,11 +160,15 @@ export default function UnidentifiedFaces() {
               size={20}
               className='animate-spin text-muted-foreground mr-3'
             />
-            <span className='text-muted-foreground'>Loading faces...</span>
+            <span className='text-muted-foreground'>Loading faces…</span>
           </div>
         )}
 
-        {error && <div className='text-center py-20 text-red-400'>{error}</div>}
+        {error && (
+          <div role='alert' className='text-center py-20 text-red-400'>
+            {error}
+          </div>
+        )}
 
         {!loading && !error && faces.length === 0 && (
           <div className='text-center py-20'>
@@ -184,9 +188,18 @@ export default function UnidentifiedFaces() {
               <div
                 key={face.detection_id}
                 className={`${glass.surface} rounded-xl overflow-hidden border border-white/10 hover:border-primary/50 transition-colors cursor-pointer group`}
+                role='button'
+                tabIndex={0}
                 onClick={() => {
                   setSelectedFace(face);
                   setShowAssignModal(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedFace(face);
+                    setShowAssignModal(true);
+                  }
                 }}
               >
                 <div className='aspect-square relative'>
@@ -195,7 +208,7 @@ export default function UnidentifiedFaces() {
                     alt='Unidentified face'
                     className='w-full h-full object-cover'
                   />
-                  <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center'>
+                  <div className='absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity flex items-center justify-center'>
                     <UserPlus size={24} className='text-white' />
                   </div>
                 </div>
@@ -229,15 +242,19 @@ export default function UnidentifiedFaces() {
 
             {/* Create New Person */}
             <div className='mb-4'>
-              <label className='text-sm text-muted-foreground mb-2 block'>
+              <label
+                htmlFor='unif-new-person-name'
+                className='text-sm text-muted-foreground mb-2 block'
+              >
                 Create New Person
               </label>
               <div className='flex gap-2'>
                 <input
+                  id='unif-new-person-name'
                   type='text'
                   value={newPersonName}
                   onChange={(e) => setNewPersonName(e.target.value)}
-                  placeholder='Enter name...'
+                  placeholder='Enter name…'
                   className='flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                 />
                 <button
@@ -256,9 +273,9 @@ export default function UnidentifiedFaces() {
             {/* Assign to Existing */}
             {clusters.length > 0 && (
               <div>
-                <label className='text-sm text-muted-foreground mb-2 block'>
+                <p className='text-sm text-muted-foreground mb-2 block'>
                   Or Assign to Existing Person
-                </label>
+                </p>
                 <div className='max-h-40 overflow-y-auto space-y-2'>
                   {clusters.map((cluster) => (
                     <button

@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react';
 import { api } from '../../api';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface MatchReason {
   category: string;
@@ -101,6 +102,10 @@ export const MatchExplanation = ({
   const [feedbackSent, setFeedbackSent] = useState(false);
   const [sendingFeedback, setSendingFeedback] = useState(false);
 
+  const expandedPanelRef = useModalBehavior(isExpanded, () =>
+    setIsExpanded(false)
+  );
+
   const handleNotThis = async () => {
     if (!photoPath || !searchQuery || feedbackSent) return;
 
@@ -136,7 +141,7 @@ export const MatchExplanation = ({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = '';
     };
   }, [isExpanded]);
 
@@ -210,6 +215,10 @@ export const MatchExplanation = ({
             />
             {/* Modal */}
             <div
+              ref={expandedPanelRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Why this photo matched"
               className="relative w-full max-w-lg glass-surface glass-surface--strong rounded-2xl shadow-2xl p-6 max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
@@ -220,6 +229,7 @@ export const MatchExplanation = ({
                 </div>
                 <button
                   onClick={() => setIsExpanded(false)}
+                  aria-label="Close"
                   className="btn-glass p-2 rounded-lg hover:bg-white/20"
                 >
                   <X size={14} className="text-white/80" />
@@ -305,7 +315,7 @@ export const MatchExplanation = ({
                         className="w-full btn-glass text-sm px-4 py-2.5 flex items-center justify-center gap-2 text-amber-400 hover:bg-amber-500/10 border-amber-500/30"
                       >
                         <ThumbsDown size={16} />
-                        {sendingFeedback ? 'Sending...' : "Not this – wrong match"}
+                        {sendingFeedback ? 'Sending…' : "Not this – wrong match"}
                       </button>
                     )}
                     <p className="text-xs text-white/40 mt-2 text-center">

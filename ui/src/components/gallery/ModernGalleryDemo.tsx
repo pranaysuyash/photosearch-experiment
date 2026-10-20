@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Eye, Heart, Share2, Grid3X3, Sparkles } from 'lucide-react';
-import '../modern-gallery.css';
-import '../enhanced-animations.css';
+import './modern-gallery.css';
+import '../../enhanced-animations.css';
 
 interface ModernGalleryDemoProps {
   onUseModern: () => void;
@@ -109,7 +109,7 @@ export function ModernGalleryDemo({ onUseModern }: ModernGalleryDemoProps) {
             <button
               key={demo}
               onClick={() => setActiveDemo(demo)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium transition ${
                 activeDemo === demo
                   ? 'bg-purple-600 text-white shadow-lg'
                   : 'bg-white/80 text-gray-600 hover:bg-white hover:shadow-md'
@@ -400,7 +400,7 @@ export function ModernGalleryDemo({ onUseModern }: ModernGalleryDemoProps) {
             />
             Performance & Browser Support
           </h3>
-          <div className='grid md:grid-cols-3 gap-6'>
+          <div className='grid md:grid-cols-3 gap-6 tabular-nums'>
             <div className='text-center'>
               <div className='text-3xl font-bold text-green-600 mb-2'>
                 60fps
@@ -429,7 +429,7 @@ export function ModernGalleryDemo({ onUseModern }: ModernGalleryDemoProps) {
         >
           <motion.button
             onClick={onUseModern}
-            className='px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition-all'
+            className='px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-lg font-semibold rounded-full shadow-xl hover:shadow-2xl transition'
             whileHover={{
               scale: 1.05,
               boxShadow: '0 25px 50px rgba(139, 92, 246, 0.3)',

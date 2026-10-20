@@ -3,7 +3,7 @@
  *
  * Phase 7.5 Feature: "People in this video" panel with timestamp jump
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, Clock, Play, ChevronDown, ChevronUp, User } from 'lucide-react';
 import { api } from '../../api';
 
@@ -74,8 +74,22 @@ export function VideoFacesPanel({
         return (err as ApiError)?.response?.data?.detail || (err as ApiError)?.message || fallback;
     };
 
-    // Generate video ID from path if not provided
-    const effectiveVideoId = videoId || `video_${btoa(videoPath).slice(0, 16)}`;
+    // Generate video ID from path if not provided.
+    // btoa throws on non-Latin-1 characters, so non-ASCII paths fall back to
+    // percent-encoding; ASCII paths keep their existing derived IDs.
+    const canBtoa = videoPath
+      .split('')
+      .every((ch) => ch.charCodeAt(0) <= 0xff);
+    const effectiveVideoId =
+      videoId ||
+      `video_${
+        canBtoa
+          ? btoa(videoPath).slice(0, 16)
+          : encodeURIComponent(videoPath)
+              .replace(/%/g, '')
+              .slice(0, 16)
+              .toLowerCase()
+      }`;
 
     useEffect(() => {
         async function loadPeople() {
@@ -117,6 +131,21 @@ export function VideoFacesPanel({
         }
     }, [videoPath, effectiveVideoId]);
 
+    // Track the processing poll so unmount can't leave timers behind
+    const pollTimersRef = useRef<{
+        interval?: ReturnType<typeof setInterval>;
+        timeout?: ReturnType<typeof setTimeout>;
+    }>({});
+
+    useEffect(() => {
+        return () => {
+            if (pollTimersRef.current.interval)
+                clearInterval(pollTimersRef.current.interval);
+            if (pollTimersRef.current.timeout)
+                clearTimeout(pollTimersRef.current.timeout);
+        };
+    }, []);
+
     const handleProcessVideo = async () => {
         setProcessingStatus('processing');
         try {
@@ -129,6 +158,11 @@ export function VideoFacesPanel({
                     const status = await api.getVideoFaceStatus(effectiveVideoId);
                     if (status.status === 'completed') {
                         clearInterval(pollInterval);
+                        if (pollTimersRef.current.timeout) {
+                            clearTimeout(pollTimersRef.current.timeout);
+                            pollTimersRef.current.timeout = undefined;
+                        }
+                        pollTimersRef.current.interval = undefined;
                         const response = await api.getVideoPeople(effectiveVideoId);
                         setPeople(response.people || []);
                         setProcessingStatus('completed');
@@ -137,9 +171,11 @@ export function VideoFacesPanel({
                     // Continue polling
                 }
             }, 3000);
+            pollTimersRef.current.interval = pollInterval;
 
             // Stop polling after 5 minutes
-            setTimeout(() => clearInterval(pollInterval), 300000);
+            const stopTimeout = setTimeout(() => clearInterval(pollInterval), 300000);
+            pollTimersRef.current.timeout = stopTimeout;
         } catch (err: unknown) {
             setError(getApiErrorMessage(err, 'Failed to process video'));
             setProcessingStatus('not_processed');

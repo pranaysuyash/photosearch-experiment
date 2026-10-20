@@ -174,7 +174,7 @@ export function LivePreviewCanvas({
         className
       )}
     >
-      {loading && <div className='text-white/50'>Loading preview...</div>}
+      {loading && <div className='text-white/50'>Loading preview…</div>}
       <canvas
         ref={canvasRef}
         className='max-w-full max-h-full object-contain shadow-2xl'

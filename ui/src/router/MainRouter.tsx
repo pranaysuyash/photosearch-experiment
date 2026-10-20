@@ -9,10 +9,13 @@ import {
   Routes,
   Route,
   Navigate,
+  useNavigate,
 } from 'react-router-dom';
 import { Suspense, lazy } from 'react';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import Layout from '../components/layout/Layout';
+import { usePhotoSearchContext } from '../contexts/PhotoSearchContext';
+import { usePhotoViewer } from '../contexts/PhotoViewerContext';
 
 // Core experiences (keep eagerly loaded)
 import Home from '../pages/Home';
@@ -67,6 +70,58 @@ const PerformanceDashboardAdvanced = lazy(() =>
   }))
 );
 
+// Named-export feature modules being (re)mounted — adapters for React.lazy
+const CollaborativeSpaces = lazy(() =>
+  import('../components/collaboration/CollaborativeSpaces').then((m) => ({
+    default: m.CollaborativeSpaces,
+  }))
+);
+const PlaceClustering = lazy(() =>
+  import('../components/locations/PlaceClustering').then((m) => ({
+    default: m.PlaceClustering,
+  }))
+);
+const VideoAnalysisPanel = lazy(() =>
+  import('../components/video/VideoAnalysisPanel').then((m) => ({
+    default: m.VideoAnalysisPanel,
+  }))
+);
+const AIInsights = lazy(() =>
+  import('../components/ai/AIInsights').then((m) => ({ default: m.AIInsights }))
+);
+const ModernGalleryDemo = lazy(() =>
+  import('../components/gallery/ModernGalleryDemo').then((m) => ({
+    default: m.ModernGalleryDemo,
+  }))
+);
+const ResponsiveGallery = lazy(() =>
+  import('../components/gallery/ResponsiveGallery').then((m) => ({
+    default: m.ResponsiveGallery,
+  }))
+);
+
+// Wrappers for lazy pages that need router/context data
+const ResponsiveGalleryPage = () => {
+  const { photos } = usePhotoSearchContext();
+  const { openForPhoto } = usePhotoViewer();
+  return (
+    <ResponsiveGallery
+      photos={photos}
+      onPhotoSelect={(photo) => {
+        // ResponsiveGallery has its own minimal Photo shape — resolve to the
+        // canonical api.Photo by path before opening the viewer.
+        const match = photos.find((p) => p.path === photo.path);
+        if (match) openForPhoto(photos, match);
+      }}
+    />
+  );
+};
+
+const ModernGalleryDemoPage = () => {
+  const navigate = useNavigate();
+  return <ModernGalleryDemo onUseModern={() => navigate('/')} />;
+};
+
 const Settings = lazy(() => import('../pages/Settings'));
 const About = lazy(() => import('../pages/About'));
 const NotFound = lazy(() => import('../pages/NotFound'));
@@ -108,6 +163,10 @@ const MainRouter = () => {
               <Route path='/tasks' element={<Navigate to='/jobs' replace />} />
               <Route path='/import' element={<Import />} />
 
+              {/* Library tools */}
+              <Route path='/places' element={<PlaceClustering />} />
+              <Route path='/collaboration' element={<CollaborativeSpaces />} />
+
               {/* Studio Features */}
               <Route
                 path='/studio/intent-recognition'
@@ -131,6 +190,19 @@ const MainRouter = () => {
               <Route
                 path='/studio/tauri-integration'
                 element={<TauriIntegration />}
+              />
+              <Route
+                path='/studio/video-analysis'
+                element={<VideoAnalysisPanel />}
+              />
+              <Route path='/studio/ai-insights' element={<AIInsights />} />
+              <Route
+                path='/studio/modern-gallery'
+                element={<ModernGalleryDemoPage />}
+              />
+              <Route
+                path='/studio/responsive-gallery'
+                element={<ResponsiveGalleryPage />}
               />
 
               {/* Advanced Analytics Routes */}

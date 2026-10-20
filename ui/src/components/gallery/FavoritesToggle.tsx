@@ -16,6 +16,8 @@ export function FavoritesToggle({
       onClick={onToggle}
       className={`btn-glass w-8 h-8 p-0 justify-center rounded-full ${className}`}
       title={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+      aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+      aria-pressed={isFavorited}
     >
       <Star
         size={16}

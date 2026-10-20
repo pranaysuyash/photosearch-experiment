@@ -49,6 +49,7 @@ import ImageAnalysis from './AIAnalysis';
 import { PhotoDetailTabs, type TabName } from './tabs/PhotoDetailTabs';
 import { VideoFacesPanel } from '../video/VideoFacesPanel';
 import { PhotoFacePanel } from './PhotoFacePanel';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface PhotoDetailProps {
   photos: Photo[]; // Full list for navigation
@@ -202,6 +203,23 @@ export function PhotoDetail({
   const [panelWidth, setPanelWidth] = useState(384); // Default 24rem (384px)
   const isDraggingRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Dialog behavior for the lightbox and the match-explanation overlay.
+  // The lightbox hook detaches while the explanation is open so Escape
+  // is handled only by the explanation dialog.
+  const lightboxPanelRef = useModalBehavior(
+    !!photo && !showExplanation,
+    onClose
+  );
+  const explanationPanelRef = useModalBehavior(
+    showExplanation,
+    () => setShowExplanation(false)
+  );
+  // Merge the hook's panel ref with containerRef (used for panel-width math).
+  const lightboxRef = (el: HTMLDivElement) => {
+    containerRef.current = el;
+    lightboxPanelRef.current = el;
+  };
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -569,7 +587,7 @@ export function PhotoDetail({
                 </div>
                 <button
                   onClick={copyPath}
-                  className='opacity-0 group-hover:opacity-100 transition-opacity btn-glass btn-glass--muted w-6 h-6 p-0 justify-center flex-shrink-0'
+                  className='opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity btn-glass btn-glass--muted w-6 h-6 p-0 justify-center flex-shrink-0'
                   title='Copy file path'
                   aria-label='Copy file path'
                 >
@@ -664,6 +682,7 @@ export function PhotoDetail({
                     onClick={refreshTags}
                     disabled={busy || tagsLoading}
                     title='Refresh tags'
+                    aria-label='Refresh tags'
                   >
                     <RotateCw size={12} />
                   </button>
@@ -677,7 +696,8 @@ export function PhotoDetail({
                       <span className='text-xs text-white/85'>#{t}</span>
                       <button
                         className='btn-glass btn-glass--muted w-5 h-5 p-0 justify-center'
-                        title='Remove tag'
+                        title={`Remove tag #${t}`}
+                        aria-label={`Remove tag #${t}`}
                         disabled={busy}
                         onClick={async () => {
                           if (!photo) return;
@@ -1006,7 +1026,10 @@ export function PhotoDetail({
             />
 
             <motion.div
-              ref={containerRef}
+              ref={lightboxRef}
+              role='dialog'
+              aria-modal='true'
+              aria-label={photo.filename}
               layoutId={`photo-${photo.path}`}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1021,8 +1044,8 @@ export function PhotoDetail({
                   className='w-3 h-3 rounded-full bg-red-500 hover:bg-red-600 transition-colors flex items-center justify-center group relative'
                   aria-label='Close photo detail'
                 >
-                  <X size={8} className='text-red-900 opacity-0 group-hover:opacity-100 transition-opacity' />
-                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                  <X size={8} className='text-red-900 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity' />
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none'>
                     Close
                   </span>
                 </button>
@@ -1031,8 +1054,8 @@ export function PhotoDetail({
                   className='w-3 h-3 rounded-full bg-yellow-500 hover:bg-yellow-600 transition-colors flex items-center justify-center group relative'
                   aria-label={isMetadataPanelVisible ? 'Hide metadata panel' : 'Show metadata panel'}
                 >
-                  <Minus size={8} className='text-yellow-900 opacity-0 group-hover:opacity-100 transition-opacity' />
-                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                  <Minus size={8} className='text-yellow-900 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity' />
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none'>
                     {isMetadataPanelVisible ? 'Hide Info' : 'Show Info'}
                   </span>
                 </button>
@@ -1043,11 +1066,11 @@ export function PhotoDetail({
                   aria-label={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                 >
                   {isFullscreen ? (
-                    <Minimize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                    <Minimize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity' />
                   ) : (
-                    <Maximize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 transition-opacity' />
+                    <Maximize2 size={8} className='text-green-900 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity' />
                   )}
-                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none'>
+                  <span className='absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-black/90 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none'>
                     {isFullscreen ? 'Exit Full' : 'Fullscreen'}
                   </span>
                 </button>
@@ -1070,7 +1093,7 @@ export function PhotoDetail({
                 <button
                   onClick={() => onNavigate(currentIndex! + 1)}
                   style={isMetadataPanelVisible ? { right: panelWidth + 24 } : undefined}
-                  className={`absolute ${!isMetadataPanelVisible ? 'right-2 md:right-4' : ''} top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-10 h-10 md:w-12 md:h-12 p-0 justify-center text-white/80 transition-all`}
+                  className={`absolute ${!isMetadataPanelVisible ? 'right-2 md:right-4' : ''} top-1/2 -translate-y-1/2 z-20 btn-glass btn-glass--muted w-10 h-10 md:w-12 md:h-12 p-0 justify-center text-white/80 transition-[right]`}
                   title='Next photo'
                   aria-label='Next photo'
                 >
@@ -1092,7 +1115,9 @@ export function PhotoDetail({
                       controls
                       autoPlay
                       className='max-h-full max-w-full object-contain'
-                    />
+                    >
+                      <track kind='captions' />
+                    </video>
                   ) : (
                     <div
                       className='flex items-center justify-center'
@@ -1274,6 +1299,10 @@ export function PhotoDetail({
             />
             {/* Modal */}
             <div
+              ref={explanationPanelRef}
+              role='dialog'
+              aria-modal='true'
+              aria-label='Match explanation'
               className='relative w-full max-w-lg glass-surface glass-surface--strong rounded-2xl shadow-2xl p-6 max-h-[80vh] overflow-y-auto'
               onClick={(e) => e.stopPropagation()}
             >
@@ -1293,6 +1322,7 @@ export function PhotoDetail({
                 </div>
                 <button
                   onClick={() => setShowExplanation(false)}
+                  aria-label='Close'
                   className='btn-glass p-2 rounded-lg hover:bg-white/20'
                 >
                   <X size={14} className='text-white/80' />

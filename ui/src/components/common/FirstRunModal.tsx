@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Sparkles, X, Database, Zap } from 'lucide-react';
 import { localGetItem, localSetItem } from '../../utils/storage';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface FirstRunModalProps {
   onDismiss: () => void;
@@ -31,11 +32,19 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
     setIsVisible(false);
   };
 
+  const panelRef = useModalBehavior(isVisible, handleDismiss);
+
   if (!isVisible) return null;
 
   return (
     <div className='fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300'>
-      <div className='relative bg-popover border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300'>
+      <div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Welcome to PhotoSearch'
+        className='relative bg-popover border border-border rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-300'
+      >
         <button
           onClick={handleDismiss}
           className='absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors'
@@ -60,7 +69,7 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
         <div className='space-y-3'>
           <button
             onClick={() => handleSelect('semantic')}
-            className='w-full p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all text-left group'
+            className='w-full p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition text-left group'
           >
             <div className='flex items-center gap-3 mb-2'>
               <Sparkles className='w-5 h-5 text-primary' />
@@ -76,7 +85,7 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
 
           <button
             onClick={() => handleSelect('metadata')}
-            className='w-full p-4 rounded-xl border border-border hover:border-border/80 hover:bg-muted/30 transition-all text-left'
+            className='w-full p-4 rounded-xl border border-border hover:border-border/80 hover:bg-muted/30 transition text-left'
           >
             <div className='flex items-center gap-3 mb-2'>
               <Database className='w-5 h-5 text-muted-foreground' />
@@ -97,7 +106,8 @@ export function FirstRunModal({ onDismiss, onSelectMode }: FirstRunModalProps) {
 
           <button
             onClick={() => {
-              window.location.assign('/settings#sources');
+              localSetItem('photosearch_first_run_seen', 'true');
+              window.location.assign('/settings');
             }}
             className='w-full py-3 rounded-xl border border-dashed border-primary/50 text-primary hover:bg-primary/5 transition-colors font-medium text-sm flex items-center justify-center gap-2'
           >

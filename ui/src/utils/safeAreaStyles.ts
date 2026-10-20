@@ -10,20 +10,20 @@ export const SafeAreaStyles = {
    * Padding utilities using safe areas
    * Usage: className={SafeAreaStyles.ptSafe}
    */
-  ptSafe: 'p-[calc(1rem_+_var(--safe-area-inset-top))]',
-  prSafe: 'p-[calc(1rem_+_var(--safe-area-inset-right))]',
-  pbSafe: 'p-[calc(1rem_+_var(--safe-area-inset-bottom))]',
-  plSafe: 'p-[calc(1rem_+_var(--safe-area-inset-left))]',
+  ptSafe: 'pt-[calc(1rem_+_var(--safe-area-inset-top))]',
+  prSafe: 'pr-[calc(1rem_+_var(--safe-area-inset-right))]',
+  pbSafe: 'pb-[calc(1rem_+_var(--safe-area-inset-bottom))]',
+  plSafe: 'pl-[calc(1rem_+_var(--safe-area-inset-left))]',
   pSafe:
-    'p-[max(1rem,var(--safe-area-inset-top))] p-[max(1rem,var(--safe-area-inset-right))] p-[max(1rem,var(--safe-area-inset-bottom))] p-[max(1rem,var(--safe-area-inset-left))]',
+    'pt-[max(1rem,var(--safe-area-inset-top))] pr-[max(1rem,var(--safe-area-inset-right))] pb-[max(1rem,var(--safe-area-inset-bottom))] pl-[max(1rem,var(--safe-area-inset-left))]',
 
   /**
    * Margin utilities
    */
-  mtSafe: 'm-[calc(1rem_+_var(--safe-area-inset-top))]',
-  mrSafe: 'm-[calc(1rem_+_var(--safe-area-inset-right))]',
-  mbSafe: 'm-[calc(1rem_+_var(--safe-area-inset-bottom))]',
-  mlSafe: 'm-[calc(1rem_+_var(--safe-area-inset-left))]',
+  mtSafe: 'mt-[calc(1rem_+_var(--safe-area-inset-top))]',
+  mrSafe: 'mr-[calc(1rem_+_var(--safe-area-inset-right))]',
+  mbSafe: 'mb-[calc(1rem_+_var(--safe-area-inset-bottom))]',
+  mlSafe: 'ml-[calc(1rem_+_var(--safe-area-inset-left))]',
 
   /**
    * Position utilities for fixed/absolute elements

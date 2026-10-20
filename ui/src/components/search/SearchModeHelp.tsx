@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HelpCircle } from 'lucide-react';
 
 export function SearchModeHelp({ variant = 'icon' }: { variant?: 'icon' | 'link' }) {
   const [open, setOpen] = useState(false);
+
+  // Anchored popover (not a modal): Escape closes it, but focus stays free.
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
 
   return (
     <div className='relative'>
@@ -40,6 +50,8 @@ export function SearchModeHelp({ variant = 'icon' }: { variant?: 'icon' | 'link'
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.98 }}
               transition={{ duration: 0.18 }}
+              role='dialog'
+              aria-label='Search mode help'
               className='absolute right-0 mt-2 z-[100] w-[360px] max-w-[90vw] glass-surface glass-surface--strong rounded-2xl p-4 text-sm'
             >
               <div className='text-foreground font-semibold mb-2'>Search modes</div>

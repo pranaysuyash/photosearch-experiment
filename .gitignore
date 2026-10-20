@@ -27,6 +27,10 @@ Thumbs.db
 # Environment
 .env
 
+# Mimosa security-plugin local state (scan baselines, ledgers, source snapshots)
+.mimosa/
+ui/.mimosa/
+
 # Logs
 *.log
 *.out

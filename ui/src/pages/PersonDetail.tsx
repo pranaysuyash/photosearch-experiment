@@ -36,6 +36,7 @@ import {
 import { api } from '../api';
 import { isLocalStorageAvailable, localGetItem } from '../utils/storage';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../hooks/useModalBehavior';
 import SecureLazyImage from '../components/gallery/SecureLazyImage';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
 import type { Photo, SimilarFacesResult } from '../api';
@@ -154,6 +155,23 @@ export default function PersonDetail() {
     }>;
     error?: string | null;
   }>({ open: false, loading: false, results: undefined, error: null });
+
+  const closeSplitDialog = () => {
+    setShowSplitDialog(false);
+    setNewPersonName('');
+  };
+  const closeMoveModal = () =>
+    setMoveModal({ open: false, faceIds: [], targetClusterId: '' });
+  const closeSimilarModal = () =>
+    setSimilarModal({
+      open: false,
+      loading: false,
+      results: [],
+      error: null,
+    });
+  const splitPanelRef = useModalBehavior(showSplitDialog, closeSplitDialog);
+  const movePanelRef = useModalBehavior(moveModal.open, closeMoveModal);
+  const similarPanelRef = useModalBehavior(similarModal.open, closeSimilarModal);
 
   const refreshUndoStatus = useCallback(async () => {
     try {
@@ -584,7 +602,7 @@ export default function PersonDetail() {
                   <h1 className='text-xl font-semibold text-foreground'>
                     {clusterInfo?.label || `Person ${clusterId}`}
                   </h1>
-                  <p className='text-sm text-muted-foreground'>
+                  <p className='text-sm text-muted-foreground tabular-nums'>
                     {photos.length} photos • {clusterInfo?.face_count || 0}{' '}
                     appearances
                   </p>
@@ -608,6 +626,7 @@ export default function PersonDetail() {
                     ? 'Auto-assignment enabled'
                     : 'Auto-assignment disabled'
                 }
+                aria-pressed={indexingEnabled}
               >
                 {indexingLoading ? (
                   <Loader2 className='animate-spin' size={16} />
@@ -643,6 +662,7 @@ export default function PersonDetail() {
                 disabled={!!actionLoading}
                 className='btn-glass px-3 py-2 flex items-center gap-1'
                 title='Export Data'
+                aria-label='Export Data'
               >
                 {actionLoading === 'export' ? (
                   <Loader2 className='animate-spin' size={16} />
@@ -657,6 +677,7 @@ export default function PersonDetail() {
                 disabled={!!actionLoading}
                 className='btn-glass px-3 py-2 flex items-center gap-1 text-red-400 border-red-500/30 hover:bg-red-500/10'
                 title='Delete Person'
+                aria-label='Delete Person'
               >
                 {actionLoading === 'delete' ? (
                   <Loader2 className='animate-spin' size={16} />
@@ -713,7 +734,11 @@ export default function PersonDetail() {
       {/* Success message */}
       {successMessage && (
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4'>
-          <div className='p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 flex items-center gap-2'>
+          <div
+            role='status'
+            aria-live='polite'
+            className='p-3 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 flex items-center gap-2'
+          >
             <Check size={16} />
             <span>{successMessage}</span>
           </div>
@@ -723,7 +748,10 @@ export default function PersonDetail() {
       {/* Error message */}
       {error && (
         <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4'>
-          <div className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 flex items-center justify-between'>
+          <div
+            role='alert'
+            className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 flex items-center justify-between'
+          >
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
@@ -757,6 +785,8 @@ export default function PersonDetail() {
               <button
                 onClick={() => setShowMixedDetails(!showMixedDetails)}
                 className='text-yellow-400 hover:text-yellow-300 p-1'
+                aria-label={showMixedDetails ? 'Hide mixed-cluster details' : 'Show mixed-cluster details'}
+                aria-expanded={showMixedDetails}
               >
                 {showMixedDetails ? (
                   <ChevronUp size={18} />
@@ -853,11 +883,13 @@ export default function PersonDetail() {
           </div>
 
           {analyticsError && (
-            <div className='mt-3 text-sm text-red-400'>{analyticsError}</div>
+            <div role='alert' className='mt-3 text-sm text-red-400'>
+              {analyticsError}
+            </div>
           )}
 
           {!analyticsError && analytics && (
-            <div className='mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3'>
+            <div className='mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 tabular-nums'>
               <div className='p-3 bg-white/5 rounded-lg border border-white/10'>
                 <div className='text-xs text-muted-foreground'>Faces</div>
                 <div className='text-lg font-semibold text-foreground'>
@@ -908,7 +940,7 @@ export default function PersonDetail() {
                 size={20}
                 className='animate-spin text-muted-foreground'
               />
-              <span className='text-muted-foreground'>Loading photos...</span>
+              <span className='text-muted-foreground'>Loading photos…</span>
             </div>
           </div>
         )}
@@ -939,11 +971,13 @@ export default function PersonDetail() {
                   key={`${photo.path}-${index}`}
                   className={`${
                     glass.surface
-                  } rounded-xl overflow-hidden border transition-all relative group ${
+                  } rounded-xl overflow-hidden border transition relative group ${
                     isSelected
                       ? 'border-blue-400 ring-2 ring-blue-400/50'
                       : 'border-white/10 hover:border-white/20'
-                  } ${selectionMode ? 'cursor-pointer' : ''}`}
+                  } ${selectionMode ? 'cursor-pointer' : 'cursor-pointer'}`}
+                  role='button'
+                  tabIndex={0}
                   onClick={() => {
                     if (selectionMode) {
                       toggleFaceSelection(photo);
@@ -964,6 +998,28 @@ export default function PersonDetail() {
                       openForPhoto(allPhotosAsPhotoType, photoAsPhotoType);
                     }
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (selectionMode) {
+                        toggleFaceSelection(photo);
+                      } else {
+                        const photoAsPhotoType: Photo = {
+                          path: photo.path,
+                          filename: photo.path.split('/').pop() || '',
+                          score: photo.confidence,
+                          metadata: {},
+                        };
+                        const allPhotosAsPhotoType: Photo[] = photos.map((p) => ({
+                          path: p.path,
+                          filename: p.path.split('/').pop() || '',
+                          score: p.confidence,
+                          metadata: {},
+                        }));
+                        openForPhoto(allPhotosAsPhotoType, photoAsPhotoType);
+                      }
+                    }
+                  }}
                 >
                   <div className='aspect-square relative'>
                     <SecureLazyImage
@@ -980,7 +1036,7 @@ export default function PersonDetail() {
                     {/* Selection checkbox */}
                     {selectionMode && (
                       <div
-                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                        className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${
                           isSelected
                             ? 'bg-blue-500 border-blue-500'
                             : 'bg-black/40 border-white/50'
@@ -993,7 +1049,7 @@ export default function PersonDetail() {
                     )}
 
                     {/* Confidence badge */}
-                    <div className='absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity'>
+                    <div className='absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                       {Math.round(photo.confidence * 100)}% match
                     </div>
 
@@ -1010,7 +1066,7 @@ export default function PersonDetail() {
 
                   {/* Confirm/Reject controls (shown on hover, not in selection mode) */}
                   {!selectionMode && !isLoading && (
-                    <div className='absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity'>
+                    <div className='absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                       <div className='flex gap-2 justify-center flex-wrap'>
                         <button
                           onClick={(e) => {
@@ -1070,6 +1126,10 @@ export default function PersonDetail() {
       {showSplitDialog && (
         <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50'>
           <div
+            ref={splitPanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Move faces to new person'
             className={`${glass.surfaceStrong} rounded-xl p-6 max-w-md w-full mx-4 border border-white/10`}
           >
             <h2 className='text-lg font-semibold text-foreground mb-4'>
@@ -1077,24 +1137,25 @@ export default function PersonDetail() {
             </h2>
 
             <div className='mb-4'>
-              <label className='block text-sm text-muted-foreground mb-2'>
+              <label
+                htmlFor='split-new-person-name'
+                className='block text-sm text-muted-foreground mb-2'
+              >
                 New Person Name (optional)
               </label>
               <input
+                id='split-new-person-name'
                 type='text'
                 value={newPersonName}
                 onChange={(e) => setNewPersonName(e.target.value)}
-                placeholder='Enter name...'
+                placeholder='Enter name…'
                 className='w-full px-4 py-2 bg-white/10 rounded-lg outline-none border border-white/10 focus:border-blue-400'
               />
             </div>
 
             <div className='flex gap-3'>
               <button
-                onClick={() => {
-                  setShowSplitDialog(false);
-                  setNewPersonName('');
-                }}
+                onClick={closeSplitDialog}
                 className='btn-glass btn-glass--muted flex-1'
               >
                 Cancel
@@ -1120,6 +1181,10 @@ export default function PersonDetail() {
       {moveModal.open && (
         <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50'>
           <div
+            ref={movePanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Move faces to another person'
             className={`${glass.surfaceStrong} rounded-xl p-6 max-w-md w-full mx-4 border border-white/10`}
           >
             <h2 className='text-lg font-semibold text-foreground mb-4'>
@@ -1128,10 +1193,14 @@ export default function PersonDetail() {
             </h2>
 
             <div className='mb-4'>
-              <label className='block text-sm text-muted-foreground mb-2'>
+              <label
+                htmlFor='move-destination-person'
+                className='block text-sm text-muted-foreground mb-2'
+              >
                 Destination person
               </label>
               <select
+                id='move-destination-person'
                 className='w-full bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-foreground focus:outline-none focus:border-blue-400'
                 value={moveModal.targetClusterId}
                 onChange={(e) =>
@@ -1154,13 +1223,7 @@ export default function PersonDetail() {
 
             <div className='flex gap-3'>
               <button
-                onClick={() =>
-                  setMoveModal({
-                    open: false,
-                    faceIds: [],
-                    targetClusterId: '',
-                  })
-                }
+                onClick={closeMoveModal}
                 className='btn-glass btn-glass--muted flex-1'
                 disabled={moveLoading}
               >
@@ -1187,6 +1250,10 @@ export default function PersonDetail() {
       {similarModal.open && (
         <div className='fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50'>
           <div
+            ref={similarPanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Similar faces'
             className={`${glass.surfaceStrong} rounded-xl p-6 max-w-3xl w-full mx-4 border border-white/10`}
           >
             <div className='flex justify-between items-center mb-4'>
@@ -1194,14 +1261,7 @@ export default function PersonDetail() {
                 Similar faces
               </h2>
               <button
-                onClick={() =>
-                  setSimilarModal({
-                    open: false,
-                    loading: false,
-                    results: [],
-                    error: null,
-                  })
-                }
+                onClick={closeSimilarModal}
                 className='btn-glass btn-glass--muted px-3 py-1'
               >
                 Close
@@ -1211,12 +1271,12 @@ export default function PersonDetail() {
             {similarModal.loading && (
               <div className='flex items-center gap-2 text-muted-foreground'>
                 <Loader2 className='animate-spin' size={16} />
-                <span>Finding similar faces...</span>
+                <span>Finding similar faces…</span>
               </div>
             )}
 
             {similarModal.error && (
-              <div className='text-red-400 text-sm mb-2'>
+              <div role='alert' className='text-red-400 text-sm mb-2'>
                 {similarModal.error}
               </div>
             )}

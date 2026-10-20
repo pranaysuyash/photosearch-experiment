@@ -425,7 +425,7 @@ export function MobilePhotoEditor({
                   <button
                     key={mode}
                     onClick={() => setEditMode(mode)}
-                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                       editMode === mode
                         ? 'bg-blue-500/20 text-blue-400'
                         : 'text-gray-400 hover:text-white'
@@ -579,7 +579,7 @@ export function MobilePhotoEditor({
               {isProcessing ? (
                 <>
                   <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-                  Saving...
+                  Saving…
                 </>
               ) : (
                 <>
@@ -737,7 +737,7 @@ export function MobilePhotoEditor({
           {isProcessing ? (
             <div className='flex items-center gap-2'>
               <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-              Processing...
+              Processing…
             </div>
           ) : (
             <div className='flex items-center gap-2'>

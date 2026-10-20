@@ -162,6 +162,7 @@ export default function ReviewInbox(props: {
           className={glass.button}
           disabled={loading}
           title='Refresh counts'
+          aria-label='Refresh counts'
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
         </button>
@@ -169,6 +170,7 @@ export default function ReviewInbox(props: {
 
       {error && (
         <div
+          role='alert'
           className={`${glass.surface} rounded-xl border border-white/10 p-4`}
         >
           <div className='flex items-center gap-2'>
@@ -178,7 +180,7 @@ export default function ReviewInbox(props: {
         </div>
       )}
 
-      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 tabular-nums'>
         {cards.map((card) => {
           const disabled = Boolean((card as { disabled?: boolean }).disabled);
 

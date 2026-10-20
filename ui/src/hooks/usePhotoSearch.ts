@@ -108,6 +108,7 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
   }, [query]);
 
   // Initial fetch effect - runs once on mount
+  const skipNextQueryEffectRef = useRef(false);
   useEffect(() => {
     if (optionsRef.current.initialFetch === false) {
       return;
@@ -116,6 +117,9 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
       return;
     }
     initialFetchDoneRef.current = true;
+    // The query-change effect below also fires on mount; suppress its
+    // duplicate search for the initial query.
+    skipNextQueryEffectRef.current = true;
     doSearch(query, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
@@ -124,6 +128,10 @@ export function usePhotoSearch(options: UsePhotoSearchOptions = {}) {
   useEffect(() => {
     // Skip if this is the initial render (handled by initial fetch effect)
     if (!initialFetchDoneRef.current) {
+      return;
+    }
+    if (skipNextQueryEffectRef.current) {
+      skipNextQueryEffectRef.current = false;
       return;
     }
 

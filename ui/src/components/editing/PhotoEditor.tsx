@@ -512,7 +512,7 @@ export function PhotoEditor({
               <img
                 ref={imageRef}
                 src={imageUrl}
-                alt='Photo being edited'
+                alt='Editing canvas with the current adjustments applied'
                 className='max-w-full max-h-full object-contain rounded-lg'
                 style={{
                   filter: `brightness(${100 + settings.brightness}%) contrast(${100 + settings.contrast}%) saturate(${100 + settings.saturation}%)`,
@@ -767,12 +767,13 @@ export function PhotoEditor({
                 {/* Brightness */}
                 <div>
                   <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                    <label htmlFor='pe-brightness-input' className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Sun size={12} />
                       Brightness
                     </label>
                     <div className='flex items-center gap-2'>
                       <input
+                        id='pe-brightness-input'
                         type='number'
                         min='-100'
                         max='100'
@@ -816,12 +817,13 @@ export function PhotoEditor({
                 {/* Contrast */}
                 <div>
                   <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                    <label htmlFor='pe-contrast-input' className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Contrast size={12} />
                       Contrast
                     </label>
                     <div className='flex items-center gap-2'>
                       <input
+                        id='pe-contrast-input'
                         type='number'
                         min='-100'
                         max='100'
@@ -865,12 +867,13 @@ export function PhotoEditor({
                 {/* Saturation */}
                 <div>
                   <div className='flex items-center justify-between mb-1'>
-                    <label className='text-xs text-muted-foreground flex items-center gap-1'>
+                    <label htmlFor='pe-saturation-input' className='text-xs text-muted-foreground flex items-center gap-1'>
                       <Droplet size={12} />
                       Saturation
                     </label>
                     <div className='flex items-center gap-2'>
                       <input
+                        id='pe-saturation-input'
                         type='number'
                         min='-100'
                         max='100'
@@ -923,7 +926,7 @@ export function PhotoEditor({
                 {isProcessing ? (
                   <div className='flex items-center gap-2'>
                     <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
-                    Processing...
+                    Processing…
                   </div>
                 ) : (
                   <div className='flex items-center gap-2'>

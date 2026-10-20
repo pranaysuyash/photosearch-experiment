@@ -88,6 +88,12 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
   };
 
   const handleCancel = () => {
+    if (
+      hasChanges &&
+      !window.confirm('Discard unsaved edits to this photo?')
+    ) {
+      return;
+    }
     setEdits(DEFAULT_EDITS);
     setPreviewUrl(null);
     onCancel();
@@ -104,7 +110,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
         <img
           src={previewUrl || api.getImageUrl(photo.path, 400)}
           alt={photo.filename}
-          className="w-full h-full object-cover transition-all duration-300"
+          className="w-full h-full object-cover transition-[filter,transform] duration-300"
           style={{
             filter: `brightness(${1 + edits.brightness / 100}) contrast(${1 + edits.contrast / 100}) saturate(${1 + edits.saturation / 100})`,
             transform: `rotate(${edits.rotation}deg) scaleX(${edits.flipH ? -1 : 1}) scaleY(${edits.flipV ? -1 : 1})`
@@ -122,8 +128,9 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
         {!isActive && (
           <button
             onClick={onToggle}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity btn-glass btn-glass--muted w-8 h-8 p-0 justify-center"
+            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity btn-glass btn-glass--muted w-8 h-8 p-0 justify-center"
             title="Quick edit"
+            aria-label="Quick edit"
           >
             <Zap size={14} />
           </button>
@@ -149,6 +156,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
                   max="50"
                   value={edits.brightness}
                   onChange={(e) => handleEditChange('brightness', parseInt(e.target.value))}
+                  aria-label="Brightness"
                   className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-yellow-400"
                 />
                 <span className="text-xs text-white/60 w-8 text-right">
@@ -164,6 +172,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
                   max="50"
                   value={edits.contrast}
                   onChange={(e) => handleEditChange('contrast', parseInt(e.target.value))}
+                  aria-label="Contrast"
                   className="flex-1 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-blue-400"
                 />
                 <span className="text-xs text-white/60 w-8 text-right">
@@ -194,6 +203,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
                   onClick={() => handleEditChange('rotation', (edits.rotation + 90) % 360)}
                   className="btn-glass btn-glass--muted w-8 h-8 p-0 justify-center"
                   title="Rotate 90°"
+                  aria-label="Rotate 90°"
                 >
                   <RotateCw size={12} />
                 </button>
@@ -202,6 +212,8 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
                   onClick={() => handleEditChange('flipH', !edits.flipH)}
                   className={`btn-glass ${edits.flipH ? 'btn-glass--primary' : 'btn-glass--muted'} w-8 h-8 p-0 justify-center`}
                   title="Flip horizontal"
+                  aria-label="Flip horizontal"
+                  aria-pressed={edits.flipH}
                 >
                   <FlipHorizontal size={12} />
                 </button>
@@ -210,8 +222,15 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
               {/* Action buttons */}
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setEdits(DEFAULT_EDITS)}
+                  onClick={() => {
+                    if (
+                      window.confirm('Reset all adjustments to defaults?')
+                    ) {
+                      setEdits(DEFAULT_EDITS);
+                    }
+                  }}
                   disabled={!hasChanges}
+                  aria-label="Reset adjustments"
                   className="btn-glass btn-glass--muted w-8 h-8 p-0 justify-center disabled:opacity-50"
                   title="Reset"
                 >
@@ -220,6 +239,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
 
                 <button
                   onClick={handleCancel}
+                  aria-label="Cancel editing"
                   className="btn-glass btn-glass--muted w-8 h-8 p-0 justify-center"
                   title="Cancel"
                 >
@@ -229,6 +249,7 @@ export const InlineEditMode: React.FC<InlineEditModeProps> = ({
                 <button
                   onClick={handleSave}
                   disabled={!hasChanges || isProcessing}
+                  aria-label="Save changes"
                   className="btn-glass btn-glass--primary w-8 h-8 p-0 justify-center disabled:opacity-50"
                   title="Save changes"
                 >

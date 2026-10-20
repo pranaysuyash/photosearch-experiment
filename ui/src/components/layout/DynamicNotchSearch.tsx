@@ -202,10 +202,11 @@ export function DynamicNotchSearch({
                   <Search className='ml-4 text-muted-foreground w-4 h-4 flex-shrink-0' />
                   <input
                     ref={inputRef}
-                    type='text'
+                    type='search'
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder='Search photos...'
+                    placeholder='Search photos…'
+                    aria-label='Search photos'
                     className='h-full flex-1 bg-transparent border-none outline-none px-3 text-sm placeholder:text-muted-foreground/50 leading-none'
                     autoFocus
                   />
@@ -213,6 +214,7 @@ export function DynamicNotchSearch({
                     <button
                       type='button'
                       onClick={clearSearch}
+                      aria-label='Clear search'
                       className='p-1 mr-2 text-muted-foreground hover:text-foreground transition-colors'
                     >
                       <X size={14} />
@@ -227,6 +229,16 @@ export function DynamicNotchSearch({
         {/* CENTER: The Notch/Island (always visible) */}
         <motion.div
           onClick={() => !expanded && setExpanded(true)}
+          onKeyDown={(e) => {
+            if (!expanded && (e.key === 'Enter' || e.key === ' ')) {
+              e.preventDefault();
+              setExpanded(true);
+            }
+          }}
+          role='button'
+          tabIndex={0}
+          aria-expanded={expanded}
+          aria-label='Open search and filters'
           className={`${glass.surfaceStrong} flex items-center justify-center cursor-pointer`}
           animate={{
             width: expanded ? 52 : 180, // Wider when collapsed to include filters
@@ -268,7 +280,7 @@ export function DynamicNotchSearch({
                 e.stopPropagation();
                 setPinned(!pinned);
               }}
-              className={`p-2 rounded-full transition-all ${
+              className={`p-2 rounded-full transition ${
                 pinned
                   ? 'bg-primary/20 text-primary'
                   : 'text-muted-foreground hover:bg-white/10'
@@ -324,7 +336,7 @@ export function DynamicNotchSearch({
                   onClick={() =>
                     setActiveGroup(activeGroup === 'type' ? null : 'type')
                   }
-                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all ${
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition ${
                     activeGroup === 'type'
                       ? 'bg-white/15 text-foreground'
                       : 'text-muted-foreground hover:bg-white/10'
@@ -355,7 +367,7 @@ export function DynamicNotchSearch({
                             setTypeFilter(type);
                             setActiveGroup(null);
                           }}
-                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all ${
+                          className={`w-full text-left px-3 py-2 rounded-lg text-xs transition ${
                             typeFilter === type
                               ? 'bg-white/10 text-foreground'
                               : 'text-muted-foreground hover:bg-white/5'
@@ -376,7 +388,7 @@ export function DynamicNotchSearch({
                   onClick={() =>
                     setActiveGroup(activeGroup === 'mode' ? null : 'mode')
                   }
-                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all ${
+                  className={`px-3 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition ${
                     activeGroup === 'mode'
                       ? 'bg-white/15 text-foreground'
                       : 'text-muted-foreground hover:bg-white/10'
@@ -433,7 +445,7 @@ export function DynamicNotchSearch({
                             setSearchMode(item.id, { source: 'manual' });
                             setActiveGroup(null);
                           }}
-                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all ${
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition ${
                             searchMode === item.id
                               ? 'bg-primary/20 text-primary'
                               : 'text-muted-foreground hover:bg-white/10'

@@ -57,6 +57,9 @@ export function MultiTagFilter({
   const [error, setError] = useState<string | null>(null);
   const [savedFilters, setSavedFilters] = useState<TagFilter[]>([]);
   const [showSavedFilters, setShowSavedFilters] = useState(false);
+  const [showSaveFilter, setShowSaveFilter] = useState(false);
+  const [newFilterName, setNewFilterName] = useState('');
+  const [highlightedSuggestion, setHighlightedSuggestion] = useState(-1);
 
   // Load saved filters
   useEffect(() => {
@@ -100,6 +103,7 @@ export function MultiTagFilter({
 
   const handleTagInput = async (value: string) => {
     setNewTag(value);
+    setHighlightedSuggestion(-1);
 
     if (value.length > 2) {
       try {
@@ -159,13 +163,17 @@ export function MultiTagFilter({
     }
   };
 
-  const saveFilter = async () => {
+  const saveFilter = () => {
     if (expressions.length === 0) return;
+    setNewFilterName('');
+    setShowSaveFilter(true);
+  };
+
+  const confirmSaveFilter = async () => {
+    const filterName = newFilterName.trim();
+    if (!filterName) return;
 
     try {
-      const filterName = prompt('Enter a name for this filter:');
-      if (!filterName) return;
-
       const newFilter = await api.createTagFilter(
         filterName,
         expressions,
@@ -173,10 +181,17 @@ export function MultiTagFilter({
       );
 
       setSavedFilters([...savedFilters, newFilter]);
+      setShowSaveFilter(false);
+      setNewFilterName('');
     } catch (err) {
       console.error('Failed to save filter:', err);
       setError('Failed to save filter');
     }
+  };
+
+  const cancelSaveFilter = () => {
+    setShowSaveFilter(false);
+    setNewFilterName('');
   };
 
   const loadFilter = (filter: TagFilter) => {
@@ -212,7 +227,7 @@ export function MultiTagFilter({
 
   return (
     <div
-      className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}
+      className={`${glass.surfaceStrong} relative rounded-xl border border-white/10 p-4`}
     >
       <div className='flex items-center justify-between mb-4'>
         <div className='flex items-center gap-2'>
@@ -226,6 +241,7 @@ export function MultiTagFilter({
             disabled={expressions.length === 0}
             className='btn-glass btn-glass--muted text-xs px-2 py-1.5 flex items-center gap-1'
             title='Save this filter for later'
+            aria-label='Save this filter'
           >
             <Hash size={14} />
             Save
@@ -235,17 +251,55 @@ export function MultiTagFilter({
             onClick={() => setShowSavedFilters(!showSavedFilters)}
             className='btn-glass btn-glass--muted text-xs px-2 py-1.5'
             title='Saved filters'
+            aria-label='Toggle saved filters'
+            aria-expanded={showSavedFilters}
           >
             <CircleEllipsis size={14} />
           </button>
         </div>
       </div>
 
+      {/* Inline save-filter name entry (replaces window.prompt) */}
+      {showSaveFilter && (
+        <div className='mb-4 flex flex-wrap items-center gap-2'>
+          <input
+            type='text'
+            value={newFilterName}
+            onChange={(e) => setNewFilterName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                void confirmSaveFilter();
+              } else if (e.key === 'Escape') {
+                cancelSaveFilter();
+              }
+            }}
+            placeholder='My filter'
+            aria-label='Filter name'
+            autoFocus
+            className='flex-1 min-w-[160px] px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary'
+          />
+          <button
+            onClick={() => void confirmSaveFilter()}
+            disabled={!newFilterName.trim()}
+            className='btn-glass btn-glass--primary text-xs px-3 py-1.5'
+          >
+            Save
+          </button>
+          <button
+            onClick={cancelSaveFilter}
+            className='btn-glass btn-glass--muted text-xs px-3 py-1.5'
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* Operator Selection */}
       <div className='mb-4'>
-        <label className='block text-sm font-medium text-foreground mb-2'>
+        <p className='block text-sm font-medium text-foreground mb-2'>
           Combine tags with
-        </label>
+        </p>
         <div className='grid grid-cols-2 gap-2'>
           {operatorOptions.map((option) => (
             <button
@@ -269,40 +323,88 @@ export function MultiTagFilter({
 
       {/* Tag Expression Builder */}
       <div className='mb-4'>
-        <label className='block text-sm font-medium text-foreground mb-2'>
+        <label htmlFor='mtf-add-tag' className='block text-sm font-medium text-foreground mb-2'>
           Add Tags
         </label>
 
         <div className='flex gap-2 mb-3'>
           <div className='relative flex-1'>
             <input
+              id='mtf-add-tag'
               type='text'
               value={newTag}
               onChange={(e) => handleTagInput(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && newTag.trim()) {
+                if (
+                  e.key === 'ArrowDown' &&
+                  showSuggestions &&
+                  suggestions.length > 0
+                ) {
+                  e.preventDefault();
+                  setHighlightedSuggestion((prev) =>
+                    Math.min(prev + 1, suggestions.length - 1)
+                  );
+                } else if (
+                  e.key === 'ArrowUp' &&
+                  showSuggestions &&
+                  suggestions.length > 0
+                ) {
+                  e.preventDefault();
+                  setHighlightedSuggestion((prev) => Math.max(prev - 1, 0));
+                } else if (
+                  e.key === 'Enter' &&
+                  showSuggestions &&
+                  highlightedSuggestion >= 0 &&
+                  suggestions[highlightedSuggestion]
+                ) {
+                  e.preventDefault();
+                  setNewTag(suggestions[highlightedSuggestion]);
+                  setShowSuggestions(false);
+                  setHighlightedSuggestion(-1);
+                } else if (e.key === 'Enter' && newTag.trim()) {
                   e.preventDefault();
                   addTagExpression();
                 } else if (e.key === 'Escape') {
                   setShowSuggestions(false);
                 }
               }}
-              placeholder='Type a tag...'
+              placeholder='Type a tag…'
+              aria-label='Add tag'
+              role='combobox'
+              aria-expanded={showSuggestions && suggestions.length > 0}
+              aria-controls='mtf-suggestions'
+              aria-activedescendant={
+                highlightedSuggestion >= 0
+                  ? `mtf-suggestion-${highlightedSuggestion}`
+                  : undefined
+              }
               className='w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary'
             />
 
             {showSuggestions && suggestions.length > 0 && (
               <div
+                id='mtf-suggestions'
+                role='listbox'
+                aria-label='Tag suggestions'
                 className={`${glass.surfaceStrong} absolute z-10 mt-1 w-full border border-white/10 rounded-lg shadow-lg max-h-60 overflow-y-auto`}
               >
-                {suggestions.map((suggestion) => (
+                {suggestions.map((suggestion, index) => (
                   <button
                     key={suggestion}
+                    id={`mtf-suggestion-${index}`}
+                    role='option'
+                    aria-selected={index === highlightedSuggestion}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       setNewTag(suggestion);
                       setShowSuggestions(false);
+                      setHighlightedSuggestion(-1);
                     }}
-                    className='w-full text-left px-3 py-2 hover:bg-white/5 text-foreground truncate'
+                    className={`w-full text-left px-3 py-2 text-foreground truncate ${
+                      index === highlightedSuggestion
+                        ? 'bg-white/10'
+                        : 'hover:bg-white/5'
+                    }`}
                   >
                     #{suggestion}
                   </button>
@@ -336,6 +438,7 @@ export function MultiTagFilter({
                       operator: e.target.value as TagExpression['operator'],
                     })
                   }
+                  aria-label={`Operator for tag ${expr.tag}`}
                   className='px-2 py-1 rounded border border-white/10 bg-white/5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-sm'
                 >
                   <option value='has'>Include</option>
@@ -396,6 +499,7 @@ export function MultiTagFilter({
               </h4>
               <button
                 onClick={() => setShowSavedFilters(false)}
+                aria-label='Close saved filters'
                 className='btn-glass btn-glass--muted w-6 h-6 p-0'
               >
                 <X size={12} />
@@ -429,9 +533,16 @@ export function MultiTagFilter({
 
       {/* Error Display */}
       {error && (
-        <div className='mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3'>
+        <div
+          role='alert'
+          className='mt-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3'
+        >
           {error}
-          <button className='ml-2' onClick={() => setError(null)}>
+          <button
+            className='ml-2'
+            onClick={() => setError(null)}
+            aria-label='Dismiss error'
+          >
             <X size={16} />
           </button>
         </div>

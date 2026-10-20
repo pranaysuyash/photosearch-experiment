@@ -76,8 +76,16 @@ export function LazyImage({
     >
       {/* Placeholder/Loading state */}
       {(!isLoaded || hasError) && (
-        <div className='absolute inset-0 bg-muted animate-pulse flex items-center justify-center'>
-          {placeholder ? (
+        <div
+          className={`absolute inset-0 bg-muted flex items-center justify-center ${
+            hasError ? '' : 'animate-pulse'
+          }`}
+        >
+          {hasError ? (
+            <span className='text-xs text-muted-foreground px-2 text-center break-words'>
+              Failed to load
+            </span>
+          ) : placeholder ? (
             <img
               src={placeholder}
               alt=''

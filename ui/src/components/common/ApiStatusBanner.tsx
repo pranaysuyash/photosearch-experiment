@@ -15,7 +15,7 @@ export function ApiStatusBanner({
   if (status !== 'offline') return null;
 
   return (
-    <div className='pointer-events-auto w-full'>
+    <div role='alert' className='pointer-events-auto w-full'>
       <div className='mx-auto w-full max-w-[1600px] px-2 sm:px-4 md:px-6'>
         <div className='mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 backdrop-blur px-4 py-3 shadow-sm'>
           <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>

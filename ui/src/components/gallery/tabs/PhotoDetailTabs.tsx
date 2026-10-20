@@ -27,12 +27,14 @@ export function PhotoDetailTabs({ activeTab, onTabChange, children }: PhotoDetai
     return (
         <div className="flex flex-col h-full w-96 max-h-[90vh] glass-surface rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
             {/* Header / Tab Switcher */}
-            <div className="flex bg-black/20 p-1 m-3 rounded-xl backdrop-blur-md border border-white/5 relative z-10 shrink-0">
+            <div className="flex bg-black/20 p-1 m-3 rounded-xl backdrop-blur-md border border-white/5 relative z-10 shrink-0" role="tablist" aria-label="Photo details sections">
                 {tabs.map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => onTabChange(tab.id)}
-                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 relative ${activeTab === tab.id
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition duration-200 relative ${activeTab === tab.id
                             ? 'text-white' // Active text
                             : 'text-white/50 hover:text-white/80 hover:bg-white/5'
                             }`}

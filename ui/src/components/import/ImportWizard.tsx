@@ -4,7 +4,7 @@
  * Guided bulk import and organization wizard for first-time users and large libraries.
  * Features step-by-step source connection, organization rules, and progress tracking.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X,
   FolderOpen,
@@ -18,6 +18,14 @@ import {
   Play
 } from 'lucide-react';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
+import { api, type Job } from '../../api';
+import { pickDirectory } from '../../utils/pickDirectory';
+import {
+  isLocalStorageAvailable,
+  localGetItem,
+  localSetItem,
+} from '../../utils/storage';
 
 interface ImportWizardProps {
   isOpen: boolean;
@@ -56,8 +64,29 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
   });
   const [isImporting, setIsImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
-  const [importStats, setImportStats] = useState({ scanned: 0, imported: 0, duplicates: 0 });
+  const [jobStatus, setJobStatus] = useState<Job['status'] | null>(null);
+  const [jobMessage, setJobMessage] = useState<string | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const importStartedAtRef = useRef<number | null>(null);
+
+  const panelRef = useModalBehavior(isOpen, onClose);
+
+  // Stop polling when the wizard closes or unmounts.
+  useEffect(() => {
+    if (!isOpen && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -74,27 +103,97 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
   };
 
   const startImport = async () => {
+    const stopPolling = () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+
     setIsImporting(true);
     setImportProgress(0);
+    setJobStatus(null);
+    setJobMessage(null);
+    setElapsedSeconds(0);
+    setNotice(null);
     setErrors([]);
+    importStartedAtRef.current = Date.now();
 
     try {
-      // Simulate import progress
-      for (let i = 0; i <= 100; i += 5) {
-        setImportProgress(i);
-        setImportStats({
-          scanned: Math.floor(i * 12),
-          imported: Math.floor(i * 8),
-          duplicates: Math.floor(i * 2)
-        });
-        await new Promise(resolve => setTimeout(resolve, 200));
+      const picked = await pickDirectory();
+      if (!picked) {
+        setIsImporting(false);
+        setNotice(
+          'Local folder scanning is available in the desktop app. Connect cloud sources or open Settings → Sources.'
+        );
+        return;
       }
 
-      onComplete();
+      const sourceName =
+        picked.split(/[\\/]/).filter(Boolean).pop() || 'Local Folder';
+      const res = await api.addLocalFolderSource(picked, sourceName);
+      const jobId = res.job_id;
+
+      // Record recent jobs for the Jobs page (same as Spotlight).
+      try {
+        if (isLocalStorageAvailable()) {
+          const raw = localGetItem('lm:recentJobs');
+          const existing: string[] = raw ? JSON.parse(raw) : [];
+          const next = [jobId, ...existing.filter((id) => id !== jobId)].slice(
+            0,
+            20
+          );
+          localSetItem('lm:recentJobs', JSON.stringify(next));
+          window.dispatchEvent(new Event('lm:jobsChange'));
+        }
+      } catch {
+        // ignore
+      }
+
+      setJobStatus('pending');
+      setJobMessage('Scan started…');
+
+      stopPolling();
+      pollRef.current = setInterval(async () => {
+        if (importStartedAtRef.current) {
+          setElapsedSeconds(
+            Math.floor((Date.now() - importStartedAtRef.current) / 1000)
+          );
+        }
+        try {
+          const job = await api.getJobStatus(jobId);
+          if (job.status === 'completed') {
+            stopPolling();
+            setImportProgress(100);
+            setJobStatus('completed');
+            setJobMessage(job.message || 'Import complete');
+            setIsImporting(false);
+          } else if (job.status === 'failed') {
+            stopPolling();
+            setJobStatus('failed');
+            setIsImporting(false);
+            setErrors([
+              'Import failed: ' + (job.message || 'the scan job failed'),
+            ]);
+          } else {
+            setJobStatus(job.status);
+            setImportProgress(
+              typeof job.progress === 'number'
+                ? Math.min(100, Math.max(0, job.progress))
+                : 0
+            );
+            setJobMessage(job.message || 'Scanning…');
+          }
+        } catch {
+          stopPolling();
+          setIsImporting(false);
+          setErrors(['Import failed: could not track import progress.']);
+        }
+      }, 1500);
     } catch (error) {
-      setErrors(['Import failed: ' + (error as Error).message]);
-    } finally {
+      stopPolling();
       setIsImporting(false);
+      setErrors(['Import failed: ' + (error as Error).message]);
     }
   };
 
@@ -223,12 +322,15 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
 
               {importOptions.organizationRule === 'date' && (
                 <div className="mt-4">
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="iw-date-pattern" className="block text-sm font-medium text-foreground mb-2">
                     Date Pattern
                   </label>
                   <select
+                    id="iw-date-pattern"
                     value={importOptions.datePattern}
                     onChange={(e) => setImportOptions(prev => ({ ...prev, datePattern: e.target.value }))}
+                    disabled
+                    title="Not supported by the current backend"
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground"
                   >
                     <option value="YYYY/MM/DD">2024/01/15</option>
@@ -250,10 +352,11 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="iw-duplicate-handling" className="block text-sm font-medium text-foreground mb-2">
                     Duplicate Handling
                   </label>
                   <select
+                    id="iw-duplicate-handling"
                     value={importOptions.duplicateHandling}
                     onChange={(e) =>
                       setImportOptions((prev) => ({
@@ -262,6 +365,8 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                           .value as ImportOptions['duplicateHandling'],
                       }))
                     }
+                    disabled
+                    title="Not supported by the current backend"
                     className="w-full px-3 py-2 rounded-lg border border-white/10 bg-white/5 text-foreground"
                   >
                     <option value="skip">Skip duplicates (recommended)</option>
@@ -276,11 +381,13 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                       type="checkbox"
                       checked={importOptions.autoTag}
                       onChange={(e) => setImportOptions(prev => ({ ...prev, autoTag: e.target.checked }))}
+                      disabled
+                      title="Not supported by the current backend"
                       className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary"
                     />
-                    <div>
-                      <div className="font-medium text-foreground">Auto-tag photos</div>
-                      <div className="text-sm text-muted-foreground">Automatically add tags based on metadata</div>
+                    <div className="font-medium text-foreground">
+                      Auto-tag photos
+                      <div className="font-normal text-sm text-muted-foreground">Automatically add tags based on metadata</div>
                     </div>
                   </label>
 
@@ -289,11 +396,13 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                       type="checkbox"
                       checked={importOptions.createAlbums}
                       onChange={(e) => setImportOptions(prev => ({ ...prev, createAlbums: e.target.checked }))}
+                      disabled
+                      title="Not supported by the current backend"
                       className="w-4 h-4 rounded border-white/10 bg-white/5 text-primary"
                     />
-                    <div>
-                      <div className="font-medium text-foreground">Create auto-albums</div>
-                      <div className="text-sm text-muted-foreground">Generate albums based on dates and events</div>
+                    <div className="font-medium text-foreground">
+                      Create auto-albums
+                      <div className="font-normal text-sm text-muted-foreground">Generate albums based on dates and events</div>
                     </div>
                   </label>
                 </div>
@@ -349,33 +458,33 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
               {isImporting ? (
                 <div className="space-y-4">
                   <div className="text-center">
-                    <div className="text-4xl font-bold text-foreground mb-2">
+                    <div className="text-4xl font-bold text-foreground mb-2 tabular-nums">
                       {importProgress}%
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Importing your photos...
+                      {jobMessage || 'Importing your photos…'}
                     </div>
                   </div>
 
                   <div className="w-full bg-white/10 rounded-full h-3">
                     <div
-                      className="bg-primary h-3 rounded-full transition-all duration-300"
+                      className="bg-primary h-3 rounded-full transition-[width] duration-300"
                       style={{ width: `${importProgress}%` }}
                     />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="grid grid-cols-3 gap-4 text-center tabular-nums">
                     <div>
-                      <div className="text-xl font-bold text-foreground">{importStats.scanned}</div>
-                      <div className="text-xs text-muted-foreground">Scanned</div>
+                      <div className="text-xl font-bold text-foreground">{importProgress}%</div>
+                      <div className="text-xs text-muted-foreground">Progress</div>
                     </div>
                     <div>
-                      <div className="text-xl font-bold text-foreground">{importStats.imported}</div>
-                      <div className="text-xs text-muted-foreground">Imported</div>
+                      <div className="text-xl font-bold text-foreground">{jobStatus ?? 'pending'}</div>
+                      <div className="text-xs text-muted-foreground">Status</div>
                     </div>
                     <div>
-                      <div className="text-xl font-bold text-foreground">{importStats.duplicates}</div>
-                      <div className="text-xs text-muted-foreground">Duplicates</div>
+                      <div className="text-xl font-bold text-foreground">{elapsedSeconds}s</div>
+                      <div className="text-xs text-muted-foreground">Elapsed</div>
                     </div>
                   </div>
                 </div>
@@ -384,7 +493,7 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                   <CheckCircle className="text-green-400 mx-auto mb-4" size={48} />
                   <h4 className="text-lg font-medium text-foreground mb-2">Import Complete!</h4>
                   <p className="text-muted-foreground mb-4">
-                    {importStats.imported} photos have been successfully imported.
+                    Your photos have been scanned and imported into the library.
                   </p>
                   <button
                     onClick={onComplete}
@@ -392,6 +501,12 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
                   >
                     Finish
                   </button>
+                </div>
+              )}
+
+              {notice && (
+                <div className="text-sm text-muted-foreground glass-surface rounded-xl p-3 border border-white/10">
+                  {notice}
                 </div>
               )}
 
@@ -413,9 +528,21 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
 
   return (
     <div className="fixed inset-0 z-[1400] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        onClick={() => {
+          // Don't close mid-import from a stray backdrop click.
+          if (!isImporting) onClose();
+        }}
+      />
 
-      <div className={`relative w-full max-w-2xl ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden`}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Import photos"
+        className={`relative w-full max-w-2xl ${glass.surface} ${glass.surfaceStrong} rounded-2xl border border-white/10 shadow-2xl overflow-hidden`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div>

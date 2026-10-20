@@ -127,7 +127,7 @@ const TauriIntegration: React.FC = () => {
   };
 
   if (loading) {
-    return <div className='loading'>Loading Tauri integration data...</div>;
+    return <div className='loading'>Loading Tauri integration data…</div>;
   }
 
   if (error) {
@@ -145,46 +145,60 @@ const TauriIntegration: React.FC = () => {
         </div>
       </div>
 
-      <div className='tabs'>
+      <div className='tabs' role='tablist' aria-label='Tauri integration sections'>
         <button
           className={`tab-btn ${activeTab === 'commands' ? 'active' : ''}`}
           onClick={() => setActiveTab('commands')}
+          role='tab'
+          aria-selected={activeTab === 'commands'}
         >
           Commands
         </button>
         <button
           className={`tab-btn ${activeTab === 'rust' ? 'active' : ''}`}
           onClick={() => setActiveTab('rust')}
+          role='tab'
+          aria-selected={activeTab === 'rust'}
         >
           Rust Skeleton
         </button>
         <button
           className={`tab-btn ${activeTab === 'hooks' ? 'active' : ''}`}
           onClick={() => setActiveTab('hooks')}
+          role='tab'
+          aria-selected={activeTab === 'hooks'}
         >
           Frontend Hooks
         </button>
         <button
           className={`tab-btn ${activeTab === 'config' ? 'active' : ''}`}
           onClick={() => setActiveTab('config')}
+          role='tab'
+          aria-selected={activeTab === 'config'}
         >
           Config
         </button>
         <button
           className={`tab-btn ${activeTab === 'security' ? 'active' : ''}`}
           onClick={() => setActiveTab('security')}
+          role='tab'
+          aria-selected={activeTab === 'security'}
         >
           Security
         </button>
         <button
           className={`tab-btn ${activeTab === 'performance' ? 'active' : ''}`}
           onClick={() => setActiveTab('performance')}
+          role='tab'
+          aria-selected={activeTab === 'performance'}
         >
           Performance
         </button>
         <button
           className={`tab-btn ${activeTab === 'checklist' ? 'active' : ''}`}
           onClick={() => setActiveTab('checklist')}
+          role='tab'
+          aria-selected={activeTab === 'checklist'}
         >
           Checklist
         </button>

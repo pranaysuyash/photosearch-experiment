@@ -231,9 +231,10 @@ export function EnhancedSearchUI({
           <Search className='ml-4 text-muted-foreground w-5 h-5' />
           <input
             ref={inputRef}
-            type='text'
-            className='flex-1 bg-transparent border-none outline-none px-3 py-2 text-sm placeholder:text-muted-foreground/50'
-            placeholder='Search photos...'
+            type='search'
+            aria-label='Search photos'
+            className='flex-1 bg-transparent border-none outline-none focus-visible:ring-2 focus-visible:ring-primary px-3 py-2 text-sm placeholder:text-muted-foreground/50'
+            placeholder='Search photos…'
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -330,11 +331,13 @@ export function EnhancedSearchUI({
             {isCountingMatches ? (
               <div className='flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm'>
                 <div className='w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin' />
-                Analyzing your query...
+                Analyzing your query…
               </div>
             ) : liveMatchCount !== null ? (
               <div
-                className={`text-sm font-semibold px-4 py-2 rounded-full border shadow-sm ${
+                role='status'
+                aria-live='polite'
+                className={`text-sm font-semibold px-4 py-2 rounded-full border shadow-sm tabular-nums ${
                   liveMatchCount === 0
                     ? 'text-red-700 bg-red-50 border-red-200'
                     : 'text-green-700 bg-green-50 border-green-200'
@@ -348,7 +351,7 @@ export function EnhancedSearchUI({
               </div>
             ) : searchQuery.trim() ? (
               <div className='text-sm text-gray-500 bg-gray-50 px-4 py-2 rounded-full border border-gray-200'>
-                Type to see live match count...
+                Type to see live match count…
               </div>
             ) : null}
             {recognizedIntent && (
@@ -432,17 +435,17 @@ export function EnhancedSearchUI({
               <div className='space-y-4'>
                 {/* Search Mode */}
                 <div>
-                  <label className='text-sm font-medium mb-2 block'>
+                  <span className='text-sm font-medium mb-2 block'>
                     Search Mode
-                  </label>
+                  </span>
                   <SearchToggle value={searchMode} onChange={setSearchMode} />
                 </div>
 
                 {/* Sort By */}
                 <div>
-                  <label className='text-sm font-medium mb-2 block'>
+                  <span className='text-sm font-medium mb-2 block'>
                     Sort By
-                  </label>
+                  </span>
                   <div className='flex gap-2 flex-wrap'>
                     {SORT_OPTIONS.map((option) => {
                       const Icon = option.icon;
@@ -450,7 +453,7 @@ export function EnhancedSearchUI({
                         <button
                           key={option.value}
                           onClick={() => setSortBy(option.value)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                             sortBy === option.value
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -468,9 +471,9 @@ export function EnhancedSearchUI({
 
                 {/* Type Filter */}
                 <div>
-                  <label className='text-sm font-medium mb-2 block'>
+                  <span className='text-sm font-medium mb-2 block'>
                     Media Type
-                  </label>
+                  </span>
                   <div className='flex gap-2'>
                     {TYPE_FILTERS.map((filter) => {
                       const Icon = filter.icon;
@@ -478,7 +481,7 @@ export function EnhancedSearchUI({
                         <button
                           key={filter.value}
                           onClick={() => setTypeFilter(filter.value)}
-                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                          className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                             typeFilter === filter.value
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -495,9 +498,9 @@ export function EnhancedSearchUI({
                 {/* Favorites Filter */}
                 {favoritesFilter && setFavoritesFilter && (
                   <div>
-                    <label className='text-sm font-medium mb-2 block'>
+                    <span className='text-sm font-medium mb-2 block'>
                       Favorites
-                    </label>
+                    </span>
                     <div className='flex gap-2'>
                       {FAVORITES_FILTERS.map((filter) => {
                         const Icon = filter.icon;
@@ -505,7 +508,7 @@ export function EnhancedSearchUI({
                           <button
                             key={filter.value}
                             onClick={() => setFavoritesFilter(filter.value)}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                               favoritesFilter === filter.value
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -524,7 +527,7 @@ export function EnhancedSearchUI({
                 {setTag && (
                   <div>
                     <div className='flex items-center justify-between mb-2'>
-                      <label className='text-sm font-medium block'>Tags</label>
+                      <label htmlFor='esui-tag-filter-compact' className='text-sm font-medium block'>Tags</label>
                       <Link
                         to='/tags'
                         className='text-xs text-muted-foreground hover:text-foreground transition-colors'
@@ -534,6 +537,7 @@ export function EnhancedSearchUI({
                       </Link>
                     </div>
                     <input
+                      id='esui-tag-filter-compact'
                       value={tagQuery}
                       onChange={(e) => setTagQuery(e.target.value)}
                       placeholder='Filter tags…'
@@ -542,7 +546,7 @@ export function EnhancedSearchUI({
                     <div className='mt-2 flex gap-2 flex-wrap'>
                       <button
                         onClick={() => setTag(null)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                           !tag
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -555,7 +559,7 @@ export function EnhancedSearchUI({
                           Loading…
                         </div>
                       ) : tagsError ? (
-                        <div className='text-xs text-muted-foreground px-2 py-1.5'>
+                        <div role='alert' className='text-xs text-muted-foreground px-2 py-1.5'>
                           {tagsError}
                         </div>
                       ) : filteredTags.length === 0 ? (
@@ -567,7 +571,7 @@ export function EnhancedSearchUI({
                           <button
                             key={t.name}
                             onClick={() => setTag(t.name)}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                               tag === t.name
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -590,9 +594,9 @@ export function EnhancedSearchUI({
                 {/* Source Filter */}
                 {typeof setSourceFilter === 'function' && (
                   <div>
-                    <label className='text-sm font-medium mb-2 block'>
+                    <span className='text-sm font-medium mb-2 block'>
                       Source
-                    </label>
+                    </span>
                     <div className='flex gap-2'>
                       {SOURCE_FILTERS.map((filter) => {
                         return (
@@ -600,7 +604,7 @@ export function EnhancedSearchUI({
                             key={filter.value}
                             onClick={() => setSourceFilter(filter.value)}
                             aria-label={`Filter by ${filter.label}`}
-                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition-all ${
+                            className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs transition ${
                               filter.value === (sourceFilter || 'all')
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted hover:bg-muted/80 text-muted-foreground'
@@ -709,12 +713,13 @@ export function EnhancedSearchUI({
           <div className='absolute inset-0 bg-primary/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 rounded-full' />
 
           <div
-            className={`${glass.surface} relative flex items-center rounded-full shadow-2xl p-2 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50`}
+            className={`${glass.surface} relative flex items-center rounded-full shadow-2xl p-2 transition duration-300 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary/50`}
           >
             <Search className='ml-4 text-muted-foreground w-6 h-6' />
             <input
               ref={inputRef}
-              type='text'
+              type='search'
+              aria-label='Search photos'
               className='flex-1 bg-transparent border-none outline-none px-4 py-3 text-lg placeholder:text-muted-foreground/50'
               placeholder="Search for 'sunset in paris' or 'birthday cake'"
               value={searchQuery}
@@ -807,11 +812,13 @@ export function EnhancedSearchUI({
             {isCountingMatches ? (
               <div className='flex items-center gap-2 text-sm text-blue-600 bg-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm'>
                 <div className='w-4 h-4 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin' />
-                Analyzing your query...
+                Analyzing your query…
               </div>
             ) : liveMatchCount !== null ? (
               <div
-                className={`text-sm font-medium px-4 py-2 rounded-full shadow-sm ${
+                role='status'
+                aria-live='polite'
+                className={`text-sm font-medium px-4 py-2 rounded-full shadow-sm tabular-nums ${
                   liveMatchCount === 0
                     ? 'text-red-600 bg-red-50 border border-red-200'
                     : 'text-green-600 bg-green-50 border border-green-200'
@@ -825,7 +832,7 @@ export function EnhancedSearchUI({
               </div>
             ) : searchQuery.trim() ? (
               <div className='text-sm text-muted-foreground bg-muted px-4 py-2 rounded-full border'>
-                Type to see live match count...
+                Type to see live match count…
               </div>
             ) : null}
             {recognizedIntent && (
@@ -871,19 +878,19 @@ export function EnhancedSearchUI({
               <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
                 {/* Search Mode */}
                 <div className='space-y-3'>
-                  <label className='text-sm font-medium flex items-center gap-2'>
+                  <span className='text-sm font-medium flex items-center gap-2'>
                     <Search size={16} />
                     Search Mode
-                  </label>
+                  </span>
                   <SearchToggle value={searchMode} onChange={setSearchMode} />
                 </div>
 
                 {/* Sort Options */}
                 <div className='space-y-3'>
-                  <label className='text-sm font-medium flex items-center gap-2'>
+                  <span className='text-sm font-medium flex items-center gap-2'>
                     <SortAsc size={16} />
                     Sort By
-                  </label>
+                  </span>
                   <div className='flex flex-wrap gap-2'>
                     {SORT_OPTIONS.map((option) => {
                       const Icon = option.icon;
@@ -891,7 +898,7 @@ export function EnhancedSearchUI({
                         <button
                           key={option.value}
                           onClick={() => setSortBy(option.value)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition ${
                             sortBy === option.value
                               ? 'bg-primary text-primary-foreground shadow-md'
                               : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
@@ -907,10 +914,10 @@ export function EnhancedSearchUI({
 
                 {/* Type Filters */}
                 <div className='space-y-3'>
-                  <label className='text-sm font-medium flex items-center gap-2'>
+                  <span className='text-sm font-medium flex items-center gap-2'>
                     <ImageIcon size={16} />
                     Media Type
-                  </label>
+                  </span>
                   <div className='flex flex-wrap gap-2'>
                     {TYPE_FILTERS.map((filter) => {
                       const Icon = filter.icon;
@@ -918,7 +925,7 @@ export function EnhancedSearchUI({
                         <button
                           key={filter.value}
                           onClick={() => setTypeFilter(filter.value)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition ${
                             typeFilter === filter.value
                               ? 'bg-primary text-primary-foreground shadow-md'
                               : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
@@ -937,10 +944,10 @@ export function EnhancedSearchUI({
                 <div className='mt-6 grid grid-cols-1 md:grid-cols-2 gap-6'>
                   {favoritesFilter && setFavoritesFilter && (
                     <div className='space-y-3'>
-                      <label className='text-sm font-medium flex items-center gap-2'>
+                      <span className='text-sm font-medium flex items-center gap-2'>
                         <Star size={16} />
                         Favorites
-                      </label>
+                      </span>
                       <div className='flex flex-wrap gap-2'>
                         {FAVORITES_FILTERS.map((filter) => {
                           const Icon = filter.icon;
@@ -948,7 +955,7 @@ export function EnhancedSearchUI({
                             <button
                               key={filter.value}
                               onClick={() => setFavoritesFilter(filter.value)}
-                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition ${
                                 favoritesFilter === filter.value
                                   ? 'bg-primary text-primary-foreground shadow-md'
                                   : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
@@ -966,7 +973,7 @@ export function EnhancedSearchUI({
                   {setTag && (
                     <div className='space-y-3'>
                       <div className='flex items-center justify-between'>
-                        <label className='text-sm font-medium flex items-center gap-2'>
+                        <label htmlFor='esui-tag-filter-hero' className='text-sm font-medium flex items-center gap-2'>
                           <Hash size={16} />
                           Tags
                         </label>
@@ -979,6 +986,7 @@ export function EnhancedSearchUI({
                         </Link>
                       </div>
                       <input
+                        id='esui-tag-filter-hero'
                         value={tagQuery}
                         onChange={(e) => setTagQuery(e.target.value)}
                         placeholder='Filter tags…'
@@ -987,7 +995,7 @@ export function EnhancedSearchUI({
                       <div className='flex flex-wrap gap-2'>
                         <button
                           onClick={() => setTag(null)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition ${
                             !tag
                               ? 'bg-primary text-primary-foreground shadow-md'
                               : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'
@@ -1000,7 +1008,7 @@ export function EnhancedSearchUI({
                             Loading…
                           </div>
                         ) : tagsError ? (
-                          <div className='text-sm text-muted-foreground px-3 py-2'>
+                          <div role='alert' className='text-sm text-muted-foreground px-3 py-2'>
                             {tagsError}
                           </div>
                         ) : filteredTags.length === 0 ? (
@@ -1012,7 +1020,7 @@ export function EnhancedSearchUI({
                             <button
                               key={t.name}
                               onClick={() => setTag(t.name)}
-                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition-all ${
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm transition ${
                                 tag === t.name
                                   ? 'bg-primary text-primary-foreground shadow-md'
                                   : 'bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground'

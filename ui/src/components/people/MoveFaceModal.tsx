@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, ArrowRight, RefreshCw, Search } from 'lucide-react';
 import { api } from '../../api';
 import { glass } from '../../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
   id: string;
@@ -153,6 +154,8 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
     onClose();
   };
 
+  const panelRef = useModalBehavior(isOpen, handleClose);
+
   const filteredClusters = availableClusters.filter(cluster =>
     cluster.label?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cluster.id.toLowerCase().includes(searchTerm.toLowerCase())
@@ -163,6 +166,10 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Move face to another person"
         className={`${glass.surface} border border-white/20 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -181,6 +188,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
           </div>
           <button
             onClick={handleClose}
+            aria-label="Close"
             className="btn-glass btn-glass--muted w-10 h-10 p-0 justify-center"
           >
             <X size={16} />
@@ -190,7 +198,10 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
           {error && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm">
+            <div
+              role='alert'
+              className='mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'
+            >
               {error}
             </div>
           )}
@@ -250,7 +261,8 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
                     <input
                       type="text"
-                      placeholder="Search people..."
+                      placeholder="Search people…"
+                      aria-label="Search people"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
@@ -263,16 +275,29 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
                       <RefreshCw size={20} className="animate-spin text-muted-foreground" />
                     </div>
                   ) : (
-                    <div className="max-h-60 overflow-y-auto space-y-2">
+                    <div
+                      role='radiogroup'
+                      aria-label='Target person'
+                      className='max-h-60 overflow-y-auto space-y-2'
+                    >
                       {filteredClusters.map((cluster) => (
                         <div
                           key={cluster.id}
+                          role='radio'
+                          aria-checked={targetClusterId === cluster.id}
+                          tabIndex={0}
                           className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                             targetClusterId === cluster.id
                               ? 'border-primary bg-primary/10'
                               : 'border-white/10 hover:border-white/20 bg-white/5'
                           }`}
                           onClick={() => setTargetClusterId(cluster.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setTargetClusterId(cluster.id);
+                            }
+                          }}
                         >
                           <div className="flex items-center justify-between">
                             <div>
@@ -323,7 +348,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
                 <div className="ml-6">
                   <input
                     type="text"
-                    placeholder="Enter person name..."
+                    placeholder="Enter person name…"
                     value={newPersonName}
                     onChange={(e) => setNewPersonName(e.target.value)}
                     className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
@@ -353,7 +378,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
             }
           >
             {moving && <RefreshCw size={14} className="animate-spin" />}
-            {moving ? 'Moving...' : 'Move Face'}
+            {moving ? 'Moving…' : 'Move Face'}
           </button>
         </div>
       </div>

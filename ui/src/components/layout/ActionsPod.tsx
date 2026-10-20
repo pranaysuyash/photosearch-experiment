@@ -13,6 +13,7 @@ import {
   Hash,
   BarChart3,
   Users,
+  MapPin,
   Download,
   Menu,
   Shield,
@@ -115,7 +116,8 @@ export function ActionsPod({
 
       {/* Expandable nav items - expands LEFTWARD due to flex-row-reverse */}
       <div
-        className={`transition-all duration-200 ease-out flex flex-row-reverse items-center ${
+        inert={!open}
+        className={`transition-[max-width,opacity] duration-200 ease-out flex flex-row-reverse items-center ${
           open ? 'max-w-[500px] opacity-100 gap-0.5' : 'max-w-0 opacity-0'
         } overflow-hidden`}
       >
@@ -177,6 +179,22 @@ export function ActionsPod({
         </Link>
         <Link to='/tags' className={linkClass} title='Tags' aria-label='Tags'>
           <Hash size={18} />
+        </Link>
+        <Link
+          to='/places'
+          className={linkClass}
+          title='Places'
+          aria-label='Places'
+        >
+          <MapPin size={18} />
+        </Link>
+        <Link
+          to='/collaboration'
+          className={linkClass}
+          title='Collaboration'
+          aria-label='Collaboration'
+        >
+          <Users size={18} />
         </Link>
         <Link
           to='/jobs'

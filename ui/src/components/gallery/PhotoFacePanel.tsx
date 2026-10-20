@@ -13,6 +13,7 @@ import {
 import { api } from '../../api';
 import type { SimilarFace, SimilarFacesResult } from '../../api';
 import { useToast } from '../ui/useToast';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface FaceCluster {
   id: string;
@@ -86,6 +87,10 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
   }, [closeContextMenu]);
 
   const handleHidePerson = useCallback(async (cluster: FaceCluster) => {
+    const confirmed = window.confirm(
+      `Hide ${cluster.label || 'this person'}? Hidden people are excluded from People view but can be unhidden later.`
+    );
+    if (!confirmed) return;
     setActionLoading(`hide-${cluster.id}`);
     try {
       await api.hideCluster(cluster.id);
@@ -168,6 +173,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
                 className='btn-glass btn-glass--muted w-7 h-7 p-0 justify-center'
                 onClick={onNavigateToPeople}
                 title='View all people'
+                aria-label='View all people'
               >
                 <Users size={12} />
               </button>
@@ -177,6 +183,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
               onClick={onRefresh}
               disabled={isLoading}
               title='Refresh faces'
+              aria-label='Refresh faces'
             >
               <RotateCw size={12} className={isLoading ? 'animate-spin' : ''} />
             </button>
@@ -239,11 +246,12 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
                 </div>
 
                 {/* Actions */}
-                <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <div className='flex items-center gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                   <button
                     className='btn-glass btn-glass--muted w-6 h-6 p-0 justify-center'
                     onClick={() => handleFindSimilar(cluster)}
                     title='Find similar faces'
+                    aria-label={`Find similar faces for ${displayName}`}
                     disabled={isLoading}
                   >
                     <Search size={10} />
@@ -252,6 +260,7 @@ export const PhotoFacePanel: React.FC<PhotoFacePanelProps> = ({
                     className='btn-glass btn-glass--muted w-6 h-6 p-0 justify-center'
                     onClick={(e) => handleContextMenu(e, cluster)}
                     title='More actions'
+                    aria-label={`More actions for ${displayName}`}
                     disabled={isLoading}
                   >
                     <MoreHorizontal size={10} />
@@ -369,6 +378,9 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
     loadSimilarFaces();
   }, [loadSimilarFaces]);
 
+  // Mounted only while open, so the behavior hook is always active here.
+  const panelRef = useModalBehavior(true, onClose);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -378,6 +390,10 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
       onClick={onClose}
     >
       <motion.div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label={`Similar faces for ${cluster.label || `person ${cluster.id}`}`}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
@@ -390,6 +406,7 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
           </h3>
           <button
             onClick={onClose}
+            aria-label='Close'
             className='btn-glass btn-glass--muted w-8 h-8 p-0 justify-center'
           >
             ×
@@ -397,8 +414,14 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
         </div>
 
         <div className='flex items-center gap-4 mb-4'>
-          <label className='text-sm text-white/70'>Similarity threshold:</label>
+          <label
+            htmlFor='similar-face-threshold'
+            className='text-sm text-white/70'
+          >
+            Similarity threshold:
+          </label>
           <input
+            id='similar-face-threshold'
             type='range'
             min='0.3'
             max='0.9'
@@ -407,7 +430,7 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
             onChange={(e) => setThreshold(parseFloat(e.target.value))}
             className='flex-1'
           />
-          <span className='text-sm text-white/90 min-w-[3rem]'>
+          <span className='text-sm text-white/90 min-w-[3rem] tabular-nums'>
             {Math.round(threshold * 100)}%
           </span>
         </div>
@@ -418,7 +441,7 @@ const SimilarFacesModal: React.FC<SimilarFacesModalProps> = ({ cluster, onClose 
               <div className='w-6 h-6 border border-white/20 border-t-white/60 rounded-full animate-spin' />
             </div>
           ) : similarFaces.length > 0 ? (
-            <div className='grid grid-cols-4 gap-3'>
+            <div className='grid grid-cols-4 gap-3 tabular-nums'>
               {similarFaces.map((face, idx) => (
                 <div key={idx} className='glass-surface rounded-lg p-2 text-center'>
                   <img

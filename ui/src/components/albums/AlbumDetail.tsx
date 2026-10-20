@@ -96,7 +96,7 @@ export function AlbumDetail({
       <div className="flex items-center justify-center h-screen">
         <div className="glass-panel px-6 py-4 flex items-center gap-3">
           <Loader2 className="animate-spin text-white/60" size={20} />
-          <span className="text-white/80">Loading album...</span>
+          <span className="text-white/80">Loading album…</span>
         </div>
       </div>
     );

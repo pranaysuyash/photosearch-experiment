@@ -80,7 +80,7 @@ export function Toast({
   return (
     <div className={`
       ${glass.surfaceStrong} border border-white/10 rounded-xl p-4 mb-3 shadow-lg
-      transform transition-all duration-300
+      transform transition duration-300
       translate-y-0 opacity-100
       ${type === 'error' ? 'bg-red-500/10' :
         type === 'success' ? 'bg-green-500/10' :

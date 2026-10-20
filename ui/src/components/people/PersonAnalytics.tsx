@@ -108,7 +108,7 @@ export default function PersonAnalytics() {
 
   return (
     <div className='space-y-6 animate-in fade-in duration-500'>
-      <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+      <div className='grid grid-cols-2 md:grid-cols-4 gap-4 tabular-nums'>
         <div
           className={`${glass.card} p-4 flex flex-col items-center justify-center text-center`}
         >
@@ -191,7 +191,7 @@ export default function PersonAnalytics() {
                   <div
                     className={`h-full ${getEmotionColor(
                       item.emotion
-                    )} transition-all duration-1000`}
+                    )} transition-[width] duration-1000`}
                     style={{ width: `${(item.count / totalFaces) * 100}%` }}
                   />
                 </div>
@@ -230,7 +230,7 @@ export default function PersonAnalytics() {
                 </div>
                 <div className='h-2 w-full bg-white/5 rounded-full overflow-hidden'>
                   <div
-                    className='h-full bg-blue-500 transition-all duration-1000'
+                    className='h-full bg-blue-500 transition-[width] duration-1000'
                     style={{ width: `${(item.count / totalFaces) * 100}%` }}
                   />
                 </div>

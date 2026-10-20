@@ -2,12 +2,16 @@ import { useRef, useState, useMemo, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { Pause, Play, HelpCircle, Map as MapIcon } from 'lucide-react';
+import { Pause, Play, HelpCircle, Map as MapIcon, X } from 'lucide-react';
 import { type Photo, api } from '../../api';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 
 const PERF_LOG = import.meta.env.DEV;
+
+// Session-level cache for signed image URLs used by hover accent extraction,
+// so repeated hovers over the same photo don't re-fetch a signed URL.
+const signedUrlCache = new Map<string, string>();
 
 interface PhotoGlobeProps {
   photos: Photo[];
@@ -1144,12 +1148,14 @@ function RotatingEarth({
     earthMaterial.emissive.copy(accent.clone().multiplyScalar(0.12));
   }, [accent, earthMaterial]);
 
-  useFrame(() => {
+  useFrame((_state, delta) => {
     const frame = (frameCountRef.current += 1);
 
-    // Gentle auto-rotation
+    // Gentle auto-rotation, delta-based so speed is independent of refresh
+    // rate. 0.0005 per frame × 60fps = 0.03 rad/s preserves the original
+    // perceived speed at 60Hz.
     if (groupRef.current && isRotating) {
-      groupRef.current.rotation.y += 0.0005;
+      groupRef.current.rotation.y += 0.03 * delta;
     }
 
     // Only update every 20 frames for cluster cell calculations
@@ -1195,12 +1201,10 @@ function RotatingEarth({
 
   useEffect(() => {
     const sync = () => setAccent(parseCssAccentRgb());
-    sync();
+    sync(); // one initial read
     window.addEventListener('lm:prefChange', sync as EventListener);
-    const interval = window.setInterval(sync, 500);
     return () => {
       window.removeEventListener('lm:prefChange', sync as EventListener);
-      window.clearInterval(interval);
     };
   }, []);
 
@@ -1346,7 +1350,7 @@ function LoadingFallback() {
     <Html center>
       <div className='text-white text-center'>
         <div className='w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4' />
-        <p className='text-sm opacity-70'>Loading Earth...</p>
+        <p className='text-sm opacity-70'>Loading Earth…</p>
       </div>
     </Html>
   );
@@ -1379,20 +1383,18 @@ export function PhotoGlobe({
     let mounted = true;
     async function setAccent() {
       if (!hoveredPhoto) return;
-      try {
-        const url = await api.getSignedImageUrl(hoveredPhoto.path, 96);
+      const path = hoveredPhoto.path;
+      let url: string | null | undefined = signedUrlCache.get(path);
+      if (url === undefined) {
+        try {
+          url = await api.getSignedImageUrl(path, 96);
+        } catch {
+          url = null;
+        }
         if (!mounted) return;
-        setOverrideAccentUrl(
-          'globeHover',
-          url || api.getImageUrl(hoveredPhoto.path, 96)
-        );
-      } catch {
-        if (!mounted) return;
-        setOverrideAccentUrl(
-          'globeHover',
-          api.getImageUrl(hoveredPhoto.path, 96)
-        );
+        if (url) signedUrlCache.set(path, url);
       }
+      setOverrideAccentUrl('globeHover', url || api.getImageUrl(path, 96));
     }
 
     if (hoveredPhoto) setAccent();
@@ -1402,6 +1404,16 @@ export function PhotoGlobe({
       clearOverrideAccent('globeHover');
     };
   }, [hoveredPhoto, setOverrideAccentUrl, clearOverrideAccent]);
+
+  // Escape key closes the help panel (non-modal popover)
+  useEffect(() => {
+    if (!showHelp) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowHelp(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showHelp]);
 
   // Space key to toggle rotation
   useEffect(() => {
@@ -1467,6 +1479,7 @@ export function PhotoGlobe({
           className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center text-white/80'
           title='Help'
           aria-label='Help'
+          aria-expanded={showHelp}
         >
           <HelpCircle size={18} />
         </button>
@@ -1483,8 +1496,22 @@ export function PhotoGlobe({
       </div>
 
       {showHelp && (
-        <div className='absolute top-3 left-3 z-50 glass-surface glass-surface--strong rounded-2xl p-3 text-xs text-white/80 max-w-[260px]'>
-          <div className='font-semibold text-white/90 mb-1'>Globe</div>
+        <div
+          className='absolute top-3 left-3 z-50 glass-surface glass-surface--strong rounded-2xl p-3 text-xs text-white/80 max-w-[260px]'
+          role='dialog'
+          aria-label='Globe help'
+        >
+          <div className='flex items-center justify-between gap-2 mb-1'>
+            <div className='font-semibold text-white/90'>Globe</div>
+            <button
+              onClick={() => setShowHelp(false)}
+              className='p-1 rounded-md text-white/60 hover:text-white/90 hover:bg-white/10 transition-colors'
+              title='Close'
+              aria-label='Close'
+            >
+              <X size={14} />
+            </button>
+          </div>
           <div className='text-white/70'>
             Drag to orbit • Scroll to zoom (clusters split as you zoom in) •
             Click a marker to open details.

@@ -3,6 +3,7 @@ import { X, HardDrive, Cloud, Database, KeyRound } from 'lucide-react';
 import { api } from '../../api';
 import { pickDirectory } from '../../utils/pickDirectory';
 import { usePlatformDetect } from '../../hooks/usePlatformDetect';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import { isLocalStorageAvailable, localGetItem, localSetItem } from '../../utils/storage';
 
 type Tab = 'local' | 'google_drive' | 's3';
@@ -26,6 +27,9 @@ export function ConnectSourceModal({
   const { isDesktopApp } = usePlatformDetect();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [busy, setBusy] = useState(false);
+  // True while the Google Drive OAuth popup is open and we are waiting for the
+  // postMessage callback — backdrop/ESC close is suppressed during this window.
+  const [oauthWaiting, setOauthWaiting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Local folder state (no manual path entry)
@@ -51,6 +55,7 @@ export function ConnectSourceModal({
     if (!open) return;
     setTab(initialTab);
     setBusy(false);
+    setOauthWaiting(false);
     setError(null);
     setPickedPath(null);
   }, [open, initialTab]);
@@ -76,6 +81,7 @@ export function ConnectSourceModal({
       if (data.type === 'lm:sourceConnected') {
         const jobId = data.jobId;
         if (jobId) recordRecentJob(jobId);
+        setOauthWaiting(false);
         try {
           popupRef.current?.close?.();
         } catch {
@@ -165,6 +171,7 @@ export function ConnectSourceModal({
         return;
       }
       popupRef.current = w;
+      setOauthWaiting(true);
     } catch (e) {
       setError(String(e));
     } finally {
@@ -172,13 +179,24 @@ export function ConnectSourceModal({
     }
   };
 
+  // Close via backdrop/ESC is suppressed while an operation is in flight or the
+  // Google Drive OAuth popup is waiting for its postMessage callback.
+  const handleRequestClose = () => {
+    if (!busy && !oauthWaiting) onClose();
+  };
+  const panelRef = useModalBehavior(open, handleRequestClose);
+
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={handleRequestClose} />
 
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Connect a source"
         className="relative w-full max-w-2xl glass-surface glass-surface--strong rounded-2xl border border-white/10 shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -215,7 +233,10 @@ export function ConnectSourceModal({
           </div>
 
           {error && (
-            <div className="mt-4 text-sm text-destructive glass-surface rounded-xl p-3 border border-white/10">
+            <div
+              role="alert"
+              className="mt-4 text-sm text-destructive glass-surface rounded-xl p-3 border border-white/10"
+            >
               {error}
             </div>
           )}
@@ -243,11 +264,12 @@ export function ConnectSourceModal({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <label className="text-xs text-muted-foreground">Name</label>
+                  <label htmlFor="csm-local-name" className="text-xs text-muted-foreground">Name</label>
                   <input
+                    id="csm-local-name"
                     value={localName}
                     onChange={(e) => setLocalName(e.target.value)}
-                    className="flex-1 min-w-[240px] glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="flex-1 min-w-[240px] glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     placeholder="Local Folder"
                     disabled={busy || !pickedPath}
                   />
@@ -277,62 +299,72 @@ export function ConnectSourceModal({
 
               <div className="glass-surface rounded-xl p-4 border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="md:col-span-2">
-                  <label className="text-xs text-muted-foreground">Name</label>
+                  <label htmlFor="csm-s3-name" className="text-xs text-muted-foreground">Name</label>
                   <input
+                    id="csm-s3-name"
                     value={s3Name}
                     onChange={(e) => setS3Name(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-muted-foreground">Endpoint URL</label>
+                  <label htmlFor="csm-s3-endpoint" className="text-xs text-muted-foreground">Endpoint URL</label>
                   <input
+                    id="csm-s3-endpoint"
+                    type="url"
                     value={s3Endpoint}
                     onChange={(e) => setS3Endpoint(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     placeholder="https://<account>.r2.cloudflarestorage.com"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Region</label>
+                  <label htmlFor="csm-s3-region" className="text-xs text-muted-foreground">Region</label>
                   <input
+                    id="csm-s3-region"
                     value={s3Region}
                     onChange={(e) => setS3Region(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     placeholder="auto"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Bucket</label>
+                  <label htmlFor="csm-s3-bucket" className="text-xs text-muted-foreground">Bucket</label>
                   <input
+                    id="csm-s3-bucket"
                     value={s3Bucket}
                     onChange={(e) => setS3Bucket(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="text-xs text-muted-foreground">Prefix (optional)</label>
+                  <label htmlFor="csm-s3-prefix" className="text-xs text-muted-foreground">Prefix (optional)</label>
                   <input
+                    id="csm-s3-prefix"
                     value={s3Prefix}
                     onChange={(e) => setS3Prefix(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     placeholder="photos/"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Access Key ID</label>
+                  <label htmlFor="csm-s3-access-key" className="text-xs text-muted-foreground">Access Key ID</label>
                   <input
+                    id="csm-s3-access-key"
                     value={s3AccessKey}
                     onChange={(e) => setS3AccessKey(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    spellCheck={false}
+                    autoComplete="off"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Secret Access Key</label>
+                  <label htmlFor="csm-s3-secret-key" className="text-xs text-muted-foreground">Secret Access Key</label>
                   <input
+                    id="csm-s3-secret-key"
                     value={s3SecretKey}
                     onChange={(e) => setS3SecretKey(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     type="password"
                   />
                 </div>
@@ -356,30 +388,35 @@ export function ConnectSourceModal({
 
               <div className="glass-surface rounded-xl p-4 border border-white/10 space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">Name</label>
+                  <label htmlFor="csm-gd-name" className="text-xs text-muted-foreground">Name</label>
                   <input
+                    id="csm-gd-name"
                     value={gdName}
                     onChange={(e) => setGdName(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Client ID</label>
+                  <label htmlFor="csm-gd-client-id" className="text-xs text-muted-foreground">Client ID</label>
                   <input
+                    id="csm-gd-client-id"
                     value={gdClientId}
                     onChange={(e) => setGdClientId(e.target.value)}
-                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                    className="w-full glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     placeholder="xxxxxxxxxxxx.apps.googleusercontent.com"
+                    spellCheck={false}
+                    autoComplete="off"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">Client Secret</label>
+                  <label htmlFor="csm-gd-client-secret" className="text-xs text-muted-foreground">Client Secret</label>
                   <div className="flex items-center gap-2">
                     <KeyRound size={14} className="text-muted-foreground" aria-hidden="true" />
                     <input
+                      id="csm-gd-client-secret"
                       value={gdClientSecret}
                       onChange={(e) => setGdClientSecret(e.target.value)}
-                      className="flex-1 glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none"
+                      className="flex-1 glass-surface rounded-full px-4 py-2 text-sm bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary"
                       type="password"
                     />
                   </div>

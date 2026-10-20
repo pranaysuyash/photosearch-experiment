@@ -101,6 +101,25 @@ export function Duplicates() {
     resolution: 'keep_all' | 'keep_selected' | 'delete_all',
     keepFiles?: string[]
   ) => {
+    if (resolution === 'delete_all') {
+      const confirmed = window.confirm(
+        'Delete every file in this duplicate group? This action cannot be undone.'
+      );
+      if (!confirmed) return;
+    } else if (
+      resolution === 'keep_selected' &&
+      keepFiles &&
+      keepFiles.length > 0
+    ) {
+      const confirmed = window.confirm(
+        `Keep ${
+          keepFiles.length === 1
+            ? 'the selected file'
+            : `the ${keepFiles.length} selected files`
+        } and discard the remaining duplicates in this group? Discarded files are deleted permanently. This action cannot be undone.`
+      );
+      if (!confirmed) return;
+    }
     try {
       setResolvingGroup(groupId);
       await api.resolveDuplicateGroup(groupId, resolution, keepFiles);
@@ -185,7 +204,7 @@ export function Duplicates() {
                 {scanning ? (
                   <div className='flex items-center gap-2'>
                     <RefreshCw size={16} className='animate-spin' />
-                    Scanning...
+                    Scanning…
                   </div>
                 ) : (
                   <div className='flex items-center gap-2'>
@@ -201,7 +220,7 @@ export function Duplicates() {
 
       {/* Stats and Search */}
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
-        <div className='grid grid-cols-1 md:grid-cols-5 gap-4 mb-6'>
+        <div className='grid grid-cols-1 md:grid-cols-5 gap-4 mb-6 tabular-nums'>
           {/* Stats Cards */}
           {stats && (
             <>
@@ -306,17 +325,21 @@ export function Duplicates() {
             <Search className='text-muted-foreground' size={16} />
             <input
               type='text'
-              placeholder='Search duplicate groups...'
+              placeholder='Search duplicate groups…'
+              aria-label='Search duplicate groups'
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className='flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground'
+              className='flex-1 bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-primary text-sm placeholder:text-muted-foreground'
             />
           </div>
         </div>
 
         {/* Error State */}
         {error && (
-          <div className='mb-6 text-sm text-destructive glass-surface rounded-xl p-4 border border-white/10'>
+          <div
+            role='alert'
+            className='mb-6 text-sm text-destructive glass-surface rounded-xl p-4 border border-white/10'
+          >
             {error}
           </div>
         )}
@@ -330,7 +353,7 @@ export function Duplicates() {
                 className='animate-spin text-muted-foreground'
               />
               <span className='text-muted-foreground'>
-                Loading duplicate groups...
+                Loading duplicate groups…
               </span>
             </div>
           </div>
@@ -368,7 +391,15 @@ export function Duplicates() {
                 {/* Group Header */}
                 <div
                   className='flex items-center justify-between p-4 cursor-pointer'
+                  role='button'
+                  tabIndex={0}
                   onClick={() => handleSelectGroup(group.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectGroup(group.id);
+                    }
+                  }}
                 >
                   <div className='flex items-center gap-3'>
                     <div className='w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center'>
@@ -400,7 +431,12 @@ export function Duplicates() {
                       </span>
                     )}
 
-                    <button className='text-muted-foreground hover:text-foreground'>
+                    <button
+                      disabled
+                      className='text-muted-foreground'
+                      title='Not available yet'
+                      aria-label='Expand duplicate group details (not available yet)'
+                    >
                       {selectedGroup === group.id ? (
                         <X size={16} />
                       ) : (

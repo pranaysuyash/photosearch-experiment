@@ -64,7 +64,12 @@ export default function AllFacePhotos() {
             <div className="border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/people')} className="btn-glass btn-glass--muted p-2">
+                        <button
+                            onClick={() => navigate('/people')}
+                            className="btn-glass btn-glass--muted p-2"
+                            aria-label="Back to People"
+                            title="Back to People"
+                        >
                             <ArrowLeft size={20} />
                         </button>
                         <div className="flex items-center gap-3">
@@ -85,11 +90,11 @@ export default function AllFacePhotos() {
                 {loading && (
                     <div className="flex items-center justify-center py-20">
                         <RefreshCw size={20} className="animate-spin text-muted-foreground mr-3" />
-                        <span className="text-muted-foreground">Loading photos...</span>
+                        <span className="text-muted-foreground">Loading photos…</span>
                     </div>
                 )}
 
-                {error && <div className="text-center py-20 text-red-400">{error}</div>}
+                {error && <div role="alert" className="text-center py-20 text-red-400">{error}</div>}
 
                 {!loading && !error && photos.length === 0 && (
                     <div className="text-center py-20">
@@ -105,7 +110,15 @@ export default function AllFacePhotos() {
                             <div
                                 key={`${photo.path}-${index}`}
                                 className={`${glass.surface} rounded-xl overflow-hidden border border-white/10 hover:border-white/20 transition-colors cursor-pointer group`}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => handlePhotoClick(photo)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        handlePhotoClick(photo);
+                                    }
+                                }}
                             >
                                 <div className="aspect-square relative">
                                     <SecureLazyImage

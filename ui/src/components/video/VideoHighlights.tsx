@@ -9,7 +9,6 @@ import {
   Loader,
   AlertCircle,
   Clock,
-  Users,
   Download,
   Film,
   Sparkles,
@@ -73,7 +72,7 @@ export default function VideoHighlights({
       if (err instanceof Error) {
         errorMessage = err.message;
       } else if (typeof err === 'object' && err !== null && 'response' in err) {
-        const httpError = err as any;
+        const httpError = err as { response?: { status?: number; data?: { detail?: string } } };
         if (httpError.response?.status === 404) {
           errorMessage = 'Video file not found';
         } else {
@@ -137,7 +136,7 @@ export default function VideoHighlights({
         <div className='space-y-4'>
           <div className='flex items-center justify-center gap-3 text-gray-600'>
             <Loader className='w-5 h-5 animate-spin' />
-            <span>Loading video highlights...</span>
+            <span>Loading video highlights…</span>
           </div>
           <div className='animate-pulse space-y-3'>
             {[1, 2, 3].map((i) => (
@@ -234,7 +233,7 @@ export default function VideoHighlights({
             ([personId, personHighlights]) => (
               <div
                 key={personId}
-                className={`rounded-xl ${glass.light} border ${glass.border} overflow-hidden hover:border-indigo-300 transition-all`}
+                className={`rounded-xl ${glass.light} border ${glass.border} overflow-hidden hover:border-indigo-300 transition`}
               >
                 {/* Person Header */}
                 <button

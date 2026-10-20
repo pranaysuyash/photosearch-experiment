@@ -16,7 +16,7 @@
   margin: 0;
   font-size: 24px;
   font-weight: 600;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
 .tauri-integration .controls {
@@ -24,27 +24,27 @@
   gap: 10px;
 }
 
-.refresh-btn {
+.tauri-integration .refresh-btn {
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   border: none;
-  background: #ecf0f1;
-  color: #2c3e50;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
-.refresh-btn:hover {
-  background: #bdc3c7;
+.tauri-integration .refresh-btn:hover {
+  background: hsl(var(--foreground) / 0.1);
 }
 
 .tauri-integration .tabs {
   display: flex;
   gap: 5px;
   margin-bottom: 20px;
-  border-bottom: 1px solid #e1e8ed;
+  border-bottom: 1px solid hsl(var(--border));
   overflow-x: auto;
 }
 
@@ -54,126 +54,126 @@
   background: transparent;
   font-size: 14px;
   font-weight: 500;
-  color: #7f8c8d;
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s, border-color 0.2s;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
 }
 
 .tauri-integration .tab-btn:hover {
-  color: #3498db;
+  color: hsl(var(--primary));
 }
 
 .tauri-integration .tab-btn.active {
-  color: #3498db;
-  border-bottom-color: #3498db;
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
 .tauri-integration .tab-content {
-  background: white;
-  border: 1px solid #e1e8ed;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
   padding: 20px;
 }
 
-.commands-tab h3,
-.code-tab h3,
-.tips-tab h3,
-.checklist-tab h3,
-.guide-tab h3 {
+.tauri-integration .commands-tab h3,
+.tauri-integration .code-tab h3,
+.tauri-integration .tips-tab h3,
+.tauri-integration .checklist-tab h3,
+.tauri-integration .guide-tab h3 {
   margin: 0 0 15px;
   font-size: 18px;
   font-weight: 600;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.commands-list {
+.tauri-integration .commands-list {
   display: flex;
   flex-direction: column;
   gap: 15px;
 }
 
-.command-item {
-  background: #f8f9fa;
-  border: 1px solid #e1e8ed;
+.tauri-integration .command-item {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   padding: 15px;
 }
 
-.command-header {
+.tauri-integration .command-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.command-header h4 {
+.tauri-integration .command-header h4 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.command-type {
+.tauri-integration .command-type {
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 12px;
-  background: #ecf0f1;
-  color: #7f8c8d;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
-.command-details {
+.tauri-integration .command-details {
   font-size: 13px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.command-details p {
+.tauri-integration .command-details p {
   margin: 0 0 10px;
 }
 
-.command-params,
-.command-returns {
+.tauri-integration .command-params,
+.tauri-integration .command-returns {
   margin-top: 10px;
   padding: 10px;
-  background: white;
+  background: hsl(var(--popover));
   border-radius: 4px;
   font-size: 12px;
 }
 
-.command-params pre,
-.command-returns pre {
+.tauri-integration .command-params pre,
+.tauri-integration .command-returns pre {
   margin: 5px 0 0;
   padding: 8px;
-  background: #f8f9fa;
+  background: hsl(var(--card));
   border-radius: 4px;
   overflow-x: auto;
 }
 
-.code-header {
+.tauri-integration .code-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 15px;
 }
 
-.copy-btn {
+.tauri-integration .copy-btn {
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s;
   border: none;
-  background: #3498db;
-  color: white;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
-.copy-btn:hover {
-  background: #2980b9;
+.tauri-integration .copy-btn:hover {
+  background: hsl(var(--primary) / 0.85);
 }
 
-.code-block {
+.tauri-integration .code-block {
   padding: 15px;
   border-radius: 6px;
   font-size: 13px;
@@ -181,155 +181,155 @@
   white-space: pre-wrap;
 }
 
-.rust-code {
-  background: #f8f9fa;
-  color: #2c3e50;
+.tauri-integration .rust-code {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
-.js-code {
-  background: #f8f9fa;
-  color: #2c3e50;
+.tauri-integration .js-code {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
-.toml-code {
-  background: #f8f9fa;
-  color: #2c3e50;
+.tauri-integration .toml-code {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
-.tips-list {
+.tauri-integration .tips-list {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.tip-item {
+.tauri-integration .tip-item {
   display: flex;
   gap: 10px;
   padding: 12px;
   margin-bottom: 8px;
-  background: #f8f9fa;
+  background: hsl(var(--card));
   border-radius: 6px;
 }
 
-.tip-number {
+.tauri-integration .tip-number {
   font-weight: 600;
-  color: #3498db;
+  color: hsl(var(--primary));
 }
 
-.tip-text {
+.tauri-integration .tip-text {
   flex: 1;
   font-size: 13px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.checklist {
+.tauri-integration .checklist {
   list-style: none;
   padding: 0;
   margin: 0;
 }
 
-.checklist-item {
+.tauri-integration .checklist-item {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 10px;
   margin-bottom: 6px;
-  background: #f8f9fa;
+  background: hsl(var(--card));
   border-radius: 4px;
 }
 
-.checklist-item input[type="checkbox"] {
+.tauri-integration .checklist-item input[type="checkbox"] {
   width: 16px;
   height: 16px;
   cursor: pointer;
 }
 
-.checklist-item label {
+.tauri-integration .checklist-item label {
   flex: 1;
   font-size: 13px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
   cursor: pointer;
 }
 
-.guide-content {
+.tauri-integration .guide-content {
   font-size: 13px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
   line-height: 1.6;
 }
 
-.guide-description {
+.tauri-integration .guide-description {
   margin-bottom: 20px;
-  color: #7f8c8d;
+  color: hsl(var(--muted-foreground));
 }
 
-.guide-steps {
+.tauri-integration .guide-steps {
   margin-bottom: 20px;
 }
 
-.steps-list {
+.tauri-integration .steps-list {
   padding-left: 20px;
 }
 
-.step-item {
+.tauri-integration .step-item {
   margin-bottom: 15px;
   padding: 12px;
-  background: #f8f9fa;
+  background: hsl(var(--card));
   border-radius: 6px;
 }
 
-.step-item strong {
+.tauri-integration .step-item strong {
   display: block;
   margin-bottom: 5px;
   font-size: 14px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.step-item p {
+.tauri-integration .step-item p {
   margin: 0;
   font-size: 13px;
-  color: #7f8c8d;
+  color: hsl(var(--muted-foreground));
 }
 
-.step-code {
+.tauri-integration .step-code {
   margin-top: 10px;
   padding: 10px;
-  background: white;
+  background: hsl(var(--popover));
   border-radius: 4px;
   font-size: 12px;
   overflow-x: auto;
 }
 
-.guide-requirements,
-.guide-tips {
+.tauri-integration .guide-requirements,
+.tauri-integration .guide-tips {
   margin-bottom: 15px;
 }
 
-.guide-requirements h4,
-.guide-tips h4 {
+.tauri-integration .guide-requirements h4,
+.tauri-integration .guide-tips h4 {
   margin: 0 0 10px;
   font-size: 14px;
   font-weight: 600;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
-.guide-requirements ul,
-.guide-tips ul {
+.tauri-integration .guide-requirements ul,
+.tauri-integration .guide-tips ul {
   padding-left: 20px;
   margin: 0;
 }
 
-.guide-requirements li,
-.guide-tips li {
+.tauri-integration .guide-requirements li,
+.tauri-integration .guide-tips li {
   margin-bottom: 5px;
   font-size: 13px;
-  color: #2c3e50;
+  color: hsl(var(--foreground));
 }
 
 .tauri-integration .empty-state {
   text-align: center;
   padding: 40px;
-  color: #7f8c8d;
-  background: #f8f9fa;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--card));
   border-radius: 8px;
 }
 
@@ -342,12 +342,12 @@
 .tauri-integration .error {
   padding: 20px;
   text-align: center;
-  color: #7f8c8d;
-  background: #f8f9fa;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--card));
   border-radius: 8px;
 }
 
 .tauri-integration .error {
-  color: #e74c3c;
-  background: rgba(231, 76, 60, 0.1);
+  color: hsl(var(--destructive));
+  background: hsl(var(--destructive) / 0.1);
 }

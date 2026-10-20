@@ -198,7 +198,7 @@ const ModalSystem: React.FC = () => {
     setNewDialog({
       type: 'progress',
       title: 'Processing',
-      message: 'Please wait while we process your request...',
+      message: 'Please wait while we process your request…',
       options: [],
     });
   };
@@ -213,7 +213,7 @@ const ModalSystem: React.FC = () => {
   };
 
   if (loading) {
-    return <div className='loading'>Loading dialogs...</div>;
+    return <div className='loading'>Loading dialogs…</div>;
   }
 
   if (error) {
@@ -232,7 +232,7 @@ const ModalSystem: React.FC = () => {
       </div>
 
       {stats && (
-        <div className='stats'>
+        <div className='stats tabular-nums'>
           <div className='stat-item'>
             <span className='stat-label'>Active Dialogs:</span>
             <span className='stat-value'>{stats.active_dialogs}</span>
@@ -289,8 +289,9 @@ const ModalSystem: React.FC = () => {
           </div>
 
           <div className='form-group'>
-            <label>Title:</label>
+            <label htmlFor='dialog-title'>Title:</label>
             <input
+              id='dialog-title'
               type='text'
               value={newDialog.title}
               onChange={(e) =>
@@ -301,8 +302,9 @@ const ModalSystem: React.FC = () => {
           </div>
 
           <div className='form-group'>
-            <label>Message:</label>
+            <label htmlFor='dialog-message'>Message:</label>
             <textarea
+              id='dialog-message'
               value={newDialog.message}
               onChange={(e) =>
                 setNewDialog({ ...newDialog, message: e.target.value })
@@ -312,8 +314,9 @@ const ModalSystem: React.FC = () => {
           </div>
 
           <div className='form-group'>
-            <label>Options (comma separated):</label>
+            <label htmlFor='dialog-options'>Options (comma separated):</label>
             <input
+              id='dialog-options'
               type='text'
               value={newDialog.options.join(', ')}
               onChange={(e) =>

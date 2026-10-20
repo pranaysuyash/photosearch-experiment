@@ -120,7 +120,10 @@ export default function TrashPage() {
       </div>
 
       {error && (
-        <div className='mb-4 btn-glass btn-glass--danger text-sm px-4 py-3'>
+        <div
+          role='alert'
+          className='mb-4 btn-glass btn-glass--danger text-sm px-4 py-3'
+        >
           {error}
         </div>
       )}
@@ -188,6 +191,7 @@ export default function TrashPage() {
                     onClick={() => restoreItems([it.id])}
                     disabled={working}
                     title='Restore'
+                    aria-label={`Restore ${label}`}
                   >
                     <RotateCcw size={14} />
                   </button>

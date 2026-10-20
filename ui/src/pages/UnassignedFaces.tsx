@@ -173,7 +173,7 @@ export default function UnassignedFaces() {
                 </div>
                 <div>
                   <h1 className='text-xl font-semibold text-foreground'>Unassigned Faces</h1>
-                  <p className='text-sm text-muted-foreground'>
+                  <p className='text-sm text-muted-foreground tabular-nums'>
                     {total.toLocaleString()} faces not yet assigned to a person
                   </p>
                 </div>
@@ -186,6 +186,7 @@ export default function UnassignedFaces() {
                 className='btn-glass btn-glass--muted px-3 py-2 text-sm'
                 disabled={loading}
                 title='Refresh'
+                aria-label='Refresh unassigned faces'
               >
                 <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
               </button>
@@ -196,7 +197,7 @@ export default function UnassignedFaces() {
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6'>
         {error && (
-          <div className='mb-4 text-sm text-red-400'>
+          <div role='alert' className='mb-4 text-sm text-red-400'>
             {error}
           </div>
         )}
@@ -309,9 +310,10 @@ export default function UnassignedFaces() {
               </div>
 
               <div>
-                <div className='text-sm text-muted-foreground mb-2'>Create new person</div>
+                <label htmlFor='unassigned-new-person-name' className='text-sm text-muted-foreground mb-2 block'>Create new person</label>
                 <div className='flex gap-2'>
                   <input
+                    id='unassigned-new-person-name'
                     value={newPersonName}
                     onChange={(e) => setNewPersonName(e.target.value)}
                     placeholder='Enter name…'
@@ -331,6 +333,7 @@ export default function UnassignedFaces() {
                   value={clusterFilter}
                   onChange={(e) => setClusterFilter(e.target.value)}
                   placeholder='Filter people…'
+                  aria-label='Filter people'
                   className='w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50'
                 />
 

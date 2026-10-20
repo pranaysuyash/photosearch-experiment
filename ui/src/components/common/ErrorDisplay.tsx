@@ -96,6 +96,7 @@ export function ErrorDisplay({
   return (
     <AnimatePresence>
       <motion.div
+        role='alert'
         initial={{ opacity: 0, y: -10, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -10, scale: 0.95 }}

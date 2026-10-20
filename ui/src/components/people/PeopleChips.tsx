@@ -84,6 +84,10 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
   };
 
   const handleRemovePerson = async (personId: string) => {
+    const confirmed = window.confirm(
+      'Remove this person from the photo? The person and their other photos are not deleted.'
+    );
+    if (!confirmed) return;
     setBusy(true);
     try {
       // Remove the association between person and photo
@@ -148,7 +152,8 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
             <Search size={14} className="text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search people..."
+              placeholder="Search people…"
+              aria-label="Search people"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1 bg-transparent border border-white/10 rounded-lg px-2 py-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -179,7 +184,7 @@ export function PeopleChips({ photoPath, size = 'md', showLabel = true }: People
       )}
 
       {loading ? (
-        <div className={`text-xs text-white/50 ${paddingClass}`}>Loading people...</div>
+        <div className={`text-xs text-white/50 ${paddingClass}`}>Loading people…</div>
       ) : error ? (
         <div className={`text-xs text-destructive ${paddingClass}`}>{error}</div>
       ) : people.length > 0 ? (

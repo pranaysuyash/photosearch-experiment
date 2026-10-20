@@ -185,7 +185,7 @@ const CodeSplitting = () => {
 
   if (loading) {
     return (
-      <div className='loading'>Loading code splitting configuration...</div>
+      <div className='loading'>Loading code splitting configuration…</div>
     );
   }
 

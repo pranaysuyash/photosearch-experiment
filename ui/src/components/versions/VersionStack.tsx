@@ -70,7 +70,7 @@ export function VersionStack({ photoPath, onVersionSelect }: VersionStackProps) 
           <Layers size={16} className="text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Versions</span>
         </div>
-        <div className="text-xs text-muted-foreground">Loading versions...</div>
+        <div className="text-xs text-muted-foreground">Loading versions…</div>
       </div>
     );
   }

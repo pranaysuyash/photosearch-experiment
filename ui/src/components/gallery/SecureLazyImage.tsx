@@ -78,7 +78,6 @@ export function SecureLazyImage({
       />
       {showBadge && (
         <div
-          aria-label={`File source: ${badge}`}
           title={`Source: ${badge}`}
           className='absolute left-2 bottom-2 bg-black/40 text-white text-xs px-2 py-0.5 rounded-md'
         >

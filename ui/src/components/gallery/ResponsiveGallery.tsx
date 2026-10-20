@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { api, type PhotoMetadata } from '../api';
 import { glass } from '../design/glass';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Photo {
   path: string;
@@ -85,6 +86,11 @@ export function ResponsiveGallery({
     setSelectedPhoto(null);
     setSelectedIndex(-1);
   }, []);
+
+  const lightboxPanelRef = useModalBehavior(
+    selectedPhoto !== null,
+    closeModal
+  );
 
   const selectNextPhoto = useCallback(() => {
     if (photos.length === 0) return;
@@ -180,6 +186,7 @@ export function ResponsiveGallery({
   if (error) {
     return (
       <div
+        role='alert'
         className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-8 text-center`}
       >
         <div className='text-destructive mb-2'>⚠️</div>
@@ -205,7 +212,11 @@ export function ResponsiveGallery({
         className={`${glass.surface} rounded-t-xl border border-white/10 p-3 flex items-center justify-between`}
       >
         <div className='flex items-center gap-2'>
-          <span className='text-sm text-muted-foreground'>
+          <span
+            role='status'
+            aria-live='polite'
+            className='text-sm text-muted-foreground'
+          >
             {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
           </span>
         </div>
@@ -314,6 +325,10 @@ export function ResponsiveGallery({
           onClick={closeModal}
         >
           <div
+            ref={lightboxPanelRef}
+            role='dialog'
+            aria-modal='true'
+            aria-label='Photo viewer'
             className='relative max-w-6xl max-h-[90vh] w-full'
             onClick={(e) => e.stopPropagation()}
             onTouchStart={handleTouchStart}
@@ -322,6 +337,7 @@ export function ResponsiveGallery({
           >
             <button
               onClick={closeModal}
+              aria-label='Close'
               className='absolute top-4 right-4 z-10 btn-glass btn-glass--muted w-10 h-10 flex items-center justify-center rounded-full'
             >
               <X size={20} />
@@ -331,6 +347,7 @@ export function ResponsiveGallery({
             <div className='absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex gap-2'>
               <button
                 onClick={() => setZoomLevel((prev) => Math.max(prev - 0.25, 1))}
+                aria-label='Zoom out'
                 className='btn-glass btn-glass--primary p-2'
               >
                 <ZoomOut size={20} />
@@ -340,6 +357,7 @@ export function ResponsiveGallery({
               </div>
               <button
                 onClick={() => setZoomLevel((prev) => Math.min(prev + 0.25, 3))}
+                aria-label='Zoom in'
                 className='btn-glass btn-glass--primary p-2'
               >
                 <ZoomIn size={20} />
@@ -349,12 +367,14 @@ export function ResponsiveGallery({
             {/* Navigation buttons */}
             <button
               onClick={selectPrevPhoto}
+              aria-label='Previous photo'
               className='absolute left-4 top-1/2 -translate-y-1/2 btn-glass btn-glass--primary w-10 h-10 flex items-center justify-center rounded-full'
             >
               <ChevronLeft size={20} />
             </button>
             <button
               onClick={selectNextPhoto}
+              aria-label='Next photo'
               className='absolute right-4 top-1/2 -translate-y-1/2 btn-glass btn-glass--primary w-10 h-10 flex items-center justify-center rounded-full'
             >
               <ChevronRight size={20} />

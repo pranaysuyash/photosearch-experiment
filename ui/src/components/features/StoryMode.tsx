@@ -49,7 +49,7 @@ export function StoryMode({
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           />
-          <p>Curating your museum...</p>
+          <p>Curating your museum…</p>
         </div>
       </div>
     );
@@ -81,12 +81,20 @@ export function StoryMode({
           {photos.map((photo, index) => (
             <motion.div
               key={photo.path}
-              className='group relative bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer'
+              className='group relative bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition duration-300 cursor-pointer'
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.05 }}
+              transition={{ duration: 0.5, delay: Math.min(index, 12) * 0.05 }}
               whileHover={{ scale: 1.02, y: -4 }}
               onClick={() => onPhotoSelect?.(photo)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onPhotoSelect?.(photo);
+                }
+              }}
+              role='button'
+              tabIndex={0}
             >
               <SecureLazyImage
                 path={photo.path}
@@ -97,10 +105,10 @@ export function StoryMode({
               />
 
               {/* Enhanced overlay */}
-              <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300' />
+              <div className='absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-300' />
 
               {/* Metadata */}
-              <div className='absolute bottom-0 left-0 right-0 p-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100'>
+              <div className='absolute bottom-0 left-0 right-0 p-4 translate-y-4 group-hover:translate-y-0 group-focus-within:translate-y-0 transition-transform duration-300 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'>
                 <h3 className='text-white text-sm font-semibold truncate'>
                   {photo.filename}
                 </h3>
@@ -113,7 +121,7 @@ export function StoryMode({
                   <div className='mt-2 flex items-center gap-2'>
                     <div className='h-1 flex-1 bg-white/30 rounded-full overflow-hidden'>
                       <div
-                        className={`h-full bg-green-400 transition-all duration-500 score-fill-${
+                        className={`h-full bg-green-400 transition-[width] duration-500 score-fill-${
                           Math.round(Math.round(photo.score * 100) / 10) * 10
                         }`}
                       />
@@ -127,7 +135,7 @@ export function StoryMode({
 
               {/* Video indicator */}
               {photo.filename.match(/\.(mp4|mov|webm|mkv)$/i) && (
-                <div className='absolute top-3 right-3 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity'>
+                <div className='absolute top-3 right-3 bg-black/50 backdrop-blur-sm rounded-full p-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                   <div className='w-2 h-2 bg-white rounded-full'></div>
                 </div>
               )}
@@ -154,7 +162,7 @@ export function StoryMode({
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />
             <span className='text-sm text-muted-foreground animate-pulse'>
-              Loading more memories...
+              Loading more memories…
             </span>
           </motion.div>
         )}

@@ -197,7 +197,7 @@ function ControlButton({
   variant = 'default',
 }: ControlButtonProps) {
   const baseClass =
-    'p-2 rounded-lg transition-all duration-200 flex items-center justify-center group relative';
+    'p-2 rounded-lg transition duration-200 flex items-center justify-center group relative';
   const variantClass =
     variant === 'destructive'
       ? 'hover:bg-red-500/20 text-red-300 hover:text-red-100'

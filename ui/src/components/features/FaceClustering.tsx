@@ -178,11 +178,15 @@ const FaceClustering: React.FC = () => {
   };
 
   if (loading) {
-    return <div className='loading'>Loading face clusters...</div>;
+    return <div className='loading'>Loading face clusters…</div>;
   }
 
   if (error) {
-    return <div className='error'>Error: {error}</div>;
+    return (
+      <div role='alert' className='error'>
+        Error: {error}
+      </div>
+    );
   }
 
   return (
@@ -195,7 +199,7 @@ const FaceClustering: React.FC = () => {
             disabled={isClustering}
             className='cluster-btn'
           >
-            {isClustering ? 'Clustering...' : 'Cluster Faces'}
+            {isClustering ? 'Clustering…' : 'Cluster Faces'}
           </button>
           <button onClick={fetchClusters} className='refresh-btn'>
             Refresh
@@ -204,7 +208,7 @@ const FaceClustering: React.FC = () => {
       </div>
 
       {stats && (
-        <div className='stats'>
+        <div className='stats tabular-nums' role='status' aria-live='polite'>
           <div className='stat-item'>
             <span className='stat-label'>Total Clusters:</span>
             <span className='stat-value'>{stats.total_clusters}</span>
@@ -233,6 +237,7 @@ const FaceClustering: React.FC = () => {
             {clusters.map((cluster) => (
               <div
                 key={cluster.id}
+                role='button'
                 className={`cluster-item ${
                   selectedCluster?.id === cluster.id ? 'selected' : ''
                 }`}
@@ -311,6 +316,7 @@ const FaceClustering: React.FC = () => {
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
                     placeholder='Enter cluster label'
+                    aria-label={`Cluster label for ${selectedCluster.label || `cluster ${selectedCluster.id}`}`}
                   />
                   <div className='edit-actions'>
                     <button onClick={updateLabel} className='save-btn'>

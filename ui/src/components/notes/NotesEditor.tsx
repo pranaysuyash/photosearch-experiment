@@ -99,6 +99,10 @@ export function NotesEditor({
   };
 
   const handleDelete = async () => {
+    const confirmed = window.confirm(
+      'Delete this note? This cannot be undone.'
+    );
+    if (!confirmed) return;
     try {
       setIsLoading(true);
       const res = await api.deletePhotoNote(photoPath);
@@ -130,7 +134,7 @@ export function NotesEditor({
   const textareaRows = size === 'sm' ? 2 : size === 'lg' ? 6 : 3;
 
   // Truncate preview to ~60 chars
-  const notePreview = note.length > 60 ? note.substring(0, 60) + '...' : note;
+  const notePreview = note.length > 60 ? note.substring(0, 60) + '…' : note;
   const hasNote = note.trim().length > 0;
 
   return (
@@ -223,7 +227,8 @@ export function NotesEditor({
                 value={note}
                 onChange={handleNoteChange}
                 onKeyDown={handleKeyDown}
-                placeholder="Add notes about this photo..."
+                placeholder="Add notes about this photo…"
+                aria-label="Photo note"
                 className={`w-full bg-transparent border border-white/10 rounded-lg p-2 text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-1 focus:ring-primary ${textSizeClass}`}
                 rows={textareaRows}
                 autoFocus
@@ -263,7 +268,7 @@ export function NotesEditor({
                 </button>
               </div>
               {error && (
-                <div className="text-xs text-destructive mt-2">{error}</div>
+                <div role='alert' className="text-xs text-destructive mt-2">{error}</div>
               )}
             </>
           ) : (

@@ -238,9 +238,12 @@ export function LocationCorrection({
 
       <div className='p-4'>
         {error && (
-          <div className='mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3'>
+          <div
+            role='alert'
+            className='mb-3 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg p-3'
+          >
             {error}
-            <button className='ml-2' onClick={() => setError(null)}>
+            <button className='ml-2' onClick={() => setError(null)} aria-label='Dismiss error'>
               <X size={14} />
             </button>
           </div>
@@ -251,11 +254,12 @@ export function LocationCorrection({
             {editing ? (
               <div className='space-y-3'>
                 <div>
-                  <label className='block text-xs font-medium text-foreground mb-1'>
+                  <label htmlFor='lc-place' className='block text-xs font-medium text-foreground mb-1'>
                     Corrected Place Name
                   </label>
                   <div className='relative'>
                     <input
+                      id='lc-place'
                       type='text'
                       value={newLocation.corrected_place_name}
                       onChange={(e) => handleLocationSearch(e.target.value)}
@@ -292,10 +296,11 @@ export function LocationCorrection({
 
                 <div className='grid grid-cols-2 gap-3'>
                   <div>
-                    <label className='block text-xs font-medium text-foreground mb-1'>
+                    <label htmlFor='lc-country' className='block text-xs font-medium text-foreground mb-1'>
                       Country
                     </label>
                     <input
+                      id='lc-country'
                       type='text'
                       value={newLocation.country}
                       onChange={(e) =>
@@ -310,10 +315,11 @@ export function LocationCorrection({
                   </div>
 
                   <div>
-                    <label className='block text-xs font-medium text-foreground mb-1'>
+                    <label htmlFor='lc-region' className='block text-xs font-medium text-foreground mb-1'>
                       Region/State
                     </label>
                     <input
+                      id='lc-region'
                       type='text'
                       value={newLocation.region}
                       onChange={(e) =>
@@ -329,10 +335,11 @@ export function LocationCorrection({
                 </div>
 
                 <div>
-                  <label className='block text-xs font-medium text-foreground mb-1'>
+                  <label htmlFor='lc-city' className='block text-xs font-medium text-foreground mb-1'>
                     City
                   </label>
                   <input
+                    id='lc-city'
                     type='text'
                     value={newLocation.city}
                     onChange={(e) =>

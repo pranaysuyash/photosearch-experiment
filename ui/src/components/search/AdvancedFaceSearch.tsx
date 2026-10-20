@@ -28,6 +28,7 @@ import { api, type Photo } from '../../api';
 import { glass } from '../../design/glass';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface AdvancedFaceSearchProps {
   isOpen: boolean;
@@ -136,6 +137,8 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
     referenceFaceId: '',
     threshold: 0.8
   });
+
+  const panelRef = useModalBehavior(isOpen, onClose);
 
   useEffect(() => {
     if (!isOpen) {
@@ -419,8 +422,15 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
   if (!isOpen) return null;
 
   return (
-    <div className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'>
+    <div
+      className='fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4'
+      onClick={onClose}
+    >
       <div
+        ref={panelRef}
+        role='dialog'
+        aria-modal='true'
+        aria-label='Advanced face search'
         className={`${glass.surface} border border-white/20 rounded-xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
@@ -439,6 +449,7 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
           </div>
           <button
             onClick={onClose}
+            aria-label='Close'
             className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center'
           >
             <X size={16} />
@@ -471,7 +482,7 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
         {/* Content */}
         <div className='p-6 overflow-y-auto max-h-[calc(90vh-300px)] space-y-6'>
           {error && (
-            <div className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
+            <div role='alert' className='p-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-sm'>
               {error}
             </div>
           )}
@@ -480,11 +491,12 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
           {searchMode === 'natural' && (
             <div className='space-y-4'>
               <div className='space-y-2'>
-                <label className='block text-sm font-medium text-foreground'>
+                <label htmlFor='afs-query' className='block text-sm font-medium text-foreground'>
                   Search Query
                 </label>
                 <div className='relative'>
                   <input
+                    id='afs-query'
                     type='text'
                     placeholder="e.g. happy family photos from 2023"
                     value={query}
@@ -567,10 +579,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
             <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
               <div className='space-y-4'>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-people-include' className='block text-sm font-medium text-foreground mb-2'>
                     People to Include
                   </label>
                   <input
+                    id='afs-people-include'
                     type='text'
                     placeholder="John, Mary, Sarah"
                     value={booleanFilters.peopleInclude}
@@ -580,10 +593,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                 </div>
 
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-people-exclude' className='block text-sm font-medium text-foreground mb-2'>
                     People to Exclude
                   </label>
                   <input
+                    id='afs-people-exclude'
                     type='text'
                     placeholder="Tom, Lisa"
                     value={booleanFilters.peopleExclude}
@@ -593,10 +607,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                 </div>
 
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-emotions' className='block text-sm font-medium text-foreground mb-2'>
                     Emotions
                   </label>
                   <input
+                    id='afs-emotions'
                     type='text'
                     placeholder="happy, surprised, neutral"
                     value={booleanFilters.emotions}
@@ -607,10 +622,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
 
                 <div className='grid grid-cols-2 gap-2'>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='afs-min-age' className='block text-sm font-medium text-foreground mb-2'>
                       Min Age
                     </label>
                     <input
+                      id='afs-min-age'
                       type='number'
                       placeholder="0"
                       value={booleanFilters.minAge}
@@ -619,10 +635,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                     />
                   </div>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='afs-max-age' className='block text-sm font-medium text-foreground mb-2'>
                       Max Age
                     </label>
                     <input
+                      id='afs-max-age'
                       type='number'
                       placeholder="100"
                       value={booleanFilters.maxAge}
@@ -635,10 +652,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
 
               <div className='space-y-4'>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-gender' className='block text-sm font-medium text-foreground mb-2'>
                     Gender
                   </label>
                   <select
+                    id='afs-gender'
                     value={booleanFilters.gender}
                     onChange={(e) => setBooleanFilters(prev => ({ ...prev, gender: e.target.value }))}
                     className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground focus:outline-none focus:border-primary/50'
@@ -650,10 +668,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                 </div>
 
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-pose-type' className='block text-sm font-medium text-foreground mb-2'>
                     Pose Type
                   </label>
                   <select
+                    id='afs-pose-type'
                     value={booleanFilters.poseType}
                     onChange={(e) => setBooleanFilters(prev => ({ ...prev, poseType: e.target.value }))}
                     className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground focus:outline-none focus:border-primary/50'
@@ -666,10 +685,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                 </div>
 
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-boolean-operator' className='block text-sm font-medium text-foreground mb-2'>
                     Boolean Operator
                   </label>
                   <select
+                    id='afs-boolean-operator'
                     value={booleanFilters.booleanOperator}
                     onChange={(e) => setBooleanFilters(prev => ({ ...prev, booleanOperator: e.target.value }))}
                     className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground focus:outline-none focus:border-primary/50'
@@ -681,10 +701,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
 
                 <div className='grid grid-cols-3 gap-2'>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='afs-min-people' className='block text-sm font-medium text-foreground mb-2'>
                       Min People
                     </label>
                     <input
+                      id='afs-min-people'
                       type='number'
                       placeholder="1"
                       value={booleanFilters.groupSizeMin}
@@ -693,10 +714,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                     />
                   </div>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='afs-max-people' className='block text-sm font-medium text-foreground mb-2'>
                       Max People
                     </label>
                     <input
+                      id='afs-max-people'
                       type='number'
                       placeholder="10"
                       value={booleanFilters.groupSizeMax}
@@ -705,10 +727,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                     />
                   </div>
                   <div>
-                    <label className='block text-sm font-medium text-foreground mb-2'>
+                    <label htmlFor='afs-exact-count' className='block text-sm font-medium text-foreground mb-2'>
                       Exact Count
                     </label>
                     <input
+                      id='afs-exact-count'
                       type='number'
                       placeholder="3"
                       value={booleanFilters.groupSizeExact}
@@ -726,10 +749,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
             <div className='space-y-4'>
               <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-start-date' className='block text-sm font-medium text-foreground mb-2'>
                     Start Date
                   </label>
                   <input
+                    id='afs-start-date'
                     type='date'
                     value={temporalFilters.dateStart}
                     onChange={(e) => setTemporalFilters(prev => ({ ...prev, dateStart: e.target.value }))}
@@ -737,10 +761,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                   />
                 </div>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-end-date' className='block text-sm font-medium text-foreground mb-2'>
                     End Date
                   </label>
                   <input
+                    id='afs-end-date'
                     type='date'
                     value={temporalFilters.dateEnd}
                     onChange={(e) => setTemporalFilters(prev => ({ ...prev, dateEnd: e.target.value }))}
@@ -750,10 +775,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='afs-relative-period' className='block text-sm font-medium text-foreground mb-2'>
                   Or Select Relative Period
                 </label>
                 <select
+                  id='afs-relative-period'
                   value={temporalFilters.relativePeriod}
                   onChange={(e) => setTemporalFilters(prev => ({ ...prev, relativePeriod: e.target.value }))}
                   className='w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-foreground focus:outline-none focus:border-primary/50'
@@ -767,10 +793,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
 
               <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-temporal-people' className='block text-sm font-medium text-foreground mb-2'>
                     People (optional)
                   </label>
                   <input
+                    id='afs-temporal-people'
                     type='text'
                     placeholder="John, Mary"
                     value={temporalFilters.people}
@@ -779,10 +806,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
                   />
                 </div>
                 <div>
-                  <label className='block text-sm font-medium text-foreground mb-2'>
+                  <label htmlFor='afs-temporal-emotions' className='block text-sm font-medium text-foreground mb-2'>
                     Emotions (optional)
                   </label>
                   <input
+                    id='afs-temporal-emotions'
                     type='text'
                     placeholder="happy, surprised"
                     value={temporalFilters.emotions}
@@ -798,10 +826,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
           {searchMode === 'similarity' && (
             <div className='space-y-4'>
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='afs-reference-face-id' className='block text-sm font-medium text-foreground mb-2'>
                   Reference Face ID
                 </label>
                 <input
+                  id='afs-reference-face-id'
                   type='text'
                   placeholder="Enter face ID to find similar faces"
                   value={similaritySearch.referenceFaceId}
@@ -814,16 +843,18 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
               </div>
 
               <div>
-                <label className='block text-sm font-medium text-foreground mb-2'>
+                <label htmlFor='afs-similarity-threshold' className='block text-sm font-medium text-foreground mb-2'>
                   Similarity Threshold ({Math.round(similaritySearch.threshold * 100)}%)
                 </label>
                 <input
+                  id='afs-similarity-threshold'
                   type='range'
                   min={0.5}
                   max={1.0}
                   step={0.05}
                   value={similaritySearch.threshold}
                   onChange={(e) => setSimilaritySearch(prev => ({ ...prev, threshold: Number(e.target.value) }))}
+                  aria-valuetext={`${Math.round(similaritySearch.threshold * 100)} percent`}
                   className='w-full'
                 />
                 <div className='flex justify-between text-xs text-muted-foreground mt-1'>
@@ -837,7 +868,11 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
           {/* Results */}
           {results.length > 0 && (
             <div className='space-y-4'>
-              <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+              <div
+                className='flex items-center gap-2 text-sm text-muted-foreground'
+                role='status'
+                aria-live='polite'
+              >
                 <Camera size={16} />
                 <span>
                   Found {total} photo{total === 1 ? '' : 's'}
@@ -933,7 +968,7 @@ export function AdvancedFaceSearch({ isOpen, onClose }: AdvancedFaceSearchProps)
               disabled={loading}
             >
               {loading && <RefreshCw size={14} className='animate-spin' />}
-              {loading ? 'Searching...' : 'Search Photos'}
+              {loading ? 'Searching…' : 'Search Photos'}
             </button>
           </div>
         </div>

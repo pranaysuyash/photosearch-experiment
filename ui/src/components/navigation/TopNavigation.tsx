@@ -97,7 +97,7 @@ const TopNavigation = () => {
               type="button"
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              aria-expanded="false"
+              aria-expanded={isMenuOpen}
             >
               <span className="sr-only">Open main menu</span>
               <MenuIcon className="block h-6 w-6" aria-hidden="true" />
@@ -109,7 +109,10 @@ const TopNavigation = () => {
       {/* Mobile menu, show/hide based on menu state */}
       {isMenuOpen && (
         <div className="md:hidden">
-          <div className="pt-2 pb-3 space-y-1">
+          <div
+            className="pt-2 pb-3 space-y-1"
+            onClick={() => setIsMenuOpen(false)}
+          >
             {navItems.map((item) => {
               const Icon = item.icon;
               return (

@@ -32,6 +32,7 @@ import {
 } from '../../utils/storage';
 import { api } from '../../api';
 import { ApiStatusBanner, type ApiStatus } from '../common/ApiStatusBanner';
+import { FirstRunModal } from '../common/FirstRunModal';
 import './Layout.css';
 // import { NotchBar, useNotchAware } from './NotchBar';
 
@@ -46,7 +47,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   const [searchExpanded, setSearchExpanded] = useState(false);
 
-  const { photos, resultCount } = usePhotoSearchContext();
+  const { photos, resultCount, setSearchMode } = usePhotoSearchContext();
   const resultsNumber = resultCount ?? photos.length;
 
   const [minimalMode, setMinimalMode] = useState(false);
@@ -201,6 +202,12 @@ const Layout = ({ children }: LayoutProps) => {
           }}
         />
       </div>
+
+      {/* First-run welcome — self-gates on localStorage (photosearch_first_run_seen) */}
+      <FirstRunModal
+        onDismiss={() => {}}
+        onSelectMode={(mode) => setSearchMode(mode, { source: 'manual' })}
+      />
 
       {minimalMode && (
         <button

@@ -106,15 +106,15 @@ export const IntentRecognition = ({
     [onIntentDetected]
   );
 
-  // Detect intent when query changes
+  // Detect intent when query changes (debounced — this fires network requests)
   useEffect(() => {
     if (query && query.trim().length > 2) {
-      detectIntent(query);
-    } else {
-      setIntent(null);
-      setSuggestions([]);
-      setBadges([]);
+      const t = window.setTimeout(() => detectIntent(query), 300);
+      return () => window.clearTimeout(t);
     }
+    setIntent(null);
+    setSuggestions([]);
+    setBadges([]);
   }, [query, detectIntent]);
 
   const getIntentIcon = (intentName: string) => {
@@ -156,7 +156,7 @@ export const IntentRecognition = ({
 
   if (loading) {
     return (
-      <div className='intent-loading'>We're analyzing your search intent...</div>
+      <div className='intent-loading'>We're analyzing your search intent…</div>
     );
   }
 

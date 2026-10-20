@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Hash, Loader2, Plus, X } from 'lucide-react';
 import { api, type TagSummary } from '../../api';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface AddToTagDialogProps {
   isOpen: boolean;
@@ -49,17 +50,17 @@ export function AddToTagDialog({
   };
 
   const submit = async () => {
+    const selected = new Set(selectedTags);
+    if (!normalizedNewTag && selected.size === 0) {
+      setError('Select or create at least one tag');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
-      const selected = new Set(selectedTags);
       if (normalizedNewTag) {
         await api.createTag(normalizedNewTag);
         selected.add(normalizedNewTag);
-      }
-      if (selected.size === 0) {
-        setError('Select or create at least one tag');
-        return;
       }
       await Promise.all(
         Array.from(selected).map((tag) => api.addPhotosToTag(tag, photoPaths))
@@ -77,6 +78,8 @@ export function AddToTagDialog({
     if (e.target === e.currentTarget && !isSubmitting) onClose();
   };
 
+  const panelRef = useModalBehavior(isOpen, onClose);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -89,6 +92,10 @@ export function AddToTagDialog({
         onClick={handleBackdropClick}
       >
         <motion.div
+          ref={panelRef}
+          role='dialog'
+          aria-modal='true'
+          aria-label='Add to tag'
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
@@ -145,7 +152,7 @@ export function AddToTagDialog({
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`px-4 py-3 rounded-lg border transition-all flex items-center gap-3 ${
+                className={`px-4 py-3 rounded-lg border transition flex items-center gap-3 ${
                   selectedTags.has(normalizedNewTag)
                     ? 'bg-emerald-500/20 border-emerald-500/40'
                     : 'bg-blue-500/10 border-blue-500/30'
@@ -202,7 +209,7 @@ export function AddToTagDialog({
                       key={t.name}
                       onClick={() => toggle(t.name)}
                       disabled={isSubmitting}
-                      className={`w-full px-4 py-3 rounded-lg border transition-all text-left flex items-center gap-3 ${isSelected
+                      className={`w-full px-4 py-3 rounded-lg border transition text-left flex items-center gap-3 ${isSelected
                           ? 'bg-fuchsia-500/20 border-fuchsia-500/40'
                           : 'bg-white/5 border-white/10 hover:bg-white/10'
                         } disabled:opacity-50`}
@@ -258,7 +265,7 @@ export function AddToTagDialog({
               type='button'
               onClick={submit}
               disabled={isSubmitting}
-              className='flex-1 btn-glass btn-glass--primary px-6 py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2'
+              className='flex-1 btn-glass btn-glass--primary px-6 py-3 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center gap-2'
             >
               {isSubmitting ? (
                 <>

@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect, useCallback, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   BarChart3,
@@ -34,7 +35,14 @@ import {
   Server,
   RefreshCw,
 } from 'lucide-react';
-import { api } from '../../api';
+import {
+  api,
+  type FaceStatsSummary,
+  type PerformanceCacheStats,
+  type PlaceCluster,
+  type TagSummary,
+  type TimelineData,
+} from '../../api';
 import { glass } from '../../design/glass';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 
@@ -94,6 +102,7 @@ export interface PerformanceMetric {
 function AnalyticsDashboard() {
   const { isDark } = useAmbientThemeContext();
   const surfaceClass = isDark ? 'bg-black/20' : 'bg-white/40';
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<
     'overview' | 'content' | 'search' | 'performance' | 'storage'
   >('overview');
@@ -105,6 +114,21 @@ function AnalyticsDashboard() {
   const [performanceMetrics, setPerformanceMetrics] = useState<
     PerformanceMetric[]
   >([]);
+  const [topLocations, setTopLocations] = useState<PlaceCluster[]>([]);
+  const [timelineYears, setTimelineYears] = useState<
+    Array<{ year: string; count: number }>
+  >([]);
+  const [popularTags, setPopularTags] = useState<TagSummary[]>([]);
+  const [facesStats, setFacesStats] = useState<FaceStatsSummary | null>(null);
+  const [perfCacheStats, setPerfCacheStats] =
+    useState<PerformanceCacheStats | null>(null);
+  const [storageByFormat, setStorageByFormat] = useState<
+    Array<{ ext: string; count: number; bytes: number }>
+  >([]);
+  const [sizeBuckets, setSizeBuckets] = useState<
+    Array<{ label: string; count: number; pct: number; barClass: string }>
+  >([]);
+  const [samplePhotoCount, setSamplePhotoCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState('30d');
   const [autoRefresh, setAutoRefresh] = useState(false);
@@ -136,6 +160,69 @@ function AnalyticsDashboard() {
           api.listAlbums().catch(() => ({ albums: [] })),
         ]);
 
+      // Get face stats, location clusters, photo timeline, and face-pipeline
+      // cache stats from real APIs. Per-call catches keep a single failure
+      // from aborting the whole load.
+      const [faceStatsResult, placeClusters, timelineData, perfCacheResult, perfMetricsResult, ocrStatsResult] =
+        await Promise.all([
+          api
+            .getFaceStats()
+            .catch(() => null)
+            .then((data) => (data ?? null) as FaceStatsSummary | null),
+          api
+            .getPlaceClusters(2)
+            .catch(() => [])
+            .then((clusters) => (clusters ?? []) as PlaceCluster[]),
+          api.getTimeline().catch(() => [] as TimelineData[]),
+          api.getPerformanceCacheStats().catch(() => null),
+          api.getPerformanceMetrics(20).catch(() => null),
+          api.getOcrStats().catch(() => null),
+        ]);
+
+      // OCR stats are only meaningful on a successful summary response.
+      const ocrProcessed =
+        ocrStatsResult?.status === 'success'
+          ? (ocrStatsResult.stats?.total_images_processed ?? 0)
+          : (notesStats.photos_with_notes || 0); // notes proxy fallback
+
+      // Face stats are only meaningful when the face pipeline is available.
+      const validFaceStats =
+        faceStatsResult && faceStatsResult.status === 'available'
+          ? faceStatsResult
+          : null;
+      setFacesStats(validFaceStats);
+      setTopLocations(placeClusters.slice(0, 10));
+
+      // The timeline endpoint returns per-month counts; aggregate per year.
+      const yearCounts = new Map<string, number>();
+      timelineData.forEach((entry) => {
+        if (!entry?.date) return;
+        const year = entry.date.slice(0, 4);
+        yearCounts.set(year, (yearCounts.get(year) || 0) + (entry.count || 0));
+      });
+      setTimelineYears(
+        Array.from(yearCounts.entries())
+          .map(([year, count]) => ({ year, count }))
+          .sort((a, b) => b.year.localeCompare(a.year))
+          .slice(0, 3)
+      );
+
+      // Cache stats are only reported when the intelligent cache is enabled.
+      setPerfCacheStats(
+        perfCacheResult &&
+          perfCacheResult.status === 'enabled' &&
+          perfCacheResult.cache_statistics
+          ? perfCacheResult.cache_statistics
+          : null
+      );
+
+      // Popular tags derived from the already-loaded tag list.
+      setPopularTags(
+        [...(tagsData.tags ?? [])]
+          .sort((a, b) => b.photo_count - a.photo_count)
+          .slice(0, 6)
+      );
+
       // Calculate real analytics values
       const totalPhotos = stats.active_files || 0;
       const totalTags = tagsData.tags?.length || 0;
@@ -151,6 +238,8 @@ function AnalyticsDashboard() {
       let largestPhotoSize = 0;
       let totalPhotoSize = 0;
       let photosWithSize = 0;
+      const formatSizes: Record<string, { count: number; bytes: number }> = {};
+      const sizeBucketCounts = { lt1mb: 0, b1to5mb: 0, b5to10mb: 0, gt10mb: 0 };
 
       // Get a sample for detailed analysis
       const sampleSize = Math.min(200, totalPhotos);
@@ -166,6 +255,7 @@ function AnalyticsDashboard() {
           type SamplePhoto = {
             metadata?: {
               file?: { extension?: string; size_bytes?: number };
+              filesystem?: { size_bytes?: number };
               image?: { width?: number; height?: number };
             };
           };
@@ -176,12 +266,31 @@ function AnalyticsDashboard() {
               formatDistribution[ext] = (formatDistribution[ext] || 0) + 1;
             }
 
-            // Calculate photo sizes
-            if (photo.metadata?.file?.size_bytes) {
-              const sizeMB = photo.metadata.file.size_bytes / (1024 * 1024);
+            // Calculate photo sizes (size lives under filesystem in extracted
+            // metadata; fall back to file for legacy records)
+            const sizeBytes =
+              photo.metadata?.filesystem?.size_bytes ??
+              photo.metadata?.file?.size_bytes;
+            if (sizeBytes) {
+              const sizeMB = sizeBytes / (1024 * 1024);
               largestPhotoSize = Math.max(largestPhotoSize, sizeMB);
               totalPhotoSize += sizeMB;
               photosWithSize++;
+
+              // Track per-format storage and file-size buckets
+              const ext =
+                (photo.metadata?.file?.extension || '')
+                  .replace(/^\./, '')
+                  .toUpperCase() || 'OTHER';
+              const formatEntry = formatSizes[ext] ?? { count: 0, bytes: 0 };
+              formatEntry.count += 1;
+              formatEntry.bytes += sizeBytes;
+              formatSizes[ext] = formatEntry;
+
+              if (sizeMB < 1) sizeBucketCounts.lt1mb++;
+              else if (sizeMB < 5) sizeBucketCounts.b1to5mb++;
+              else if (sizeMB < 10) sizeBucketCounts.b5to10mb++;
+              else sizeBucketCounts.gt10mb++;
             }
 
             // Analyze image quality based on resolution
@@ -202,6 +311,50 @@ function AnalyticsDashboard() {
         }
       }
 
+      // Expose sample-derived storage stats for the storage tab
+      setSamplePhotoCount(photosWithSize);
+      setStorageByFormat(
+        Object.entries(formatSizes)
+          .map(([ext, entry]) => ({
+            ext,
+            count: entry.count,
+            bytes: entry.bytes,
+          }))
+          .sort((a, b) => b.bytes - a.bytes)
+          .slice(0, 5)
+      );
+      if (photosWithSize > 0) {
+        const pct = (count: number) => Math.round((count / photosWithSize) * 100);
+        setSizeBuckets([
+          {
+            label: '< 1 MB',
+            count: sizeBucketCounts.lt1mb,
+            pct: pct(sizeBucketCounts.lt1mb),
+            barClass: 'bg-blue-500',
+          },
+          {
+            label: '1-5 MB',
+            count: sizeBucketCounts.b1to5mb,
+            pct: pct(sizeBucketCounts.b1to5mb),
+            barClass: 'bg-green-500',
+          },
+          {
+            label: '5-10 MB',
+            count: sizeBucketCounts.b5to10mb,
+            pct: pct(sizeBucketCounts.b5to10mb),
+            barClass: 'bg-yellow-500',
+          },
+          {
+            label: '> 10 MB',
+            count: sizeBucketCounts.gt10mb,
+            pct: pct(sizeBucketCounts.gt10mb),
+            barClass: 'bg-red-500',
+          },
+        ]);
+      } else {
+        setSizeBuckets([]);
+      }
+
       // Calculate storage usage (approximation)
       const avgPhotoSizeMB =
         photosWithSize > 0 ? totalPhotoSize / photosWithSize : 0;
@@ -214,8 +367,8 @@ function AnalyticsDashboard() {
         total_size_gb: totalSizeGB,
         new_photos: 0, // Would need import history endpoint
         duplicates_found: totalDuplicates,
-        faces_detected: 0, // Would need real face detection endpoint
-        ocr_processed: notesStats.photos_with_notes || 0, // Photos with notes as proxy for OCR
+        faces_detected: validFaceStats?.faces_detected ?? 0, // Real count from /api/faces/stats when available
+        ocr_processed: ocrProcessed, // Real count from /ocr/stats (notes proxy fallback)
         albums_created: albumsCreated,
         search_queries: 0, // Would need search history endpoint
         unique_search_terms: 0, // Would need search analytics endpoint
@@ -286,20 +439,23 @@ function AnalyticsDashboard() {
       // Create user behavior (would need real usage analytics)
       setUserBehavior([]);
 
-      // Create performance metrics from real data
-      const performanceData = [
-        {
-          id: '1',
-          metric_name: 'Library Scan',
-          metric_type: 'library_scan',
-          metric_value: totalPhotos,
-          metric_unit: 'photos',
-          operation_type: 'scan',
-          processing_time_ms: 0,
-          created_at: new Date().toISOString(),
-        },
-      ];
-      setPerformanceMetrics(performanceData);
+      // Create performance metrics from the real face-pipeline metric history
+      setPerformanceMetrics(
+        (perfMetricsResult?.metrics ?? []).slice(0, 5).map((m) => {
+          const durationMs = Math.round((m.duration || 0) * 1000);
+          return {
+            metric_name: m.operation || 'operation',
+            metric_value: durationMs,
+            metric_unit: 'ms',
+            operation_type: 'face_pipeline',
+            processing_time_ms: durationMs,
+            created_at:
+              typeof m.timestamp === 'number'
+                ? new Date(m.timestamp).toISOString()
+                : String(m.timestamp || new Date().toISOString()),
+          };
+        })
+      );
     } catch (error) {
       console.error('Failed to load analytics:', error);
     } finally {
@@ -405,6 +561,42 @@ function AnalyticsDashboard() {
     return optimizations;
   };
 
+  const handleExportAnalytics = () => {
+    try {
+      const payload = {
+        exported_at: new Date().toISOString(),
+        library: libraryAnalytics,
+        content_insights: contentInsights,
+        top_locations: topLocations,
+        photo_timeline_by_year: timelineYears,
+        popular_tags: popularTags,
+        faces: facesStats,
+        performance: {
+          face_pipeline_metrics: performanceMetrics,
+          face_pipeline_cache: perfCacheStats,
+        },
+        storage: {
+          sampled_photos: samplePhotoCount,
+          by_format: storageByFormat,
+          size_distribution: sizeBuckets,
+        },
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'photosearch-analytics.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export analytics:', error);
+    }
+  };
+
   return (
     <div className='p-6 space-y-6'>
       {/* Header */}
@@ -432,6 +624,7 @@ function AnalyticsDashboard() {
 
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
+            aria-pressed={autoRefresh}
             className={`px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
               autoRefresh
                 ? 'bg-green-600/20 text-green-400'
@@ -444,7 +637,10 @@ function AnalyticsDashboard() {
             Auto-refresh
           </button>
 
-          <button className='px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 flex items-center gap-2'>
+          <button
+            onClick={handleExportAnalytics}
+            className='px-3 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 flex items-center gap-2'
+          >
             <Download className='w-4 h-4' />
             Export
           </button>
@@ -457,19 +653,21 @@ function AnalyticsDashboard() {
           className={`${glass.card} p-4 flex items-center justify-center gap-2`}
         >
           <Loader2 className='w-4 h-4 animate-spin' />
-          <span className='text-gray-300'>Loading analytics...</span>
+          <span className='text-gray-300'>Loading analytics…</span>
         </div>
       )}
 
       {/* Tabs */}
-      <div className={`flex space-x-1 p-1 ${surfaceClass} rounded-lg`}>
+      <div className={`flex space-x-1 p-1 ${surfaceClass} rounded-lg`} role='tablist' aria-label='Analytics sections'>
         {(
           ['overview', 'content', 'search', 'performance', 'storage'] as const
         ).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`flex-1 px-4 py-2 rounded-md capitalize transition-all ${
+            role='tab'
+            aria-selected={activeTab === tab}
+            className={`flex-1 px-4 py-2 rounded-md capitalize transition ${
               activeTab === tab
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
@@ -491,7 +689,7 @@ function AnalyticsDashboard() {
             className='space-y-6'
           >
             {/* Key Metrics */}
-            <div className='grid grid-cols-2 md:grid-cols-4 gap-4'>
+            <div className='grid grid-cols-2 md:grid-cols-4 gap-4 tabular-nums'>
               <div className={`${glass.card} p-4`}>
                 <div className='flex items-center justify-between mb-2'>
                   <ImageIcon className='w-5 h-5 text-blue-500' />
@@ -506,7 +704,6 @@ function AnalyticsDashboard() {
               <div className={`${glass.card} p-4`}>
                 <div className='flex items-center justify-between mb-2'>
                   <HardDrive className='w-5 h-5 text-green-500' />
-                  <span className='text-xs text-gray-500'>+12%</span>
                 </div>
                 <p className='text-2xl font-bold text-white'>
                   {libraryAnalytics.total_size_gb.toFixed(1)} GB
@@ -519,19 +716,20 @@ function AnalyticsDashboard() {
                   <Search className='w-5 h-5 text-yellow-500' />
                   <TrendingUp className='w-4 h-4 text-green-500' />
                 </div>
-                <p className='text-2xl font-bold text-white'>
-                  {formatNumber(libraryAnalytics.search_queries)}
-                </p>
+                <p className='text-lg text-gray-500'>No data yet</p>
                 <p className='text-gray-400 text-sm'>Search Queries</p>
               </div>
 
               <div className={`${glass.card} p-4`}>
                 <div className='flex items-center justify-between mb-2'>
                   <Users className='w-5 h-5 text-purple-500' />
-                  <span className='text-xs text-gray-500'>New</span>
                 </div>
                 <p className='text-2xl font-bold text-white'>
-                  {formatNumber(libraryAnalytics.faces_detected)}
+                  {facesStats ? (
+                    formatNumber(facesStats.faces_detected ?? 0)
+                  ) : (
+                    <span className='text-lg text-gray-500'>No data yet</span>
+                  )}
                 </p>
                 <p className='text-gray-400 text-sm'>Faces Detected</p>
               </div>
@@ -548,10 +746,10 @@ function AnalyticsDashboard() {
                     <div className='w-2 h-2 bg-green-500 rounded-full' />
                     <Camera className='w-4 h-4 text-gray-400' />
                     <div className='flex-1'>
-                      <p className='text-white text-sm'>
-                        {libraryAnalytics.new_photos} new photos added
+                      <p className='text-white text-sm'>New photos</p>
+                      <p className='text-gray-500 text-xs'>
+                        No import history available yet
                       </p>
-                      <p className='text-gray-500 text-xs'>Today</p>
                     </div>
                   </div>
 
@@ -592,9 +790,7 @@ function AnalyticsDashboard() {
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-gray-400'>Unique Search Terms</span>
-                    <span className='text-white'>
-                      {libraryAnalytics.unique_search_terms}
-                    </span>
+                    <span className='text-gray-500'>No data yet</span>
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-gray-400'>Avg Photos per Album</span>
@@ -606,10 +802,6 @@ function AnalyticsDashboard() {
                           )
                         : 0}
                     </span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-400'>Storage Efficiency</span>
-                    <span className='text-green-400'>87%</span>
                   </div>
                 </div>
               </div>
@@ -663,20 +855,31 @@ function AnalyticsDashboard() {
                   <MapPin className='w-4 h-4 text-blue-500' />
                   <h4 className='text-white font-medium'>Top Locations</h4>
                 </div>
-                <div className='space-y-1'>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>New York</span>
-                    <span className='text-gray-400'>1,234 photos</span>
+                {topLocations.length === 0 ? (
+                  <p className='text-gray-500 text-sm'>No data yet</p>
+                ) : (
+                  <div className='space-y-1'>
+                    {topLocations.slice(0, 3).map((location, index) => {
+                      const label =
+                        location.corrected_place_name ||
+                        location.city ||
+                        location.region ||
+                        location.country ||
+                        'Unknown place';
+                      return (
+                        <div
+                          key={`${label}-${index}`}
+                          className='flex justify-between text-sm'
+                        >
+                          <span className='text-gray-300'>{label}</span>
+                          <span className='text-gray-400'>
+                            {formatNumber(location.photo_count)} photos
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>San Francisco</span>
-                    <span className='text-gray-400'>856 photos</span>
-                  </div>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>Paris</span>
-                    <span className='text-gray-400'>623 photos</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className='p-4 bg-black/20 rounded-lg'>
@@ -684,20 +887,23 @@ function AnalyticsDashboard() {
                   <Calendar className='w-4 h-4 text-green-500' />
                   <h4 className='text-white font-medium'>Photo Timeline</h4>
                 </div>
-                <div className='space-y-1'>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>2024</span>
-                    <span className='text-gray-400'>5,678 photos</span>
+                {timelineYears.length === 0 ? (
+                  <p className='text-gray-500 text-sm'>No data yet</p>
+                ) : (
+                  <div className='space-y-1'>
+                    {timelineYears.map((entry) => (
+                      <div
+                        key={entry.year}
+                        className='flex justify-between text-sm'
+                      >
+                        <span className='text-gray-300'>{entry.year}</span>
+                        <span className='text-gray-400'>
+                          {formatNumber(entry.count)} photos
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>2023</span>
-                    <span className='text-gray-400'>12,345 photos</span>
-                  </div>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-300'>2022</span>
-                    <span className='text-gray-400'>8,901 photos</span>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className='p-4 bg-black/20 rounded-lg'>
@@ -705,18 +911,20 @@ function AnalyticsDashboard() {
                   <Tag className='w-4 h-4 text-purple-500' />
                   <h4 className='text-white font-medium'>Popular Tags</h4>
                 </div>
-                <div className='flex flex-wrap gap-2'>
-                  {['vacation', 'family', 'nature', 'city', 'food'].map(
-                    (tag) => (
+                {popularTags.length === 0 ? (
+                  <p className='text-gray-500 text-sm'>No data yet</p>
+                ) : (
+                  <div className='flex flex-wrap gap-2'>
+                    {popularTags.map((tag) => (
                       <span
-                        key={tag}
+                        key={tag.name}
                         className='px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded'
                       >
-                        {tag}
+                        {tag.name}
                       </span>
-                    )
-                  )}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -785,24 +993,7 @@ function AnalyticsDashboard() {
                 <h4 className='text-white font-medium mb-3'>
                   Search Performance
                 </h4>
-                <div className='space-y-3'>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-400'>Average Response Time</span>
-                    <span className='text-green-400'>245ms</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-400'>Success Rate</span>
-                    <span className='text-green-400'>94%</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-400'>Results per Query</span>
-                    <span className='text-white'>23.5</span>
-                  </div>
-                  <div className='flex justify-between'>
-                    <span className='text-gray-400'>Click-through Rate</span>
-                    <span className='text-blue-400'>67%</span>
-                  </div>
-                </div>
+                <p className='text-gray-500 text-sm'>No data yet</p>
               </div>
             </div>
 
@@ -842,31 +1033,51 @@ function AnalyticsDashboard() {
               Performance Metrics
             </h3>
 
-            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6'>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 tabular-nums'>
               <div className='p-4 bg-black/20 rounded-lg'>
                 <div className='flex items-center justify-between mb-2'>
                   <Zap className='w-4 h-4 text-yellow-500' />
-                  <span className='text-green-400 text-sm'>Optimal</span>
                 </div>
-                <p className='text-2xl font-bold text-white'>234ms</p>
+                <p className='text-lg text-gray-500'>No data yet</p>
                 <p className='text-gray-400 text-sm'>Avg. Search Time</p>
               </div>
 
               <div className='p-4 bg-black/20 rounded-lg'>
                 <div className='flex items-center justify-between mb-2'>
                   <Database className='w-4 h-4 text-blue-500' />
-                  <span className='text-yellow-400 text-sm'>Good</span>
+                  {perfCacheStats && (
+                    <span
+                      className={`text-sm ${
+                        perfCacheStats.hit_rate >= 0.7
+                          ? 'text-green-400'
+                          : perfCacheStats.hit_rate >= 0.3
+                          ? 'text-yellow-400'
+                          : 'text-red-400'
+                      }`}
+                    >
+                      {perfCacheStats.hit_rate >= 0.7
+                        ? 'Good'
+                        : perfCacheStats.hit_rate >= 0.3
+                        ? 'Fair'
+                        : 'Low'}
+                    </span>
+                  )}
                 </div>
-                <p className='text-2xl font-bold text-white'>89%</p>
+                <p className='text-2xl font-bold text-white'>
+                  {perfCacheStats ? (
+                    `${Math.round(perfCacheStats.hit_rate * 100)}%`
+                  ) : (
+                    <span className='text-lg text-gray-500'>No data yet</span>
+                  )}
+                </p>
                 <p className='text-gray-400 text-sm'>Cache Hit Rate</p>
               </div>
 
               <div className='p-4 bg-black/20 rounded-lg'>
                 <div className='flex items-center justify-between mb-2'>
                   <Server className='w-4 h-4 text-green-500' />
-                  <span className='text-green-400 text-sm'>Healthy</span>
                 </div>
-                <p className='text-2xl font-bold text-white'>45ms</p>
+                <p className='text-lg text-gray-500'>No data yet</p>
                 <p className='text-gray-400 text-sm'>API Response</p>
               </div>
             </div>
@@ -927,92 +1138,60 @@ function AnalyticsDashboard() {
                   <h4 className='text-white font-medium mb-3'>
                     Storage Breakdown
                   </h4>
-                  <div className='space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>Original Photos</span>
-                      <span className='text-white'>78.5 GB</span>
+                  {storageByFormat.length === 0 ? (
+                    <p className='text-gray-500 text-sm'>No data yet</p>
+                  ) : (
+                    <div className='space-y-2'>
+                      {storageByFormat.map((format) => (
+                        <div
+                          key={format.ext}
+                          className='flex items-center justify-between'
+                        >
+                          <span className='text-gray-300'>
+                            {format.ext} ({formatNumber(format.count)} photos)
+                          </span>
+                          <span className='text-white'>
+                            {formatBytes(format.bytes)}
+                          </span>
+                        </div>
+                      ))}
+                      <p className='text-gray-500 text-xs'>
+                        Based on a sample of {formatNumber(samplePhotoCount)}{' '}
+                        photos
+                      </p>
                     </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>Thumbnails</span>
-                      <span className='text-white'>2.1 GB</span>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>Face Data</span>
-                      <span className='text-white'>1.8 GB</span>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>OCR Data</span>
-                      <span className='text-white'>3.2 GB</span>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>Index Data</span>
-                      <span className='text-white'>4.7 GB</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 <div>
                   <h4 className='text-white font-medium mb-3'>
                     File Size Distribution
                   </h4>
-                  <div className='space-y-2'>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>&lt; 1 MB</span>
-                      <div className='flex items-center gap-2'>
-                        <div className='w-32 h-2 bg-black/30 rounded-full overflow-hidden'>
-                          <div
-                            className='h-full bg-blue-500'
-                            style={{ width: '15%' }}
-                          />
+                  {sizeBuckets.length === 0 ? (
+                    <p className='text-gray-500 text-sm'>No data yet</p>
+                  ) : (
+                    <div className='space-y-2'>
+                      {sizeBuckets.map((bucket) => (
+                        <div
+                          key={bucket.label}
+                          className='flex items-center justify-between'
+                        >
+                          <span className='text-gray-300'>{bucket.label}</span>
+                          <div className='flex items-center gap-2'>
+                            <div className='w-32 h-2 bg-black/30 rounded-full overflow-hidden'>
+                              <div
+                                className={`h-full ${bucket.barClass}`}
+                                style={{ width: `${bucket.pct}%` }}
+                              />
+                            </div>
+                            <span className='text-gray-400 text-xs w-8 text-right'>
+                              {bucket.pct}%
+                            </span>
+                          </div>
                         </div>
-                        <span className='text-gray-400 text-xs w-8 text-right'>
-                          15%
-                        </span>
-                      </div>
+                      ))}
                     </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>1-5 MB</span>
-                      <div className='flex items-center gap-2'>
-                        <div className='w-32 h-2 bg-black/30 rounded-full overflow-hidden'>
-                          <div
-                            className='h-full bg-green-500'
-                            style={{ width: '45%' }}
-                          />
-                        </div>
-                        <span className='text-gray-400 text-xs w-8 text-right'>
-                          45%
-                        </span>
-                      </div>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>5-10 MB</span>
-                      <div className='flex items-center gap-2'>
-                        <div className='w-32 h-2 bg-black/30 rounded-full overflow-hidden'>
-                          <div
-                            className='h-full bg-yellow-500'
-                            style={{ width: '25%' }}
-                          />
-                        </div>
-                        <span className='text-gray-400 text-xs w-8 text-right'>
-                          25%
-                        </span>
-                      </div>
-                    </div>
-                    <div className='flex items-center justify-between'>
-                      <span className='text-gray-300'>&gt; 10 MB</span>
-                      <div className='flex items-center gap-2'>
-                        <div className='w-32 h-2 bg-black/30 rounded-full overflow-hidden'>
-                          <div
-                            className='h-full bg-red-500'
-                            style={{ width: '15%' }}
-                          />
-                        </div>
-                        <span className='text-gray-400 text-xs w-8 text-right'>
-                          15%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1050,9 +1229,22 @@ function AnalyticsDashboard() {
                     <p className='text-gray-400 text-sm mb-3'>
                       {optimization.description}
                     </p>
-                    <button className='px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700'>
-                      {optimization.action}
-                    </button>
+                    {optimization.type === 'duplicates' ? (
+                      <button
+                        onClick={() => navigate('/duplicates')}
+                        className='px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700'
+                      >
+                        {optimization.action}
+                      </button>
+                    ) : (
+                      <button
+                        disabled
+                        title='Not available yet'
+                        className='px-3 py-1 bg-white/10 text-gray-500 text-sm rounded cursor-not-allowed'
+                      >
+                        {optimization.action}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

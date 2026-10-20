@@ -44,7 +44,12 @@ export function Singletons() {
             <div className="border-b border-white/10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate('/people')} className="btn-glass btn-glass--muted p-2">
+                        <button
+                            onClick={() => navigate('/people')}
+                            className="btn-glass btn-glass--muted p-2"
+                            aria-label="Back to People"
+                            title="Back to People"
+                        >
                             <ArrowLeft size={20} />
                         </button>
                         <div className="flex items-center gap-3">
@@ -81,7 +86,15 @@ export function Singletons() {
                             <div
                                 key={cluster.cluster_id}
                                 className={`${glass.surface} rounded-xl border border-white/10 overflow-hidden hover:border-yellow-500/50 cursor-pointer transition-colors`}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => navigate(`/people/${cluster.cluster_id}`)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        navigate(`/people/${cluster.cluster_id}`);
+                                    }
+                                }}
                             >
                                 <div className="p-3 bg-black/20">
                                     {cluster.face_id && (

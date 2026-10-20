@@ -91,6 +91,10 @@ const PerformanceDashboard = () => {
   }, []);
 
   const clearCache = async () => {
+    const confirmed = window.confirm(
+      'Clear the server-side cache? Cached thumbnails and computed results will be rebuilt on demand.'
+    );
+    if (!confirmed) return;
     try {
       await api.clearCache();
       // Reload stats after clearing
@@ -130,7 +134,7 @@ const PerformanceDashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <Link
           to="/performance/advanced"
-          className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 hover:shadow-md transition-all group"
+          className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6 hover:shadow-md transition group"
         >
           <div className="flex items-center space-x-3 mb-3">
             <div className="p-2 bg-blue-600 rounded-lg">
@@ -148,7 +152,7 @@ const PerformanceDashboard = () => {
 
         <Link
           to="/faces/advanced"
-          className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6 hover:shadow-md transition-all group"
+          className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6 hover:shadow-md transition group"
         >
           <div className="flex items-center space-x-3 mb-3">
             <div className="p-2 bg-green-600 rounded-lg">
@@ -166,7 +170,7 @@ const PerformanceDashboard = () => {
 
         <Link
           to="/privacy/dashboard"
-          className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6 hover:shadow-md transition-all group"
+          className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6 hover:shadow-md transition group"
         >
           <div className="flex items-center space-x-3 mb-3">
             <div className="p-2 bg-purple-600 rounded-lg">
@@ -189,7 +193,7 @@ const PerformanceDashboard = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 tabular-nums">
         {/* Cache Statistics Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
           <div className="flex justify-between items-center mb-4">
@@ -199,7 +203,7 @@ const PerformanceDashboard = () => {
               disabled={loading.cache}
               className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50"
             >
-              {loading.cache ? 'Clearing...' : 'Clear Cache'}
+              {loading.cache ? 'Clearing…' : 'Clear Cache'}
             </button>
           </div>
 
@@ -243,7 +247,7 @@ const PerformanceDashboard = () => {
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">Loading cache statistics...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading cache statistics…</p>
           )}
 
           <button
@@ -251,7 +255,7 @@ const PerformanceDashboard = () => {
             disabled={loading.cache}
             className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
           >
-            {loading.cache ? 'Loading...' : 'Refresh Cache Stats'}
+            {loading.cache ? 'Loading…' : 'Refresh Cache Stats'}
           </button>
         </div>
 
@@ -264,7 +268,7 @@ const PerformanceDashboard = () => {
               disabled={loading.schema}
               className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
             >
-              {loading.schema ? 'Loading...' : 'Refresh Schema'}
+              {loading.schema ? 'Loading…' : 'Refresh Schema'}
             </button>
           </div>
 
@@ -299,7 +303,7 @@ const PerformanceDashboard = () => {
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400">Loading API schema...</p>
+            <p className="text-gray-500 dark:text-gray-400">Loading API schema…</p>
           )}
         </div>
 

@@ -209,7 +209,7 @@ export const AmbientContextActions: React.FC<AmbientContextActionsProps> = ({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.1 }}
                 onClick={() => handleActionClick(action)}
-                className="glass-surface hover:bg-white/10 rounded-lg p-3 text-left transition-all group"
+                className="glass-surface hover:bg-white/10 rounded-lg p-3 text-left transition group"
               >
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0 group-hover:bg-white/20 transition-colors">
@@ -228,7 +228,7 @@ export const AmbientContextActions: React.FC<AmbientContextActionsProps> = ({
                     <div className="mt-2 flex items-center gap-1">
                       <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-400 rounded-full transition-all"
+                          className="h-full bg-blue-400 rounded-full transition-[width]"
                           style={{ width: `${action.confidence * 100}%` }}
                         />
                       </div>

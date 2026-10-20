@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import type { AxiosResponse } from 'axios';
 import { api } from '../api';
 
 describe('api.ping', () => {
@@ -9,7 +10,7 @@ describe('api.ping', () => {
   test('returns true when /health responds', async () => {
     const spy = vi
       .spyOn(api.http, 'get')
-      .mockResolvedValueOnce({ data: { status: 'ok' } } as any);
+      .mockResolvedValueOnce({ data: { status: 'ok' } } as AxiosResponse);
 
     const ok = await api.ping(10);
     expect(ok).toBe(true);
@@ -22,8 +23,8 @@ describe('api.ping', () => {
 
     const spy = vi
       .spyOn(api.http, 'get')
-      .mockRejectedValueOnce(notFoundErr as any)
-      .mockResolvedValueOnce({ data: { status: 'ok' } } as any);
+      .mockRejectedValueOnce(notFoundErr)
+      .mockResolvedValueOnce({ data: { status: 'ok' } } as AxiosResponse);
 
     const ok = await api.ping(10);
     expect(ok).toBe(true);
@@ -35,7 +36,7 @@ describe('api.ping', () => {
   test('returns false when neither /health nor / responds', async () => {
     const spy = vi
       .spyOn(api.http, 'get')
-      .mockRejectedValueOnce({ code: 'ECONNREFUSED' } as any);
+      .mockRejectedValueOnce({ code: 'ECONNREFUSED' });
 
     const ok = await api.ping(10);
     expect(ok).toBe(false);

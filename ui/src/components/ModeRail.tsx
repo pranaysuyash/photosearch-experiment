@@ -66,7 +66,8 @@ export function ModeRail() {
       </button>
 
       <div
-        className={`transition-all duration-200 ease-out ${open ? 'max-w-[420px] opacity-100' : 'max-w-0 opacity-0'
+        inert={!open}
+        className={`transition-[max-width,opacity] duration-200 ease-out ${open ? 'max-w-[420px] opacity-100' : 'max-w-0 opacity-0'
           } overflow-hidden`}
       >
         <div className='glass-surface rounded-full p-1 pr-2'>
