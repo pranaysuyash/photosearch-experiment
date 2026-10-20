@@ -262,6 +262,7 @@ const Layout = ({ children }: LayoutProps) => {
                       <ActionsPod
                         hasRecentJobs={hasRecentJobs}
                         toggleMinimalMode={toggleMinimalMode}
+                        onOpenStatus={() => setStatusOpen(true)}
                       />
                     </motion.div>
 
@@ -297,6 +298,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <ActionsPod
                   hasRecentJobs={hasRecentJobs}
                   toggleMinimalMode={toggleMinimalMode}
+                  onOpenStatus={() => setStatusOpen(true)}
                 />
               </div>
             </>
@@ -329,16 +331,13 @@ const Layout = ({ children }: LayoutProps) => {
                   )}
                 </div>
                 <div className='mt-3 flex flex-wrap gap-2'>
-                  <button
-                    type='button'
+                  <Link
+                    to='/import'
                     className='btn-glass btn-glass--muted text-xs px-3 py-2'
-                    onClick={() => {
-                      setStatusOpen(false);
-                      // setSpotlightOpen(true);
-                    }}
+                    onClick={() => setStatusOpen(false)}
                   >
                     Scan a folder…
-                  </button>
+                  </Link>
                   <Link
                     to='/settings#library'
                     className='btn-glass btn-glass--primary text-xs px-3 py-2'

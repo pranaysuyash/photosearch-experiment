@@ -9,7 +9,6 @@ import {
   Lightbulb,
   Trophy,
   Tag,
-  Eye,
   ThumbsUp,
   ChartBar,
   Wrench,
@@ -76,8 +75,8 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
       setLoading(true);
       setError(null);
 
-      // In a real implementation, we would analyze multiple photos
-      // For demonstration, we'll use a mock implementation
+      // No pattern-analysis endpoint exists yet; this is sample data and the
+      // Patterns tab labels it as such (see the role="note" banner below).
       const mockPatterns: PhotographerPatterns = {
         photo_paths_count: selectedPaths.length || 100,
         common_subjects: ['Landscapes', 'Portraits', 'Architecture'],
@@ -312,13 +311,6 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
                           <ThumbsUp size={14} />
                         )}
                       </button>
-                      <button
-                        onClick={() => {}}
-                        className='btn-glass btn-glass--muted p-1.5'
-                        title='More options'
-                      >
-                        <Eye size={14} />
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -333,6 +325,14 @@ export function AIInsights({ photoPath }: { photoPath?: string }) {
         <div className='space-y-4'>
           {patterns ? (
             <div className='space-y-6'>
+              <div
+                role='note'
+                className='rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100'
+              >
+                <span className='font-semibold'>Sample data.</span> Pattern
+                analysis isn&apos;t connected to your library yet — these
+                examples only show the shape of the report.
+              </div>
               <div
                 className={`${glass.surfaceStrong} rounded-xl border border-white/10 p-4`}
               >

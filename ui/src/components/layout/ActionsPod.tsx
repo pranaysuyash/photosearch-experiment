@@ -24,11 +24,13 @@ import {
 interface ActionsPodProps {
   hasRecentJobs: boolean;
   toggleMinimalMode: () => void;
+  onOpenStatus?: () => void;
 }
 
 export function ActionsPod({
   hasRecentJobs,
   toggleMinimalMode,
+  onOpenStatus,
 }: ActionsPodProps) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -207,6 +209,17 @@ export function ActionsPod({
             <span className='absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,0.65)]' />
           )}
         </Link>
+        {onOpenStatus && (
+          <button
+            type='button'
+            onClick={onOpenStatus}
+            className={linkClass}
+            title='Library status'
+            aria-label='Library status'
+          >
+            <Info size={18} />
+          </button>
+        )}
         <Link
           to='/performance'
           className={linkClass}
