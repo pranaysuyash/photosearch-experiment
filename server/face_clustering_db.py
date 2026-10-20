@@ -88,10 +88,12 @@ class FaceClusteringDB:
     @staticmethod
     def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
         try:
+            # Parameterized table-valued pragma: rows are (name,) 1-tuples,
+            # unlike bare `PRAGMA table_info` whose rows start with cid.
             rows = conn.execute("SELECT name FROM pragma_table_info(?)", (table,)).fetchall()
         except sqlite3.OperationalError:
             return set()
-        return {row[1] for row in rows}
+        return {row[0] for row in rows}
 
     @classmethod
     def _is_legacy_schema(cls, conn: sqlite3.Connection) -> bool:
