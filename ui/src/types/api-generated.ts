@@ -4250,6 +4250,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/attribution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attribution
+         * @description Source attribution for a single media file. Returns an honest record: `kind` is `local`, `cloud` or `unknown`, and `match` says how the attribution was resolved.
+         */
+        get: operations["get_attribution_attribution_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/attribution/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Attributions
+         * @description Source attribution for many media files in one round trip. Returns `{ "attributions": { "<path>": <record> } }`.
+         */
+        get: operations["get_attributions_attribution_batch_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/browse": {
         parameters: {
             query?: never;
@@ -17356,6 +17396,74 @@ export interface operations {
             path: {
                 video_path: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attribution_attribution_get: {
+        parameters: {
+            query: {
+                /** @description Absolute path of the media file */
+                path: string;
+                /** @description Also inspect the file for content-provenance markers */
+                include_content?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_attributions_attribution_batch_get: {
+        parameters: {
+            query?: {
+                /** @description Media file paths */
+                path?: string[];
+                /** @description Also inspect files for content-provenance markers */
+                include_content?: boolean;
+            };
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

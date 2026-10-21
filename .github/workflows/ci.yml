@@ -105,6 +105,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Tauri Linux prerequisites
+        # Tauri's Linux build links against WebKit/GTK through gobject-sys;
+        # without these the compile step fails with
+        # "The system library `gobject-2.0` required by crate `gobject-sys`".
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libxdo-dev \
+            patchelf
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
 
