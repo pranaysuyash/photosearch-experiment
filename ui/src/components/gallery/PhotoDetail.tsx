@@ -1170,6 +1170,7 @@ export function PhotoDetail({
                         path={photo.path}
                         size={1200}
                         alt={photo.filename}
+                        attribution={attribution}
                       />
                     </div>
                   )}

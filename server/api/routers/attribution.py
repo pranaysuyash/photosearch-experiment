@@ -11,20 +11,15 @@ from typing import List
 from fastapi import APIRouter, Depends, Query
 
 from server.api.deps import get_state
-from server.attribution import AttributionResolver
-from server.config import settings
+from server.attribution import resolver_for_state
 from server.content_provenance import detect_content_provenance
 from server.core.state import AppState
 
 router = APIRouter()
 
 
-def _resolver(state: AppState) -> AttributionResolver:
-    return AttributionResolver(
-        source_store=getattr(state, "source_store", None),
-        source_item_store=getattr(state, "source_item_store", None),
-        media_root=settings.MEDIA_DIR,
-    )
+def _resolver(state: AppState):
+    return resolver_for_state(state)
 
 
 @router.get("/attribution")

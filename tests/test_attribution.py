@@ -126,6 +126,25 @@ def test_media_root_is_local_library(stores, tmp_path):
     assert attribution.source_name == "Local library"
 
 
+def test_relative_catalog_path_resolves_against_base_dir(stores, tmp_path):
+    """The catalog stores some rows relative to the app base; attribution must
+    still resolve them instead of reporting them as unattributed."""
+    source_store, item_store = stores
+    base = tmp_path / "app"
+    media = base / "media"
+    media.mkdir(parents=True)
+    (media / "cat.jpg").write_bytes(b"\xff\xd8\xff\xe0")
+    _make_local_source(source_store, media, name="Media Folder")
+
+    resolver = AttributionResolver(source_store, item_store, media_root=media, base_dir=base)
+    attribution = resolver.resolve("media/cat.jpg")
+
+    assert attribution.kind == "local"
+    assert attribution.match == "source_root"
+    assert attribution.source_name == "Media Folder"
+    assert attribution.resolved_path == str(media / "cat.jpg")
+
+
 def test_unknown_path_is_honestly_unattributed(stores, tmp_path):
     source_store, item_store = stores
     resolver = AttributionResolver(source_store, item_store, media_root=tmp_path / "media")

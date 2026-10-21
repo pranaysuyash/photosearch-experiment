@@ -61,7 +61,12 @@ def test_unpaired_lan_peer_is_401_on_api_routes(stranger: TestClient):
 
 def test_exempt_paths_open_to_everyone(stranger: TestClient):
     assert stranger.get("/health").status_code == 200
-    assert stranger.get("/app/").status_code == 200
+    # /app is exempt from the gate. Whether the SPA bundle is actually mounted
+    # depends on the build — the CI backend job runs the suite without
+    # building the UI — so assert what the gate promises (the path is not
+    # refused with 401) rather than what the bundle provides. Serving the
+    # bundle itself is covered by tests/test_ui_static.py.
+    assert stranger.get("/app/").status_code != 401
     status = stranger.get("/pair/status").json()
     assert status["paired"] is False
 

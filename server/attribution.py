@@ -51,6 +51,9 @@ class PhotoAttribution:
     item_status: Optional[str] = None
     remote_id: Optional[str] = None
     content: Optional[Dict[str, Any]] = None
+    # The absolute path this attribution refers to. The catalog stores some
+    # rows in a relative form; the record always says which file it is about.
+    resolved_path: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         payload: Dict[str, Any] = {
@@ -64,6 +67,7 @@ class PhotoAttribution:
             "last_sync_at": self.last_sync_at,
             "item_status": self.item_status,
             "remote_id": self.remote_id,
+            "resolved_path": self.resolved_path,
         }
         if self.content is not None:
             payload["content"] = self.content
@@ -117,10 +121,26 @@ class AttributionResolver:
         source_store: Any,
         source_item_store: Any,
         media_root: Optional[Path] = None,
+        base_dir: Optional[Path] = None,
     ) -> None:
         self._source_store = source_store
         self._source_item_store = source_item_store
         self._media_root = Path(media_root) if media_root else None
+        self._base_dir = Path(base_dir) if base_dir else None
+
+    def _absolute(self, path: str) -> str:
+        """Resolve a possibly-relative catalog path to an absolute one.
+
+        The metadata catalog stores two path forms for the same files (older
+        scans wrote paths relative to the app base). Resolving a relative path
+        against the app base is the standard interpretation of a relative
+        reference — it is not a guess about provenance.
+        """
+        if os.path.isabs(path):
+            return path
+        if self._base_dir is None:
+            return path
+        return _normalize(str(self._base_dir / path))
 
     # ── registry reads ────────────────────────────────────────────────────
 
@@ -188,7 +208,9 @@ class AttributionResolver:
         if not path_list:
             return {}
 
-        items_by_path = self._items_by_local_path(path_list)
+        # Registry lookups always use the absolute form of a path.
+        abs_paths = [self._absolute(_normalize(p)) for p in path_list]
+        items_by_path = self._items_by_local_path(abs_paths)
         sources_by_id = self._source_by_id()
         local_roots = self._local_roots()
         media_root = _normalize(str(self._media_root)) if self._media_root else None
@@ -221,10 +243,18 @@ class AttributionResolver:
         local_roots: List[Tuple[str, Any]],
         media_root: Optional[str],
     ) -> PhotoAttribution:
+        # The catalog may hold either an absolute or a base-relative path for
+        # the same file; attribution is always resolved against the absolute
+        # form.
+        abs_path = self._absolute(norm_path)
+
         # 1. Exact registry item (synced cloud files record their local copy).
-        item = items_by_path.get(norm_path)
+        item = items_by_path.get(abs_path)
         if item is None:
-            item = self._items_by_local_path([_realpath(raw_path)]).get(_normalize(_realpath(raw_path)))
+            item = items_by_path.get(norm_path)
+        if item is None:
+            real = _normalize(_realpath(abs_path))
+            item = items_by_path.get(real)
         if item is not None:
             source = sources_by_id.get(getattr(item, "source_id", ""))
             if source is not None:
@@ -239,13 +269,14 @@ class AttributionResolver:
                     last_sync_at=getattr(source, "last_sync_at", None),
                     item_status=getattr(item, "status", None),
                     remote_id=getattr(item, "remote_id", None),
+                    resolved_path=abs_path,
                 )
             # Item without a live source row (source deleted): fall through to
             # the remaining rules rather than inventing a source.
 
         # 2. Registered local-folder root (longest match wins).
         for root, source in local_roots:
-            if _is_under(norm_path, root):
+            if _is_under(abs_path, root):
                 return PhotoAttribution(
                     origin="source",
                     kind="local",
@@ -255,20 +286,27 @@ class AttributionResolver:
                     source_name=getattr(source, "name", None),
                     source_status=getattr(source, "status", None),
                     last_sync_at=getattr(source, "last_sync_at", None),
+                    resolved_path=abs_path,
                 )
 
         # 3. The app's own media root.
-        if media_root and _is_under(norm_path, media_root):
+        if media_root and _is_under(abs_path, media_root):
             return PhotoAttribution(
                 origin="media_root",
                 kind="local",
                 match="media_root",
                 source_type=MEDIA_ROOT_SOURCE_TYPE,
                 source_name="Local library",
+                resolved_path=abs_path,
             )
 
         # 4. Honest "we do not know".
-        return _unattributed()
+        return PhotoAttribution(
+            origin="unattributed",
+            kind="unknown",
+            match="none",
+            resolved_path=abs_path,
+        )
 
 
 def _unattributed() -> PhotoAttribution:
@@ -292,6 +330,7 @@ def resolver_for_state(state: Any) -> AttributionResolver:
         source_store=getattr(state, "source_store", None),
         source_item_store=getattr(state, "source_item_store", None),
         media_root=settings.MEDIA_DIR,
+        base_dir=settings.BASE_DIR,
     )
 
 

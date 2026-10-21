@@ -679,6 +679,7 @@ export function PhotoGrid({
                 path={photo.path}
                 size={getThumbnailSize()}
                 alt={photo.filename}
+                attribution={photo.attribution}
                 aspectRatio={
                   photo.metadata?.image?.width && photo.metadata?.image?.height
                     ? photo.metadata.image.width / photo.metadata.image.height

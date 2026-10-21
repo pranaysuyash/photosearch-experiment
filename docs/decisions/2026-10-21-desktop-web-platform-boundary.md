@@ -148,6 +148,14 @@ targets; new `desktop` job runs `cargo check` on the Tauri shell.
    today, so no client impact.
 2. Non-loopback pairing is proven at Tier 2 (TestClient with a simulated LAN
    peer). A real cross-device test (phone on LAN) is the next Tier-5 step.
+3. **The `/app` mount is build-dependent, and the backend CI job does not
+   build the UI.** With no `ui/dist-web` present, `GET /app/` falls through
+   to the root-level `DELETE /{video_id}` route from residual 1 and answers
+   405 instead of serving the SPA. The principal-gate test therefore asserts
+   only that the path is *not gated* (never 401); serving the bundle is
+   covered by `tests/test_ui_static.py`, which mounts a synthetic dist on a
+   bare app. The root-DELETE shadowing itself remains an owner decision
+   (residual 1).
 3. The in-memory pairing/limit state is per-process — fine for the single
    uvicorn process; revisit if deployment ever goes multi-worker.
 4. The gallery is still not virtualized (audit residual) — matters most for
