@@ -309,7 +309,7 @@ def test_attribution_endpoints(stores, tmp_path, monkeypatch):
     state.source_store = source_store
     state.source_item_store = item_store
 
-    monkeypatch.setattr("server.api.routers.attribution.settings.MEDIA_DIR", media)
+    monkeypatch.setattr("server.config.settings.MEDIA_DIR", media)
 
     client = TestClient(app)
     res = client.get("/attribution", params={"path": str(media / "cat.jpg")})
