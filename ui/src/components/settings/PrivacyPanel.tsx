@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { Shield, Trash2, AlertTriangle, Loader2, Check } from 'lucide-react';
 
 export function PrivacyPanel() {

@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/api';
 import {
   Shield,
   Download,
@@ -90,7 +91,7 @@ export const PrivacyDashboard: React.FC = () => {
   // Fetch privacy dashboard data
   const fetchDashboardData = useCallback(async () => {
     try {
-      const response = await fetch('/api/privacy/dashboard');
+      const response = await apiFetch('/api/privacy/dashboard');
       if (response.ok) {
         const data = await response.json();
         setDashboardData(data);
@@ -103,7 +104,7 @@ export const PrivacyDashboard: React.FC = () => {
   // Fetch consent status
   const fetchConsentStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/privacy/consent/status');
+      const response = await apiFetch('/api/privacy/consent/status');
       if (response.ok) {
         const data = await response.json();
         setConsentStatus(data.consent_status);
@@ -127,7 +128,7 @@ export const PrivacyDashboard: React.FC = () => {
   const grantConsent = async (consentType: string) => {
     try {
       // First request consent
-      const requestResponse = await fetch('/api/privacy/consent/request', {
+      const requestResponse = await apiFetch('/api/privacy/consent/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -141,7 +142,7 @@ export const PrivacyDashboard: React.FC = () => {
         const requestData = await requestResponse.json();
 
         // Then grant the consent
-        const grantResponse = await fetch(`/api/privacy/consent/${requestData.consent_id}/grant`, {
+        const grantResponse = await apiFetch(`/api/privacy/consent/${requestData.consent_id}/grant`, {
           method: 'POST'
         });
 
@@ -157,7 +158,7 @@ export const PrivacyDashboard: React.FC = () => {
   // Withdraw consent
   const withdrawConsent = async (consentType: string) => {
     try {
-      const response = await fetch(`/api/privacy/consent/${consentType}/withdraw`, {
+      const response = await apiFetch(`/api/privacy/consent/${consentType}/withdraw`, {
         method: 'POST'
       });
 
@@ -173,7 +174,7 @@ export const PrivacyDashboard: React.FC = () => {
   const requestDataExport = async () => {
     setExportLoading(true);
     try {
-      const response = await fetch('/api/privacy/export/request', {
+      const response = await apiFetch('/api/privacy/export/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ export const PrivacyDashboard: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      const response = await fetch('/api/privacy/anonymize/person', {
+      const response = await apiFetch('/api/privacy/anonymize/person', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

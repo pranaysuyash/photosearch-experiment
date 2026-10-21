@@ -17,10 +17,10 @@ import {
   ChevronLeft,
   Play
 } from 'lucide-react';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 import { api, type Job } from '../../api';
-import { pickDirectory } from '../../utils/pickDirectory';
+import { pickFolder } from '@/platform';
 import {
   isLocalStorageAvailable,
   localGetItem,
@@ -120,7 +120,7 @@ export function ImportWizard({ isOpen, onClose, onComplete }: ImportWizardProps)
     importStartedAtRef.current = Date.now();
 
     try {
-      const picked = await pickDirectory();
+      const picked = await pickFolder();
       if (!picked) {
         setIsImporting(false);
         setNotice(

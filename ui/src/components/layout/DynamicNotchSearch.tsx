@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
-import { usePlatformDetect } from '../../hooks/usePlatformDetect';
+import { usePlatform } from '@/platform';
 import { useNotch } from '../../hooks/useNotch';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import {
   Search,
   Sparkles,
@@ -39,7 +39,7 @@ export function DynamicNotchSearch({
     setTypeFilter,
   } = usePhotoSearchContext();
 
-  const { isDesktopApp, isMobile } = usePlatformDetect();
+  const { isDesktopApp, isMobile } = usePlatform();
   const { topInset } = useNotch();
 
   const initialMode = isMobile ? 'mobile' : isDesktopApp ? 'notch' : 'bubble';

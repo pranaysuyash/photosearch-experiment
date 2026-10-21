@@ -21,7 +21,7 @@ import {
   Tag
 } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface TimelineEntry {

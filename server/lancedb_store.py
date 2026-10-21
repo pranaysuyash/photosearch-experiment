@@ -1,9 +1,28 @@
 import logging
+import time
+from typing import Any, Dict, List, Optional, Tuple
+
 import lancedb
-from typing import List, Dict, Any, Optional, Tuple
+
 from server.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Sidecar table naming for index-level model stamps (one row per data table).
+_INDEX_MODEL_ROW_ID = "index_model"
+
+
+def _table_names(db: Any) -> set:
+    """Return connected table names across lancedb API generations.
+
+    lancedb >= 0.4x returns a ListTablesResponse object where
+    ``"name" in response`` is silently False; older versions return a plain
+    list. Every membership check must go through this helper or the store
+    silently fails to reopen persisted tables after a restart.
+    """
+    listing = db.list_tables()
+    names = getattr(listing, "tables", listing)
+    return {str(n) for n in names}
 
 
 class LanceDBStore:
@@ -26,8 +45,67 @@ class LanceDBStore:
         self.table = None
 
         # Open table if exists
-        if table_name in self.db.list_tables():
+        if table_name in _table_names(self.db):
             self.table = self.db.open_table(table_name)
+
+    # ------------------------------------------------------------------
+    # Index-level model stamping
+    # ------------------------------------------------------------------
+    # A whole table is always built by one embedding model (mixed-model
+    # tables produce meaningless similarities), so the stamp lives at index
+    # level in a "<table>_meta" sidecar rather than per row.
+
+    def _meta_table_name(self) -> str:
+        return f"{self.table_name}_meta"
+
+    def set_index_model(self, model_name: str, dimension: int) -> None:
+        """Record which embedding model/dimension built this table's vectors."""
+        meta_name = self._meta_table_name()
+        data = [
+            {
+                "id": _INDEX_MODEL_ROW_ID,
+                "model": str(model_name),
+                "dim": int(dimension),
+                "updated_at": time.time(),
+            }
+        ]
+        if meta_name in _table_names(self.db):
+            meta = self.db.open_table(meta_name)
+            meta.delete(f"id = '{_INDEX_MODEL_ROW_ID}'")
+            meta.add(data)
+        else:
+            self.db.create_table(meta_name, data)
+
+    def get_index_model(self) -> Optional[Dict[str, Any]]:
+        """Return {"model", "dim"} for this table, or None if unstamped."""
+        meta_name = self._meta_table_name()
+        if meta_name not in _table_names(self.db):
+            return None
+        try:
+            meta = self.db.open_table(meta_name)
+            rows = meta.search().limit(10).to_list()
+            for r in rows:
+                if r.get("id") == _INDEX_MODEL_ROW_ID:
+                    return {"model": r.get("model"), "dim": r.get("dim")}
+            return None
+        except Exception as e:
+            logger.warning(f"Failed reading index model stamp for {self.table_name}: {e}")
+            return None
+
+    def _query_dim_matches(self, query_embedding: List[float]) -> bool:
+        """Fail-soft dimension guard: mismatched queries return [], not garbage."""
+        stamp = self.get_index_model()
+        if not stamp or not stamp.get("dim"):
+            return True  # unstamped legacy table — nothing to check against
+        if len(query_embedding) == stamp["dim"]:
+            return True
+        logger.error(
+            f"Vector store '{self.table_name}' was built by "
+            f"'{stamp.get('model')}' (dim={stamp['dim']}) but received a "
+            f"{len(query_embedding)}-dim query. Re-index the table or switch "
+            f"EMBEDDING_MODEL back. Returning no results instead of garbage."
+        )
+        return False
 
     def get_count(self) -> int:
         """Return total number of vectors."""
@@ -80,6 +158,9 @@ class LanceDBStore:
         Semantic search for similar vectors with pagination.
         """
         if self.table is None:
+            return []
+
+        if not self._query_dim_matches(query_embedding):
             return []
 
         try:
@@ -192,7 +273,7 @@ class LanceDBStore:
 
     def reset(self):
         """Drop the table - destructive!"""
-        if self.table_name in self.db.list_tables():
+        if self.table_name in _table_names(self.db):
             self.db.drop_table(self.table_name)
             self.table = None
 
@@ -217,7 +298,7 @@ class FaceEmbeddingStore(LanceDBStore):
         bbox: str,  # JSON string: "[x, y, width, height]"
         confidence: float,
         cluster_id: Optional[int] = None,
-        embedding_version: str = "arcface_r50_v1",
+        embedding_version: str = "insightface-buffalo_l",
         age: Optional[int] = None,
         gender: Optional[str] = None,
     ):
@@ -279,7 +360,7 @@ class FaceEmbeddingStore(LanceDBStore):
                     "image_path": face["image_path"],
                     "bbox": face["bbox"],
                     "confidence": face["confidence"],
-                    "embedding_version": face.get("embedding_version", "arcface_r50_v1"),
+                    "embedding_version": face.get("embedding_version", "insightface-buffalo_l"),
                     "cluster_id": face.get("cluster_id", -1),
                     "age": face.get("age", -1),
                     "gender": face.get("gender", ""),

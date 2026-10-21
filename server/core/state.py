@@ -14,6 +14,8 @@ State is populated by server/core/bootstrap.py during lifespan.
 
 from __future__ import annotations
 
+import threading
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional
@@ -22,6 +24,27 @@ if TYPE_CHECKING:
     # Type hints only - not imported at runtime
     from logging import Logger
     from src.logging_config import PerformanceTracker
+
+
+class ActivityClock:
+    """Process-wide last-API-activity tracker (idle gating for background
+    indexing). Every HTTP request records a beat via the middleware in
+    server/main.py; background jobs consult seconds_since_activity()."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._last = time.monotonic()
+
+    def record(self) -> None:
+        with self._lock:
+            self._last = time.monotonic()
+
+    def seconds_since_activity(self) -> float:
+        with self._lock:
+            return time.monotonic() - self._last
+
+
+activity_clock = ActivityClock()
 
 
 @dataclass
@@ -55,6 +78,11 @@ class AppState:
     # ─────────────────────────────────────────────────────────────────────────
     photo_search_engine: Optional[Any] = None  # PhotoSearch
     embedding_generator: Optional[Any] = None  # EmbeddingGenerator
+    captions_db_path: str = ""  # SQLite DB owned by VLMCaptionService
+    caption_index: Optional[Any] = None  # CaptionSearchIndex (LanceDB)
+    transcription_service: Optional[Any] = None  # AudioTranscriptionService
+    image_quality_index: Optional[Any] = None  # PhotoQualityIndex (EG2, LanceDB)
+    quality_builder: Optional[Any] = None  # QualityIndexBuilder (idle background)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Components (from former server/core/components.py module-level)

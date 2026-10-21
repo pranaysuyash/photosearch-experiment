@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, X, SkipForward, RefreshCw, AlertCircle, User, CheckSquare, Square } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface ReviewItem {
     id: number;

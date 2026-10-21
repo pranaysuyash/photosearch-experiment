@@ -180,6 +180,18 @@
     "summary": "Generate Caption"
   },
   {
+    "path": "/api/captions/reindex",
+    "method": "POST",
+    "name": "reindex_captions_api_captions_reindex_post",
+    "summary": "Reindex Captions"
+  },
+  {
+    "path": "/api/captions/search-status",
+    "method": "GET",
+    "name": "get_caption_search_status_api_captions_search_status_get",
+    "summary": "Get Caption Search Status"
+  },
+  {
     "path": "/api/captions/status",
     "method": "GET",
     "name": "get_vlm_status_api_captions_status_get",
@@ -220,6 +232,12 @@
     "method": "POST",
     "name": "cleanup_duplicates_api_duplicates_cleanup_post",
     "summary": "Cleanup Duplicates"
+  },
+  {
+    "path": "/api/duplicates/register",
+    "method": "GET",
+    "name": "get_register_duplicates_api_duplicates_register_get",
+    "summary": "Get Register Duplicates"
   },
   {
     "path": "/api/duplicates/scan",
@@ -700,6 +718,30 @@
     "method": "POST",
     "name": "reject_face_api_faces__face_id__reject_post",
     "summary": "Reject Face"
+  },
+  {
+    "path": "/api/indexing/quality",
+    "method": "GET",
+    "name": "quality_index_status_api_indexing_quality_get",
+    "summary": "Quality Index Status"
+  },
+  {
+    "path": "/api/indexing/quality/build-once",
+    "method": "POST",
+    "name": "build_quality_once_api_indexing_quality_build_once_post",
+    "summary": "Build Quality Once"
+  },
+  {
+    "path": "/api/indexing/quality/start",
+    "method": "POST",
+    "name": "start_quality_builder_api_indexing_quality_start_post",
+    "summary": "Start Quality Builder"
+  },
+  {
+    "path": "/api/indexing/quality/stop",
+    "method": "POST",
+    "name": "stop_quality_builder_api_indexing_quality_stop_post",
+    "summary": "Stop Quality Builder"
   },
   {
     "path": "/api/intent/detect",
@@ -1206,6 +1248,24 @@
     "summary": "Get Rating Stats"
   },
   {
+    "path": "/api/safety/classify",
+    "method": "POST",
+    "name": "classify_image_api_safety_classify_post",
+    "summary": "Classify Image"
+  },
+  {
+    "path": "/api/safety/classify-batch",
+    "method": "POST",
+    "name": "classify_batch_api_safety_classify_batch_post",
+    "summary": "Classify Batch"
+  },
+  {
+    "path": "/api/safety/status",
+    "method": "GET",
+    "name": "safety_status_api_safety_status_get",
+    "summary": "Safety Status"
+  },
+  {
     "path": "/api/schema",
     "method": "GET",
     "name": "get_api_schema_api_schema_get",
@@ -1222,6 +1282,42 @@
     "method": "POST",
     "name": "parse_natural_language_search_api_search_natural_language_post",
     "summary": "Parse Natural Language Search"
+  },
+  {
+    "path": "/api/transcripts/batch",
+    "method": "POST",
+    "name": "transcribe_batch_api_transcripts_batch_post",
+    "summary": "Transcribe Batch"
+  },
+  {
+    "path": "/api/transcripts/search",
+    "method": "GET",
+    "name": "search_transcripts_api_transcripts_search_get",
+    "summary": "Search Transcripts"
+  },
+  {
+    "path": "/api/transcripts/status",
+    "method": "GET",
+    "name": "transcripts_status_api_transcripts_status_get",
+    "summary": "Transcripts Status"
+  },
+  {
+    "path": "/api/transcripts/transcribe",
+    "method": "POST",
+    "name": "transcribe_api_transcripts_transcribe_post",
+    "summary": "Transcribe"
+  },
+  {
+    "path": "/api/transcripts/{video_path}",
+    "method": "DELETE",
+    "name": "delete_transcript_api_transcripts__video_path__delete",
+    "summary": "Delete Transcript"
+  },
+  {
+    "path": "/api/transcripts/{video_path}",
+    "method": "GET",
+    "name": "get_transcript_api_transcripts__video_path__get",
+    "summary": "Get Transcript"
   },
   {
     "path": "/api/video/faces/process",
@@ -1270,6 +1366,18 @@
     "method": "GET",
     "name": "get_video_person_timeline_api_video__video_path__timeline_get",
     "summary": "Get Video Person Timeline"
+  },
+  {
+    "path": "/attribution",
+    "method": "GET",
+    "name": "get_attribution_attribution_get",
+    "summary": "Get Attribution"
+  },
+  {
+    "path": "/attribution/batch",
+    "method": "GET",
+    "name": "get_attributions_attribution_batch_get",
+    "summary": "Get Attributions"
   },
   {
     "path": "/browse",
@@ -1746,6 +1854,12 @@
     "summary": "Get Search Suggestions"
   },
   {
+    "path": "/jobs",
+    "method": "GET",
+    "name": "list_jobs_jobs_get",
+    "summary": "List Jobs"
+  },
+  {
     "path": "/jobs/{job_id}",
     "method": "GET",
     "name": "get_job_status_jobs__job_id__get",
@@ -1790,8 +1904,8 @@
   {
     "path": "/locations/clusters",
     "method": "GET",
-    "name": "get_location_clusters_locations_clusters_get",
-    "summary": "Get Location Clusters"
+    "name": "get_place_clusters_locations_clusters_get",
+    "summary": "Get Place Clusters"
   },
   {
     "path": "/locations/clusters/{cluster_id}/photos",
@@ -1814,8 +1928,8 @@
   {
     "path": "/locations/nearby",
     "method": "GET",
-    "name": "get_photos_near_location_locations_nearby_get",
-    "summary": "Get Photos Near Location"
+    "name": "get_nearby_locations_locations_nearby_get",
+    "summary": "Get Nearby Locations"
   },
   {
     "path": "/locations/photo/{photo_path}",
@@ -1906,6 +2020,30 @@
     "method": "GET",
     "name": "get_ocr_stats_ocr_stats_get",
     "summary": "Get Ocr Stats"
+  },
+  {
+    "path": "/pair/complete",
+    "method": "POST",
+    "name": "complete_pairing_pair_complete_post",
+    "summary": "Complete Pairing"
+  },
+  {
+    "path": "/pair/revoke",
+    "method": "POST",
+    "name": "revoke_pairing_pair_revoke_post",
+    "summary": "Revoke Pairing"
+  },
+  {
+    "path": "/pair/start",
+    "method": "POST",
+    "name": "start_pairing_pair_start_post",
+    "summary": "Start Pairing"
+  },
+  {
+    "path": "/pair/status",
+    "method": "GET",
+    "name": "pairing_status_pair_status_get",
+    "summary": "Pairing Status"
   },
   {
     "path": "/people/{photo_path}",

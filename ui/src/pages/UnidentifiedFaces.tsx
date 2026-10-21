@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Camera, RefreshCw, UserPlus } from 'lucide-react';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import { api } from '../api';
 
 interface UnidentifiedFace {

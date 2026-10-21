@@ -50,6 +50,8 @@ import { PhotoDetailTabs, type TabName } from './tabs/PhotoDetailTabs';
 import { VideoFacesPanel } from '../video/VideoFacesPanel';
 import { PhotoFacePanel } from './PhotoFacePanel';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
+import { ProvenanceChip } from '../provenance/ProvenanceChip';
+import { usePhotoAttribution } from '../../hooks/usePhotoAttribution';
 
 interface PhotoDetailProps {
   photos: Photo[]; // Full list for navigation
@@ -166,10 +168,14 @@ export function PhotoDetail({
   onClose,
 }: PhotoDetailProps) {
   const photo = currentIndex !== null ? photos[currentIndex] : null;
+  const { attribution, loading: attributionLoading } = usePhotoAttribution(photo);
   const { refresh } = usePhotoSearchContext();
   const { setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
   const [showExplanation, setShowExplanation] = useState(false);
+  // No timed caption track exists for the video player; when the backend has
+  // a stored AI caption for the file, expose it as the player's description.
+  const [videoDescription, setVideoDescription] = useState<string | null>(null);
   const [photoNote, setPhotoNote] = useState<string | null>(null);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
@@ -228,6 +234,20 @@ export function PhotoDetail({
     }
     return () => {
       document.body.style.overflow = '';
+    };
+  }, [photo]);
+
+  // Fetch the stored AI caption for videos so the player has a text
+  // alternative (no timed-caption track exists yet).
+  useEffect(() => {
+    setVideoDescription(null);
+    if (!photo || !api.isVideo(photo.path)) return;
+    let cancelled = false;
+    api.getCaption(photo.path).then((caption) => {
+      if (!cancelled && caption) setVideoDescription(caption);
+    });
+    return () => {
+      cancelled = true;
     };
   }, [photo]);
 
@@ -594,6 +614,14 @@ export function PhotoDetail({
                   <Copy size={12} />
                 </button>
               </div>
+            </div>
+
+            {/* Origin — registry-derived source attribution */}
+            <div className='flex items-center gap-2 flex-wrap'>
+              <ProvenanceChip attribution={attribution} size='sm' />
+              {attributionLoading && (
+                <span className='text-xs text-white/40'>resolving origin…</span>
+              )}
             </div>
 
             {/* Quick actions + Rating on same row */}
@@ -1110,14 +1138,24 @@ export function PhotoDetail({
                   style={{ minHeight: 0 }}
                 >
                   {api.isVideo(photo.path) ? (
-                    <video
-                      src={api.getVideoUrl(photo.path)}
-                      controls
-                      autoPlay
-                      className='max-h-full max-w-full object-contain'
-                    >
-                      <track kind='captions' />
-                    </video>
+                    <>
+                      <video
+                        src={api.getVideoUrl(photo.path)}
+                        controls
+                        autoPlay
+                        aria-describedby={
+                          videoDescription
+                            ? 'photo-video-description'
+                            : undefined
+                        }
+                        className='max-h-full max-w-full object-contain'
+                      />
+                      {videoDescription && (
+                        <p id='photo-video-description' className='sr-only'>
+                          {videoDescription}
+                        </p>
+                      )}
+                    </>
                   ) : (
                     <div
                       className='flex items-center justify-center'

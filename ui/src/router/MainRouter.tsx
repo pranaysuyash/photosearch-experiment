@@ -11,11 +11,13 @@ import {
   Navigate,
   useNavigate,
 } from 'react-router-dom';
-import { Suspense, lazy } from 'react';
+import { Suspense, lazy, useEffect, type ReactNode } from 'react';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import Layout from '../components/layout/Layout';
 import { usePhotoSearchContext } from '../contexts/PhotoSearchContext';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
+import { setUnauthorizedHandler } from '../api';
+import { shell } from '@/platform';
 
 // Core experiences (keep eagerly loaded)
 import Home from '../pages/Home';
@@ -125,6 +127,41 @@ const ModernGalleryDemoPage = () => {
 const Settings = lazy(() => import('../pages/Settings'));
 const About = lazy(() => import('../pages/About'));
 const NotFound = lazy(() => import('../pages/NotFound'));
+const PairPage = lazy(() => import('../pages/PairPage'));
+
+/**
+ * Developer showcases — dialog gallery, code-splitting metrics, Tauri setup
+ * guide, gallery prototypes — are not user-facing features. Production builds
+ * serve NotFound; `vite dev` keeps them reachable.
+ */
+const DevOnly = ({ children }: { children: ReactNode }) =>
+  import.meta.env.DEV ? <>{children}</> : <NotFound />;
+
+/**
+ * A 401 from the principal gate means this browser is not paired. In the
+ * Tauri shell the backend is loopback and the gate never fires, so a 401
+ * there is a server bug worth leaving visible rather than hiding behind the
+ * pairing page.
+ */
+const UnauthorizedBridge = () => {
+  const navigate = useNavigate();
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      if (shell === 'tauri') return;
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const here = window.location.pathname;
+      const inApp = here.startsWith(base) ? here.slice(base.length) || '/' : here;
+      try {
+        sessionStorage.setItem('lm:pairReturnTo', `${inApp}${window.location.search}`);
+      } catch {
+        // storage unavailable; land on the library afterwards
+      }
+      navigate('/pair', { replace: true });
+    });
+    return () => setUnauthorizedHandler(null);
+  }, [navigate]);
+  return null;
+};
 
 const suspenseFallback = (
   <div className='flex items-center justify-center py-12 text-sm text-muted-foreground'>
@@ -135,7 +172,9 @@ const suspenseFallback = (
 const MainRouter = () => {
   return (
     <ErrorBoundary>
-      <Router>
+      {/* BASE_URL is '/' for the desktop bundle and '/app/' for the web build. */}
+      <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+        <UnauthorizedBridge />
         <Layout>
           <Suspense fallback={suspenseFallback}>
             <Routes>
@@ -167,7 +206,7 @@ const MainRouter = () => {
               <Route path='/places' element={<PlaceClustering />} />
               <Route path='/collaboration' element={<CollaborativeSpaces />} />
 
-              {/* Studio Features */}
+              {/* Studio Features — feature surfaces */}
               <Route
                 path='/studio/intent-recognition'
                 element={
@@ -182,27 +221,52 @@ const MainRouter = () => {
                 path='/studio/ocr-search'
                 element={<Navigate to='/analytics/ocr' replace />}
               />
-              <Route path='/studio/modal-system' element={<ModalSystem />} />
-              <Route
-                path='/studio/code-splitting'
-                element={<CodeSplitting />}
-              />
-              <Route
-                path='/studio/tauri-integration'
-                element={<TauriIntegration />}
-              />
               <Route
                 path='/studio/video-analysis'
                 element={<VideoAnalysisPanel />}
               />
               <Route path='/studio/ai-insights' element={<AIInsights />} />
+
+              {/* Studio Features — developer showcases, dev builds only */}
+              <Route
+                path='/studio/modal-system'
+                element={
+                  <DevOnly>
+                    <ModalSystem />
+                  </DevOnly>
+                }
+              />
+              <Route
+                path='/studio/code-splitting'
+                element={
+                  <DevOnly>
+                    <CodeSplitting />
+                  </DevOnly>
+                }
+              />
+              <Route
+                path='/studio/tauri-integration'
+                element={
+                  <DevOnly>
+                    <TauriIntegration />
+                  </DevOnly>
+                }
+              />
               <Route
                 path='/studio/modern-gallery'
-                element={<ModernGalleryDemoPage />}
+                element={
+                  <DevOnly>
+                    <ModernGalleryDemoPage />
+                  </DevOnly>
+                }
               />
               <Route
                 path='/studio/responsive-gallery'
-                element={<ResponsiveGalleryPage />}
+                element={
+                  <DevOnly>
+                    <ResponsiveGalleryPage />
+                  </DevOnly>
+                }
               />
 
               {/* Advanced Analytics Routes */}
@@ -220,6 +284,7 @@ const MainRouter = () => {
               {/* Utility Routes */}
               <Route path='/settings' element={<Settings />} />
               <Route path='/about' element={<About />} />
+              <Route path='/pair' element={<PairPage />} />
 
               {/* Redirects */}
               <Route path='/home' element={<Navigate to='/' replace />} />

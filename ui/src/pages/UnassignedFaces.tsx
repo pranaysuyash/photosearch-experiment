@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, UserPlus, Users } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 type UnassignedFace = {
   detection_id: string;

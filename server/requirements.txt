@@ -28,6 +28,23 @@ scikit-learn>=1.3.0  # For DBSCAN clustering
 # Vector Database
 lancedb>=0.3.0
 
+# Audio transcription (optional backend; the server starts without it):
+#   pip install "faster-whisper>=1.2.1" "av>=12,<16"
+# av must stay <16: av 16+ removed the `metadata_errors` kwarg that
+# faster-whisper 1.2.1 passes to av.open() (found live 2026-10-20).
+
+# EmbeddingGemma 2 (optional multimodal embedder, not the default):
+#   pip install torchvision
+# Its image processor (shared with Gemma 4) imports torchvision; without it
+# transformers raises a misleading "Could not import EmbeddingGemma2Processor".
+# The default caption embedder (embeddinggemma-300m) does NOT need this.
+
+# EG2 background quality space (optional; the app runs without it):
+#   pip install mlx mlx-vlm
+# Used by server/image_quality_index.py via the eg2_mlx backend (falls back to
+# sentence-transformers EG2, then off). Honest throughput: ~2-5 img/s either
+# way — see experiments/eg2_mlx_benchmark_2026-10-20.md before optimizing.
+
 # Additional Dependencies (from main requirements)
 tqdm>=4.66.0
 exifread>=3.0.0

@@ -14,7 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import { ImportWizard } from '../components/import/ImportWizard';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 export function Import() {
   const [showWizard, setShowWizard] = useState(false);

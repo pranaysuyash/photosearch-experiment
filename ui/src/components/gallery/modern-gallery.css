@@ -147,6 +147,13 @@
   grid-auto-rows: auto;
   grid-row: span var(--row-span, 1);
 
+  /* Render virtualization: the browser skips layout/paint for offscreen
+     items. Row spans are fixed (not content-driven), so the intrinsic-size
+     estimate can't shift the masonry, and `auto` keeps the last real size
+     once an item has rendered. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 320px;
+
   /* Modern card styling - transparent background to avoid border effect */
   background: transparent;
   border-radius: var(--card-radius);

@@ -6,8 +6,8 @@
  */
 import { useState } from 'react';
 import { Search, X, RefreshCw, User, Camera } from 'lucide-react';
-import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { api, apiFetch, mediaUrl } from '../../api';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
@@ -39,8 +39,8 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
       setError(null);
       setHasSearched(true);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${faceId}/similar?threshold=${threshold}`
+      const response = await apiFetch(
+        `/api/faces/${faceId}/similar?threshold=${threshold}`
       );
 
       if (!response.ok) {
@@ -171,7 +171,7 @@ export function SimilarFaceSearch({ faceId, isOpen, onClose }: SimilarFaceSearch
                     {/* Face Image */}
                     <div className="aspect-square bg-black/20 relative">
                       <img
-                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${face.detection_id}?size=150`}
+                        src={mediaUrl.faceCrop(face.detection_id, 150)}
                         alt="Similar face"
                         className="w-full h-full object-cover"
                         loading="lazy"

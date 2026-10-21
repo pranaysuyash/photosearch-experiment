@@ -7,8 +7,8 @@
  */
 import { useState, useEffect } from 'react';
 import { Search, Plus, X, User, Camera, RefreshCw } from 'lucide-react';
-import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { api, apiFetch } from '../../api';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Person {
@@ -133,8 +133,8 @@ export function BooleanPeopleSearch({ isOpen, onClose }: BooleanPeopleSearchProp
       setError(null);
       setResults([]);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/photos/by-people`,
+      const response = await apiFetch(
+        `/api/photos/by-people`,
         {
           method: 'POST',
           headers: {

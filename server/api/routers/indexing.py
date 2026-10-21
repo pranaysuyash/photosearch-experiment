@@ -5,8 +5,9 @@ Uses Depends(get_state) for accessing shared application state.
 """
 
 import os
+from typing import Optional
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query
 
 from server.jobs import Job, job_store
 from server.models.schemas.search import ScanRequest
@@ -95,6 +96,20 @@ async def get_job_status(job_id: str):
     return job
 
 
+@router.get("/jobs")
+async def list_jobs(
+    status: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """List jobs, newest first. Complements GET /jobs/{job_id}."""
+    try:
+        jobs = job_store.list_jobs(status=status, limit=limit, offset=offset)
+        return {"jobs": jobs, "count": len(jobs)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/index")
 async def force_indexing(request: ScanRequest, state: AppState = Depends(get_state)):
     """
@@ -113,3 +128,49 @@ async def force_indexing(request: ScanRequest, state: AppState = Depends(get_sta
         return {"status": "success", "indexed": len(files_to_index)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Background image-quality space (EG2)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _builder(state: AppState):
+    builder = state.quality_builder
+    if builder is None:
+        raise HTTPException(status_code=503, detail="Quality index not configured")
+    return builder
+
+
+@router.get("/api/indexing/quality")
+async def quality_index_status(state: AppState = Depends(get_state)):
+    """Status of the background EG2 quality space (counts, backend, idle gate)."""
+    return _builder(state).status()
+
+
+@router.post("/api/indexing/quality/start")
+async def start_quality_builder(state: AppState = Depends(get_state)):
+    builder = _builder(state)
+    if not builder.quality_index.embedder.available():
+        raise HTTPException(
+            status_code=503, detail="No EG2 backend available (pip install mlx mlx-vlm, or check HF access)"
+        )
+    builder.start()
+    return {"success": True, "status": builder.status()}
+
+
+@router.post("/api/indexing/quality/build-once")
+async def build_quality_once(state: AppState = Depends(get_state)):
+    """Embed one batch of pending images synchronously (builder must be idle)."""
+    builder = _builder(state)
+    if builder.running:
+        raise HTTPException(status_code=409, detail="Builder loop is running; use its idle cycle instead")
+    stats = builder.build_batch()
+    return {"success": True, "batch": stats, "status": builder.status()}
+
+
+@router.post("/api/indexing/quality/stop")
+async def stop_quality_builder(state: AppState = Depends(get_state)):
+    builder = _builder(state)
+    builder.stop()
+    return {"success": True, "status": builder.status()}

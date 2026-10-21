@@ -15,7 +15,7 @@ import {
   Keyboard,
   MousePointer
 } from 'lucide-react';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface AccessibilitySettings {
   highContrast: boolean;

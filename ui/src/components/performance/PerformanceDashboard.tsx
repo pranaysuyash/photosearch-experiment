@@ -15,6 +15,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/api';
 import {
   Activity,
   Database,
@@ -97,7 +98,7 @@ export const PerformanceDashboard: React.FC = () => {
   // Fetch performance metrics
   const fetchMetrics = useCallback(async () => {
     try {
-      const response = await fetch('/api/performance/status');
+      const response = await apiFetch('/api/performance/status');
       if (response.ok) {
         const data = await response.json();
         setMetrics(data.performance_report);
@@ -110,7 +111,7 @@ export const PerformanceDashboard: React.FC = () => {
   // Fetch system health
   const fetchHealth = useCallback(async () => {
     try {
-      const response = await fetch('/api/performance/health');
+      const response = await apiFetch('/api/performance/health');
       if (response.ok) {
         const data = await response.json();
         setHealth(data.health_check);
@@ -131,7 +132,7 @@ export const PerformanceDashboard: React.FC = () => {
   const optimizeSystem = async () => {
     setOptimizing(true);
     try {
-      const response = await fetch('/api/performance/optimize', {
+      const response = await apiFetch('/api/performance/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -162,7 +163,7 @@ export const PerformanceDashboard: React.FC = () => {
     );
     if (!confirmed) return;
     try {
-      const response = await fetch('/api/performance/cache/clear', {
+      const response = await apiFetch('/api/performance/cache/clear', {
         method: 'POST'
       });
       if (response.ok) {
@@ -176,7 +177,7 @@ export const PerformanceDashboard: React.FC = () => {
   // Optimize memory
   const optimizeMemory = async () => {
     try {
-      const response = await fetch('/api/performance/memory/optimize', {
+      const response = await apiFetch('/api/performance/memory/optimize', {
         method: 'POST'
       });
       if (response.ok) {

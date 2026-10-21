@@ -253,6 +253,17 @@
         "title": "BatchProcessingRequest",
         "type": "object"
       },
+      "BatchTranscribeRequest": {
+        "properties": {
+          "limit": {
+            "default": 5,
+            "title": "Limit",
+            "type": "integer"
+          }
+        },
+        "title": "BatchTranscribeRequest",
+        "type": "object"
+      },
       "Body_detect_faces_mobile_api_mobile_faces_detect_post": {
         "properties": {
           "detection_request": {
@@ -413,6 +424,40 @@
           "provider"
         ],
         "title": "CaptionResponse",
+        "type": "object"
+      },
+      "ClassifyBatchRequest": {
+        "properties": {
+          "limit": {
+            "default": 50,
+            "title": "Limit",
+            "type": "integer"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "ClassifyBatchRequest",
+        "type": "object"
+      },
+      "ClassifyRequest": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "ClassifyRequest",
         "type": "object"
       },
       "ClusterLabelRequest": {
@@ -2234,6 +2279,66 @@
         "title": "OptimizationConfigRequest",
         "type": "object"
       },
+      "PairCompleteRequest": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "PairCompleteRequest",
+        "type": "object"
+      },
+      "PairCompleteResponse": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "token"
+        ],
+        "title": "PairCompleteResponse",
+        "type": "object"
+      },
+      "PairStartResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "expires_in": {
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "suggested_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Url"
+          }
+        },
+        "required": [
+          "code",
+          "expires_in"
+        ],
+        "title": "PairStartResponse",
+        "type": "object"
+      },
       "PerformanceRecordRequest": {
         "properties": {
           "chunk_name": {
@@ -3592,6 +3697,24 @@
           }
         },
         "title": "TimelineEntryUpdateRequest",
+        "type": "object"
+      },
+      "TranscribeRequest": {
+        "properties": {
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "video_path": {
+            "title": "Video Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video_path"
+        ],
+        "title": "TranscribeRequest",
         "type": "object"
       },
       "TrashEmptyRequest": {
@@ -5219,6 +5342,68 @@
         ]
       }
     },
+    "/api/captions/reindex": {
+      "post": {
+        "description": "(Re)embed all stored captions into the caption search index.",
+        "operationId": "reindex_captions_api_captions_reindex_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reindex Captions",
+        "tags": [
+          "captions"
+        ]
+      }
+    },
+    "/api/captions/search-status": {
+      "get": {
+        "description": "Caption search index stats (count + stamped model).",
+        "operationId": "get_caption_search_status_api_captions_search_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Caption Search Status",
+        "tags": [
+          "captions"
+        ]
+      }
+    },
     "/api/captions/status": {
       "get": {
         "description": "Get VLM captioning service status and available providers.",
@@ -5487,6 +5672,23 @@
           }
         },
         "summary": "Cleanup Duplicates"
+      }
+    },
+    "/api/duplicates/register": {
+      "get": {
+        "description": "Near-duplicate groups from the photo-register (leader clustering). Snapshot-based (data/register_dedupe_media.json); members whose files no longer exist are dropped live. Read-only \u2014 resolution flows through the local /api/duplicates endpoints, this surface only informs.",
+        "operationId": "get_register_duplicates_api_duplicates_register_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Register Duplicates"
       }
     },
     "/api/duplicates/scan": {
@@ -8808,6 +9010,72 @@
         "summary": "Reject Face"
       }
     },
+    "/api/indexing/quality": {
+      "get": {
+        "description": "Status of the background EG2 quality space (counts, backend, idle gate).",
+        "operationId": "quality_index_status_api_indexing_quality_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Quality Index Status"
+      }
+    },
+    "/api/indexing/quality/build-once": {
+      "post": {
+        "description": "Embed one batch of pending images synchronously (builder must be idle).",
+        "operationId": "build_quality_once_api_indexing_quality_build_once_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Build Quality Once"
+      }
+    },
+    "/api/indexing/quality/start": {
+      "post": {
+        "operationId": "start_quality_builder_api_indexing_quality_start_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Start Quality Builder"
+      }
+    },
+    "/api/indexing/quality/stop": {
+      "post": {
+        "operationId": "stop_quality_builder_api_indexing_quality_stop_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stop Quality Builder"
+      }
+    },
     "/api/intent/detect": {
       "get": {
         "description": "Detect user intent from search query for auto-mode switching.",
@@ -12094,6 +12362,103 @@
         "summary": "Get Rating Stats"
       }
     },
+    "/api/safety/classify": {
+      "post": {
+        "operationId": "classify_image_api_safety_classify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Classify Image",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/api/safety/classify-batch": {
+      "post": {
+        "operationId": "classify_batch_api_safety_classify_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClassifyBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Classify Batch",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
+    "/api/safety/status": {
+      "get": {
+        "operationId": "safety_status_api_safety_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Safety Status",
+        "tags": [
+          "safety"
+        ]
+      }
+    },
     "/api/schema": {
       "get": {
         "description": "Get the API schema and version information.",
@@ -12183,6 +12548,231 @@
           }
         },
         "summary": "Parse Natural Language Search"
+      }
+    },
+    "/api/transcripts/batch": {
+      "post": {
+        "operationId": "transcribe_batch_api_transcripts_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchTranscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe Batch",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/api/transcripts/search": {
+      "get": {
+        "operationId": "search_transcripts_api_transcripts_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search Transcripts",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/api/transcripts/status": {
+      "get": {
+        "operationId": "transcripts_status_api_transcripts_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Transcripts Status",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/api/transcripts/transcribe": {
+      "post": {
+        "operationId": "transcribe_api_transcripts_transcribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe",
+        "tags": [
+          "transcripts"
+        ]
+      }
+    },
+    "/api/transcripts/{video_path}": {
+      "delete": {
+        "operationId": "delete_transcript_api_transcripts__video_path__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "video_path",
+            "required": true,
+            "schema": {
+              "title": "Video Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Transcript",
+        "tags": [
+          "transcripts"
+        ]
+      },
+      "get": {
+        "operationId": "get_transcript_api_transcripts__video_path__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "video_path",
+            "required": true,
+            "schema": {
+              "title": "Video Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Transcript",
+        "tags": [
+          "transcripts"
+        ]
       }
     },
     "/api/video/faces/process": {
@@ -12499,6 +13089,113 @@
           }
         },
         "summary": "Get Video Person Timeline"
+      }
+    },
+    "/attribution": {
+      "get": {
+        "description": "Source attribution for a single media file. Returns an honest record: `kind` is `local`, `cloud` or `unknown`, and `match` says how the attribution was resolved.",
+        "operationId": "get_attribution_attribution_get",
+        "parameters": [
+          {
+            "description": "Absolute path of the media file",
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "description": "Absolute path of the media file",
+              "title": "Path",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Also inspect the file for content-provenance markers",
+            "in": "query",
+            "name": "include_content",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also inspect the file for content-provenance markers",
+              "title": "Include Content",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Attribution"
+      }
+    },
+    "/attribution/batch": {
+      "get": {
+        "description": "Source attribution for many media files in one round trip. Returns `{ \"attributions\": { \"<path>\": <record> } }`.",
+        "operationId": "get_attributions_attribution_batch_get",
+        "parameters": [
+          {
+            "description": "Media file paths",
+            "in": "query",
+            "name": "path",
+            "required": false,
+            "schema": {
+              "description": "Media file paths",
+              "items": {
+                "type": "string"
+              },
+              "title": "Path",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Also inspect files for content-provenance markers",
+            "in": "query",
+            "name": "include_content",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also inspect files for content-provenance markers",
+              "title": "Include Content",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Attributions"
       }
     },
     "/browse": {
@@ -15690,6 +16387,74 @@
         "summary": "Get Search Suggestions"
       }
     },
+    "/jobs": {
+      "get": {
+        "description": "List jobs, newest first. Complements GET /jobs/{job_id}.",
+        "operationId": "list_jobs_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Jobs"
+      }
+    },
     "/jobs/{job_id}": {
       "get": {
         "description": "Get the status of a background job.",
@@ -15959,8 +16724,8 @@
     },
     "/locations/clusters": {
       "get": {
-        "description": "Get all location clusters.",
-        "operationId": "get_location_clusters_locations_clusters_get",
+        "description": "Get clusters of photos by location.",
+        "operationId": "get_place_clusters_locations_clusters_get",
         "parameters": [
           {
             "in": "query",
@@ -15994,7 +16759,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Location Clusters"
+        "summary": "Get Place Clusters"
       }
     },
     "/locations/clusters/{cluster_id}/photos": {
@@ -16145,7 +16910,7 @@
     "/locations/nearby": {
       "get": {
         "description": "Get photos within a certain radius of a location.",
-        "operationId": "get_photos_near_location_locations_nearby_get",
+        "operationId": "get_nearby_locations_locations_nearby_get",
         "parameters": [
           {
             "in": "query",
@@ -16198,7 +16963,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Photos Near Location"
+        "summary": "Get Nearby Locations"
       }
     },
     "/locations/photo/{photo_path}": {
@@ -16793,6 +17558,106 @@
           }
         },
         "summary": "Get Ocr Stats"
+      }
+    },
+    "/pair/complete": {
+      "post": {
+        "operationId": "complete_pairing_pair_complete_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PairCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairCompleteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/pair/revoke": {
+      "post": {
+        "operationId": "revoke_pairing_pair_revoke_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Revoke Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/pair/start": {
+      "post": {
+        "operationId": "start_pairing_pair_start_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PairStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Start Pairing",
+        "tags": [
+          "pairing"
+        ]
+      }
+    },
+    "/pair/status": {
+      "get": {
+        "operationId": "pairing_status_pair_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Pairing Status",
+        "tags": [
+          "pairing"
+        ]
       }
     },
     "/people/{photo_path}": {

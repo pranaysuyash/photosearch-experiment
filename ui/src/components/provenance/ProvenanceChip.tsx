@@ -1,98 +1,162 @@
 /**
- * Provenance Chip Component
+ * Provenance Chip — renders the registry-derived origin of a media file.
  *
- * Displays the source and availability status of a photo (Local/Cloud/Offline).
+ * The data comes from the server (`/attribution`), which joins the photo to
+ * the source registry. Nothing here infers a source from a path: an
+ * unattributed file is shown as unattributed.
+ *
+ * This replaces the earlier fabricated implementation, which derived
+ * "Local/Cloud" from path substrings and hardcoded a source name. See
+ * docs/decisions/2026-10-21-photo-source-attribution.md.
  */
 import React from 'react';
 import {
   HardDrive,
   Cloud,
-  WifiOff,
+  CircleHelp,
   AlertTriangle,
+  ShieldCheck,
   Clock,
-  Loader
 } from 'lucide-react';
-import { glass } from '../design/glass';
-
-type ProvenanceStatus = 'local' | 'cloud' | 'offline' | 'syncing' | 'degraded';
+import { glass } from '@/design/glass';
+import { type PhotoAttribution } from '@/api';
 
 interface ProvenanceChipProps {
-  status: ProvenanceStatus;
-  source?: string; // e.g., 'Local Drive', 'Google Drive', 'iCloud'
-  lastSync?: string; // ISO date string
-  size?: 'sm' | 'md' | 'lg';
+  /** Registry-derived attribution. `undefined`/`null` renders the unknown state. */
+  attribution?: PhotoAttribution | null;
+  size?: 'sm' | 'md';
+  /** Show the source's last-sync date when the registry has one. */
+  showSync?: boolean;
 }
 
-const statusConfig = {
-  local: {
-    label: 'Local',
-    icon: HardDrive,
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10',
-    border: 'border-blue-500/20'
-  },
-  cloud: {
-    label: 'Cloud',
-    icon: Cloud,
-    color: 'text-green-400',
-    bg: 'bg-green-500/10',
-    border: 'border-green-500/20'
-  },
-  offline: {
-    label: 'Offline',
-    icon: WifiOff,
-    color: 'text-red-400',
-    bg: 'bg-red-500/10',
-    border: 'border-red-500/20'
-  },
-  syncing: {
-    label: 'Syncing',
-    icon: Loader,
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/10',
-    border: 'border-yellow-500/20'
-  },
-  degraded: {
-    label: 'Limited',
-    icon: AlertTriangle,
-    color: 'text-orange-400',
-    bg: 'bg-orange-500/10',
-    border: 'border-orange-500/20'
-  }
+const sizeClasses = {
+  sm: 'text-xs px-2 py-1 gap-1',
+  md: 'text-sm px-2.5 py-1.5 gap-1.5',
 };
 
-export function ProvenanceChip({ status, source, lastSync, size = 'md' }: ProvenanceChipProps) {
-  const config = statusConfig[status];
-  const Icon = config.icon;
+const iconSizes = {
+  sm: 12,
+  md: 14,
+};
 
-  const sizeClasses = {
-    sm: 'text-xs px-2 py-1',
-    md: 'text-sm px-2.5 py-1.5',
-    lg: 'text-base px-3 py-2'
+type ChipTone = {
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  label: string;
+  color: string;
+  bg: string;
+  border: string;
+};
+
+function toneFor(attribution?: PhotoAttribution | null): ChipTone {
+  const kind = attribution?.kind;
+
+  if (kind === 'cloud') {
+    return {
+      icon: Cloud,
+      label: 'Cloud',
+      color: 'text-green-400',
+      bg: 'bg-green-500/10',
+      border: 'border-green-500/20',
+    };
+  }
+  if (kind === 'local') {
+    return {
+      icon: HardDrive,
+      label: 'Local',
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-500/20',
+    };
+  }
+  return {
+    icon: CircleHelp,
+    label: 'Unattributed',
+    color: 'text-muted-foreground',
+    bg: 'bg-muted/10',
+    border: 'border-border/40',
   };
+}
+
+function describe(attribution?: PhotoAttribution | null): string {
+  if (!attribution) return 'Origin unknown: no attribution was returned for this file.';
+
+  const name = attribution.source_name || attribution.source_type || 'unknown source';
+  const parts: string[] = [`Origin: ${name}`];
+
+  if (attribution.kind === 'unknown') {
+    parts.push('This file is not attributed to any registered source.');
+  } else {
+    parts.push(`origin: ${attribution.kind}`);
+    if (attribution.source_type) parts.push(`type: ${attribution.source_type}`);
+    if (attribution.source_status) parts.push(`source status: ${attribution.source_status}`);
+    if (attribution.item_status) parts.push(`item status: ${attribution.item_status}`);
+  }
+  parts.push(`resolved by: ${attribution.match}`);
+
+  if (attribution.content) {
+    parts.push(
+      attribution.content.present
+        ? 'A content-provenance manifest marker was detected, but nothing was verified.'
+        : 'No content-provenance manifest marker was detected in the scanned region.'
+    );
+  }
+  return parts.join(' · ');
+}
+
+export function ProvenanceChip({
+  attribution,
+  size = 'md',
+  showSync = true,
+}: ProvenanceChipProps) {
+  const tone = toneFor(attribution);
+  const Icon = tone.icon;
+  const sourceName = attribution?.source_name;
+  const hasError = attribution?.source_status === 'error';
+  const lastSync = attribution?.last_sync_at;
+  const manifestDetected = attribution?.content?.present === true;
 
   return (
-    <div className={`${glass.surfaceStrong} ${config.border} ${config.bg} border rounded-full flex items-center gap-1.5 ${sizeClasses[size]}`}>
-      <Icon size={size === 'sm' ? 12 : size === 'lg' ? 18 : 14} className={config.color} />
-      <span className={`font-medium ${size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-sm'}`}>
-        {config.label}
-      </span>
-      {source && (
-        <span className={`text-muted-foreground ${size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-sm' : 'text-sm'}`}>
-          ({source})
+    <div
+      className={`${glass.surfaceStrong} ${tone.border} ${tone.bg} border rounded-full flex items-center ${sizeClasses[size]} w-fit max-w-full`}
+      title={describe(attribution)}
+      data-testid='provenance-chip'
+      data-kind={attribution?.kind ?? 'unknown'}
+    >
+      <Icon size={iconSizes[size]} className={tone.color} />
+      <span className={`font-medium ${tone.color}`}>{tone.label}</span>
+
+      {sourceName && (
+        <span className='text-muted-foreground truncate max-w-[16rem]'>
+          ({sourceName})
         </span>
       )}
-      {status === 'syncing' && (
-        <Loader size={size === 'sm' ? 10 : size === 'lg' ? 14 : 12} className="animate-spin text-yellow-400" />
+
+      {hasError && (
+        <AlertTriangle
+          size={iconSizes[size]}
+          className='text-red-400'
+          aria-label='Source has an error'
+        />
       )}
-      {lastSync && status !== 'syncing' && (
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <Clock size={size === 'sm' ? 10 : size === 'lg' ? 12 : 10} />
-          <span className={`text-xs ${size === 'sm' ? 'text-xs' : size === 'lg' ? 'text-xs' : 'text-xs'}`}>
+
+      {manifestDetected && (
+        <ShieldCheck
+          size={iconSizes[size]}
+          className='text-emerald-400'
+          aria-label='Content-provenance manifest marker detected (not verified)'
+        />
+      )}
+
+      {showSync && lastSync && (
+        <span className='flex items-center gap-1 text-muted-foreground'>
+          <Clock size={size === 'sm' ? 10 : 12} />
+          <span className='text-xs'>
             {new Date(lastSync).toLocaleDateString()}
           </span>
-        </div>
+        </span>
       )}
     </div>
   );
 }
+
+export default ProvenanceChip;

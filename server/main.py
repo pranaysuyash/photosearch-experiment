@@ -10,6 +10,7 @@ during the router migration. Once all routers use Depends(get_state), these can 
 
 import logging
 import os
+import re
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -33,6 +34,9 @@ from src.logging_config import setup_logging
 
 from server.config import settings
 from server.core.bootstrap import build_state
+from server.ui_static import mount_ui
+from server.principal import PrincipalMiddleware
+from server.rate_limit import RateLimitMiddleware
 
 # Router imports
 from server.api.routers.core import router as core_router
@@ -86,11 +90,14 @@ from server.api.routers.favorites import router as favorites_router
 from server.api.routers.bulk import router as bulk_router
 from server.api.routers.indexing import router as indexing_router
 from server.api.routers.sources import router as sources_router
+from server.api.routers.attribution import router as attribution_router
 from server.api.routers.search import router as search_router
 from server.api.routers.trash import router as trash_router
 from server.api.routers.legacy_compat import router as legacy_compat_router
 from server.api.routers.video_faces import router as video_faces_router
 from server.api.routers.captions import router as captions_router
+from server.api.routers.safety import router as safety_router
+from server.api.routers.transcripts import router as transcripts_router
 from server.api.routers.browse import router as browse_router
 
 
@@ -220,6 +227,35 @@ async def lifespan(app: FastAPI):
                                             print(f"Face detection: found {faces_found} faces in {filepath}")
                                 except Exception as face_err:
                                     print(f"Face detection failed for {filepath}: {face_err}")
+
+                            # Trigger audio transcription for videos (backgrounded:
+                            # a long transcript must not stall the watcher thread).
+                            from server.config import settings as _settings
+
+                            if getattr(_settings, "ASR_ON_INGEST", False) and filepath.lower().endswith(
+                                (".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v")
+                            ):
+                                import threading
+
+                                def _transcribe_bg(path: str = filepath):
+                                    try:
+                                        from server.audio_transcription_service import (
+                                            get_transcription_service,
+                                        )
+
+                                        result = get_transcription_service().transcribe(path)
+                                        if result.get("error"):
+                                            print(f"ASR skipped {path}: {result['error']}")
+                                        else:
+                                            print(
+                                                f"ASR: transcribed {path} "
+                                                f"({result.get('duration_s', 0)}s audio, "
+                                                f"{result.get('elapsed_s')}s)"
+                                            )
+                                    except Exception as asr_err:
+                                        print(f"ASR failed for {path}: {asr_err}")
+
+                                threading.Thread(target=_transcribe_bg, daemon=True, name="asr-ingest").start()
                     except Exception as e:
                         print(f"Real-time indexing failed for {filepath}: {e}")
 
@@ -236,6 +272,19 @@ async def lifespan(app: FastAPI):
     # Attach state to app for Depends(get_state) access
     # ─────────────────────────────────────────────────────────────────────────
     app.state.ps = state
+
+    # Background image-quality space (EG2): build only while the app is idle.
+    if not test_mode:
+        try:
+            if settings.IMAGE_QUALITY_AUTOBUILD and state.quality_builder is not None:
+                if state.quality_builder.quality_index.embedder.available():
+                    state.quality_builder.start()
+                    print("Quality-index builder started (idle-gated).")
+                else:
+                    print("Quality-index builder unavailable (no EG2 backend); skipping.")
+        except Exception as e:
+            print(f"Quality-index builder startup error: {e}")
+
     print("Application state attached to app.state.ps")
 
     yield
@@ -266,21 +315,39 @@ cors_origins = [str(origin) for origin in settings.CORS_ORIGINS]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
+    allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Principal gate: outermost, so every route (including future ones) requires a
+# resolved principal — loopback owner, or paired cookie/bearer. Exemptions and
+# resolution live in server/principal.py. Pre-release note: the legacy
+# unauthenticated world is exactly what HEAD shipped; flip PAIRING_ENABLED off
+# to restore it if a session blocks local debugging.
+if settings.PAIRING_ENABLED:
+    # Last added = outermost: the principal gate wraps rate limiting, so an
+    # unpaired stranger is answered 401 before consuming rate budget.
+    app.add_middleware(PrincipalMiddleware)
+    app.add_middleware(RateLimitMiddleware)
+
 
 @app.middleware("http")
 async def _ensure_cors_header(request: Request, call_next):
-    """Development-safe fallback for CORS headers."""
+    """Development-safe fallback for CORS headers + idle-signal heartbeat."""
+    from server.core.state import activity_clock
+
+    activity_clock.record()
     response = await call_next(request)
     try:
         origin = request.headers.get("origin")
+        origin_allowed = origin in cors_origins or bool(
+            origin and settings.CORS_ORIGIN_REGEX and re.fullmatch(settings.CORS_ORIGIN_REGEX, origin)
+        )
         if (
             origin
-            and origin in cors_origins
+            and origin_allowed
             and "access-control-allow-origin" not in (k.lower() for k in response.headers.keys())
         ):
             response.headers["Access-Control-Allow-Origin"] = origin
@@ -295,6 +362,10 @@ async def _ensure_cors_header(request: Request, call_next):
 # Include Routers
 # ─────────────────────────────────────────────────────────────────────────────
 app.include_router(core_router)
+
+from server.api.routers.pairing import router as pairing_router
+
+app.include_router(pairing_router)
 app.include_router(smart_collections_router)
 app.include_router(ai_insights_router)
 app.include_router(collaborative_spaces_router)
@@ -340,9 +411,12 @@ app.include_router(faces_legacy_router)
 app.include_router(legacy_compat_router)
 app.include_router(favorites_router)
 app.include_router(captions_router)
+app.include_router(safety_router)
+app.include_router(transcripts_router)
 app.include_router(bulk_router)
 app.include_router(indexing_router)
 app.include_router(sources_router)
+app.include_router(attribution_router)
 app.include_router(trash_router)
 app.include_router(browse_router)
 
@@ -363,8 +437,12 @@ api_version_manager.register_endpoint(
     description="Semantic search using CLIP embeddings",
 )
 
+# Web companion UI (same-origin). Mounted after every router so no API path
+# can be shadowed; see server/ui_static.py for the /app prefix rationale.
+mount_ui(app, settings.UI_DIST_DIR, enabled=settings.SERVE_UI)
+
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

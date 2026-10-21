@@ -1,6 +1,7 @@
 import { actionRegistry } from './ActionRegistry';
 import { contextAnalyzer } from './ContextAnalyzer';
 import { defaultActions } from '../actions/defaultActions';
+import { apiFetch } from '../api';
 import type { InstalledApp, PhotoContext, ActionResult, Photo } from '../types/actions';
 
 /**
@@ -118,7 +119,7 @@ export class ActionService {
    */
   private async detectInstalledApps(): Promise<InstalledApp[]> {
     try {
-      const response = await fetch('/api/actions/detect-apps', {
+      const response = await apiFetch('/api/actions/detect-apps', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });

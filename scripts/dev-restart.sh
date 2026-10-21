@@ -178,12 +178,12 @@ if [[ "${DRY_RUN}" == "0" ]]; then
   # shellcheck disable=SC1091
   source "${VENV_DIR}/bin/activate"
   : > "${BACKEND_LOG}"
-  (cd "${ROOT_DIR}" && exec python server/main.py) >> "${BACKEND_LOG}" 2>&1 &
+  (cd "${ROOT_DIR}" && PORT="${BACKEND_PORT}" exec python server/main.py) >> "${BACKEND_LOG}" 2>&1 &
   BACKEND_PID=$!
   echo "${BACKEND_PID}" > "${RUN_DIR}/backend.pid"
   echo "✓ Backend started (pid ${BACKEND_PID})"
 else
-  run_cmd bash -lc "cd \"${ROOT_DIR}\" && python server/main.py >> \"${BACKEND_LOG}\" 2>&1 & echo \$! > \"${RUN_DIR}/backend.pid\""
+  run_cmd bash -lc "cd \"${ROOT_DIR}\" && PORT=\"${BACKEND_PORT}\" python server/main.py >> \"${BACKEND_LOG}\" 2>&1 & echo \$! > \"${RUN_DIR}/backend.pid\""
 fi
 
 if [[ "${DRY_RUN}" == "0" ]]; then

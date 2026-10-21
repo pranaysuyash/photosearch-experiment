@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, X, Plus, Search } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface PeopleChipsProps {
   photoPath: string;

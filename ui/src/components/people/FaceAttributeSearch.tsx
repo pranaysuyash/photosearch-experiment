@@ -19,7 +19,7 @@ import {
   type FaceAttributeSearchResult,
   type Photo,
 } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';

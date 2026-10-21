@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { X, HardDrive, Cloud, Database, KeyRound } from 'lucide-react';
 import { api } from '../../api';
-import { pickDirectory } from '../../utils/pickDirectory';
-import { usePlatformDetect } from '../../hooks/usePlatformDetect';
+import { pickFolder, usePlatform } from '@/platform';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 import { isLocalStorageAvailable, localGetItem, localSetItem } from '../../utils/storage';
 
@@ -24,7 +23,7 @@ export function ConnectSourceModal({
   onConnected?: () => void;
   initialTab?: Tab;
 }) {
-  const { isDesktopApp } = usePlatformDetect();
+  const { isDesktopApp } = usePlatform();
   const [tab, setTab] = useState<Tab>(initialTab);
   const [busy, setBusy] = useState(false);
   // True while the Google Drive OAuth popup is open and we are waiting for the
@@ -103,7 +102,7 @@ export function ConnectSourceModal({
 
   const chooseFolder = async () => {
     setError(null);
-    const selected = await pickDirectory();
+    const selected = await pickFolder();
     if (!selected) {
       setError(
         isDesktopApp

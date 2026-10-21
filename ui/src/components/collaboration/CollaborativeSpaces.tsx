@@ -18,7 +18,7 @@ import {
   X,
 } from 'lucide-react';
 import { api, getCurrentUserId } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface CollaborativeSpace {

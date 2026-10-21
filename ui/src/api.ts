@@ -1,6 +1,30 @@
 import axios, { type AxiosRequestConfig } from 'axios';
+import { effectiveApiBase, targetForMode } from './platform/target';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+/**
+ * Resolve the API origin for this build.
+ *
+ * The base follows the build target (see src/platform/target.ts):
+ *   - companion (`--mode web`): FastAPI serves the SPA at /app/, so the API
+ *     is the same origin and every call is same-origin. This is fixed for
+ *     every device — a bundle that hard-codes a host would make a phone call
+ *     its own localhost.
+ *   - desktop: the SPA runs in a Tauri webview on a different origin from the
+ *     backend, so the base is absolute. A local, untracked `.env` may point
+ *     the dev server elsewhere (custom port, NAS, tunnel); the default is the
+ *     colocated backend.
+ */
+export function resolveApiBase(
+  env: Record<string, string | undefined> = import.meta.env as Record<
+    string,
+    string | undefined
+  >
+): string {
+  return effectiveApiBase(targetForMode(env.MODE ?? 'production'), env);
+}
+
+export const API_BASE = resolveApiBase();
+export const API_SAME_ORIGIN = API_BASE === '';
 
 const SERVER_CONFIG_TTL_MS = 60_000;
 let serverConfigCache: {
@@ -70,10 +94,85 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error?.response?.status === 401) notifyUnauthorized();
     console.error('API Error:', error);
     return Promise.reject(error);
   }
 );
+
+// A 401 from the principal gate means this browser is not paired with the
+// server. The shell decides what to do (desktop never sees one; the web
+// companion navigates to /pair). Registered by the router, not imported, so
+// api.ts stays free of React.
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+function notifyUnauthorized(): void {
+  unauthorizedHandler?.();
+}
+
+/** Absolute URL for an API path, honouring the same-origin web build. */
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+/**
+ * `fetch` for callers that need streaming, FormData, or AbortSignal semantics
+ * axios makes awkward. Same base, identity, and auth headers as `apiClient`,
+ * so there is exactly one transport contract with two faces.
+ */
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  headers.set('X-User-ID', getCurrentUserId());
+  for (const name of ['Authorization', 'x-api-key'] as const) {
+    const value = apiClient.defaults.headers.common[name];
+    if (typeof value === 'string' && !headers.has(name)) {
+      headers.set(name, value);
+    }
+  }
+  const response = await fetch(apiUrl(path), {
+    ...init,
+    headers,
+    credentials: init.credentials ?? 'include',
+  });
+  if (response.status === 401) notifyUnauthorized();
+  return response;
+}
+
+/**
+ * Every media URL the UI hands to <img>/<video>/<a> is built here. Media
+ * requests cannot carry headers, so identity travels as a query parameter on
+ * all of them — thumbnails used to, video/file/crops did not.
+ */
+function withUser(url: string): string {
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}user_id=${encodeURIComponent(getCurrentUserId())}`;
+}
+
+export const mediaUrl = {
+  thumbnail: (path: string, size?: number): string =>
+    withUser(
+      `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}${
+        size ? `&size=${size}` : ''
+      }`
+    ),
+  video: (path: string): string =>
+    withUser(`${API_BASE}/video?path=${encodeURIComponent(path)}`),
+  file: (path: string, opts?: { download?: boolean }): string =>
+    withUser(
+      `${API_BASE}/file?path=${encodeURIComponent(path)}${
+        opts?.download ? '&download=true' : ''
+      }`
+    ),
+  faceCrop: (faceId: string | number, size = 150): string =>
+    withUser(
+      `${API_BASE}/api/faces/crop/${encodeURIComponent(String(faceId))}?size=${size}`
+    ),
+};
 
 export interface PhotoMetadata {
   file?: {
@@ -137,6 +236,12 @@ export interface Photo {
   matchExplanation?: MatchExplanation;
   is_favorited?: boolean;
   location_tagged?: boolean;
+  /** Which search leg matched: image embedding, caption text, or video transcript. */
+  matchedVia?: 'image' | 'caption' | 'transcript';
+  /** Reordered by the background EG2 quality space (best-measured top-1 precision). */
+  qualityReranked?: boolean;
+  /** Registry-derived origin of this file. Absent on legacy endpoints. */
+  attribution?: PhotoAttribution;
 }
 
 export interface PhotoEdit {
@@ -282,6 +387,38 @@ export interface Source {
   last_sync_at?: string | null;
   last_error?: string | null;
   config: Record<string, unknown>;
+}
+
+/**
+ * Where a media file came from, as derived by the server from the source
+ * registry. Never inferred client-side.
+ *
+ * `kind` is the filter axis: 'local' (a local folder or the app's own media
+ * root), 'cloud' (an S3 / Google Drive origin) or 'unknown' (not attributed).
+ * `match` records how it was resolved: 'source_item' (exact registry item),
+ * 'source_root' (inside a registered local folder), 'media_root' (the app's
+ * own library) or 'none'.
+ */
+export interface PhotoAttribution {
+  origin: 'source' | 'media_root' | 'unattributed';
+  kind: 'local' | 'cloud' | 'unknown';
+  match: 'source_item' | 'source_root' | 'media_root' | 'none';
+  source_id?: string | null;
+  source_type?: string | null;
+  source_name?: string | null;
+  source_status?: string | null;
+  last_sync_at?: string | null;
+  item_status?: string | null;
+  remote_id?: string | null;
+  /** Present only when content-provenance detection was explicitly requested. */
+  content?: {
+    present: boolean | null;
+    markers: string[];
+    verified: boolean;
+    verifier: string | null;
+    scan_scope: string | null;
+    note: string;
+  };
 }
 
 // People Search Interface
@@ -725,6 +862,28 @@ export const api = {
     return res.data as { sources: Source[] };
   },
 
+  // Attribution (registry-derived photo origin)
+  getAttribution: async (
+    path: string,
+    includeContent: boolean = false
+  ) => {
+    const res = await apiClient.get('/attribution', {
+      params: { path, include_content: includeContent },
+    });
+    return res.data as PhotoAttribution;
+  },
+
+  getAttributions: async (
+    paths: string[],
+    includeContent: boolean = false
+  ) => {
+    const res = await apiClient.get('/attribution/batch', {
+      params: { path: paths, include_content: includeContent },
+    });
+    return (res.data as { attributions: Record<string, PhotoAttribution> })
+      .attributions;
+  },
+
   addLocalFolderSource: async (
     path: string,
     name?: string,
@@ -914,12 +1073,7 @@ export const api = {
     return res.data as { ok: boolean };
   },
 
-  getImageUrl: (path: string, size?: number) => {
-    const encodedPath = encodeURIComponent(path);
-    return `${API_BASE}/image/thumbnail?path=${encodedPath}&user_id=${encodeURIComponent(
-      getCurrentUserId()
-    )}${size ? `&size=${size}` : ''}`;
-  },
+  getImageUrl: (path: string, size?: number) => mediaUrl.thumbnail(path, size),
 
   getServerConfig: async (): Promise<Record<string, unknown>> => {
     if (import.meta.env.MODE === 'test') {
@@ -972,9 +1126,7 @@ export const api = {
 
     // If local, no need to request a token
     if (isLocal) {
-      return `${API_BASE}/image/thumbnail?path=${encodeURIComponent(path)}&user_id=${encodeURIComponent(getCurrentUserId())}${
-        size ? `&size=${size}` : ''
-      }`;
+      return mediaUrl.thumbnail(path, size);
     }
 
     // Resolve whether server supports signed URLs (cache for 30s)
@@ -1054,11 +1206,8 @@ export const api = {
   },
 
   // Serve the original file (no transcoding); set download=true to force attachment
-  getFileUrl: (path: string, opts?: { download?: boolean }) => {
-    const encodedPath = encodeURIComponent(path);
-    const download = opts?.download ? '&download=true' : '';
-    return `${API_BASE}/file?path=${encodedPath}${download}`;
-  },
+  getFileUrl: (path: string, opts?: { download?: boolean }) =>
+    mediaUrl.file(path, opts),
 
   // Set auth token (Bearer) for future requests
   setAuthToken: (token?: string | null) => {
@@ -1152,10 +1301,7 @@ export const api = {
   },
 
   // Get video URL for direct serving
-  getVideoUrl: (path: string) => {
-    const encodedPath = encodeURIComponent(path);
-    return `${API_BASE}/video?path=${encodedPath}`;
-  },
+  getVideoUrl: (path: string) => mediaUrl.video(path),
 
   // Pricing endpoints
   getPricingTiers: async () => {
@@ -1622,6 +1768,20 @@ export const api = {
   deleteOcrAll: async () => {
     const res = await apiClient.delete('/ocr/all');
     return res.data;
+  },
+
+  // Stored AI caption for a path (server/api/routers/captions.py
+  // GET /api/captions/{photo_path} — note the /api prefix on this router).
+  // 404 simply means no caption is stored.
+  getCaption: async (photoPath: string) => {
+    try {
+      const res = await apiClient.get(
+        `/api/captions/${encodeURIComponent(photoPath)}`
+      );
+      return (res.data?.caption as string | undefined) ?? null;
+    } catch {
+      return null;
+    }
   },
 
   // Editing

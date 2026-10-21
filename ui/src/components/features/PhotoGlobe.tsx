@@ -2,7 +2,14 @@ import { useRef, useState, useMemo, Suspense, useEffect } from 'react';
 import { Canvas, useFrame, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { Pause, Play, HelpCircle, Map as MapIcon, X } from 'lucide-react';
+import {
+  Pause,
+  Play,
+  HelpCircle,
+  Map as MapIcon,
+  List,
+  X,
+} from 'lucide-react';
 import { type Photo, api } from '../../api';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 import SecureLazyImage from '../gallery/SecureLazyImage';
@@ -1364,10 +1371,22 @@ export function PhotoGlobe({
 }: PhotoGlobeProps) {
   const [isRotating, setIsRotating] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [showClusterList, setShowClusterList] = useState(false);
   const [borderMode, setBorderMode] = useState<BordersMode>('auto');
   const [hoveredPhoto, setHoveredPhoto] = useState<Photo | null>(null);
   const { setOverrideAccentUrl, clearOverrideAccent } =
     useAmbientThemeContext();
+
+  /**
+   * Keyboard/screen-reader parity for the 3D markers: the same pure
+   * clustering function, at a fixed granularity (the canvas's granularity
+   * varies with camera distance). Buttons open each cluster's primary photo
+   * — the exact action a marker click performs.
+   */
+  const accessibleClusters = useMemo(
+    () => clusterPhotos(photos.slice(0, 800), 6).clusters.slice(0, 20),
+    [photos]
+  );
 
   const locationStats = useMemo(() => {
     let located = 0;
@@ -1405,15 +1424,18 @@ export function PhotoGlobe({
     };
   }, [hoveredPhoto, setOverrideAccentUrl, clearOverrideAccent]);
 
-  // Escape key closes the help panel (non-modal popover)
+  // Escape key closes the help panel and cluster list (non-modal popovers)
   useEffect(() => {
-    if (!showHelp) return;
+    if (!showHelp && !showClusterList) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowHelp(false);
+      if (e.key === 'Escape') {
+        setShowHelp(false);
+        setShowClusterList(false);
+      }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelp]);
+  }, [showHelp, showClusterList]);
 
   // Space key to toggle rotation
   useEffect(() => {
@@ -1475,6 +1497,16 @@ export function PhotoGlobe({
         </button>
 
         <button
+          onClick={() => setShowClusterList((v) => !v)}
+          className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center text-white/80'
+          title='Cluster list (keyboard-accessible alternative to the 3D markers)'
+          aria-label='Cluster list'
+          aria-expanded={showClusterList}
+        >
+          <List size={18} />
+        </button>
+
+        <button
           onClick={() => setShowHelp((v) => !v)}
           className='btn-glass btn-glass--muted w-10 h-10 p-0 justify-center text-white/80'
           title='Help'
@@ -1532,6 +1564,58 @@ export function PhotoGlobe({
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {showClusterList && (
+        <div
+          className='absolute top-3 left-3 z-50 glass-surface glass-surface--strong rounded-2xl p-3 text-xs text-white/80 max-w-[280px] max-h-[70vh] overflow-y-auto'
+          role='region'
+          aria-label='Photo clusters'
+        >
+          <div className='flex items-center justify-between gap-2 mb-2'>
+            <div className='font-semibold text-white/90'>
+              Clusters
+              <span className='ml-2 font-normal text-white/60'>
+                {accessibleClusters.length} largest
+              </span>
+            </div>
+            <button
+              onClick={() => setShowClusterList(false)}
+              className='p-1 rounded-md text-white/60 hover:text-white/90 hover:bg-white/10 transition-colors'
+              title='Close'
+              aria-label='Close cluster list'
+            >
+              <X size={14} />
+            </button>
+          </div>
+          {accessibleClusters.length === 0 ? (
+            <div className='text-white/60'>No geotagged photos to cluster.</div>
+          ) : (
+            <ul className='space-y-1'>
+              {accessibleClusters.map((cluster) => {
+                const primary = cluster.photos[0];
+                const label = `${cluster.lat.toFixed(2)}°, ${cluster.lng.toFixed(2)}°`;
+                return (
+                  <li key={`${cluster.lat}-${cluster.lng}`}>
+                    <button
+                      onClick={() => onPhotoSelect(primary)}
+                      className='w-full text-left px-2 py-1.5 rounded-lg hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary transition-colors'
+                    >
+                      <span className='block text-white/90 truncate'>
+                        {primary.filename}
+                      </span>
+                      <span className='block text-white/60 tabular-nums'>
+                        {cluster.count} {cluster.count === 1 ? 'photo' : 'photos'}
+                        {' · '}
+                        {label}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </div>
       )}
 

@@ -20,7 +20,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 interface IntentBadge {
   intent: string;

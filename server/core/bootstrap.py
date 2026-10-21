@@ -22,19 +22,32 @@ from server.config import settings
 def init_stores(base_dir: Path) -> dict[str, Any]:
     """Initialize store objects. Light-weight, no model downloads."""
     from server.lancedb_store import LanceDBStore
+    from server.caption_search_index import get_caption_index
+    from server.image_quality_index import PhotoQualityIndex, QualityIndexBuilder
+    from server.image_loader import load_image
     from server.sources import SourceStore
     from server.source_items import SourceItemStore
     from server.trash_db import TrashDB
     from src.intent_recognition import IntentDetector
+    from src.intent_embedding_advisor import EmbeddingIntentAdvisor
     from src.jev_intent_advisor import JevIntentAdvisor
     from src.saved_searches import SavedSearchManager
     from server.jobs import job_store
 
+    vector_store = LanceDBStore()
+    quality_index = PhotoQualityIndex()
+    quality_builder = QualityIndexBuilder(quality_index, vector_store, load_image)
+
     return {
-        "vector_store": LanceDBStore(),
-        # Advisory Jev tier; disabled (pure pass-through) unless explicitly
-        # configured via JEV_INTENT_ADVISOR_ENABLED + TYPESAFE_API_KEY.
-        "intent_detector": JevIntentAdvisor.from_env(IntentDetector()),
+        "vector_store": vector_store,
+        "caption_index": get_caption_index(),
+        "captions_db_path": settings.CAPTIONS_DB_PATH,
+        "image_quality_index": quality_index,
+        "quality_builder": quality_builder,
+        # Local-first intent chain: keyword detector → local embedding advisor
+        # (escalates on low keyword confidence; free, offline) → cloud Jev tier
+        # (disabled unless explicitly configured).
+        "intent_detector": JevIntentAdvisor.from_env(EmbeddingIntentAdvisor.from_env(IntentDetector())),
         "saved_search_manager": SavedSearchManager(),
         "source_store": SourceStore(base_dir / "sources.db"),
         "source_item_store": SourceItemStore(base_dir / "sources_items.db"),
@@ -117,6 +130,10 @@ def build_state(*, skip_heavy_components: bool = False) -> AppState:
         base_dir=base_dir,
         # Stores
         vector_store=stores["vector_store"],
+        caption_index=stores["caption_index"],
+        captions_db_path=stores["captions_db_path"],
+        image_quality_index=stores["image_quality_index"],
+        quality_builder=stores["quality_builder"],
         intent_detector=stores["intent_detector"],
         saved_search_manager=stores["saved_search_manager"],
         source_store=stores["source_store"],

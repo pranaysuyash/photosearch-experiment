@@ -131,6 +131,15 @@ cargo tauri dev
 cd ui && npm run dev
 ````
 
+### Web companion (same server, another device)
+
+The backend also serves a browser build of the UI at `http://<host>:8000/app/` (build: `cd ui && npm run build:web`; FastAPI mounts it automatically when `ui/dist-web` exists).
+
+- **On this machine:** open `http://127.0.0.1:8000/app/` — loopback is the owner, no pairing needed.
+- **From another device on your LAN:** start the server with `HOST=0.0.0.0`, open `http://<lan-ip>:8000/app/`, and pair once — on the desktop, Settings → Devices → "Connect a device" shows a 4-digit code (valid 5 minutes, single use). "Disconnect"/revoke signs every paired device out.
+- Trust model: one owner, many devices. Loopback is trusted; everything else needs a pairing session (cookie for images/video, bearer for API calls). `PAIRING_ENABLED=false` restores the ungated world for local debugging only.
+- Details and trade-offs: `docs/decisions/2026-10-21-desktop-web-platform-boundary.md`.
+
 ### Known Issues:
 
 - None

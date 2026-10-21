@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
+import { apiFetch, mediaUrl } from '@/api';
 
 interface LowConfidenceFace {
     face_id: number;
@@ -27,8 +28,8 @@ export function LowConfidence() {
     const fetchLowConfidence = async () => {
         try {
             setLoading(true);
-            const response = await fetch(
-              `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/low-confidence`
+            const response = await apiFetch(
+              `/api/faces/low-confidence`
             );
             const data = await response.json();
             setFaces(data.faces || []);
@@ -91,7 +92,7 @@ export function LowConfidence() {
                             >
                                 <div className="p-3 bg-black/20">
                                     <img
-                                        src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${face.face_id}?size=150`}
+                                        src={mediaUrl.faceCrop(face.face_id, 150)}
                                         alt={`Face ${face.face_id}`}
                                         className="w-full h-24 object-cover rounded"
                                     />

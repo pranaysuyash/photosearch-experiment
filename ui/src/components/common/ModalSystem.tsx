@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/api';
 import './ModalSystem.css';
 
 interface DialogItem {
@@ -46,7 +47,7 @@ const ModalSystem: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/dialogs/active');
+      const response = await apiFetch('/api/dialogs/active');
       if (!response.ok) {
         throw new Error('Failed to fetch dialogs');
       }
@@ -55,7 +56,7 @@ const ModalSystem: React.FC = () => {
       setDialogs(data.dialogs || []);
 
       // Fetch statistics
-      const statsResponse = await fetch('/api/dialogs/stats');
+      const statsResponse = await apiFetch('/api/dialogs/stats');
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData.stats);
@@ -81,7 +82,7 @@ const ModalSystem: React.FC = () => {
     try {
       setError(null);
 
-      const response = await fetch('/api/dialogs/create', {
+      const response = await apiFetch('/api/dialogs/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,7 +120,7 @@ const ModalSystem: React.FC = () => {
   // Handle dialog action
   const handleDialogAction = async (dialogId: string, action: string) => {
     try {
-      const response = await fetch(`/api/dialogs/${dialogId}/action`, {
+      const response = await apiFetch(`/api/dialogs/${dialogId}/action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,7 +136,7 @@ const ModalSystem: React.FC = () => {
       }
 
       // Close the dialog
-      await fetch(`/api/dialogs/${dialogId}/close`, {
+      await apiFetch(`/api/dialogs/${dialogId}/close`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ const ModalSystem: React.FC = () => {
   // Dismiss a dialog
   const dismissDialog = async (dialogId: string) => {
     try {
-      const response = await fetch(`/api/dialogs/${dialogId}/dismiss`, {
+      const response = await apiFetch(`/api/dialogs/${dialogId}/dismiss`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

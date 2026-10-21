@@ -43,7 +43,7 @@ import {
   type TagSummary,
   type TimelineData,
 } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { useAmbientThemeContext } from '../../contexts/AmbientThemeContext';
 
 export interface LibraryAnalytics {

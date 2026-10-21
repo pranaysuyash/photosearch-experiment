@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MapPin, Globe, Users, Eye } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 interface PlaceCluster {
   corrected_place_name: string;

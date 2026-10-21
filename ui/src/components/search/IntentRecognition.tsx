@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/api';
 import {
   User,
   MapPin,
@@ -43,7 +44,7 @@ export const IntentRecognition = ({
         setError(null);
 
         // Detect intent
-        const intentResponse = await fetch(
+        const intentResponse = await apiFetch(
           `/api/intent/detect?query=${encodeURIComponent(searchQuery)}`
         );
         if (!intentResponse.ok) {
@@ -66,7 +67,7 @@ export const IntentRecognition = ({
 
         // Get suggestions (non-critical)
         try {
-          const suggestionsResponse = await fetch(
+          const suggestionsResponse = await apiFetch(
             `/api/intent/suggestions?query=${encodeURIComponent(searchQuery)}`
           );
           if (suggestionsResponse.ok) {
@@ -80,7 +81,7 @@ export const IntentRecognition = ({
 
         // Get badges (non-critical)
         try {
-          const badgesResponse = await fetch(
+          const badgesResponse = await apiFetch(
             `/api/intent/badges?query=${encodeURIComponent(searchQuery)}`
           );
           if (badgesResponse.ok) {

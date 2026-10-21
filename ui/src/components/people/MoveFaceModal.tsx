@@ -6,8 +6,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { X, ArrowRight, RefreshCw, Search } from 'lucide-react';
-import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { api, apiFetch, mediaUrl } from '../../api';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
@@ -88,8 +88,8 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
 
       if (createNewPerson) {
         // Create new person and move face
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${face.detection_id}/create-person`,
+        const response = await apiFetch(
+          `/api/faces/${face.detection_id}/create-person`,
           {
             method: 'POST',
             headers: {
@@ -107,8 +107,8 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
         }
       } else {
         // Move face to existing cluster
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/move`,
+        const response = await apiFetch(
+          `/api/faces/move`,
           {
             method: 'POST',
             headers: {
@@ -211,7 +211,7 @@ export function MoveFaceModal({ face, isOpen, onClose, onMove }: MoveFaceModalPr
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 bg-black/20 rounded-lg overflow-hidden">
                 <img
-                  src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${face.detection_id}?size=150`}
+                  src={mediaUrl.faceCrop(face.detection_id, 150)}
                   alt="Face to move"
                   className="w-full h-full object-cover"
                   onError={(e) => {

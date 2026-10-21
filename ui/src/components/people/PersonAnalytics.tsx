@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Smile, Users, Activity, Baby, User, HelpCircle } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface EmotionData {
     emotion: string;

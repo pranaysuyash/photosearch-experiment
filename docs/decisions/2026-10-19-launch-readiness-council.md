@@ -131,3 +131,39 @@ Owner picks the gate policy (C1). Falsifier: the gate accepts the two C2 commits
 > `docs/decisions/2026-10-19-mimosa-gate-policy.md`. C2 (land the two
 > change-sets with CI green) is now unblocked pending ask-mode activation in
 > a fresh session.
+
+> **Update 2026-10-20 — C2 and C3 executed.**
+> - **C2 done:** `2ce03ef` (security waves + gate policy) and `c546f88` (UI P0
+>   remediation) pushed. CI went red on `c546f88` — the 10-14 wave's
+>   parameterized `pragma_table_info(?)` kept `row[1]` while the row shape
+>   became `(name,)`, breaking every face-DB call (24 failed / 4 errors). Not
+>   caught locally because pre-commit verification ran only `tests/`; CI runs
+>   the full root collection including `server/tests/`. Fixed in `d48a491`
+>   (full root `pytest` green locally, exit 0); **CI green on `d48a491`.**
+> - **C3 done (local `59ea8ee`, push pending):** Library-status popover made
+>   reachable (trigger in ActionsPod; "Scan a folder…" → `/import`); AI
+>   Insights Patterns tab labeled "Sample data" with the dead "More options"
+>   button removed. Import/Export progress, Analytics mocks, collaboration
+>   placeholder, OCR dead controls were already honest in the committed tree.
+>   Unmounted (not reachable, no action): MobileNavigation, SidebarNavigation,
+>   TopNavigation, ProvenanceChips, OCRSearch.
+> - **Gate reality check:** commits/pushes above passed the Mimosa L3 gate only
+>   on incomplete-scan compatibility (`scanner_enobufs`, `callgraph_fact_partial`);
+>   when the scan completed, the push of `59ea8ee` was hard-denied with
+>   graded-mode phrasing. The hook host predates the `MIMOSA_GIT_GATE_MODE=ask`
+>   env change — **ask mode activates only after a ZCode session restart**, as
+>   the policy doc states. Next: restart, then `git push origin master`.
+> - New gate finding outside this baseline: `tests/test_audio_transcription.py:120`
+>   (path traversal) — parallel session's new file; classify via
+>   `tools/mimosa_baseline.py parse` when that work lands.
+> - Remaining for GO: C4 (owner defines launch audience).
+
+> **Update 2026-10-21 — C4 analysis delivered.** Per-audience verdicts and the
+> full requirement set for public and commercial release are in
+> `docs/decisions/2026-10-21-public-commercial-go-live-requirements.md`
+> (owner-only GO on push; public-free CONDITIONAL GO on B1–B9 + H2/H3;
+> commercial NO-GO on H1 face-model licensing until resolved). Also closed
+> this pass: backend bind moved from `0.0.0.0` to a loopback default
+> (`Settings.HOST`/`PORT`), status popover given dialog semantics via
+> `useModalBehavior`, and the parallel session's `test_audio_transcription.py:120`
+> finding classified (test-fixture) — baseline now 13 accepted, `verify` PASS.

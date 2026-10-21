@@ -42,17 +42,48 @@ async def analyze_image(request: ImageAnalysisRequest, state: AppState = Depends
         ):
             raise HTTPException(status_code=400, detail="File is not a supported image format")
 
-        # For now, return a mock analysis since we don't have the actual analysis implementation
-        # In a real implementation, this would use computer vision models to analyze the image
+        # For now, this requires a VLM provider (local Ollama or cloud). The
+        # previous implementation returned a hardcoded mock; a real miss is
+        # better than a confident lie.
+        from server.config import settings
+        from server.vlm_caption_service import VLMCaptionService
+
+        service = VLMCaptionService(state.captions_db_path or settings.CAPTIONS_DB_PATH)
+        if not service.is_enabled():
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Image analysis needs a VLM provider: start Ollama and pull "
+                    "the configured model (default: ollama pull gemma4:e4b), or "
+                    "set GEMINI_API_KEY / OPENAI_API_KEY."
+                ),
+            )
+
+        result = service.analyze_photo(image_path)
+        if result.get("error"):
+            raise HTTPException(status_code=502, detail=f"Analysis provider error: {result['error']}")
+
+        analysis = result.get("analysis") or {}
+        try:
+            quality = float(analysis.get("quality", 0.0))
+        except (TypeError, ValueError):
+            quality = 0.0
+
         analysis_result = {
-            "caption": "We found an interesting photo with various visual elements",
-            "tags": ["photo", "image", "visual"],
-            "objects": ["general content"],
-            "scene": "photograph",
-            "colors": ["mixed"],
-            "quality": 4.0,
+            "caption": analysis.get("caption", ""),
+            "tags": analysis.get("tags", []),
+            "objects": analysis.get("objects", []),
+            "scene": analysis.get("scene", ""),
+            "colors": analysis.get("colors", []),
+            "quality": quality,
             "analysis_date": datetime.utcnow().isoformat(),
+            "model": result.get("model"),
+            "provider": result.get("provider"),
         }
+        # When JSON parsing failed, keep the raw text visible instead of an
+        # empty-shaped answer.
+        if result.get("raw"):
+            analysis_result["raw_response"] = result["raw"]
 
         # Store the analysis result in the database for future retrieval
         try:

@@ -33,9 +33,9 @@ import {
   Download,
   Search,
 } from 'lucide-react';
-import { api } from '../api';
+import { api, apiFetch, mediaUrl } from '../api';
 import { isLocalStorageAvailable, localGetItem } from '../utils/storage';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../hooks/useModalBehavior';
 import SecureLazyImage from '../components/gallery/SecureLazyImage';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
@@ -211,20 +211,14 @@ export default function PersonDetail() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
-        }/api/faces/clusters/${clusterId}/photos`
+      const response = await apiFetch(
+        `/api/faces/clusters/${clusterId}/photos`
       );
       const data = await response.json();
       setPhotos(data.photos || []);
 
       // Also fetch cluster info
-      const clustersRes = await fetch(
-        `${
-          import.meta.env.VITE_API_URL || 'http://localhost:8000'
-        }/api/faces/clusters`
-      );
+      const clustersRes = await apiFetch(`/api/faces/clusters`);
       const clustersData: { clusters?: RawCluster[] } = await clustersRes.json();
       const cluster = clustersData.clusters?.find(
         (c) => (c.id ?? c.cluster_id) === clusterId
@@ -1298,10 +1292,7 @@ export default function PersonDetail() {
                       className='p-2 bg-white/5 rounded-lg border border-white/10'
                     >
                       <img
-                        src={`${
-                          import.meta.env.VITE_API_URL ||
-                          'http://localhost:8000'
-                        }/api/faces/crop/${sim.detection_id}?size=200`}
+                        src={mediaUrl.faceCrop(sim.detection_id, 200)}
                         alt='Similar face'
                         className='w-full h-32 object-cover rounded'
                       />

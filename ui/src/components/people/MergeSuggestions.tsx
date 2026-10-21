@@ -7,7 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, AlertCircle, Check, X, Users, ArrowRight } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface MergeSuggestion {
     cluster_a_id: string;

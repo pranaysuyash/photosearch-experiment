@@ -712,6 +712,36 @@ export function PhotoGrid({
                 </div>
               )}
 
+              {/* Search-provenance chips: which leg matched, EG2 rerank */}
+              {(photo.matchedVia || photo.qualityReranked) && (
+                <div className='absolute top-2 left-2 z-10 flex flex-wrap gap-1 pointer-events-none'>
+                  {photo.matchedVia === 'caption' && (
+                    <span
+                      className='rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white/90'
+                      title='Matched via AI caption text'
+                    >
+                      Caption
+                    </span>
+                  )}
+                  {photo.matchedVia === 'transcript' && (
+                    <span
+                      className='rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium text-white/90'
+                      title='Matched via spoken words in this video'
+                    >
+                      Transcript
+                    </span>
+                  )}
+                  {photo.qualityReranked && (
+                    <span
+                      className='rounded bg-indigo-600/80 px-1.5 py-0.5 text-[10px] font-medium text-white'
+                      title='Re-ranked by the background EG2 quality model'
+                    >
+                      EG2
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Favorites Toggle */}
               <div className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity'>
                 <FavoritesToggle

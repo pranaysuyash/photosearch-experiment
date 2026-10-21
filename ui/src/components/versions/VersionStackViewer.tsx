@@ -13,7 +13,7 @@ import {
   MoreVertical,
 } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 interface PhotoVersion {
   id: string;

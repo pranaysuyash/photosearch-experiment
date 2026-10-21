@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Sparkles, X, RefreshCw, Camera } from 'lucide-react';
 import { api, type NaturalLanguageFaceSearchResult, type Photo } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 import { useModalBehavior } from '../../hooks/useModalBehavior';

@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/api';
 import './FaceClustering.css';
 
 interface ClusterImage {
@@ -43,7 +44,7 @@ const FaceClustering: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/faces/clusters');
+      const response = await apiFetch('/api/faces/clusters');
       if (!response.ok) {
         throw new Error('Failed to fetch face clusters');
       }
@@ -52,7 +53,7 @@ const FaceClustering: React.FC = () => {
       setClusters(data.clusters || []);
 
       // Fetch statistics
-      const statsResponse = await fetch('/api/faces/stats');
+      const statsResponse = await apiFetch('/api/faces/stats');
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setStats(statsData.stats);
@@ -77,7 +78,7 @@ const FaceClustering: React.FC = () => {
 
       // In a real app, you would get the list of images to cluster
       // For now, we'll cluster all images
-      const response = await fetch('/api/faces/cluster', {
+      const response = await apiFetch('/api/faces/cluster', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ const FaceClustering: React.FC = () => {
     if (!selectedCluster || !newLabel.trim()) return;
 
     try {
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/faces/clusters/${selectedCluster.id}/label`,
         {
           method: 'PUT',
@@ -141,7 +142,7 @@ const FaceClustering: React.FC = () => {
   const deleteCluster = async (clusterId: string) => {
     if (window.confirm('Are you sure you want to delete this cluster?')) {
       try {
-        const response = await fetch(`/api/faces/clusters/${clusterId}`, {
+        const response = await apiFetch(`/api/faces/clusters/${clusterId}`, {
           method: 'DELETE',
         });
 

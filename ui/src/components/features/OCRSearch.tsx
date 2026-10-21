@@ -2,9 +2,17 @@
  * OCR Search Component
  *
  * Allows searching for text within images using OCR
+ *
+ * @deprecated Superseded by `advanced/OCRTextSearchPanel` (mounted at
+ * /analytics/ocr), which is a strict superset: real search, extraction,
+ * stats, language filtering, and the axios client (auth header + base URL)
+ * instead of raw fetch. This component has no unique capability and is
+ * unmounted. Removal candidate after one release cycle — see
+ * docs/UI_AUDIT_REMEDIATION_EXPLORATION_2026-10-19.md §0.
  */
 
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '@/api';
 import './OCRSearch.css';
 
 const OCRSearch = () => {
@@ -31,7 +39,7 @@ const OCRSearch = () => {
   // Fetch OCR stats on mount
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/ocr/stats');
+      const response = await apiFetch('/api/ocr/stats');
       if (response.ok) {
         const data = await response.json();
         setStats(data.stats);
@@ -53,7 +61,7 @@ const OCRSearch = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/ocr/search?query=${encodeURIComponent(query)}`
       );
       if (!response.ok) {
@@ -79,7 +87,7 @@ const OCRSearch = () => {
 
       // In a real app, you would get the list of all images
       // For now, we'll extract from all images
-      const response = await fetch('/api/ocr/extract', {
+      const response = await apiFetch('/api/ocr/extract', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -116,7 +124,7 @@ const OCRSearch = () => {
   const clearAllData = async () => {
     if (window.confirm('Are you sure you want to clear all OCR data?')) {
       try {
-        const response = await fetch('/api/ocr/all', {
+        const response = await apiFetch('/api/ocr/all', {
           method: 'DELETE',
         });
 

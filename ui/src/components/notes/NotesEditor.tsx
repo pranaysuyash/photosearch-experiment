@@ -10,7 +10,7 @@
 import React, { useState, useEffect } from 'react';
 import { Edit3, Save, X, Trash2, Clock, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface NotesEditorProps {
   photoPath: string;

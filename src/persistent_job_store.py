@@ -31,6 +31,7 @@ Usage:
 import sqlite3
 import json
 import uuid
+import threading
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from enum import Enum
@@ -68,8 +69,19 @@ class PersistentJobStore:
             db_path: Path to SQLite database
         """
         self.db_path = db_path
-        self.conn: Optional[sqlite3.Connection] = None
-        self._initialize_database()
+        # sqlite3 connections are bound to their creating thread. FastAPI runs
+        # sync work in a threadpool and TestClient runs on its own thread, so
+        # one shared connection breaks cross-thread; give every thread its own.
+        self._local = threading.local()
+
+    @property
+    def conn(self) -> Optional[sqlite3.Connection]:
+        """This thread's connection (None until first use in that thread)."""
+        return getattr(self._local, "conn", None)
+
+    @conn.setter
+    def conn(self, value: Optional[sqlite3.Connection]) -> None:
+        self._local.conn = value
 
     def _get_conn(self) -> sqlite3.Connection:
         """Return a live DB connection (initializing if needed)."""
@@ -80,9 +92,13 @@ class PersistentJobStore:
         return self.conn
 
     def _initialize_database(self):
-        """Initialize database and create tables."""
+        """Initialize database and create tables (idempotent, per thread)."""
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
+        # WAL lets readers proceed while a writer commits; busy_timeout keeps
+        # concurrent thread connections from failing on lock contention.
+        conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=5000")
 
         # Create jobs table
         conn.execute("""

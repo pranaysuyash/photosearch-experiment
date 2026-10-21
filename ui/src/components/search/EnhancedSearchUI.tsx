@@ -22,7 +22,7 @@ const IntentRecognitionLazy = lazy(() => import('./IntentRecognition'));
 import { MetadataFieldAutocomplete } from './MetadataFieldAutocomplete';
 import { useLiveMatchCount } from '../../hooks/useLiveMatchCount';
 import { api, type TagSummary } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import FaceAttributeSearch from '../people/FaceAttributeSearch';
 import NaturalLanguageFaceSearch from './NaturalLanguageFaceSearch';
 

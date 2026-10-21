@@ -25,7 +25,7 @@ import {
   Lightbulb,
 } from 'lucide-react';
 import { api, type Photo } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import SecureLazyImage from '../gallery/SecureLazyImage';
 import { usePhotoViewer } from '../../contexts/PhotoViewerContext';
 import { useModalBehavior } from '../../hooks/useModalBehavior';

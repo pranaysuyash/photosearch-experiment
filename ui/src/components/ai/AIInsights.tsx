@@ -16,7 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface PhotoInsight {
   id: string;

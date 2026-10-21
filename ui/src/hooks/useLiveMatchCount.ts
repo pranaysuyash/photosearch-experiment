@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/api';
 
 type SearchMode = 'metadata' | 'hybrid' | 'semantic';
 
@@ -34,7 +35,7 @@ export const useLiveMatchCount = ({
     setError(null);
 
     try {
-      const response = await fetch('/api/search/count', {
+      const response = await apiFetch('/api/search/count', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

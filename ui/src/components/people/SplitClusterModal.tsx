@@ -6,8 +6,8 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { X, User, Users, CheckCircle, RefreshCw } from 'lucide-react';
-import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { api, apiFetch, mediaUrl } from '../../api';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Face {
@@ -64,8 +64,8 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
       setError(null);
 
       // Fetch detailed face information for this cluster
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/clusters/${cluster.id}/photos`
+      const response = await apiFetch(
+        `/api/faces/clusters/${cluster.id}/photos`
       );
 
       if (!response.ok) {
@@ -132,8 +132,8 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
       setError(null);
 
       // Call the split API endpoint
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/split`,
+      const response = await apiFetch(
+        `/api/faces/split`,
         {
           method: 'POST',
           headers: {
@@ -285,7 +285,7 @@ export function SplitClusterModal({ cluster, isOpen, onClose, onSplit }: SplitCl
                       {/* Face Image */}
                       <div className="aspect-square bg-black/20">
                         <img
-                          src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/crop/${face.detection_id}?size=150`}
+                          src={mediaUrl.faceCrop(face.detection_id, 150)}
                           alt="Face"
                           className="w-full h-full object-cover"
                           loading="lazy"

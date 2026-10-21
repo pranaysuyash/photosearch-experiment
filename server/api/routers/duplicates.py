@@ -12,6 +12,22 @@ from server.core.state import AppState
 router = APIRouter()
 
 
+@router.get("/api/duplicates/register")
+async def get_register_duplicates():
+    """Near-duplicate groups from the photo-register (leader clustering).
+
+    Snapshot-based (data/register_dedupe_media.json); members whose files no
+    longer exist are dropped live. Read-only — resolution flows through the
+    local /api/duplicates endpoints, this surface only informs.
+    """
+    try:
+        from server.register_dedupe import load_register_clusters
+
+        return load_register_clusters()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/api/duplicates")
 async def get_duplicates(hash_type: Optional[str] = None, limit: int = 100, offset: int = 0):
     """Get duplicate groups."""

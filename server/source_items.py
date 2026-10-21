@@ -2,7 +2,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 
 def _utc_now_iso() -> str:
@@ -194,6 +194,23 @@ class SourceItemStore:
         if not row:
             return None
         return self._row_to_item(row)
+
+    def find_by_local_paths(self, local_paths: Sequence[str]) -> List[SourceItem]:
+        """Batch variant of `find_by_local_path`.
+
+        One query per chunk instead of one query per path, so attributing a
+        50-item page costs a couple of queries rather than 50.
+        """
+        paths = [p for p in local_paths if p]
+        if not paths:
+            return []
+        placeholders = ",".join("?" for _ in paths)
+        with self._conn() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM source_items WHERE local_path IN ({placeholders})",
+                tuple(paths),
+            ).fetchall()
+        return [self._row_to_item(r) for r in rows]
 
     def get(self, source_id: str, remote_id: str) -> SourceItem:
         with self._conn() as conn:

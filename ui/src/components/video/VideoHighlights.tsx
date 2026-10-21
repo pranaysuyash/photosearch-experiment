@@ -14,7 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface Highlight {
   person_id: string;

@@ -31,22 +31,22 @@ async def detect_installed_apps():
 @router.get("/api/cache/stats")
 async def get_api_cache_stats(state: AppState = Depends(get_state)):
     """Get cache statistics and performance metrics."""
-    stats = state.cache_manager.stats()
+    stats = state.cache_manager.get_stats()
     return stats
 
 
 @router.post("/api/cache/clear")
 async def clear_api_cache(state: AppState = Depends(get_state)):
     """Clear all cache entries."""
-    state.cache_manager.clear()
+    state.cache_manager.clear_cache()
     return {"message": "Cache cleared successfully"}
 
 
 @router.get("/api/cache/cleanup")
 async def cleanup_cache(state: AppState = Depends(get_state)):
     """Clean up expired cache entries."""
-    removed_count = state.cache_manager.cleanup()
-    return {"message": f"Cleaned up {removed_count} expired entries"}
+    state.cache_manager._cleanup_expired()
+    return {"message": "Cache cleanup completed"}
 
 
 @router.get("/api/logs/test")

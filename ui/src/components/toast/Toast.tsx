@@ -11,7 +11,7 @@ import {
   CheckCircle,
   Info,
 } from 'lucide-react';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 type ToastType = 'info' | 'success' | 'warning' | 'error' | 'undo';
 

@@ -5,6 +5,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from server.config import settings
+from server.attribution import (
+    attach_attribution,
+    filter_by_source,
+    resolver_for_state,
+    resolve_item_attributions,
+)
 from server.utils.files import is_video_file
 from server.utils.search_explanations import (
     generate_hybrid_match_explanation,
@@ -75,6 +81,19 @@ def _aux_search_paths(query: str) -> set[str]:
                     p = r.get("photo_path")
                     if isinstance(p, str) and p:
                         paths.add(p)
+            return paths
+
+        # Transcript structured queries like: transcript:hello world — search
+        # what was said inside videos (audio transcription service).
+        if q_lower.startswith("transcript:"):
+            spoken = q.split(":", 1)[1].strip()
+            if spoken:
+                try:
+                    from server.audio_transcription_service import get_transcription_service
+
+                    paths.update(get_transcription_service().search_paths(spoken, limit=200))
+                except Exception:
+                    return paths
             return paths
 
         # Generic: union matches from notes/tags/locations/people
@@ -416,39 +435,9 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             results = apply_date_filter(results, date_from, date_to)
-            # Apply source filter (local/cloud/hybrid)
-            if source_filter != "all":
-
-                def is_cloud_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    lower = p.lower()
-                    return (
-                        lower.startswith("http://")
-                        or lower.startswith("https://")
-                        or lower.startswith("s3://")
-                        or lower.startswith("cloud:")
-                        or lower.startswith("gdrive:")
-                        or "amazonaws.com" in lower
-                        or lower.startswith("dropbox:")
-                        or lower.startswith("onedrive:")
-                    )
-
-                def is_local_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    return bool(re.match(r"^[A-Za-z]:\\|^/|^file://|^~/", p))
-
-                if source_filter == "local":
-                    results = [r for r in results if is_local_path(r.get("path", ""))]
-                elif source_filter == "cloud":
-                    results = [r for r in results if is_cloud_path(r.get("path", ""))]
-                elif source_filter == "hybrid":
-                    results = [
-                        r
-                        for r in results
-                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
-                    ]
+            # Apply source filter — registry-derived (see ADR 2026-10-21)
+            attributions = resolve_item_attributions(results, resolver_for_state(state))
+            results = filter_by_source(results, attributions, source_filter)
 
             # Apply sort
             results = apply_sort(results, sort_by)
@@ -473,6 +462,7 @@ async def search_photos(
 
             # Paginate
             paginated = results[offset : offset + limit]
+            attach_attribution(paginated, attributions)
             return {
                 "count": len(results),
                 "results": paginated,
@@ -545,6 +535,7 @@ async def search_photos(
                             "score": 0.55,
                             "metadata": meta,
                             "matchExplanation": _aux_match_explanation(query) if query.strip() else None,
+                            **({"matchedVia": "transcript"} if query.strip().lower().startswith("transcript:") else {}),
                         }
                     )
                     seen_paths.add(p)
@@ -568,39 +559,9 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             formatted_results = apply_date_filter(formatted_results, date_from, date_to)
-            # Apply source filter (local/cloud/hybrid)
-            if source_filter != "all":
-
-                def is_cloud_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    lower = p.lower()
-                    return (
-                        lower.startswith("http://")
-                        or lower.startswith("https://")
-                        or lower.startswith("s3://")
-                        or lower.startswith("cloud:")
-                        or lower.startswith("gdrive:")
-                        or "amazonaws.com" in lower
-                        or lower.startswith("dropbox:")
-                        or lower.startswith("onedrive:")
-                    )
-
-                def is_local_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    return bool(re.match(r"^[A-Za-z]:\\|^/|^file://|^~/", p))
-
-                if source_filter == "local":
-                    formatted_results = [r for r in formatted_results if is_local_path(r.get("path", ""))]
-                elif source_filter == "cloud":
-                    formatted_results = [r for r in formatted_results if is_cloud_path(r.get("path", ""))]
-                elif source_filter == "hybrid":
-                    formatted_results = [
-                        r
-                        for r in formatted_results
-                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
-                    ]
+            # Apply source filter — registry-derived (see ADR 2026-10-21)
+            attributions = resolve_item_attributions(formatted_results, resolver_for_state(state))
+            formatted_results = filter_by_source(formatted_results, attributions, source_filter)
 
             # Apply sorting
             formatted_results = apply_sort(formatted_results, sort_by)
@@ -638,6 +599,11 @@ async def search_photos(
                                 "score": 1.0,
                                 "metadata": {},
                                 "matchExplanation": _aux_match_explanation(query),
+                                **(
+                                    {"matchedVia": "transcript"}
+                                    if query.strip().lower().startswith("transcript:")
+                                    else {}
+                                ),
                             }
                         )
                         seen.add(p)
@@ -647,6 +613,7 @@ async def search_photos(
             # Apply Pagination Slicing
             count = len(formatted_results)
             paginated = formatted_results[offset : offset + limit]
+            attach_attribution(paginated, attributions, resolver_for_state(state))
 
             return {
                 "count": count,
@@ -780,39 +747,9 @@ async def search_photos(
 
             # Apply date filter (filesystem.created)
             hybrid_results = apply_date_filter(hybrid_results, date_from, date_to)
-            # Apply source filter (local/cloud/hybrid)
-            if source_filter != "all":
-
-                def is_cloud_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    lower = p.lower()
-                    return (
-                        lower.startswith("http://")
-                        or lower.startswith("https://")
-                        or lower.startswith("s3://")
-                        or lower.startswith("cloud:")
-                        or lower.startswith("gdrive:")
-                        or "amazonaws.com" in lower
-                        or lower.startswith("dropbox:")
-                        or lower.startswith("onedrive:")
-                    )
-
-                def is_local_path(p: str) -> bool:
-                    if not p:
-                        return False
-                    return bool(re.match(r"^[A-Za-z]:\\|^/|^file://|^~/", p))
-
-                if source_filter == "local":
-                    hybrid_results = [r for r in hybrid_results if is_local_path(r.get("path", ""))]
-                elif source_filter == "cloud":
-                    hybrid_results = [r for r in hybrid_results if is_cloud_path(r.get("path", ""))]
-                elif source_filter == "hybrid":
-                    hybrid_results = [
-                        r
-                        for r in hybrid_results
-                        if (not is_local_path(r.get("path", "")) and not is_cloud_path(r.get("path", "")))
-                    ]
+            # Apply source filter — registry-derived (see ADR 2026-10-21)
+            attributions = resolve_item_attributions(hybrid_results, resolver_for_state(state))
+            hybrid_results = filter_by_source(hybrid_results, attributions, source_filter)
 
             # Merge person results (highest priority) with other results
             if person_results:
@@ -855,6 +792,8 @@ async def search_photos(
                     )
 
                 paginated.append(result_item)
+
+            attach_attribution(paginated, attributions, resolver_for_state(state))
 
             # Log search to history if enabled
             if log_history:

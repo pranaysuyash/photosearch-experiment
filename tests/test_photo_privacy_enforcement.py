@@ -7,25 +7,55 @@ Proves the contract of server/privacy_enforcement.py wired into
 - a private control denies a stranger (403) but allows the owner
 - a friends_only control allows listed users
 - the gate runs before file-existence checks (403 wins over 404)
+
+Identity comes from the principal gate (server/principal.py), not from a
+spoofable header: a loopback caller is the owner, and a caller presenting a
+session token is that token's subject. The X-User-ID header and the
+?user_id= query param survive only as a fallback for requests that resolved
+no principal — that fallback is covered directly at the end of this file
+rather than through the gated API, where a principal is always resolved.
 """
 
+import os
 import tempfile
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from server.config import settings
-from server.main import app
-from server.privacy_controls_db import PrivacyControlsDB
+# The gate treats TestClient's default peer as loopback only under test-mode
+# markers; make that explicit here rather than inheriting ambient state.
+os.environ.setdefault("PHOTOSEARCH_TEST_MODE", "1")
 
-client = TestClient(app)
+from server.config import settings  # noqa: E402  (needs the env above set first)
+from server.main import app  # noqa: E402
+from server.privacy_controls_db import PrivacyControlsDB  # noqa: E402
+from server.privacy_enforcement import user_id_from_request  # noqa: E402
+from server.principal import issue_session_token  # noqa: E402
+
+# A non-loopback peer: the gate only consults a session token for a caller
+# that is not the loopback owner.
+LAN_PEER = ("10.0.0.5", 12345)
 
 PNG_1PX = bytes.fromhex(
     "89504e470d0a1a0a0000000d494844520000000100000001080600000"
     "01f15c4890000000d49444154789c626001000000ffff030000060005"
     "57bfabd40000000049454e44ae426082"
 )
+
+
+def _as(user_id: str) -> TestClient:
+    """A caller whose principal is `user_id` — a token subject, not a header."""
+    client = TestClient(app, client=LAN_PEER)
+    client.headers.update({"Authorization": f"Bearer {issue_session_token(user_id)}"})
+    return client
+
+
+def _as_cookie(user_id: str) -> TestClient:
+    """A caller carrying the session cookie — what an <img> request sends."""
+    client = TestClient(app, client=LAN_PEER)
+    client.cookies.set(settings.SESSION_COOKIE_NAME, issue_session_token(user_id))
+    return client
 
 
 @pytest.fixture
@@ -58,7 +88,7 @@ def _set_private_control(privacy_db: Path, photo: Path, owner: str, visibility: 
 def test_no_control_record_is_default_open(isolated_media_and_privacy):
     media_dir, _ = isolated_media_and_privacy
     photo = _make_photo(media_dir, "uncontrolled.png")
-    response = client.get(f"/image/thumbnail?path={photo}", headers={"X-User-ID": "anyone"})
+    response = _as("anyone").get(f"/image/thumbnail?path={photo}")
     assert response.status_code == 200
 
 
@@ -67,11 +97,11 @@ def test_private_control_denies_stranger_allows_owner(isolated_media_and_privacy
     photo = _make_photo(media_dir, "family_photo.png")
     _set_private_control(privacy_db, photo, owner="alice")
 
-    stranger = client.get(f"/image/thumbnail?path={photo}", headers={"X-User-ID": "stranger"})
+    stranger = _as("stranger").get(f"/image/thumbnail?path={photo}")
     assert stranger.status_code == 403
     assert "privacy controls" in stranger.json()["detail"]
 
-    owner = client.get(f"/image/thumbnail?path={photo}", headers={"X-User-ID": "alice"})
+    owner = _as("alice").get(f"/image/thumbnail?path={photo}")
     assert owner.status_code == 200
 
 
@@ -80,8 +110,8 @@ def test_friends_only_allows_listed_user(isolated_media_and_privacy):
     photo = _make_photo(media_dir, "shared_photo.png")
     _set_private_control(privacy_db, photo, owner="alice", visibility="friends_only", allowed=["bob"])
 
-    assert client.get(f"/image/thumbnail?path={photo}", headers={"X-User-ID": "bob"}).status_code == 200
-    assert client.get(f"/privacy/check-access/{photo}/carol").json()["has_access"] is False
+    assert _as("bob").get(f"/image/thumbnail?path={photo}").status_code == 200
+    assert _as("bob").get(f"/privacy/check-access/{photo}/carol").json()["has_access"] is False
 
 
 def test_enforcement_precedes_file_existence(isolated_media_and_privacy):
@@ -89,7 +119,7 @@ def test_enforcement_precedes_file_existence(isolated_media_and_privacy):
     _, privacy_db = isolated_media_and_privacy
     ghost = "/nonexistent_media_dir/ghost.png"
     _set_private_control(privacy_db, Path(ghost), owner="alice")
-    response = client.get(f"/image/thumbnail?path={ghost}", headers={"X-User-ID": "stranger"})
+    response = _as("stranger").get(f"/image/thumbnail?path={ghost}")
     assert response.status_code == 403
 
 
@@ -98,29 +128,29 @@ def test_file_endpoint_enforces(isolated_media_and_privacy):
     photo = _make_photo(media_dir, "original.png")
     _set_private_control(privacy_db, photo, owner="alice")
 
-    assert client.get(f"/file?path={photo}", headers={"X-User-ID": "stranger"}).status_code == 403
-    assert client.get(f"/file?path={photo}", headers={"X-User-ID": "alice"}).status_code == 200
+    assert _as("stranger").get(f"/file?path={photo}").status_code == 403
+    assert _as("alice").get(f"/file?path={photo}").status_code == 200
 
 
 def test_default_identity_without_header(isolated_media_and_privacy):
-    """No X-User-ID header means the default local user."""
+    """A loopback caller with no token is the owner (default_user)."""
     media_dir, privacy_db = isolated_media_and_privacy
     photo = _make_photo(media_dir, "local.png")
     _set_private_control(privacy_db, photo, owner="default_user")
 
-    assert client.get(f"/image/thumbnail?path={photo}").status_code == 200
+    assert TestClient(app).get(f"/image/thumbnail?path={photo}").status_code == 200
 
 
-def test_query_param_identity_for_img_tags(isolated_media_and_privacy):
-    """<img src> cannot send headers; user_id query param must work."""
+def test_cookie_identity_for_img_tags(isolated_media_and_privacy):
+    """<img src> cannot send headers, but it does send the session cookie."""
     media_dir, privacy_db = isolated_media_and_privacy
     photo = _make_photo(media_dir, "headerless.png")
     _set_private_control(privacy_db, photo, owner="alice")
 
-    stranger = client.get(f"/image/thumbnail?path={photo}&user_id=stranger")
+    stranger = _as_cookie("stranger").get(f"/image/thumbnail?path={photo}")
     assert stranger.status_code == 403
 
-    owner = client.get(f"/image/thumbnail?path={photo}&user_id=alice")
+    owner = _as_cookie("alice").get(f"/image/thumbnail?path={photo}")
     assert owner.status_code == 200
 
 
@@ -130,10 +160,9 @@ def test_put_upsert_owns_control_for_requester(isolated_media_and_privacy):
     media_dir, privacy_db = isolated_media_and_privacy
     photo = _make_photo(media_dir, "panel_first_save.png")
 
-    put_response = client.put(
+    put_response = _as("panel_user").put(
         f"/privacy/control/{photo}",
         json={"visibility": "friends_only", "allowed_users": ["alice"]},
-        headers={"X-User-ID": "panel_user"},
     )
     assert put_response.status_code == 200
     assert put_response.json()["privacy"]["visibility"] == "friends_only"
@@ -141,5 +170,23 @@ def test_put_upsert_owns_control_for_requester(isolated_media_and_privacy):
 
     # The authored control now governs bytes: the authoring identity gets
     # served, strangers do not.
-    assert client.get(f"/image/thumbnail?path={photo}&user_id=panel_user").status_code == 200
-    assert client.get(f"/image/thumbnail?path={photo}&user_id=alice").status_code == 200
+    assert _as("panel_user").get(f"/image/thumbnail?path={photo}").status_code == 200
+    assert _as("alice").get(f"/image/thumbnail?path={photo}").status_code == 200
+
+
+def test_identity_fallback_without_principal():
+    """With no principal resolved, the header wins, then the query param.
+
+    This is the path that serves direct handler calls and exempt routes; the
+    gated API always resolves a principal, so it is asserted here rather than
+    through a request that would carry one.
+    """
+
+    class _Request:
+        def __init__(self, headers=None, query=None):
+            self.headers = headers or {}
+            self.query_params = query or {}
+
+    assert user_id_from_request(_Request(headers={"X-User-ID": "alice"})) == "alice"
+    assert user_id_from_request(_Request(query={"user_id": "bob"})) == "bob"
+    assert user_id_from_request(_Request()) == "default_user"

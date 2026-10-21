@@ -1,0 +1,7 @@
+{"query": "laptop on a desk with a coffee cup", "expect_paths": ["media/people_1.jpg", "media/technology_13.jpg", "media/people_12.jpg"]}
+{"query": "narrow cobblestone alley with old brick buildings", "expect_paths": ["media/nature_0.jpg", "media/nature_1.jpg"]}
+{"query": "woman walking outdoors", "expect_paths": ["media/food_24.jpg", "media/architecture_11.jpg"]}
+{"query": "wolf standing in a forest", "expect_paths": ["media/architecture_1.jpg"]}
+{"query": "large rock formation in the desert", "expect_paths": ["media/food_44.jpg"]}
+{"query": "moored boats in a harbor", "expect_paths": ["media/technology_18.jpg"]}
+{"query": "misty green mountains", "expect_paths": ["media/food_14.jpg"]}

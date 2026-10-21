@@ -163,42 +163,6 @@ async def get_photo_location(photo_path: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/locations/nearby")
-async def get_photos_near_location(
-    latitude: float,
-    longitude: float,
-    radius_km: float = Query(1.0, ge=0.1, le=50.0),
-):
-    """Get photos within a certain radius of a location."""
-    try:
-        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
-        photos = locations_db.get_photos_by_location(latitude, longitude, radius_km)
-
-        return {
-            "photos": photos,
-            "count": len(photos),
-            "center": {"lat": latitude, "lng": longitude},
-            "radius_km": radius_km,
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/locations/clusters")
-async def get_location_clusters(min_photos: int = Query(2, ge=1)):
-    """Get all location clusters."""
-    try:
-        locations_db = get_location_clusters_db(settings.BASE_DIR / "locations.db")
-        clusters = locations_db.get_location_clusters(min_photos)
-
-        return {
-            "clusters": clusters,
-            "count": len(clusters),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.get("/locations/clusters/{cluster_id}/photos")
 async def get_photos_in_cluster(cluster_id: str, limit: int = 50, offset: int = 0):
     """Get all photos in a specific cluster."""

@@ -15,7 +15,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { api, type PhotoMetadata } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface Photo {

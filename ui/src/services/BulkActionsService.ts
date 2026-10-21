@@ -4,6 +4,7 @@
  * Handles bulk operations with undo functionality for photos.
  */
 import { useToast } from '../components/toast/useToast';
+import { apiFetch } from '../api';
 
 type BulkActionState = Record<string, unknown>;
 
@@ -21,7 +22,7 @@ const pluralize = (count: number, noun: string) =>
   `${count} ${noun}${count === 1 ? '' : 's'}`;
 
 async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -115,7 +116,7 @@ class BulkActionsService {
           {
             const results = await Promise.allSettled(
               action.targetIds.map(async (path) => {
-                const response = await fetch(
+                const response = await apiFetch(
                   `/api/photos/${encodeURIComponent(path)}/favorite/toggle`,
                   { method: 'POST' }
                 );
@@ -243,7 +244,7 @@ export function useBulkActions() {
       // Toggle favorites
       const results = await Promise.allSettled(
         photoPaths.map(async (path) => {
-          const response = await fetch(
+          const response = await apiFetch(
             `/api/photos/${encodeURIComponent(path)}/favorite/toggle`,
             {
               method: 'POST',

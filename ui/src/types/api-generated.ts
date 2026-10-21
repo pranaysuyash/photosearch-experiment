@@ -505,6 +505,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/captions/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reindex Captions
+         * @description (Re)embed all stored captions into the caption search index.
+         */
+        post: operations["reindex_captions_api_captions_reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/captions/search-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Caption Search Status
+         * @description Caption search index stats (count + stamped model).
+         */
+        get: operations["get_caption_search_status_api_captions_search_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/captions/status": {
         parameters: {
             query?: never;
@@ -623,6 +663,26 @@ export interface paths {
          * @description Clean up entries for missing files.
          */
         post: operations["cleanup_duplicates_api_duplicates_cleanup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/duplicates/register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Register Duplicates
+         * @description Near-duplicate groups from the photo-register (leader clustering). Snapshot-based (data/register_dedupe_media.json); members whose files no longer exist are dropped live. Read-only — resolution flows through the local /api/duplicates endpoints, this surface only informs.
+         */
+        get: operations["get_register_duplicates_api_duplicates_register_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2213,6 +2273,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/indexing/quality": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Quality Index Status
+         * @description Status of the background EG2 quality space (counts, backend, idle gate).
+         */
+        get: operations["quality_index_status_api_indexing_quality_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/indexing/quality/build-once": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Build Quality Once
+         * @description Embed one batch of pending images synchronously (builder must be idle).
+         */
+        post: operations["build_quality_once_api_indexing_quality_build_once_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/indexing/quality/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Quality Builder */
+        post: operations["start_quality_builder_api_indexing_quality_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/indexing/quality/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop Quality Builder */
+        post: operations["stop_quality_builder_api_indexing_quality_stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intent/detect": {
         parameters: {
             query?: never;
@@ -3759,6 +3893,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/safety/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Classify Image */
+        post: operations["classify_image_api_safety_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/safety/classify-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Classify Batch */
+        post: operations["classify_batch_api_safety_classify_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/safety/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Safety Status */
+        get: operations["safety_status_api_safety_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/schema": {
         parameters: {
             query?: never;
@@ -3814,6 +3999,92 @@ export interface paths {
          */
         post: operations["parse_natural_language_search_api_search_natural_language_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transcripts/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transcribe Batch */
+        post: operations["transcribe_batch_api_transcripts_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transcripts/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search Transcripts */
+        get: operations["search_transcripts_api_transcripts_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transcripts/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Transcripts Status */
+        get: operations["transcripts_status_api_transcripts_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transcripts/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Transcribe */
+        post: operations["transcribe_api_transcripts_transcribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/transcripts/{video_path}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Transcript */
+        get: operations["get_transcript_api_transcripts__video_path__get"];
+        put?: never;
+        post?: never;
+        /** Delete Transcript */
+        delete: operations["delete_transcript_api_transcripts__video_path__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5367,6 +5638,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description List jobs, newest first. Complements GET /jobs/{job_id}.
+         */
+        get: operations["list_jobs_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -5499,10 +5790,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Location Clusters
-         * @description Get all location clusters.
+         * Get Place Clusters
+         * @description Get clusters of photos by location.
          */
-        get: operations["get_location_clusters_locations_clusters_get"];
+        get: operations["get_place_clusters_locations_clusters_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5579,10 +5870,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Photos Near Location
+         * Get Nearby Locations
          * @description Get photos within a certain radius of a location.
          */
-        get: operations["get_photos_near_location_locations_nearby_get"];
+        get: operations["get_nearby_locations_locations_nearby_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -5820,6 +6111,74 @@ export interface paths {
          * @description Get OCR statistics Returns: Dictionary with OCR statistics
          */
         get: operations["get_ocr_stats_ocr_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pair/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Complete Pairing */
+        post: operations["complete_pairing_pair_complete_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pair/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Pairing */
+        post: operations["revoke_pairing_pair_revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pair/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Pairing */
+        post: operations["start_pairing_pair_start_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/pair/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pairing Status */
+        get: operations["pairing_status_pair_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -8497,6 +8856,14 @@ export interface components {
              */
             user_id: string;
         };
+        /** BatchTranscribeRequest */
+        BatchTranscribeRequest: {
+            /**
+             * Limit
+             * @default 5
+             */
+            limit: number;
+        };
         /** Body_detect_faces_mobile_api_mobile_faces_detect_post */
         Body_detect_faces_mobile_api_mobile_faces_detect_post: {
             detection_request: components["schemas"]["MobileFaceDetectionRequest"];
@@ -8558,6 +8925,21 @@ export interface components {
             model_version: string | null;
             /** Provider */
             provider: string | null;
+        };
+        /** ClassifyBatchRequest */
+        ClassifyBatchRequest: {
+            /**
+             * Limit
+             * @default 50
+             */
+            limit: number;
+            /** Paths */
+            paths: string[];
+        };
+        /** ClassifyRequest */
+        ClassifyRequest: {
+            /** Path */
+            path: string;
         };
         /** ClusterLabelRequest */
         ClusterLabelRequest: {
@@ -9398,6 +9780,27 @@ export interface components {
              */
             memory_limit_mb: number;
         };
+        /** PairCompleteRequest */
+        PairCompleteRequest: {
+            /** Code */
+            code: string;
+        };
+        /** PairCompleteResponse */
+        PairCompleteResponse: {
+            /** Token */
+            token: string;
+            /** User Id */
+            user_id: string;
+        };
+        /** PairStartResponse */
+        PairStartResponse: {
+            /** Code */
+            code: string;
+            /** Expires In */
+            expires_in: number;
+            /** Suggested Url */
+            suggested_url?: string | null;
+        };
         /** PerformanceRecordRequest */
         PerformanceRecordRequest: {
             /** Chunk Name */
@@ -9959,6 +10362,16 @@ export interface components {
             location?: string | null;
             /** Narrative Order */
             narrative_order?: number | null;
+        };
+        /** TranscribeRequest */
+        TranscribeRequest: {
+            /**
+             * Force
+             * @default false
+             */
+            force: boolean;
+            /** Video Path */
+            video_path: string;
         };
         /** TrashEmptyRequest */
         TrashEmptyRequest: {
@@ -11086,6 +11499,57 @@ export interface operations {
             };
         };
     };
+    reindex_captions_api_captions_reindex_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_caption_search_status_api_captions_search_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_vlm_status_api_captions_status_get: {
         parameters: {
             query?: never;
@@ -11270,6 +11734,26 @@ export interface operations {
         };
     };
     cleanup_duplicates_api_duplicates_cleanup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_register_duplicates_api_duplicates_register_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -13665,6 +14149,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    quality_index_status_api_indexing_quality_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    build_quality_once_api_indexing_quality_build_once_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    start_quality_builder_api_indexing_quality_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    stop_quality_builder_api_indexing_quality_stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };
@@ -16213,6 +16777,92 @@ export interface operations {
             };
         };
     };
+    classify_image_api_safety_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    classify_batch_api_safety_classify_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ClassifyBatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    safety_status_api_safety_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_api_schema_api_schema_get: {
         parameters: {
             query?: never;
@@ -16278,6 +16928,186 @@ export interface operations {
                 "application/json": components["schemas"]["NaturalLanguageSearchRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transcribe_batch_api_transcripts_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BatchTranscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_transcripts_api_transcripts_search_get: {
+        parameters: {
+            query: {
+                q: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transcripts_status_api_transcripts_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    transcribe_api_transcripts_transcribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_transcript_api_transcripts__video_path__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                video_path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_transcript_api_transcripts__video_path__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                video_path: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -18989,6 +19819,39 @@ export interface operations {
             };
         };
     };
+    list_jobs_jobs_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_job_status_jobs__job_id__get: {
         parameters: {
             query?: never;
@@ -19204,7 +20067,7 @@ export interface operations {
             };
         };
     };
-    get_location_clusters_locations_clusters_get: {
+    get_place_clusters_locations_clusters_get: {
         parameters: {
             query?: {
                 min_photos?: number;
@@ -19339,7 +20202,7 @@ export interface operations {
             };
         };
     };
-    get_photos_near_location_locations_nearby_get: {
+    get_nearby_locations_locations_nearby_get: {
         parameters: {
             query: {
                 latitude: number;
@@ -19804,6 +20667,99 @@ export interface operations {
         };
     };
     get_ocr_stats_ocr_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    complete_pairing_pair_complete_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PairCompleteRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairCompleteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_pairing_pair_revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    start_pairing_pair_start_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PairStartResponse"];
+                };
+            };
+        };
+    };
+    pairing_status_pair_status_get: {
         parameters: {
             query?: never;
             header?: never;

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel
 import uuid
 import time
@@ -111,6 +111,37 @@ class EnhancedJobStore:
             self.persistent_store.update_job(
                 job_id=job_id, status=status, progress=progress, message=message, result=result
             )
+
+    def list_jobs(
+        self,
+        status: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
+        """List jobs newest-first, from the persistent store when available.
+
+        Normalizes the persistent store's row shape (job_type) to the Job
+        model shape (type) so callers get one consistent contract.
+        """
+        if USE_PERSISTENT_STORE and self.persistent_store:
+            rows = self.persistent_store.get_jobs(status=status, limit=limit, offset=offset)
+            return [
+                {
+                    "id": row.get("id"),
+                    "type": row.get("job_type"),
+                    "status": row.get("status"),
+                    "progress": row.get("progress", 0),
+                    "message": row.get("message"),
+                    "created_at": row.get("created_at"),
+                    "updated_at": row.get("updated_at"),
+                    "result": row.get("result"),
+                }
+                for row in rows
+            ]
+
+        all_jobs = sorted(self._jobs.values(), key=lambda j: j.updated_at, reverse=True)
+        filtered = [j for j in all_jobs if status is None or j.status == status]
+        return [j.model_dump() for j in filtered[offset : offset + limit]]
 
     def get_job_statistics(self) -> dict:
         """Get statistics about job execution"""

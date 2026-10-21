@@ -11,6 +11,12 @@ import os
 import json
 
 from server.api.deps import get_state
+from server.attribution import (
+    attach_attribution,
+    filter_by_source,
+    resolver_for_state,
+    resolve_item_attributions,
+)
 from server.core.state import AppState
 from server.utils.files import is_video_file
 from server.utils.sorting import apply_sort, apply_date_filter
@@ -87,6 +93,12 @@ async def browse_photos(
         if date_from or date_to:
             results = apply_date_filter(results, date_from, date_to)
 
+        # Apply source filter — registry-derived (see ADR 2026-10-21).
+        # Previously this parameter was accepted and silently ignored.
+        resolver = resolver_for_state(state)
+        attributions = resolve_item_attributions(results, resolver)
+        results = filter_by_source(results, attributions, source_filter)
+
         # Apply sorting
         results = apply_sort(results, sort_by)
 
@@ -96,6 +108,9 @@ async def browse_photos(
         # Apply pagination
         paginated = results[offset : offset + limit]
         has_more = (offset + len(paginated)) < total_count
+
+        # Attach registry-derived attribution to the returned items
+        attach_attribution(paginated, attributions, resolver)
 
         return {
             "count": total_count,

@@ -28,7 +28,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 export interface TextRegion {
   id: string;

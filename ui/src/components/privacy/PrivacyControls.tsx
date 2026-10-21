@@ -19,7 +19,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { api } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 
 interface PrivacyControl {
   id: string;
@@ -101,17 +101,43 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
     loadPrivacySettings();
   }, [loadPrivacySettings]);
 
+  /**
+   * One-way SHA-256 hex of the encryption key (WebCrypto). The server stores
+   * this value opaquely, so the old base64 "hash" simply gets overwritten on
+   * the next save — no stored-value migration needed.
+   */
+  const hashEncryptionKey = async (key: string): Promise<string> => {
+    if (!crypto?.subtle) {
+      throw new Error(
+        'Encryption requires a secure context (HTTPS or the desktop app)'
+      );
+    }
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(key)
+    );
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+  };
+
   const savePrivacySettings = async () => {
     try {
       setSaving(true);
       setError(null);
 
+      if (settings.encryptionEnabled && !settings.encryptionKey.trim()) {
+        setError('Enter an encryption key before enabling encryption');
+        return;
+      }
+
       await api.updatePhotoPrivacy(photoPath, {
         visibility: settings.visibility,
         share_permissions: settings.sharePermissions,
         encryption_enabled: settings.encryptionEnabled,
-        encryption_key_hash: settings.encryptionEnabled ?
-          btoa(settings.encryptionKey) : undefined, // In a real app, use proper hashing
+        encryption_key_hash: settings.encryptionEnabled
+          ? await hashEncryptionKey(settings.encryptionKey)
+          : undefined,
         allowed_users: settings.allowedUsers,
         allowed_groups: settings.allowedGroups
       });
@@ -120,7 +146,9 @@ export function PrivacyControls({ photoPath }: { photoPath: string }) {
       loadPrivacySettings();
     } catch (err) {
       console.error('Failed to update privacy settings:', err);
-      setError('Failed to update privacy settings');
+      setError(
+        err instanceof Error ? err.message : 'Failed to update privacy settings'
+      );
     } finally {
       setSaving(false);
     }

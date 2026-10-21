@@ -17,7 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { api, type ExportOptions } from '../api';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import { useModalBehavior } from '../../hooks/useModalBehavior';
 
 interface ExportDialogProps {

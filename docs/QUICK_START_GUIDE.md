@@ -229,7 +229,13 @@ Common HTTP status codes:
 
 The application uses the following environment variables:
 
-- `VITE_API_URL`: Base URL for API calls (default: http://127.0.0.1:8000)
+- `VITE_API_URL`: Dev-only override for the API origin. The shipped bundles
+  derive it from the build target (`ui/src/platform/target.ts`): the desktop
+  bundle uses `http://127.0.0.1:8000`, the companion bundle (`npm run build:web`)
+  is same-origin because FastAPI serves it at `/app/`. Set this in a local,
+  untracked `ui/.env` to point the dev server at a backend on another port.
+- `BACKEND_PORT`: Port the local backend listens on (default: 8000). The Vite
+  dev/preview proxy follows it.
 - `PS_INTENT_PORT`: Port for the UI server (default: 8501)
 
 ## Troubleshooting

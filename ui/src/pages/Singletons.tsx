@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, ArrowLeft } from 'lucide-react';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
+import { apiFetch, mediaUrl } from '@/api';
 
 interface SingletonCluster {
     cluster_id: string;
@@ -27,7 +28,7 @@ export function Singletons() {
     const fetchSingletons = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/singletons`);
+            const response = await apiFetch(`/api/faces/singletons`);
             const data = await response.json();
             setClusters(data.singletons || []);
             setCount(data.count || 0);
@@ -99,7 +100,7 @@ export function Singletons() {
                                 <div className="p-3 bg-black/20">
                                     {cluster.face_id && (
                                         <img
-                                            src={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/${cluster.face_id}/crop?size=150`}
+                                            src={mediaUrl.faceCrop(cluster.face_id, 150)}
                                             alt={cluster.label}
                                             className="w-full h-24 object-cover rounded"
                                         />

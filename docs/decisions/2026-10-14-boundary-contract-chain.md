@@ -69,3 +69,28 @@ green on master with a deliberately broken frontend build.
   if wheels/tests diverge, align both on one version (owner decision).
 - Hand-declared interfaces in `ui/src/api.ts` migrate to the generated module
   opportunistically (when touched), not wholesale.
+
+## Outcome (2026-10-14): CI green on master — all three jobs
+
+Run [38609309067](https://github.com/pranaysuyash/photosearch-experiment/actions/runs/38609309067):
+**test ✓** (full suite, 5m41s) · **parity ✓** (contract gate live, 2m9s) ·
+**frontend ✓** (drift gate + build, 1m19s).
+
+The first-green required four triage commits, each fixed at root rather than
+masked — receipts kept here because they are the chain's shakedown record:
+
+1. `server/requirements.txt` was missing from CI's install — core web deps
+   (fastapi/pydantic/lancedb) live there, not in `requirements.txt` (`3ed8dbf`).
+2. Parity job carried `--strict`, a flag `scripts/contracts_diff.py` never
+   accepted — the job could never have passed as written (`41c4ec3`).
+3. `@vitest/ui@^4.0.15` peer-conflicted with `vitest@^3.2.4` — pre-existing
+   inconsistency tolerated by `npm install`, rejected by `npm ci`; aligned to
+   `@vitest/ui@^3.2.7` (`41c4ec3`).
+4. That alignment left a lockfile desync (vitest@3.2.4 vs `^3.2.7`) that local
+   npm tolerated and CI's npm rejected — resolved to 3.2.7 (`390755d`); an
+   unused `react-window` (zero imports, react≤18 peer) removed as the other
+   npm-ci breaker (`591c2db`).
+
+**Runner-version residual closed:** CI python 3.12 passes the full suite that
+was built on local python 3.14 — the alignment risk named above is settled by
+observation, not assumption.

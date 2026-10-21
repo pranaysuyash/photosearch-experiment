@@ -5,7 +5,8 @@ import type {
   ActionOptions,
 } from '../types/actions';
 import { ActionCategory, ActionType } from '../types/actions';
-import { api, type ExportOptions } from '../api';
+import { api, apiFetch, type ExportOptions } from '../api';
+import { launchApp, revealInFileManager } from '@/platform';
 
 /**
  * Default photo actions that are registered with the ActionRegistry
@@ -70,15 +71,9 @@ export const openLocationAction: PhotoAction = {
 
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
-      // For web applications, we'll need to call a backend endpoint
-      // that can trigger the system file manager
-      const response = await fetch('/api/actions/open-location', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: photo.path }),
-      });
+      const ok = await revealInFileManager(photo.path);
 
-      if (!response.ok) {
+      if (!ok) {
         throw new Error('Failed to open file location');
       }
 
@@ -260,24 +255,15 @@ export const openWithAction: PhotoAction = {
         };
       }
 
-      const response = await fetch('/api/actions/launch-app', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          appId,
-          filePath: photo.path,
-        }),
-      });
+      const result = await launchApp(String(appId), photo.path);
 
-      if (!response.ok) {
+      if (!result) {
         throw new Error('Failed to launch application');
       }
 
-      const result = await response.json();
-
       return {
         success: true,
-        message: `Opened with ${result.appName || 'application'}`,
+        message: `Opened with ${String(result.appName || 'application')}`,
         data: result,
       };
     } catch (error) {
@@ -308,7 +294,7 @@ export const downloadOriginalAction: PhotoAction = {
   execute: async (photo: Photo): Promise<ActionResult> => {
     try {
       // This would handle cloud-specific download logic
-      const response = await fetch('/api/actions/cloud-download', {
+      const response = await apiFetch('/api/actions/cloud-download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: photo.path }),

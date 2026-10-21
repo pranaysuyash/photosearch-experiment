@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { API_BASE } from '@/api';
 
 type RGB = { r: number; g: number; b: number };
 
@@ -18,8 +19,9 @@ async function averageColorFromImageUrl(url: string): Promise<RGB> {
     const img = new Image();
     img.decoding = 'async';
 
-    // For cross-origin requests, always use CORS mode
-    if (url.includes('localhost:8000') || url.includes('127.0.0.1:8000')) {
+    // Canvas sampling needs CORS mode whenever the API is a different origin;
+    // the same-origin web build needs nothing.
+    if (API_BASE && url.startsWith(API_BASE)) {
       img.crossOrigin = 'anonymous';
     }
 

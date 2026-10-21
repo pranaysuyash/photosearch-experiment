@@ -1,10 +1,10 @@
 {
   "metadata": {
-    "first_scan_date": "2026-04-03T20:00:14.994754",
-    "last_update_date": "2026-04-03T20:00:14.994757",
+    "first_scan_date": "2026-10-21T14:10:31.834301",
+    "last_update_date": "2026-10-21T14:10:31.834304",
     "scan_root": "/Users/pranay/Projects/photosearch_experiment/media",
-    "total_files": 1068,
-    "total_images": 1066,
+    "total_files": 1072,
+    "total_images": 1070,
     "total_videos": 2,
     "total_animated": 0,
     "last_changes": {
@@ -4739,6 +4739,12 @@
         "mtime": 1765124131.4970112
       },
       {
+        "name": "b.jpg",
+        "type": "image",
+        "size": 1,
+        "mtime": 1792571885.2926958
+      },
+      {
         "name": "benchmark_0581.png",
         "type": "image",
         "size": 4311,
@@ -5087,6 +5093,12 @@
         "mtime": 1765124131.7675488
       },
       {
+        "name": "c.jpg",
+        "type": "image",
+        "size": 1,
+        "mtime": 1792571885.2927601
+      },
+      {
         "name": "people_37.jpg",
         "type": "image",
         "size": 64123,
@@ -5163,6 +5175,12 @@
         "type": "image",
         "size": 5007,
         "mtime": 1765124131.7599332
+      },
+      {
+        "name": "a.jpg",
+        "type": "image",
+        "size": 1,
+        "mtime": 1792571885.2926333
       },
       {
         "name": "benchmark_0596.png",
@@ -5559,6 +5577,12 @@
         "type": "image",
         "size": 4707,
         "mtime": 1765124131.5077329
+      },
+      {
+        "name": "d.jpg",
+        "type": "image",
+        "size": 1,
+        "mtime": 1792571885.2928283
       },
       {
         "name": "benchmark_0578.png",
@@ -6425,6 +6449,6 @@
         "mtime": 1765162952.8804462
       }
     ],
-    "/Users/pranay/Projects/photosearch_experiment/media::mtime": 1768674086.224653
+    "/Users/pranay/Projects/photosearch_experiment/media::mtime": 1792522890.812295
   }
 }

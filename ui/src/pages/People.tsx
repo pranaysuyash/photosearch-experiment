@@ -31,8 +31,8 @@ import {
   Sparkles,
   Calendar,
 } from 'lucide-react';
-import { api } from '../api';
-import { glass } from '../design/glass';
+import { api, apiFetch, mediaUrl } from '../api';
+import { glass } from '@/design/glass';
 import ReviewQueue from '../components/people/ReviewQueue';
 import ReviewInbox from '../components/people/ReviewInbox';
 import MergeSuggestions from '../components/people/MergeSuggestions';
@@ -304,8 +304,8 @@ export function People() {
       setPauseLoading(true);
       const newPausedState = !isIndexingPaused;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/indexing/${newPausedState ? 'pause' : 'resume'}`,
+      const response = await apiFetch(
+        `/api/faces/indexing/${newPausedState ? 'pause' : 'resume'}`,
         { method: 'POST' }
       );
 
@@ -325,9 +325,8 @@ export function People() {
   const handleHidePerson = async (clusterId: string) => {
     try {
       setHideLoading(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
-        }/api/faces/clusters/${clusterId}/hide`,
+      const response = await apiFetch(
+        `/api/faces/clusters/${clusterId}/hide`,
         { method: 'POST' }
       );
 
@@ -354,9 +353,8 @@ export function People() {
   const handleUnhidePerson = async (clusterId: string) => {
     try {
       setHideLoading(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
-        }/api/faces/clusters/${clusterId}/unhide`,
+      const response = await apiFetch(
+        `/api/faces/clusters/${clusterId}/unhide`,
         { method: 'POST' }
       );
 
@@ -466,14 +464,12 @@ export function People() {
   ]);
 
   const handleScan = async () => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
     try {
       setScanning(true);
       setScanProgress({ progress: 0, message: 'Starting scan…' });
 
       // Start async scan
-      const startResponse = await fetch(`${apiUrl}/api/faces/scan-async`, {
+      const startResponse = await apiFetch(`/api/faces/scan-async`, {
         method: 'POST',
       });
       const startData = await startResponse.json();
@@ -488,8 +484,8 @@ export function People() {
       // Poll for progress
       const pollInterval = setInterval(async () => {
         try {
-          const statusResponse = await fetch(
-            `${apiUrl}/api/faces/scan-status/${startData.job_id}`
+          const statusResponse = await apiFetch(
+            `/api/faces/scan-status/${startData.job_id}`
           );
           const statusData = await statusResponse.json();
 
@@ -682,9 +678,8 @@ export function People() {
     const { clusterId } = deleteModal;
     try {
       setDeleteLoading(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'
-        }/api/faces/clusters/${clusterId}`,
+      const response = await apiFetch(
+        `/api/faces/clusters/${clusterId}`,
         { method: 'DELETE' }
       );
       if (response.ok) {
@@ -1848,9 +1843,7 @@ export function People() {
                           .map((faceId, index) => (
                             <img
                               key={index}
-                              src={`${import.meta.env.VITE_API_URL ||
-                                'http://localhost:8000'
-                                }/api/faces/crop/${faceId}?size=150`}
+                              src={mediaUrl.faceCrop(faceId, 150)}
                               alt={`Face ${index + 1}`}
                               className='w-full h-20 object-cover rounded'
                               loading='lazy'

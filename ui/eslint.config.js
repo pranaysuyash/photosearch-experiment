@@ -40,4 +40,40 @@ export default defineConfig([
       'jsx-a11y/media-has-caption': 'warn',
     },
   },
+  {
+    // Transport boundary: every API call goes through src/api.ts (axios client,
+    // apiFetch, mediaUrl) so base URL, identity, and auth are applied once.
+    // Same-origin `fetch('/api/…')` only works behind the Vite dev proxy and
+    // is dead inside the Tauri shell; inline host literals fork the config.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/api.ts', 'src/platform/**', 'src/test/**', 'src/**/*.test.*'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "CallExpression[callee.name='fetch'] > Literal.arguments:first-child[value=/^\\x2fapi\\x2f/]",
+          message:
+            'Use apiFetch() from src/api.ts — raw fetch("/api/…") bypasses base URL, identity, and auth.',
+        },
+        {
+          selector:
+            "CallExpression[callee.name='fetch'] > TemplateLiteral.arguments:first-child > TemplateElement:first-child[value.raw=/^\\x2fapi\\x2f/]",
+          message:
+            'Use apiFetch() from src/api.ts — raw fetch(`/api/…`) bypasses base URL, identity, and auth.',
+        },
+        {
+          selector: "MemberExpression[property.name='VITE_API_URL']",
+          message:
+            'Read API_BASE / apiUrl() from src/api.ts instead of import.meta.env.VITE_API_URL.',
+        },
+        {
+          selector:
+            'Literal[value=/(localhost|127\\.0\\.0\\.1):8000/], TemplateElement[value.raw=/(localhost|127\\.0\\.0\\.1):8000/]',
+          message:
+            'No inline API host literals — use API_BASE / apiUrl() / mediaUrl from src/api.ts.',
+        },
+      ],
+    },
+  },
 ]);

@@ -44,6 +44,12 @@ data/
 *.sqlite3
 .run/
 
+# GDPR export test artifacts: one timestamped zip per test run (consent
+# records, audit logs, export metadata). The 18 already-tracked ones stay as
+# historical samples; new runs must not pile up. Un-ignore with
+# `git add -f exports/...` if a specific export needs to be committed.
+exports/
+
 # AI/ML Models (downloaded on first use)
 models/
 !server/models/
@@ -71,6 +77,17 @@ media/
 *.avi
 *.webm
 
+# ...but not the assets the build and the documentation depend on. These
+# extension rules exist to stop a photo library from being committed, not to
+# hide the app's own assets:
+#   ui/public/*        app icons + the globe texture loaded by PhotoGlobe.tsx
+#   src-tauri/icons/*  Tauri bundle icons referenced by tauri.conf.json
+#   docs/evidence/**   before/after captures cited by the decision docs
+!ui/public/*.png
+!ui/public/*.jpg
+!src-tauri/icons/*.png
+!docs/evidence/**/*.png
+
 # Test directories
 test_scan_dir/
 
@@ -82,8 +99,13 @@ docs/copilot-raptor-review/
 docs/context/
 copilot_raptor_review/
 old_project_docs/
-experiments/
 .agent/
+
+# Experiment artifacts: reports, scripts and small fixtures ARE tracked — they
+# are cited from source comments and decision docs (e.g. the caption A/B result
+# in server/config.py). Only the generated dumps over the real photo library
+# are ignored: they are large and reproducible from the library itself.
+experiments/register_captions_*.jsonl
 
 # Agent tooling caches
 .v2c/
@@ -98,3 +120,19 @@ requirements..venv.snapshot.txt
 
 # Build artifacts
 ui/dist
+ui/dist-web
+
+# Orphaned root lockfile: there is no root package.json — the live lockfile is
+# ui/package-lock.json. A lockfile without a manifest only confuses tooling.
+/package-lock.json
+
+# Generated review artifact: re-rendered with a fresh timestamp on every
+# commit, so tracking it would leave the tree permanently dirty. The durable
+# record is the commit's own trailers (Motto-Reviewed / Motto-SHA256 /
+# Evidence-Tier / Risk-Class).
+docs/reviews/motto_review.md
+
+# Test-run artifacts: the vector-store test writes its database next to the
+# repo root (tests/test_vector_store.py).
+test_vectors.pkl*
+.gstack/

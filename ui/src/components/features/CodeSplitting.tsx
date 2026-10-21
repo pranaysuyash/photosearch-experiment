@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/api';
 import './CodeSplitting.css';
 
 const CodeSplitting = () => {
@@ -47,21 +48,21 @@ const CodeSplitting = () => {
       setError(null);
 
       // Get main config
-      const configResponse = await fetch('/api/code-splitting/config');
+      const configResponse = await apiFetch('/api/code-splitting/config');
       if (configResponse.ok) {
         const configData = await configResponse.json();
         setConfig(configData.config);
       }
 
       // Get enabled status
-      const enabledResponse = await fetch('/api/code-splitting/enabled');
+      const enabledResponse = await apiFetch('/api/code-splitting/enabled');
       if (enabledResponse.ok) {
         const enabledData = await enabledResponse.json();
         setEnabled(enabledData.enabled);
       }
 
       // Get performance stats
-      const performanceResponse = await fetch(
+      const performanceResponse = await apiFetch(
         '/api/code-splitting/performance'
       );
       if (performanceResponse.ok) {
@@ -70,7 +71,7 @@ const CodeSplitting = () => {
       }
 
       // Get chunk performance
-      const chunkResponse = await fetch(
+      const chunkResponse = await apiFetch(
         '/api/code-splitting/performance/chunks'
       );
       if (chunkResponse.ok) {
@@ -92,7 +93,7 @@ const CodeSplitting = () => {
   // Toggle code splitting
   const toggleCodeSplitting = async () => {
     try {
-      const response = await fetch('/api/code-splitting/enabled', {
+      const response = await apiFetch('/api/code-splitting/enabled', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ const CodeSplitting = () => {
         return;
       }
 
-      const response = await fetch(
+      const response = await apiFetch(
         `/api/code-splitting/chunk/${newChunk.name}`,
         {
           method: 'POST',
@@ -158,7 +159,7 @@ const CodeSplitting = () => {
   // Record performance data (simulated)
   const recordPerformance = async () => {
     try {
-      const response = await fetch('/api/code-splitting/performance', {
+      const response = await apiFetch('/api/code-splitting/performance', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

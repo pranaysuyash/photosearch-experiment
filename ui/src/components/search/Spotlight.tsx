@@ -11,8 +11,8 @@ import {
 } from '../../utils/storage';
 import { usePhotoSearchContext } from '../../contexts/PhotoSearchContext';
 import { useNavigate } from 'react-router-dom';
-import { glass } from '../../design/glass';
-import { pickDirectory } from '../../utils/pickDirectory';
+import { glass } from '@/design/glass';
+import { pickFolder } from '@/platform';
 
 interface SpotlightProps {
   onPhotoSelect?: (photo: Photo) => void;
@@ -77,7 +77,7 @@ export function Spotlight({
 
   const handleScan = useCallback(async () => {
     setStatus({ message: 'Choose a folder…', type: 'info' });
-    const picked = await pickDirectory();
+    const picked = await pickFolder();
     if (!picked) {
       setStatus({
         message:

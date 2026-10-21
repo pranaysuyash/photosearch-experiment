@@ -25,10 +25,11 @@ export function ApiStatusBanner({
               </div>
               <div className='space-y-0.5'>
                 <div className='text-sm font-medium text-amber-100'>
-                  Backend is offline
+                  Can’t reach the backend
                 </div>
                 <div className='text-xs text-amber-100/80'>
-                  The UI can’t reach the API at <span className='font-mono'>{apiBase}</span>. Start the server and retry.
+                  No response from the API at <span className='font-mono'>{apiBase}</span>.
+                  Either the server isn’t running, or this page’s origin isn’t allowed to call it.
                 </div>
               </div>
             </div>

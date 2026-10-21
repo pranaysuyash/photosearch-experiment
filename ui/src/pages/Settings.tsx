@@ -13,6 +13,7 @@ import {
 import { SourcesPanel } from '../components/sources/SourcesPanel';
 import ServerConfigPanel from '../components/ServerConfigPanel';
 import { PrivacyPanel } from '../components/settings/PrivacyPanel';
+import { PairingPanel } from '../components/settings/PairingPanel';
 
 const Settings = () => {
   const [focusMode, setFocusMode] = useState(() => {
@@ -108,6 +109,11 @@ const Settings = () => {
           </h2>
 
           <ServerConfigPanel />
+        </section>
+
+        <section id='devices' className='space-y-2 scroll-mt-24'>
+          <h2 className='text-sm font-semibold text-foreground'>Devices</h2>
+          <PairingPanel />
         </section>
 
         <section className='space-y-2'>

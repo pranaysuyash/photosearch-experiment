@@ -59,6 +59,7 @@ async def get_search_count(request: SearchCountRequest, state: AppState = Depend
 
             # Filter by minimum score and apply more realistic scoring
             filtered_results = []
+            matched_paths = set()
             for r in results:
                 # Apply more realistic scoring - prevent inflated scores
                 adjusted_score = r["score"]
@@ -68,6 +69,19 @@ async def get_search_count(request: SearchCountRequest, state: AppState = Depend
                         adjusted_score = 0.85 + (adjusted_score - 0.9) * 0.3  # Compress high scores
                     r["score"] = adjusted_score
                     filtered_results.append(r)
+                    matched_paths.add(r.get("metadata", {}).get("path"))
+
+            # Caption-only matches count too (see search_semantic fusion).
+            caption_index = getattr(state, "caption_index", None)
+            if caption_index is not None:
+                try:
+                    if caption_index.get_count() > 0:
+                        caption_query_vec = caption_index.embed_query(query, embedding_generator)
+                        for c in caption_index.search(caption_query_vec, limit=1000, min_score=0.22):
+                            if c["path"] not in matched_paths:
+                                filtered_results.append({"path": c["path"], "score": c["score"]})
+                except Exception:
+                    pass
             return {"count": len(filtered_results)}
 
         elif mode == "hybrid":
@@ -155,33 +169,102 @@ async def search_semantic(
         # 1. Generate text embedding
         text_vec = embedding_generator.generate_text_embedding(query)
 
-        # 2. Search LanceDB with offset
-        # vector_store.search now supports offset directly
-        results = vector_store.search(text_vec, limit=limit, offset=offset)
+        # 2. Search LanceDB. Fetch limit+offset on the image leg so caption
+        # fusion below ranks globally before pagination is applied.
+        results = vector_store.search(text_vec, limit=limit + offset, offset=0)
+
+        # 2a. Quality rerank: when the background EG2 space covers the
+        # candidate window, reorder it by EG2 similarity (best measured
+        # top-1 precision). Partial coverage would mix score scales, so we
+        # rerank only when fully caught up.
+        from server.config import settings as _settings
+
+        quality_index = getattr(state, "image_quality_index", None)
+        if _settings.IMAGE_QUALITY_RERANK and quality_index is not None and results:
+            try:
+                if quality_index.embedder.available() and quality_index.get_count() > 0:
+                    candidate_paths = [r["metadata"]["path"] for r in results if r["score"] >= min_score]
+                    if (
+                        candidate_paths
+                        and quality_index.coverage(candidate_paths) >= _settings.IMAGE_QUALITY_RERANK_MIN_COVERAGE
+                    ):
+                        quality_query_vec = quality_index.embedder.embed_query(query)
+                        quality_scores = quality_index.rerank(quality_query_vec, candidate_paths)
+                        for r in results:
+                            if r["metadata"]["path"] in quality_scores:
+                                r["score"] = quality_scores[r["metadata"]["path"]]
+                                r["qualityReranked"] = True
+            except Exception as e:
+                print(f"Quality rerank skipped (non-fatal): {e}")
+
+        # 2b. Caption leg: the query embedded in the caption index's own space
+        # (dedicated text model, else the app generator) — query and captions
+        # always share one embedding space (see CaptionSearchIndex).
+        caption_matches = {}
+        caption_index = getattr(state, "caption_index", None)
+        if caption_index is not None:
+            try:
+                if caption_index.get_count() > 0:
+                    caption_query_vec = caption_index.embed_query(query, embedding_generator)
+                    for c in caption_index.search(caption_query_vec, limit=limit + offset, min_score=min_score):
+                        caption_matches[c["path"]] = c
+            except Exception as e:
+                print(f"Caption search leg failed (non-fatal): {e}")
 
         # 3. Format and enrich
         formatted = []
+        seen_paths = set()
         for r in results:
             if r["score"] >= min_score:
                 file_path = r["metadata"]["path"]
+                seen_paths.add(file_path)
                 full_metadata = photo_search_engine.db.get_metadata_by_path(file_path)
+
+                score = r["score"]
+                matched_via = "image"
+                cap = caption_matches.get(file_path)
+                if cap and cap["score"] > score:
+                    score = cap["score"]
+                    matched_via = "caption"
 
                 result_item = {
                     "path": file_path,
                     "filename": r["metadata"]["filename"],
-                    "score": r["score"],
+                    "score": score,
                     "metadata": full_metadata or r["metadata"],
+                    "matchedVia": matched_via,
                 }
+                if r.get("qualityReranked"):
+                    result_item["qualityReranked"] = True
 
                 # Generate match explanation for semantic search
                 if query.strip():
                     result_item["matchExplanation"] = generate_semantic_match_explanation(
                         query,
                         result_item,
-                        r["score"],
+                        score,
                     )
 
                 formatted.append(result_item)
+
+        # Caption-only matches (no image-vector hit above threshold).
+        for path, cap in caption_matches.items():
+            if path in seen_paths:
+                continue
+            full_metadata = photo_search_engine.db.get_metadata_by_path(path) or {}
+            result_item = {
+                "path": path,
+                "filename": os.path.basename(path),
+                "score": cap["score"],
+                "metadata": full_metadata,
+                "matchedVia": "caption",
+                "matchExplanation": f"Matched by caption: \"{cap.get('caption', '')[:120]}\"",
+            }
+            formatted.append(result_item)
+
+        # Global ranking after fusion, then pagination.
+        formatted.sort(key=lambda item: item["score"], reverse=True)
+        formatted = formatted[offset : offset + limit]
 
         return {"count": len(formatted), "results": formatted}
     except Exception as e:

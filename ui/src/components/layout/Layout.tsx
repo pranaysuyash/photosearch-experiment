@@ -30,9 +30,10 @@ import {
   localGetItem,
   localSetItem,
 } from '../../utils/storage';
-import { api } from '../../api';
+import { api, API_BASE } from '../../api';
 import { ApiStatusBanner, type ApiStatus } from '../common/ApiStatusBanner';
 import { FirstRunModal } from '../common/FirstRunModal';
+import { useModalBehavior } from '../../hooks/useModalBehavior';
 import './Layout.css';
 // import { NotchBar, useNotchAware } from './NotchBar';
 
@@ -55,6 +56,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [hasRecentJobs, setHasRecentJobs] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const statusPanelRef = useModalBehavior(statusOpen, () => setStatusOpen(false));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [stats, setStats] = useState<{
@@ -195,7 +197,7 @@ const Layout = ({ children }: LayoutProps) => {
       <div className='fixed top-14 sm:top-16 left-0 right-0 z-[950] pointer-events-none'>
         <ApiStatusBanner
           status={apiStatus}
-          apiBase={String(import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')}
+          apiBase={API_BASE || 'this origin'}
           onRetry={() => {
             setApiStatus('unknown');
             api.ping(1200).then((ok) => setApiStatus(ok ? 'online' : 'offline'));
@@ -308,9 +310,17 @@ const Layout = ({ children }: LayoutProps) => {
             <div className='status-popover-root'>
               <div
                 className='status-popover-backdrop'
+                role='presentation'
+                aria-hidden='true'
                 onClick={() => setStatusOpen(false)}
               />
-              <div className='status-popover glass-surface glass-surface--strong rounded-2xl p-4'>
+              <div
+                ref={statusPanelRef}
+                role='dialog'
+                aria-modal='true'
+                aria-label='Library status'
+                className='status-popover glass-surface glass-surface--strong rounded-2xl p-4'
+              >
                 <div className='text-sm font-semibold text-foreground mb-2'>
                   Library status
                 </div>

@@ -13,7 +13,7 @@ import {
   Loader,
 } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 
 interface DetectedEvent {
   event_id: string;

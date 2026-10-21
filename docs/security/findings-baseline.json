@@ -162,6 +162,19 @@
       "accepted_by": "operator (Pranay) — gate policy decision 2026-10-19",
       "accepted_at": "2026-10-19",
       "review_by": "2026-11-19"
+    },
+    {
+      "file": "tests/test_audio_transcription.py",
+      "line": 120,
+      "rule": "path-traversal",
+      "severity": "high",
+      "code_hash": "230870ff48d8880272e5a9aa206961140e0afa8dd7fba8dde49eb631f90e994a",
+      "class": "test-fixture",
+      "rationale": "open(p, \"wb\").close() creates empty placeholder video files named v1..v3.mp4 under pytest's tmp_path fixture — literal names inside a per-test temporary directory the framework owns. Surfaced by the gate on 2026-10-20 in a parallel session's new test file; classified here so the project baseline stays complete.",
+      "evidence": "docs/decisions/2026-10-19-launch-readiness-council.md",
+      "accepted_by": "operator (Pranay) — gate policy decision 2026-10-19, extended 2026-10-20",
+      "accepted_at": "2026-10-20",
+      "review_by": "2026-11-19"
     }
   ]
 }

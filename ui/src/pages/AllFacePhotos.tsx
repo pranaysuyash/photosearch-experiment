@@ -4,10 +4,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, RefreshCw } from 'lucide-react';
-import { glass } from '../design/glass';
+import { glass } from '@/design/glass';
 import SecureLazyImage from '../components/gallery/SecureLazyImage';
 import { usePhotoViewer } from '../contexts/PhotoViewerContext';
-import type { Photo } from '../api';
+import { apiFetch, type Photo } from '../api';
 
 interface FacePhoto {
     path: string;
@@ -26,8 +26,8 @@ export default function AllFacePhotos() {
             setLoading(true);
             setError(null);
             try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/faces/photos-with-faces`
+                const response = await apiFetch(
+                    `/api/faces/photos-with-faces`
                 );
                 const data = await response.json();
                 setPhotos(data.photos || []);

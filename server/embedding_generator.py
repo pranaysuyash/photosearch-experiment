@@ -1,65 +1,120 @@
 from typing import List
-from PIL import Image
-from sentence_transformers import SentenceTransformer
+
 import logging
 
-# Configure logging
+from server.config import settings
+
 logger = logging.getLogger(__name__)
 
 
 class EmbeddingGenerator:
     """
-    Handles generation of embeddings for images and text using CLIP model.
+    Handles generation of embeddings for images and text.
+
+    Image+text space resolution (server/eg2_mlx_backend.py):
+        auto → EG2 via MLX when importable, else CLIP via sentence-transformers.
+    An injected ``backend`` (tests) bypasses resolution. Both spaces are
+    first-class: the vector store stamps the active model and resets/re-indexes
+    on change, so flipping IMAGE_EMBEDDING_BACKEND is safe.
     """
 
-    def __init__(self, model_name: str = "clip-ViT-B-32"):
+    def __init__(self, model_name: str = None, backend=None):
         """
-        Initialize the embedding generator.
-
         Args:
-            model_name: Name of the sentence-transformer model to use.
-                        Default 'clip-ViT-B-32' is a good balance of speed/quality.
+            model_name: sentence-transformers model for the CLIP fallback
+                        (settings.EMBEDDING_MODEL when omitted).
+            backend:    explicit image+text backend (e.g. Eg2MlxBackend) for
+                        tests; None = auto-resolve per settings.
         """
-        self.model_name = model_name
-        logger.info(f"Loading embedding model: {model_name}")
-        try:
-            self.model = SentenceTransformer(model_name)
-            logger.info("Model loaded successfully.")
-        except Exception as e:
-            logger.error(f"Failed to load model {model_name}: {e}")
-            raise
+        self._clip_model_name = model_name or settings.EMBEDDING_MODEL
+        self._st_model = None
 
-    def generate_image_embedding(self, image: Image.Image) -> List[float]:
-        """
-        Generate embedding for a PIL Image.
-        """
+        if backend is not None:
+            self._mlx = backend
+        elif self._mlx_enabled():
+            self._mlx = self._resolve_mlx()
+        else:
+            self._mlx = None
+
+        if self._mlx is not None:
+            self.model_name = self._mlx.model_name
+            logger.info(f"Image embedding backend: {self.model_name} (EG2/MLX)")
+        else:
+            self.model_name = self._clip_model_name
+            logger.info(f"Loading embedding model: {self.model_name}")
+            try:
+                from sentence_transformers import SentenceTransformer
+
+                self._st_model = SentenceTransformer(self.model_name)
+                logger.info("Model loaded successfully.")
+            except Exception as e:
+                logger.error(f"Failed to load model {self.model_name}: {e}")
+                raise
+
+    # ------------------------------------------------------------------
+    # Backend resolution
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _mlx_enabled() -> bool:
+        if settings.IMAGE_EMBEDDING_BACKEND not in ("auto", "eg2_mlx"):
+            return False
+        # Tests must stay fast and network-free; the EG2 path is covered by
+        # injected-backend unit tests and runtime proofs instead.
+        import os
+
+        if os.environ.get("PYTEST_CURRENT_TEST"):
+            return False
+        from server.eg2_mlx_backend import Eg2MlxBackend
+
+        return Eg2MlxBackend.available()
+
+    def _resolve_mlx(self):
         try:
-            # model.encode handles image preprocessing internally for CLIP models
-            # We enforce normalization for Cosine Similarity compatibility
-            embedding = self.model.encode(image, normalize_embeddings=True)
-            return embedding.tolist()
+            from server.eg2_mlx_backend import Eg2MlxBackend
+
+            return Eg2MlxBackend(settings.EG2_MLX_MODEL)
+        except Exception as e:
+            logger.warning(f"EG2/MLX backend unavailable ({e}); falling back to CLIP.")
+            return None
+
+    # ------------------------------------------------------------------
+    # Embedding API (same space for images and text queries)
+    # ------------------------------------------------------------------
+
+    def generate_image_embedding(self, image) -> List[float]:
+        """Generate an embedding for a PIL Image."""
+        try:
+            if self._mlx is not None:
+                return self._mlx.encode_images([image])[0]
+            return self._st_model.encode(image, normalize_embeddings=True).tolist()
         except Exception as e:
             logger.error(f"Error generating image embedding: {e}")
             raise
 
+    def generate_image_embeddings(self, images: List) -> List[List[float]]:
+        """Batch image embedding (EG2-MLX batches internally; CLIP loops)."""
+        if self._mlx is not None:
+            return self._mlx.encode_images(images)
+        return [self.generate_image_embedding(img) for img in images]
+
     def generate_text_embedding(self, text: str) -> List[float]:
-        """
-        Generate embedding for a text query.
-        """
+        """Generate an embedding for a text query (same space as images)."""
         try:
-            embedding = self.model.encode(text, normalize_embeddings=True)
-            return embedding.tolist()
+            if self._mlx is not None:
+                return self._mlx.embed_query(text)
+            return self._st_model.encode(text, normalize_embeddings=True).tolist()
         except Exception as e:
             logger.error(f"Error generating text embedding: {e}")
             raise
 
     @property
     def embedding_dimension(self) -> int:
-        """
-        Return the dimension of embeddings generated by this model.
-        """
-        return self.model.get_sentence_embedding_dimension()
+        """Dimension of embeddings generated by the active backend."""
+        if self._mlx is not None:
+            return self._mlx.dimension
+        return self._st_model.get_sentence_embedding_dimension()
 
-
-# Global instance lazy loader pattern or singleton could be used here
-# But for now we'll instantiate in main or where needed.
+    @property
+    def backend_name(self) -> str:
+        return "eg2_mlx" if self._mlx is not None else "clip_st"

@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { api } from '../../api';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import {
   type FaceDetection,
   type FaceDetectionResult,

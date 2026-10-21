@@ -32,10 +32,18 @@ class PhotoAccessDenied(PermissionError):
 
 
 def user_id_from_request(request) -> str:
-    """Identity convention shared with the privacy router's consent endpoints.
+    """Identity for privacy evaluation.
 
-    Header first (axios interceptor sets it on all API calls); query param as
-    the fallback for <img src> URLs, which cannot carry headers."""
+    The principal gate (server/principal.py) is authoritative when it has
+    resolved a caller: loopback is the owner and a paired device's session
+    token carries the id. The X-User-ID header / ?user_id= query fallback only
+    applies when no principal was resolved (exempt paths, direct handler
+    calls) — header first, query param for <img src> URLs that cannot carry
+    headers.
+    """
+    principal = getattr(getattr(request, "state", None), "principal", None)
+    if principal is not None:
+        return principal.id
     header_id = request.headers.get("X-User-ID")
     if header_id:
         return header_id

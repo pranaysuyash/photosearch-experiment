@@ -31,7 +31,7 @@ import {
   Smartphone,
   Monitor,
 } from 'lucide-react';
-import { glass } from '../../design/glass';
+import { glass } from '@/design/glass';
 import { api, type PhotoEdit } from '../../api';
 
 interface MobilePhotoEditorProps {

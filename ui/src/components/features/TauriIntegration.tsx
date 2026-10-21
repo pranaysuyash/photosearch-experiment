@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/api';
 import './TauriIntegration.css';
 
 interface TauriCommand {
@@ -49,56 +50,56 @@ const TauriIntegration: React.FC = () => {
       setError(null);
 
       // Fetch commands
-      const commandsResponse = await fetch('/api/tauri/commands');
+      const commandsResponse = await apiFetch('/api/tauri/commands');
       if (commandsResponse.ok) {
         const commandsData = await commandsResponse.json();
         setCommands(commandsData.commands || []);
       }
 
       // Fetch Rust skeleton
-      const skeletonResponse = await fetch('/api/tauri/rust-skeleton');
+      const skeletonResponse = await apiFetch('/api/tauri/rust-skeleton');
       if (skeletonResponse.ok) {
         const skeletonData = await skeletonResponse.json();
         setRustSkeleton(skeletonData.skeleton || '');
       }
 
       // Fetch frontend hooks
-      const hooksResponse = await fetch('/api/tauri/frontend-hooks');
+      const hooksResponse = await apiFetch('/api/tauri/frontend-hooks');
       if (hooksResponse.ok) {
         const hooksData = await hooksResponse.json();
         setFrontendHooks(hooksData.hooks || '');
       }
 
       // Fetch Tauri config
-      const configResponse = await fetch('/api/tauri/config');
+      const configResponse = await apiFetch('/api/tauri/config');
       if (configResponse.ok) {
         const configData = await configResponse.json();
         setTauriConfig(configData.config || '');
       }
 
       // Fetch security tips
-      const securityResponse = await fetch('/api/tauri/security');
+      const securityResponse = await apiFetch('/api/tauri/security');
       if (securityResponse.ok) {
         const securityData = await securityResponse.json();
         setSecurityTips(securityData.recommendations || []);
       }
 
       // Fetch performance tips
-      const performanceResponse = await fetch('/api/tauri/performance');
+      const performanceResponse = await apiFetch('/api/tauri/performance');
       if (performanceResponse.ok) {
         const performanceData = await performanceResponse.json();
         setPerformanceTips(performanceData.tips || []);
       }
 
       // Fetch checklist
-      const checklistResponse = await fetch('/api/tauri/checklist');
+      const checklistResponse = await apiFetch('/api/tauri/checklist');
       if (checklistResponse.ok) {
         const checklistData = await checklistResponse.json();
         setChecklist(checklistData.checklist || []);
       }
 
       // Fetch setup guide
-      const guideResponse = await fetch('/api/tauri/setup-guide');
+      const guideResponse = await apiFetch('/api/tauri/setup-guide');
       if (guideResponse.ok) {
         const guideData = await guideResponse.json();
         setSetupGuide(guideData.guide);

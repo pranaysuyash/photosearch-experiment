@@ -1,0 +1,3 @@
+{"query": "dog running on the beach", "expect_paths": ["media/example_dog_beach.jpg"]}
+{"query": "birthday cake with candles", "expect_paths": ["media/example_birthday.jpg"]}
+{"query": "screenshot of an error message", "expect_paths": ["media/example_screenshot.png"]}
